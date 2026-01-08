@@ -12,7 +12,7 @@ import Maquinarias from "./pages/Maquinarias";
 import Viajes from "./pages/Viajes";
 import Remitos from "./pages/Remitos";
 import Combustible from "./pages/Combustible";
-import Mantenimiento from "./pages/Mantenimiento";
+import Mantenimiento from "./pages/MantenimientoPage";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
 import NotFound from "./pages/NotFound";

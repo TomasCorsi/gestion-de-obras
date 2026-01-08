@@ -69,14 +69,14 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-export default function Mantenimiento() {
-  const [mantenimientos, setMantenimientos] = useState<Mantenimiento[]>(initialData);
+export default function MantenimientoPage() {
+  const [mantenimientos, setMantenimientos] = useState<MantenimientoType[]>(initialData);
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedMant, setSelectedMant] = useState<Mantenimiento | null>(null);
+  const [selectedMant, setSelectedMant] = useState<MantenimientoType | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const [formData, setFormData] = useState<Partial<MantenimientoType>>({
@@ -125,19 +125,19 @@ export default function Mantenimiento() {
     setFormOpen(true);
   };
 
-  const handleEdit = (mant: Mantenimiento) => {
+  const handleEdit = (mant: MantenimientoType) => {
     setIsEditing(true);
     setSelectedMant(mant);
     setFormData(mant);
     setFormOpen(true);
   };
 
-  const handleView = (mant: Mantenimiento) => {
+  const handleView = (mant: MantenimientoType) => {
     setSelectedMant(mant);
     setDetailOpen(true);
   };
 
-  const handleDelete = (mant: Mantenimiento) => {
+  const handleDelete = (mant: MantenimientoType) => {
     setSelectedMant(mant);
     setDeleteOpen(true);
   };
@@ -165,17 +165,17 @@ export default function Mantenimiento() {
       ));
       toast.success("Mantenimiento actualizado correctamente");
     } else {
-      const newMant: Mantenimiento = {
+      const newMant: MantenimientoType = {
         ...mantData,
         id: Date.now().toString(),
-      } as Mantenimiento;
+      } as MantenimientoType;
       setMantenimientos([...mantenimientos, newMant]);
       toast.success("Mantenimiento registrado correctamente");
     }
     setFormOpen(false);
   };
 
-  const updateStatus = (mant: Mantenimiento, newStatus: Mantenimiento["estado"]) => {
+  const updateStatus = (mant: MantenimientoType, newStatus: MantenimientoType["estado"]) => {
     setMantenimientos(mantenimientos.map((m) =>
       m.id === mant.id ? { ...m, estado: newStatus } : m
     ));
@@ -383,7 +383,7 @@ export default function Mantenimiento() {
               <Label htmlFor="tipo">Tipo *</Label>
               <Select
                 value={formData.tipo}
-                onValueChange={(value) => setFormData({ ...formData, tipo: value as Mantenimiento["tipo"] })}
+                onValueChange={(value) => setFormData({ ...formData, tipo: value as MantenimientoType["tipo"] })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -399,7 +399,7 @@ export default function Mantenimiento() {
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={formData.estado}
-                onValueChange={(value) => setFormData({ ...formData, estado: value as Mantenimiento["estado"] })}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as MantenimientoType["estado"] })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
