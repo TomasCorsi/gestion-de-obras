@@ -17,6 +17,7 @@ import Stock from "./pages/Stock";
 import Presentismo from "./pages/Presentismo";
 import Reportes from "./pages/Reportes";
 import Configuracion from "./pages/Configuracion";
+import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
           <Route path="/presentismo" element={<Presentismo />} />
           <Route path="/reportes" element={<Reportes />} />
           <Route path="/configuracion" element={<Configuracion />} />
+          <Route path="/install" element={<Install />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

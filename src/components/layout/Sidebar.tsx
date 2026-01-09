@@ -17,10 +17,13 @@ import {
   HardHat,
   Package,
   ClipboardList,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
@@ -39,17 +42,16 @@ const menuItems = [
   { icon: Settings, label: "Configuración", path: "/configuracion" },
 ];
 
-export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+interface SidebarContentProps {
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}
+
+function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
   const location = useLocation();
 
   return (
-    <aside
-      className={cn(
-        "h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
+    <>
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-sidebar-border">
         {!collapsed && (
@@ -82,6 +84,7 @@ export function Sidebar() {
             const linkContent = (
               <Link
                 to={item.path}
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
                   isActive
@@ -118,7 +121,23 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+    </>
+  );
+}
 
+// Desktop Sidebar
+export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+
+  return (
+    <aside
+      className={cn(
+        "hidden md:flex h-screen bg-sidebar border-r border-sidebar-border flex-col transition-all duration-300",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      <SidebarContent collapsed={collapsed} />
+      
       {/* Collapse Toggle */}
       <div className="p-2 border-t border-sidebar-border">
         <Button
@@ -138,5 +157,25 @@ export function Sidebar() {
         </Button>
       </div>
     </aside>
+  );
+}
+
+// Mobile Sidebar (Sheet/Drawer)
+export function MobileSidebar() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="md:hidden">
+          <Menu className="w-6 h-6" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="left" className="w-72 p-0 bg-sidebar border-sidebar-border">
+        <div className="flex flex-col h-full">
+          <SidebarContent onNavigate={() => setOpen(false)} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
