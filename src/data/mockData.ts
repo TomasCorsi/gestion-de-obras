@@ -1,4 +1,4 @@
-import { Cliente, Persona, Maquinaria, Obra, Cotizacion, Viaje, Remito, CargaCombustible, Mantenimiento } from "@/types";
+import { Cliente, Persona, Maquinaria, Obra, Cotizacion, Viaje, Remito, CargaCombustible, Mantenimiento, ItemStock, MovimientoStock, RegistroHH } from "@/types";
 
 export const clientesData: Cliente[] = [
   {
@@ -145,4 +145,33 @@ export const mantenimientosData: Mantenimiento[] = [
   { id: "1", fecha: "2026-01-08", maquinariaId: "3", maquinaria: "Volvo A30G", tipo: "preventivo", descripcion: "Service 7000 horas - cambio de aceite, filtros y revisión general", repuestos: "Aceite motor x20L, Filtro aceite, Filtro aire, Filtro combustible", costoRepuestos: 185000, costoManoObra: 45000, costoTotal: 230000, horasMaquina: 6800, tecnico: "Taller Mecánico Central", estado: "en_proceso", proximoMantenimiento: "2026-04-08" },
   { id: "2", fecha: "2026-01-03", maquinariaId: "1", maquinaria: "CAT 320D", tipo: "correctivo", descripcion: "Reparación sistema hidráulico - reemplazo de mangueras", repuestos: "Manguera hidráulica x3, Conectores, Aceite hidráulico x10L", costoRepuestos: 95000, costoManoObra: 35000, costoTotal: 130000, horasMaquina: 4480, tecnico: "Finning Argentina", estado: "completado" },
   { id: "3", fecha: "2026-01-15", maquinariaId: "6", maquinaria: "Hyundai R210", tipo: "preventivo", descripcion: "Service 1000 horas programado", costoRepuestos: 0, costoManoObra: 0, costoTotal: 0, horasMaquina: 980, tecnico: "Por asignar", estado: "programado" },
+];
+
+export const stockData: ItemStock[] = [
+  { id: "1", codigo: "MAT-001", nombre: "Tosca", categoria: "material", unidad: "m³", stockActual: 450, stockMinimo: 100, stockMaximo: 800, ubicacion: "Cantera Norte", precioUnitario: 380, activo: true },
+  { id: "2", codigo: "MAT-002", nombre: "Arena gruesa", categoria: "material", unidad: "m³", stockActual: 180, stockMinimo: 50, stockMaximo: 400, ubicacion: "Base Central", precioUnitario: 420, activo: true },
+  { id: "3", codigo: "MAT-003", nombre: "Piedra partida", categoria: "material", unidad: "m³", stockActual: 35, stockMinimo: 80, stockMaximo: 300, ubicacion: "Base Central", precioUnitario: 550, activo: true },
+  { id: "4", codigo: "REP-001", nombre: "Filtro de aceite CAT", categoria: "repuesto", unidad: "unidad", stockActual: 12, stockMinimo: 5, stockMaximo: 30, ubicacion: "Depósito Taller", precioUnitario: 15000, activo: true },
+  { id: "5", codigo: "REP-002", nombre: "Filtro de aire CAT", categoria: "repuesto", unidad: "unidad", stockActual: 8, stockMinimo: 5, stockMaximo: 25, ubicacion: "Depósito Taller", precioUnitario: 22000, activo: true },
+  { id: "6", codigo: "REP-003", nombre: "Manguera hidráulica 1\"", categoria: "repuesto", unidad: "metro", stockActual: 2, stockMinimo: 10, stockMaximo: 50, ubicacion: "Depósito Taller", precioUnitario: 8500, activo: true },
+  { id: "7", codigo: "CON-001", nombre: "Aceite hidráulico", categoria: "consumible", unidad: "litro", stockActual: 180, stockMinimo: 100, stockMaximo: 500, ubicacion: "Depósito Taller", precioUnitario: 2800, activo: true },
+  { id: "8", codigo: "HER-001", nombre: "Llave de impacto", categoria: "herramienta", unidad: "unidad", stockActual: 3, stockMinimo: 2, stockMaximo: 5, ubicacion: "Depósito Taller", precioUnitario: 85000, activo: true },
+];
+
+export const movimientosStockData: MovimientoStock[] = [
+  { id: "1", fecha: "2026-01-08", itemId: "1", item: "Tosca", tipo: "salida", cantidad: 36, stockAnterior: 486, stockNuevo: 450, obraId: "1", obra: "Movimiento de Suelo - Lote 45", motivo: "Entrega a obra", responsableId: "5", responsable: "Ana Martínez" },
+  { id: "2", fecha: "2026-01-07", itemId: "1", item: "Tosca", tipo: "entrada", cantidad: 200, stockAnterior: 286, stockNuevo: 486, motivo: "Compra a proveedor Cantera Sur", responsableId: "3", responsable: "María López" },
+  { id: "3", fecha: "2026-01-06", itemId: "3", item: "Piedra partida", tipo: "salida", cantidad: 45, stockAnterior: 80, stockNuevo: 35, obraId: "2", obra: "Excavación Fundaciones", motivo: "Entrega a obra", responsableId: "7", responsable: "Lucía Fernández" },
+  { id: "4", fecha: "2026-01-05", itemId: "6", item: "Manguera hidráulica 1\"", tipo: "salida", cantidad: 8, stockAnterior: 10, stockNuevo: 2, motivo: "Reparación CAT 320D", responsableId: "4", responsable: "Pedro Rodríguez" },
+  { id: "5", fecha: "2026-01-04", itemId: "4", item: "Filtro de aceite CAT", tipo: "entrada", cantidad: 10, stockAnterior: 2, stockNuevo: 12, motivo: "Compra a Finning Argentina", responsableId: "3", responsable: "María López" },
+];
+
+export const presentismoData: RegistroHH[] = [
+  { id: "1", fecha: "2026-01-09", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "16:00", horasNormales: 8, horasExtra: 1, horasTotales: 9, tarea: "Operación excavadora", estado: "presente" },
+  { id: "2", fecha: "2026-01-09", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
+  { id: "3", fecha: "2026-01-09", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "07:00", horaSalida: "17:00", horasNormales: 8, horasExtra: 2, horasTotales: 10, tarea: "Operación topadora", estado: "presente" },
+  { id: "4", fecha: "2026-01-09", personaId: "7", persona: "Lucía Fernández", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "ausente", observaciones: "Sin aviso" },
+  { id: "5", fecha: "2026-01-08", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Operación excavadora", estado: "presente" },
+  { id: "6", fecha: "2026-01-08", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
+  { id: "7", fecha: "2026-01-08", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "licencia", observaciones: "Trámite personal" },
 ];

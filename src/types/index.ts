@@ -177,3 +177,56 @@ export interface HoraMaquina {
   horasTrabajadas: number;
   observaciones?: string;
 }
+
+export interface ItemStock {
+  id: string;
+  codigo: string;
+  nombre: string;
+  categoria: "material" | "repuesto" | "herramienta" | "consumible";
+  unidad: string;
+  stockActual: number;
+  stockMinimo: number;
+  stockMaximo?: number;
+  ubicacion: string;
+  precioUnitario: number;
+  activo: boolean;
+}
+
+export interface MovimientoStock {
+  id: string;
+  fecha: string;
+  itemId: string;
+  item: string;
+  tipo: "entrada" | "salida" | "ajuste";
+  cantidad: number;
+  stockAnterior: number;
+  stockNuevo: number;
+  obraId?: string;
+  obra?: string;
+  motivo: string;
+  responsableId: string;
+  responsable: string;
+  comprobante?: string;
+  observaciones?: string;
+}
+
+export interface RegistroHH {
+  id: string;
+  fecha: string;
+  personaId: string;
+  persona: string;
+  obraId: string;
+  obra: string;
+  clienteId: string;
+  cliente: string;
+  capatazId: string;
+  capataz: string;
+  horaEntrada: string;
+  horaSalida: string;
+  horasNormales: number;
+  horasExtra: number;
+  horasTotales: number;
+  tarea: string;
+  estado: "presente" | "ausente" | "licencia" | "vacaciones" | "enfermedad";
+  observaciones?: string;
+}
