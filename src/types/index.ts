@@ -130,6 +130,10 @@ export interface Remito {
 export interface CargaCombustible {
   id: string;
   fecha: string;
+  clienteId: string;
+  cliente: string;
+  obraId: string;
+  obra: string;
   maquinariaId: string;
   maquinaria: string;
   litros: number;

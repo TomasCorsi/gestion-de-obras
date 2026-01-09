@@ -135,10 +135,10 @@ export const remitosData: Remito[] = [
 ];
 
 export const combustibleData: CargaCombustible[] = [
-  { id: "1", fecha: "2026-01-08", maquinariaId: "1", maquinaria: "CAT 320D", litros: 280, precioLitro: 950, costoTotal: 266000, horasMaquina: 4520, estacion: "YPF Trelew", operador: "Pedro Rodríguez" },
-  { id: "2", fecha: "2026-01-07", maquinariaId: "4", maquinaria: "CAT D6T", litros: 350, precioLitro: 950, costoTotal: 332500, horasMaquina: 2100, estacion: "Shell Rawson", operador: "Roberto Sánchez" },
-  { id: "3", fecha: "2026-01-06", maquinariaId: "2", maquinaria: "Komatsu WA380", litros: 220, precioLitro: 950, costoTotal: 209000, horasMaquina: 3200, estacion: "YPF Trelew", operador: "Diego Torres" },
-  { id: "4", fecha: "2026-01-05", maquinariaId: "6", maquinaria: "Hyundai R210", litros: 180, precioLitro: 950, costoTotal: 171000, horasMaquina: 980, estacion: "Axion Puerto Madryn", operador: "Pedro Rodríguez" },
+  { id: "1", fecha: "2026-01-08", clienteId: "1", cliente: "Constructora Andina S.A.", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "1", maquinaria: "CAT 320D", litros: 280, precioLitro: 950, costoTotal: 266000, horasMaquina: 4520, estacion: "YPF Trelew", operador: "Pedro Rodríguez" },
+  { id: "2", fecha: "2026-01-07", clienteId: "2", cliente: "Inmobiliaria Del Sur", obraId: "2", obra: "Excavación Fundaciones", maquinariaId: "4", maquinaria: "CAT D6T", litros: 350, precioLitro: 950, costoTotal: 332500, horasMaquina: 2100, estacion: "Shell Rawson", operador: "Roberto Sánchez" },
+  { id: "3", fecha: "2026-01-06", clienteId: "3", cliente: "Parque Industrial Norte", obraId: "3", obra: "Nivelación Terreno Industrial", maquinariaId: "2", maquinaria: "Komatsu WA380", litros: 220, precioLitro: 950, costoTotal: 209000, horasMaquina: 3200, estacion: "YPF Trelew", operador: "Diego Torres" },
+  { id: "4", fecha: "2026-01-05", clienteId: "1", cliente: "Constructora Andina S.A.", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "6", maquinaria: "Hyundai R210", litros: 180, precioLitro: 950, costoTotal: 171000, horasMaquina: 980, estacion: "Axion Puerto Madryn", operador: "Pedro Rodríguez" },
 ];
 
 export const mantenimientosData: Mantenimiento[] = [

@@ -44,7 +44,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CargaCombustible } from "@/types";
-import { combustibleData as initialData, maquinariasData, personalData } from "@/data/mockData";
+import { combustibleData as initialData, maquinariasData, personalData, clientesData, obrasData } from "@/data/mockData";
 import { toast } from "sonner";
 
 function formatCurrency(value: number): string {
@@ -68,6 +68,10 @@ export default function Combustible() {
 
   const [formData, setFormData] = useState<Partial<CargaCombustible>>({
     fecha: new Date().toISOString().split("T")[0],
+    clienteId: "",
+    cliente: "",
+    obraId: "",
+    obra: "",
     maquinariaId: "",
     maquinaria: "",
     litros: 0,
@@ -79,16 +83,27 @@ export default function Combustible() {
     comprobante: "",
   });
 
+  // Filtrar obras según el cliente seleccionado
+  const filteredObras = formData.clienteId 
+    ? obrasData.filter(o => o.clienteId === formData.clienteId && o.estado !== "finalizada")
+    : obrasData.filter(o => o.estado !== "finalizada");
+
   const filteredCargas = cargas.filter((c) =>
     c.maquinaria.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.operador.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.estacion.toLowerCase().includes(searchTerm.toLowerCase())
+    c.estacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.obra.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleNew = () => {
     setIsEditing(false);
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
+      clienteId: "",
+      cliente: "",
+      obraId: "",
+      obra: "",
       maquinariaId: "",
       maquinaria: "",
       litros: 0,
@@ -132,8 +147,12 @@ export default function Combustible() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const selectedMaq = maquinariasData.find(m => m.id === formData.maquinariaId);
+    const selectedCliente = clientesData.find(c => c.id === formData.clienteId);
+    const selectedObra = obrasData.find(o => o.id === formData.obraId);
     const cargaData = {
       ...formData,
+      cliente: selectedCliente?.nombre || "",
+      obra: selectedObra?.nombre || "",
       maquinaria: selectedMaq?.nombre || "",
       costoTotal: calculateTotal(formData.litros || 0, formData.precioLitro || 0),
     };
@@ -183,13 +202,12 @@ export default function Combustible() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
               <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
               <TableHead className="text-muted-foreground font-medium">Litros</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Precio/L</TableHead>
               <TableHead className="text-muted-foreground font-medium">Total</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Horas Maq.</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Estación</TableHead>
               <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -205,6 +223,12 @@ export default function Combustible() {
                     <Calendar className="w-3 h-3 text-muted-foreground" />
                     {carga.fecha}
                   </span>
+                </TableCell>
+                <TableCell className="text-foreground font-medium">
+                  {carga.cliente}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {carga.obra}
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-2">
@@ -224,19 +248,9 @@ export default function Combustible() {
                     {carga.litros} L
                   </span>
                 </TableCell>
-                <TableCell className="font-mono text-muted-foreground">
-                  {formatCurrency(carga.precioLitro)}
-                </TableCell>
                 <TableCell className="font-mono font-medium text-foreground">
                   {formatCurrency(carga.costoTotal)}
                 </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 font-mono text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    {carga.horasMaquina.toLocaleString()} h
-                  </span>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{carga.estacion}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -319,6 +333,50 @@ export default function Combustible() {
                 className="bg-muted border-border"
                 required
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="clienteId">Cliente *</Label>
+              <Select
+                value={formData.clienteId}
+                onValueChange={(value) => {
+                  const cliente = clientesData.find(c => c.id === value);
+                  setFormData({ 
+                    ...formData, 
+                    clienteId: value, 
+                    cliente: cliente?.nombre || "",
+                    obraId: "", // Reset obra when client changes
+                    obra: ""
+                  });
+                }}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {clientesData.filter(c => c.activo).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="obraId">Obra *</Label>
+              <Select
+                value={formData.obraId}
+                onValueChange={(value) => {
+                  const obra = obrasData.find(o => o.id === value);
+                  setFormData({ ...formData, obraId: value, obra: obra?.nombre || "" });
+                }}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar obra" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {filteredObras.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.nombre} ({o.codigo})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label htmlFor="maquinariaId">Maquinaria *</Label>
@@ -452,6 +510,8 @@ export default function Combustible() {
           <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={selectedCarga.fecha} />
+              <DetailRow label="Cliente" value={selectedCarga.cliente} />
+              <DetailRow label="Obra" value={selectedCarga.obra} />
               <DetailRow label="Maquinaria" value={selectedCarga.maquinaria} />
               <DetailRow label="Operador" value={selectedCarga.operador} />
               <DetailRow label="Horas Máquina" value={`${selectedCarga.horasMaquina.toLocaleString()} h`} />
