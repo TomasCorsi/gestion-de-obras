@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -23,7 +24,6 @@ import {
 import {
   Plus,
   Search,
-  HardHat,
   Phone,
   Calendar,
   MoreVertical,
@@ -44,12 +44,10 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { Persona } from "@/types";
-import { personalData as initialData } from "@/data/mockData";
-import { toast } from "sonner";
+import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
-const rolesConfig: Record<string, { label: string; color: string }> = {
+const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   administrador: { label: "Administrador", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
   supervisor: { label: "Supervisor", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
@@ -60,26 +58,27 @@ const rolesConfig: Record<string, { label: string; color: string }> = {
 };
 
 export default function Personal() {
-  const [personal, setPersonal] = useState<Persona[]>(initialData);
+  const { personal, loading, createPersonal, updatePersonal, deletePersonal } = usePersonal();
   const [searchTerm, setSearchTerm] = useState("");
   const [rolFilter, setRolFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
+  const [selectedPersona, setSelectedPersona] = useState<PersonalDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<Persona>>({
+  const [formData, setFormData] = useState<PersonalForm>({
     nombre: "",
     apellido: "",
     dni: "",
     rol: "chofer",
     email: "",
     telefono: "",
-    fechaIngreso: "",
+    fecha_ingreso: new Date().toISOString().split("T")[0],
     activo: true,
     licencia: "",
-    vencimientoLicencia: "",
+    vencimiento_licencia: "",
   });
 
   const filteredPersonal = personal.filter((p) => {
@@ -99,58 +98,73 @@ export default function Personal() {
       rol: "chofer",
       email: "",
       telefono: "",
-      fechaIngreso: new Date().toISOString().split("T")[0],
+      fecha_ingreso: new Date().toISOString().split("T")[0],
       activo: true,
       licencia: "",
-      vencimientoLicencia: "",
+      vencimiento_licencia: "",
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (persona: Persona) => {
+  const handleEdit = (persona: PersonalDB) => {
     setIsEditing(true);
     setSelectedPersona(persona);
-    setFormData(persona);
+    setFormData({
+      nombre: persona.nombre,
+      apellido: persona.apellido,
+      dni: persona.dni,
+      rol: persona.rol,
+      email: persona.email || "",
+      telefono: persona.telefono,
+      fecha_ingreso: persona.fecha_ingreso,
+      activo: persona.activo,
+      licencia: persona.licencia || "",
+      vencimiento_licencia: persona.vencimiento_licencia || "",
+    });
     setFormOpen(true);
   };
 
-  const handleView = (persona: Persona) => {
+  const handleView = (persona: PersonalDB) => {
     setSelectedPersona(persona);
     setDetailOpen(true);
   };
 
-  const handleDelete = (persona: Persona) => {
+  const handleDelete = (persona: PersonalDB) => {
     setSelectedPersona(persona);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedPersona) {
-      setPersonal(personal.filter((p) => p.id !== selectedPersona.id));
-      toast.success("Personal eliminado correctamente");
+      await deletePersonal(selectedPersona.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     if (isEditing && selectedPersona) {
-      setPersonal(
-        personal.map((p) =>
-          p.id === selectedPersona.id ? { ...p, ...formData } : p
-        )
-      );
-      toast.success("Personal actualizado correctamente");
+      await updatePersonal(selectedPersona.id, formData);
     } else {
-      const newPersona: Persona = {
-        ...formData,
-        id: Date.now().toString(),
-      } as Persona;
-      setPersonal([...personal, newPersona]);
-      toast.success("Personal creado correctamente");
+      await createPersonal(formData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Personal" subtitle="Gestión de empleados y roles">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Personal" subtitle="Gestión de empleados y roles">
@@ -204,96 +218,104 @@ export default function Personal() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPersonal.map((persona, index) => (
-              <TableRow
-                key={persona.id}
-                className="border-border table-row-hover animate-fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <User className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-foreground">
-                      {persona.nombre} {persona.apellido}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">
-                  {persona.dni}
-                </TableCell>
-                <TableCell>
-                  <Badge className={cn("status-badge", rolesConfig[persona.rol]?.color)}>
-                    {rolesConfig[persona.rol]?.label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Phone className="w-3 h-3" />
-                    {persona.telefono}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {persona.fechaIngreso}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  {persona.licencia ? (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <CreditCard className="w-3 h-3" />
-                      {persona.licencia}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={cn(
-                      "status-badge",
-                      persona.activo ? "status-active" : "status-inactive"
-                    )}
-                  >
-                    {persona.activo ? "Activo" : "Inactivo"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem
-                        onClick={() => handleView(persona)}
-                        className="text-foreground cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleEdit(persona)}
-                        className="text-foreground cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(persona)}
-                        className="text-destructive cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {filteredPersonal.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  {searchTerm || rolFilter !== "todos" ? "No se encontró personal" : "No hay personal registrado"}
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredPersonal.map((persona, index) => (
+                <TableRow
+                  key={persona.id}
+                  className="border-border table-row-hover animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <User className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium text-foreground">
+                        {persona.nombre} {persona.apellido}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {persona.dni}
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={cn("status-badge", rolesConfig[persona.rol]?.color)}>
+                      {rolesConfig[persona.rol]?.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {persona.telefono}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Calendar className="w-3 h-3" />
+                      {persona.fecha_ingreso}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    {persona.licencia ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <CreditCard className="w-3 h-3" />
+                        {persona.licencia}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={cn(
+                        "status-badge",
+                        persona.activo ? "status-active" : "status-inactive"
+                      )}
+                    >
+                      {persona.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem
+                          onClick={() => handleView(persona)}
+                          className="text-foreground cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleEdit(persona)}
+                          className="text-foreground cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(persona)}
+                          className="text-destructive cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -356,7 +378,7 @@ export default function Personal() {
               <Label htmlFor="rol">Rol *</Label>
               <Select
                 value={formData.rol}
-                onValueChange={(value) => setFormData({ ...formData, rol: value as Persona["rol"] })}
+                onValueChange={(value) => setFormData({ ...formData, rol: value as RolPersonal })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -389,12 +411,12 @@ export default function Personal() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fechaIngreso">Fecha de Ingreso *</Label>
+              <Label htmlFor="fecha_ingreso">Fecha de Ingreso *</Label>
               <Input
-                id="fechaIngreso"
+                id="fecha_ingreso"
                 type="date"
-                value={formData.fechaIngreso}
-                onChange={(e) => setFormData({ ...formData, fechaIngreso: e.target.value })}
+                value={formData.fecha_ingreso}
+                onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
                 className="bg-muted border-border"
                 required
               />
@@ -410,12 +432,12 @@ export default function Personal() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="vencimientoLicencia">Vencimiento Licencia</Label>
+              <Label htmlFor="vencimiento_licencia">Vencimiento Licencia</Label>
               <Input
-                id="vencimientoLicencia"
+                id="vencimiento_licencia"
                 type="date"
-                value={formData.vencimientoLicencia}
-                onChange={(e) => setFormData({ ...formData, vencimientoLicencia: e.target.value })}
+                value={formData.vencimiento_licencia}
+                onChange={(e) => setFormData({ ...formData, vencimiento_licencia: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
@@ -432,8 +454,8 @@ export default function Personal() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
-              {isEditing ? "Guardar Cambios" : "Crear Personal"}
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Personal"}
             </Button>
           </div>
         </form>
@@ -471,20 +493,22 @@ export default function Personal() {
               <DetailRow label="Teléfono" value={selectedPersona.telefono} />
               <DetailRow label="Email" value={selectedPersona.email || "-"} />
             </DetailSection>
-            <DetailSection title="Datos Laborales">
-              <DetailRow label="Fecha de Ingreso" value={selectedPersona.fechaIngreso} />
+            <DetailSection title="Empleo">
+              <DetailRow label="Fecha de Ingreso" value={selectedPersona.fecha_ingreso} />
               <DetailRow label="Licencia" value={selectedPersona.licencia || "-"} />
-              <DetailRow label="Vencimiento Licencia" value={selectedPersona.vencimientoLicencia || "-"} />
+              <DetailRow label="Vencimiento Licencia" value={selectedPersona.vencimiento_licencia || "-"} />
             </DetailSection>
           </div>
         )}
       </DetailDialog>
 
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el registro de "${selectedPersona?.nombre} ${selectedPersona?.apellido}".`}
+        title="Eliminar Personal"
+        description={`¿Estás seguro de que deseas eliminar a "${selectedPersona?.nombre} ${selectedPersona?.apellido}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

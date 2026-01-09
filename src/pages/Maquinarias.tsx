@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -42,13 +44,11 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { Maquinaria } from "@/types";
-import { maquinariasData as initialData } from "@/data/mockData";
-import { toast } from "sonner";
+import { useMaquinarias, MaquinariaDB, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
+import { usePersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 
-const tiposConfig: Record<string, string> = {
+const tiposConfig: Record<TipoMaquinaria, string> = {
   excavadora: "Excavadora",
   cargadora: "Cargadora",
   camion_articulado: "Camión Articulado",
@@ -58,7 +58,7 @@ const tiposConfig: Record<string, string> = {
   motoniveladora: "Motoniveladora",
 };
 
-const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
+const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
   operativa: { label: "Operativa", icon: CheckCircle, className: "status-active" },
   mantenimiento: { label: "Mantenimiento", icon: Wrench, className: "status-pending" },
   inactiva: { label: "Inactiva", icon: Clock, className: "status-inactive" },
@@ -66,16 +66,21 @@ const estadoConfig: Record<string, { label: string; icon: any; className: string
 };
 
 export default function Maquinarias() {
-  const [maquinarias, setMaquinarias] = useState<Maquinaria[]>(initialData);
+  const { maquinarias, loading, createMaquinaria, updateMaquinaria, deleteMaquinaria } = useMaquinarias();
+  const { personal } = usePersonal();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedMaquinaria, setSelectedMaquinaria] = useState<Maquinaria | null>(null);
+  const [selectedMaquinaria, setSelectedMaquinaria] = useState<MaquinariaDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<Maquinaria>>({
+  const operadores = personal.filter(p => p.rol === "maquinista" && p.activo);
+
+  const [formData, setFormData] = useState<MaquinariaForm>({
     codigo: "",
     nombre: "",
     tipo: "excavadora",
@@ -84,10 +89,9 @@ export default function Maquinarias() {
     anio: new Date().getFullYear(),
     patente: "",
     estado: "operativa",
-    ubicacionActual: "",
-    horasAcumuladas: 0,
-    proximoService: 500,
-    operadorAsignado: "",
+    ubicacion_actual: "Base Central",
+    horas_acumuladas: 0,
+    proximo_service: 500,
   });
 
   const filteredMaquinarias = maquinarias.filter((m) => {
@@ -109,66 +113,86 @@ export default function Maquinarias() {
       anio: new Date().getFullYear(),
       patente: "",
       estado: "operativa",
-      ubicacionActual: "Base Central",
-      horasAcumuladas: 0,
-      proximoService: 500,
-      operadorAsignado: "",
+      ubicacion_actual: "Base Central",
+      horas_acumuladas: 0,
+      proximo_service: 500,
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (maq: Maquinaria) => {
+  const handleEdit = (maq: MaquinariaDB) => {
     setIsEditing(true);
     setSelectedMaquinaria(maq);
-    setFormData(maq);
+    setFormData({
+      codigo: maq.codigo,
+      nombre: maq.nombre,
+      tipo: maq.tipo,
+      marca: maq.marca,
+      modelo: maq.modelo,
+      anio: maq.anio,
+      patente: maq.patente || "",
+      estado: maq.estado,
+      ubicacion_actual: maq.ubicacion_actual,
+      horas_acumuladas: maq.horas_acumuladas,
+      proximo_service: maq.proximo_service,
+      operador_asignado_id: maq.operador_asignado_id || undefined,
+    });
     setFormOpen(true);
   };
 
-  const handleView = (maq: Maquinaria) => {
+  const handleView = (maq: MaquinariaDB) => {
     setSelectedMaquinaria(maq);
     setDetailOpen(true);
   };
 
-  const handleDelete = (maq: Maquinaria) => {
+  const handleDelete = (maq: MaquinariaDB) => {
     setSelectedMaquinaria(maq);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedMaquinaria) {
-      setMaquinarias(maquinarias.filter((m) => m.id !== selectedMaquinaria.id));
-      toast.success("Maquinaria eliminada correctamente");
+      await deleteMaquinaria(selectedMaquinaria.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     if (isEditing && selectedMaquinaria) {
-      setMaquinarias(
-        maquinarias.map((m) =>
-          m.id === selectedMaquinaria.id ? { ...m, ...formData } : m
-        )
-      );
-      toast.success("Maquinaria actualizada correctamente");
+      await updateMaquinaria(selectedMaquinaria.id, formData);
     } else {
-      const newMaq: Maquinaria = {
-        ...formData,
-        id: Date.now().toString(),
-      } as Maquinaria;
-      setMaquinarias([...maquinarias, newMaq]);
-      toast.success("Maquinaria creada correctamente");
+      await createMaquinaria(formData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
 
-  const getServiceProgress = (maq: Maquinaria) => {
-    return Math.min((maq.horasAcumuladas / maq.proximoService) * 100, 100);
+  const getServiceProgress = (maq: MaquinariaDB) => {
+    return Math.min((maq.horas_acumuladas / maq.proximo_service) * 100, 100);
   };
 
-  const needsService = (maq: Maquinaria) => {
-    return maq.horasAcumuladas >= maq.proximoService * 0.9;
+  const needsService = (maq: MaquinariaDB) => {
+    return maq.horas_acumuladas >= maq.proximo_service * 0.9;
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Maquinarias" subtitle="Control de equipos y flota">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Skeleton className="h-48" />
+            <Skeleton className="h-48" />
+            <Skeleton className="h-48" />
+          </div>
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Maquinarias" subtitle="Control de equipos y flota">
@@ -208,107 +232,107 @@ export default function Maquinarias() {
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredMaquinarias.map((maq, index) => {
-          const config = estadoConfig[maq.estado];
-          const Icon = config.icon;
-          return (
-            <Card
-              key={maq.id}
-              className="card-industrial animate-fade-in hover:border-primary/30 transition-all"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Truck className="w-6 h-6 text-primary" />
+        {filteredMaquinarias.length === 0 ? (
+          <div className="col-span-full text-center py-12 text-muted-foreground">
+            {searchTerm || estadoFilter !== "todos" ? "No se encontraron maquinarias" : "No hay maquinarias registradas"}
+          </div>
+        ) : (
+          filteredMaquinarias.map((maq, index) => {
+            const config = estadoConfig[maq.estado];
+            const Icon = config.icon;
+            return (
+              <Card
+                key={maq.id}
+                className="card-industrial animate-fade-in hover:border-primary/30 transition-all"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Truck className="w-6 h-6 text-primary" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-mono text-primary">{maq.codigo}</span>
+                        <h3 className="font-semibold text-foreground">{maq.nombre}</h3>
+                        <p className="text-xs text-muted-foreground">{tiposConfig[maq.tipo]}</p>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-xs font-mono text-primary">{maq.codigo}</span>
-                      <h3 className="font-semibold text-foreground">{maq.nombre}</h3>
-                      <p className="text-xs text-muted-foreground">{tiposConfig[maq.tipo]}</p>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => handleView(maq)} className="cursor-pointer">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(maq)} className="cursor-pointer">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(maq)} className="text-destructive cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem onClick={() => handleView(maq)} className="cursor-pointer">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEdit(maq)} className="cursor-pointer">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(maq)} className="text-destructive cursor-pointer">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Badge className={cn("status-badge", config.className)}>
-                    <Icon className="w-3 h-3 mr-1" />
-                    {config.label}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {maq.marca} {maq.modelo}
-                  </span>
-                </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Badge className={cn("status-badge", config.className)}>
+                      <Icon className="w-3 h-3 mr-1" />
+                      {config.label}
+                    </Badge>
+                    <span className="text-sm text-muted-foreground">
+                      {maq.marca} {maq.modelo}
+                    </span>
+                  </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    {maq.ubicacionActual}
-                  </div>
-                  {maq.operadorAsignado && (
+                  <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <Gauge className="w-4 h-4" />
-                      {maq.operadorAsignado}
+                      <MapPin className="w-4 h-4" />
+                      {maq.ubicacion_actual}
+                    </div>
+                  </div>
+
+                  {/* Service Progress */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Horas: {maq.horas_acumuladas.toLocaleString()}
+                      </span>
+                      <span className={cn(
+                        "font-medium",
+                        needsService(maq) ? "text-warning" : "text-muted-foreground"
+                      )}>
+                        Service: {maq.proximo_service.toLocaleString()}h
+                      </span>
+                    </div>
+                    <Progress
+                      value={getServiceProgress(maq)}
+                      className={cn(
+                        "h-2",
+                        needsService(maq) && "[&>div]:bg-warning"
+                      )}
+                    />
+                  </div>
+
+                  {needsService(maq) && (
+                    <div className="flex items-center gap-2 p-2 bg-warning/10 border border-warning/20 rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-warning" />
+                      <span className="text-xs text-warning">Service próximo</span>
                     </div>
                   )}
-                </div>
-
-                {/* Service Progress */}
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      Horas: {maq.horasAcumuladas.toLocaleString()}
-                    </span>
-                    <span className={cn(
-                      "font-medium",
-                      needsService(maq) ? "text-warning" : "text-muted-foreground"
-                    )}>
-                      Service: {maq.proximoService.toLocaleString()}h
-                    </span>
-                  </div>
-                  <Progress
-                    value={getServiceProgress(maq)}
-                    className={cn(
-                      "h-2",
-                      needsService(maq) && "[&>div]:bg-warning"
-                    )}
-                  />
-                </div>
-
-                {needsService(maq) && (
-                  <div className="flex items-center gap-2 p-2 bg-warning/10 border border-warning/20 rounded-lg">
-                    <AlertTriangle className="w-4 h-4 text-warning" />
-                    <span className="text-xs text-warning">Service próximo</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
 
       {/* Stats */}
@@ -362,7 +386,7 @@ export default function Maquinarias() {
               <Label htmlFor="tipo">Tipo *</Label>
               <Select
                 value={formData.tipo}
-                onValueChange={(value) => setFormData({ ...formData, tipo: value as Maquinaria["tipo"] })}
+                onValueChange={(value) => setFormData({ ...formData, tipo: value as TipoMaquinaria })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -378,7 +402,7 @@ export default function Maquinarias() {
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={formData.estado}
-                onValueChange={(value) => setFormData({ ...formData, estado: value as Maquinaria["estado"] })}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoMaquinaria })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -431,42 +455,51 @@ export default function Maquinarias() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ubicacionActual">Ubicación Actual *</Label>
+              <Label htmlFor="ubicacion_actual">Ubicación Actual *</Label>
               <Input
-                id="ubicacionActual"
-                value={formData.ubicacionActual}
-                onChange={(e) => setFormData({ ...formData, ubicacionActual: e.target.value })}
+                id="ubicacion_actual"
+                value={formData.ubicacion_actual}
+                onChange={(e) => setFormData({ ...formData, ubicacion_actual: e.target.value })}
                 className="bg-muted border-border"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="operadorAsignado">Operador Asignado</Label>
+              <Label htmlFor="operador_asignado_id">Operador Asignado</Label>
+              <Select
+                value={formData.operador_asignado_id || ""}
+                onValueChange={(value) => setFormData({ ...formData, operador_asignado_id: value || undefined })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="">Sin asignar</SelectItem>
+                  {operadores.map((op) => (
+                    <SelectItem key={op.id} value={op.id}>{op.nombre} {op.apellido}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="horas_acumuladas">Horas Acumuladas</Label>
               <Input
-                id="operadorAsignado"
-                value={formData.operadorAsignado}
-                onChange={(e) => setFormData({ ...formData, operadorAsignado: e.target.value })}
+                id="horas_acumuladas"
+                type="number"
+                value={formData.horas_acumuladas}
+                onChange={(e) => setFormData({ ...formData, horas_acumuladas: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horasAcumuladas">Horas Acumuladas</Label>
+              <Label htmlFor="proximo_service">Próximo Service (horas) *</Label>
               <Input
-                id="horasAcumuladas"
+                id="proximo_service"
                 type="number"
-                value={formData.horasAcumuladas}
-                onChange={(e) => setFormData({ ...formData, horasAcumuladas: parseInt(e.target.value) || 0 })}
+                value={formData.proximo_service}
+                onChange={(e) => setFormData({ ...formData, proximo_service: parseFloat(e.target.value) || 500 })}
                 className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="proximoService">Próximo Service (horas)</Label>
-              <Input
-                id="proximoService"
-                type="number"
-                value={formData.proximoService}
-                onChange={(e) => setFormData({ ...formData, proximoService: parseInt(e.target.value) || 500 })}
-                className="bg-muted border-border"
+                required
               />
             </div>
           </div>
@@ -474,8 +507,8 @@ export default function Maquinarias() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
-              {isEditing ? "Guardar Cambios" : "Crear Maquinaria"}
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Maquinaria"}
             </Button>
           </div>
         </form>
@@ -489,8 +522,8 @@ export default function Maquinarias() {
       >
         {selectedMaquinaria && (
           <div className="space-y-4">
-            <DetailSection title="Identificación">
-              <DetailRow label="Código" value={<span className="font-mono text-primary">{selectedMaquinaria.codigo}</span>} />
+            <DetailSection title="Información General">
+              <DetailRow label="Código" value={selectedMaquinaria.codigo} />
               <DetailRow label="Nombre" value={selectedMaquinaria.nombre} />
               <DetailRow label="Tipo" value={tiposConfig[selectedMaquinaria.tipo]} />
               <DetailRow
@@ -502,27 +535,28 @@ export default function Maquinarias() {
                 }
               />
             </DetailSection>
-            <DetailSection title="Especificaciones">
+            <DetailSection title="Detalles">
               <DetailRow label="Marca" value={selectedMaquinaria.marca} />
               <DetailRow label="Modelo" value={selectedMaquinaria.modelo} />
-              <DetailRow label="Año" value={selectedMaquinaria.anio} />
+              <DetailRow label="Año" value={selectedMaquinaria.anio.toString()} />
               <DetailRow label="Patente" value={selectedMaquinaria.patente || "-"} />
             </DetailSection>
             <DetailSection title="Operación">
-              <DetailRow label="Ubicación Actual" value={selectedMaquinaria.ubicacionActual} />
-              <DetailRow label="Operador Asignado" value={selectedMaquinaria.operadorAsignado || "-"} />
-              <DetailRow label="Horas Acumuladas" value={`${selectedMaquinaria.horasAcumuladas.toLocaleString()} h`} />
-              <DetailRow label="Próximo Service" value={`${selectedMaquinaria.proximoService.toLocaleString()} h`} />
+              <DetailRow label="Ubicación" value={selectedMaquinaria.ubicacion_actual} />
+              <DetailRow label="Horas Acumuladas" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
+              <DetailRow label="Próximo Service" value={`${selectedMaquinaria.proximo_service.toLocaleString()} h`} />
             </DetailSection>
           </div>
         )}
       </DetailDialog>
 
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará la maquinaria "${selectedMaquinaria?.nombre}".`}
+        title="Eliminar Maquinaria"
+        description={`¿Estás seguro de que deseas eliminar "${selectedMaquinaria?.nombre}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );
