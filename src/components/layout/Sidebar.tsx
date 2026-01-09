@@ -15,6 +15,8 @@ import {
   ChevronLeft,
   ChevronRight,
   HardHat,
+  Package,
+  ClipboardList,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -31,6 +33,8 @@ const menuItems = [
   { icon: Receipt, label: "Remitos", path: "/remitos" },
   { icon: Fuel, label: "Combustible", path: "/combustible" },
   { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento" },
+  { icon: Package, label: "Stock", path: "/stock" },
+  { icon: ClipboardList, label: "Presentismo", path: "/presentismo" },
   { icon: BarChart3, label: "Reportes", path: "/reportes" },
   { icon: Settings, label: "Configuración", path: "/configuracion" },
 ];
