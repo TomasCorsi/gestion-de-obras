@@ -24,10 +24,10 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DetailRow } from "@/components/shared/DetailRow";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { Package, Plus, Search, Eye, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, AlertTriangle } from "lucide-react";
-import { stockData as initialStock, movimientosStockData as initialMovimientos, obrasData, personalData } from "@/data/mockData";
-import { ItemStock, MovimientoStock } from "@/types";
-import { toast } from "sonner";
+import { Plus, Search, Eye, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { useStock, StockItemDB, StockItemForm, MovimientoStockForm, CategoriaStock, TipoMovimientoStock } from "@/hooks/useStock";
+import { useObras } from "@/hooks/useObras";
+import { usePersonal } from "@/hooks/usePersonal";
 
 const categoriaLabels: Record<string, string> = {
   material: "Material",
@@ -43,8 +43,10 @@ const tipoMovimientoLabels: Record<string, string> = {
 };
 
 export default function Stock() {
-  const [items, setItems] = useState<ItemStock[]>(initialStock);
-  const [movimientos, setMovimientos] = useState<MovimientoStock[]>(initialMovimientos);
+  const { items, movimientos, loading, createItem, updateItem, deleteItem, createMovimiento } = useStock();
+  const { obras } = useObras();
+  const { personal } = usePersonal();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
   const [stockBajoFilter, setStockBajoFilter] = useState(false);
@@ -54,9 +56,35 @@ export default function Stock() {
   const [isMovFormOpen, setIsMovFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedItem, setSelectedItem] = useState<ItemStock | null>(null);
-  const [formData, setFormData] = useState<Partial<ItemStock>>({});
-  const [movFormData, setMovFormData] = useState<Partial<MovimientoStock>>({});
+  const [selectedItem, setSelectedItem] = useState<StockItemDB | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [formData, setFormData] = useState<StockItemForm>({
+    codigo: "",
+    nombre: "",
+    categoria: "material",
+    unidad: "",
+    stock_actual: 0,
+    stock_minimo: 0,
+    stock_maximo: undefined,
+    ubicacion: "",
+    precio_unitario: 0,
+    activo: true,
+  });
+  
+  const [movFormData, setMovFormData] = useState<MovimientoStockForm>({
+    fecha: new Date().toISOString().split("T")[0],
+    item_id: "",
+    tipo: "entrada",
+    cantidad: 0,
+    stock_anterior: 0,
+    stock_nuevo: 0,
+    obra_id: "",
+    motivo: "",
+    responsable_id: "",
+    comprobante: "",
+    observaciones: "",
+  });
 
   // Filtered items
   const filteredItems = items.filter((item) => {
@@ -64,20 +92,20 @@ export default function Stock() {
       item.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.codigo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategoria = categoriaFilter === "all" || item.categoria === categoriaFilter;
-    const matchesStockBajo = !stockBajoFilter || item.stockActual < item.stockMinimo;
+    const matchesStockBajo = !stockBajoFilter || item.stock_actual < item.stock_minimo;
     return matchesSearch && matchesCategoria && matchesStockBajo;
   });
 
   // Filtered movements
   const filteredMovimientos = movimientos.filter((mov) =>
-    mov.item.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    mov.item?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     mov.motivo.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Stats
   const totalItems = items.length;
-  const itemsBajoStock = items.filter(i => i.stockActual < i.stockMinimo).length;
-  const valorInventario = items.reduce((acc, i) => acc + (i.stockActual * i.precioUnitario), 0);
+  const itemsBajoStock = items.filter(i => i.stock_actual < i.stock_minimo).length;
+  const valorInventario = items.reduce((acc, i) => acc + (i.stock_actual * i.precio_unitario), 0);
 
   // Item CRUD
   const handleNewItem = () => {
@@ -87,50 +115,57 @@ export default function Stock() {
       nombre: "",
       categoria: "material",
       unidad: "",
-      stockActual: 0,
-      stockMinimo: 0,
+      stock_actual: 0,
+      stock_minimo: 0,
+      stock_maximo: undefined,
       ubicacion: "",
-      precioUnitario: 0,
+      precio_unitario: 0,
       activo: true,
     });
     setIsFormOpen(true);
   };
 
-  const handleEditItem = (item: ItemStock) => {
+  const handleEditItem = (item: StockItemDB) => {
     setSelectedItem(item);
-    setFormData({ ...item });
+    setFormData({
+      codigo: item.codigo,
+      nombre: item.nombre,
+      categoria: item.categoria,
+      unidad: item.unidad,
+      stock_actual: item.stock_actual,
+      stock_minimo: item.stock_minimo,
+      stock_maximo: item.stock_maximo || undefined,
+      ubicacion: item.ubicacion,
+      precio_unitario: item.precio_unitario,
+      activo: item.activo,
+    });
     setIsFormOpen(true);
   };
 
-  const handleViewItem = (item: ItemStock) => {
+  const handleViewItem = (item: StockItemDB) => {
     setSelectedItem(item);
     setIsDetailOpen(true);
   };
 
-  const handleDeleteItem = (item: ItemStock) => {
+  const handleDeleteItem = (item: StockItemDB) => {
     setSelectedItem(item);
     setIsDeleteOpen(true);
   };
 
-  const handleSubmitItem = () => {
+  const handleSubmitItem = async () => {
+    setIsSubmitting(true);
     if (selectedItem) {
-      setItems(items.map(i => i.id === selectedItem.id ? { ...i, ...formData } as ItemStock : i));
-      toast.success("Item actualizado correctamente");
+      await updateItem(selectedItem.id, formData);
     } else {
-      const newItem: ItemStock = {
-        ...formData,
-        id: String(Date.now()),
-      } as ItemStock;
-      setItems([...items, newItem]);
-      toast.success("Item creado correctamente");
+      await createItem(formData);
     }
+    setIsSubmitting(false);
     setIsFormOpen(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedItem) {
-      setItems(items.filter(i => i.id !== selectedItem.id));
-      toast.success("Item eliminado correctamente");
+      await deleteItem(selectedItem.id);
     }
     setIsDeleteOpen(false);
   };
@@ -139,54 +174,59 @@ export default function Stock() {
   const handleNewMovimiento = () => {
     setMovFormData({
       fecha: new Date().toISOString().split("T")[0],
-      itemId: "",
-      item: "",
+      item_id: "",
       tipo: "entrada",
       cantidad: 0,
-      obraId: "",
-      obra: "",
+      stock_anterior: 0,
+      stock_nuevo: 0,
+      obra_id: "",
       motivo: "",
-      responsableId: "",
-      responsable: "",
+      responsable_id: "",
+      comprobante: "",
+      observaciones: "",
     });
     setIsMovFormOpen(true);
   };
 
-  const handleSubmitMovimiento = () => {
-    const item = items.find(i => i.id === movFormData.itemId);
+  const handleSubmitMovimiento = async () => {
+    const item = items.find(i => i.id === movFormData.item_id);
     if (!item) return;
 
-    const cantidad = movFormData.cantidad || 0;
-    const stockAnterior = item.stockActual;
+    const cantidad = movFormData.cantidad;
+    const stockAnterior = item.stock_actual;
     let stockNuevo = stockAnterior;
 
     if (movFormData.tipo === "entrada") {
       stockNuevo = stockAnterior + cantidad;
     } else if (movFormData.tipo === "salida") {
       if (cantidad > stockAnterior) {
-        toast.error("Stock insuficiente");
-        return;
+        return; // Stock insuficiente - handled by hook
       }
       stockNuevo = stockAnterior - cantidad;
     } else {
       stockNuevo = cantidad; // ajuste
     }
 
-    const newMov: MovimientoStock = {
+    setIsSubmitting(true);
+    await createMovimiento({
       ...movFormData,
-      id: String(Date.now()),
-      item: item.nombre,
-      stockAnterior,
-      stockNuevo,
-      obra: movFormData.obraId ? obrasData.find(o => o.id === movFormData.obraId)?.nombre : undefined,
-      responsable: personalData.find(p => p.id === movFormData.responsableId)?.nombre + " " + personalData.find(p => p.id === movFormData.responsableId)?.apellido || "",
-    } as MovimientoStock;
-
-    setMovimientos([newMov, ...movimientos]);
-    setItems(items.map(i => i.id === item.id ? { ...i, stockActual: stockNuevo } : i));
-    toast.success("Movimiento registrado correctamente");
+      stock_anterior: stockAnterior,
+      stock_nuevo: stockNuevo,
+      obra_id: movFormData.obra_id || undefined,
+    });
+    setIsSubmitting(false);
     setIsMovFormOpen(false);
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Stock e Inventario" subtitle="Gestión de materiales, repuestos y herramientas">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Stock e Inventario" subtitle="Gestión de materiales, repuestos y herramientas">
@@ -288,16 +328,16 @@ export default function Stock() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <span className={item.stockActual < item.stockMinimo ? "text-destructive font-semibold" : ""}>
-                            {item.stockActual} {item.unidad}
+                          <span className={item.stock_actual < item.stock_minimo ? "text-destructive font-semibold" : ""}>
+                            {item.stock_actual} {item.unidad}
                           </span>
-                          {item.stockActual < item.stockMinimo && (
+                          {item.stock_actual < item.stock_minimo && (
                             <AlertTriangle className="w-4 h-4 text-destructive" />
                           )}
                         </div>
                       </TableCell>
                       <TableCell>{item.ubicacion}</TableCell>
-                      <TableCell>${item.precioUnitario.toLocaleString("es-AR")}</TableCell>
+                      <TableCell>${item.precio_unitario.toLocaleString("es-AR")}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => handleViewItem(item)}>
@@ -354,7 +394,7 @@ export default function Stock() {
                   {filteredMovimientos.map((mov) => (
                     <TableRow key={mov.id} className="border-border">
                       <TableCell>{mov.fecha}</TableCell>
-                      <TableCell className="font-medium">{mov.item}</TableCell>
+                      <TableCell className="font-medium">{mov.item?.nombre || "-"}</TableCell>
                       <TableCell>
                         <Badge
                           variant={mov.tipo === "entrada" ? "default" : mov.tipo === "salida" ? "destructive" : "secondary"}
@@ -365,10 +405,12 @@ export default function Stock() {
                         </Badge>
                       </TableCell>
                       <TableCell>{mov.cantidad}</TableCell>
-                      <TableCell>{mov.stockAnterior}</TableCell>
-                      <TableCell>{mov.stockNuevo}</TableCell>
-                      <TableCell>{mov.obra || "-"}</TableCell>
-                      <TableCell>{mov.responsable}</TableCell>
+                      <TableCell>{mov.stock_anterior}</TableCell>
+                      <TableCell>{mov.stock_nuevo}</TableCell>
+                      <TableCell>{mov.obra?.nombre || "-"}</TableCell>
+                      <TableCell>
+                        {mov.responsable ? `${mov.responsable.nombre} ${mov.responsable.apellido}` : "-"}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -382,13 +424,12 @@ export default function Stock() {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           title={selectedItem ? "Editar Item" : "Nuevo Item"}
-          onSubmit={handleSubmitItem}
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Código</Label>
               <Input
-                value={formData.codigo || ""}
+                value={formData.codigo}
                 onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                 placeholder="MAT-001"
               />
@@ -396,7 +437,7 @@ export default function Stock() {
             <div className="space-y-2">
               <Label>Nombre</Label>
               <Input
-                value={formData.nombre || ""}
+                value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 placeholder="Nombre del item"
               />
@@ -405,7 +446,7 @@ export default function Stock() {
               <Label>Categoría</Label>
               <Select
                 value={formData.categoria}
-                onValueChange={(v) => setFormData({ ...formData, categoria: v as ItemStock["categoria"] })}
+                onValueChange={(v) => setFormData({ ...formData, categoria: v as CategoriaStock })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -419,7 +460,7 @@ export default function Stock() {
             <div className="space-y-2">
               <Label>Unidad</Label>
               <Input
-                value={formData.unidad || ""}
+                value={formData.unidad}
                 onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
                 placeholder="m³, unidad, litro..."
               />
@@ -428,34 +469,41 @@ export default function Stock() {
               <Label>Stock Actual</Label>
               <Input
                 type="number"
-                value={formData.stockActual || 0}
-                onChange={(e) => setFormData({ ...formData, stockActual: Number(e.target.value) })}
+                value={formData.stock_actual}
+                onChange={(e) => setFormData({ ...formData, stock_actual: Number(e.target.value) })}
               />
             </div>
             <div className="space-y-2">
               <Label>Stock Mínimo</Label>
               <Input
                 type="number"
-                value={formData.stockMinimo || 0}
-                onChange={(e) => setFormData({ ...formData, stockMinimo: Number(e.target.value) })}
+                value={formData.stock_minimo}
+                onChange={(e) => setFormData({ ...formData, stock_minimo: Number(e.target.value) })}
               />
             </div>
             <div className="space-y-2">
               <Label>Ubicación</Label>
               <Input
-                value={formData.ubicacion || ""}
+                value={formData.ubicacion}
                 onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                placeholder="Depósito, Base Central..."
+                placeholder="Depósito, estante..."
               />
             </div>
             <div className="space-y-2">
               <Label>Precio Unitario</Label>
               <Input
                 type="number"
-                value={formData.precioUnitario || 0}
-                onChange={(e) => setFormData({ ...formData, precioUnitario: Number(e.target.value) })}
+                value={formData.precio_unitario}
+                onChange={(e) => setFormData({ ...formData, precio_unitario: Number(e.target.value) })}
               />
             </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSubmitItem} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {selectedItem ? "Actualizar" : "Crear"}
+            </Button>
           </div>
         </FormDialog>
 
@@ -464,14 +512,13 @@ export default function Stock() {
           open={isMovFormOpen}
           onOpenChange={setIsMovFormOpen}
           title="Registrar Movimiento"
-          onSubmit={handleSubmitMovimiento}
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha</Label>
               <Input
                 type="date"
-                value={movFormData.fecha || ""}
+                value={movFormData.fecha}
                 onChange={(e) => setMovFormData({ ...movFormData, fecha: e.target.value })}
               />
             </div>
@@ -479,7 +526,7 @@ export default function Stock() {
               <Label>Tipo</Label>
               <Select
                 value={movFormData.tipo}
-                onValueChange={(v) => setMovFormData({ ...movFormData, tipo: v as MovimientoStock["tipo"] })}
+                onValueChange={(v) => setMovFormData({ ...movFormData, tipo: v as TipoMovimientoStock })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -492,14 +539,14 @@ export default function Stock() {
             <div className="space-y-2 col-span-2">
               <Label>Item</Label>
               <Select
-                value={movFormData.itemId}
-                onValueChange={(v) => setMovFormData({ ...movFormData, itemId: v })}
+                value={movFormData.item_id}
+                onValueChange={(v) => setMovFormData({ ...movFormData, item_id: v })}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar item" /></SelectTrigger>
                 <SelectContent>
                   {items.map((item) => (
                     <SelectItem key={item.id} value={item.id}>
-                      {item.codigo} - {item.nombre} (Stock: {item.stockActual})
+                      {item.nombre} (Stock: {item.stock_actual})
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -509,51 +556,54 @@ export default function Stock() {
               <Label>Cantidad</Label>
               <Input
                 type="number"
-                value={movFormData.cantidad || 0}
+                value={movFormData.cantidad}
                 onChange={(e) => setMovFormData({ ...movFormData, cantidad: Number(e.target.value) })}
               />
             </div>
             <div className="space-y-2">
-              <Label>Responsable</Label>
+              <Label>Obra (opcional)</Label>
               <Select
-                value={movFormData.responsableId}
-                onValueChange={(v) => setMovFormData({ ...movFormData, responsableId: v })}
+                value={movFormData.obra_id}
+                onValueChange={(v) => setMovFormData({ ...movFormData, obra_id: v })}
               >
-                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Seleccionar obra" /></SelectTrigger>
                 <SelectContent>
-                  {personalData.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nombre} {p.apellido}
-                    </SelectItem>
+                  <SelectItem value="">Sin obra</SelectItem>
+                  {obras.filter(o => o.estado === "activa").map((obra) => (
+                    <SelectItem key={obra.id} value={obra.id}>{obra.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            {movFormData.tipo === "salida" && (
-              <div className="space-y-2 col-span-2">
-                <Label>Obra (opcional)</Label>
-                <Select
-                  value={movFormData.obraId || "none"}
-                  onValueChange={(v) => setMovFormData({ ...movFormData, obraId: v === "none" ? "" : v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Seleccionar obra" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Sin obra asociada</SelectItem>
-                    {obrasData.filter(o => o.estado === "activa").map((o) => (
-                      <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="space-y-2 col-span-2">
+            <div className="space-y-2">
+              <Label>Responsable</Label>
+              <Select
+                value={movFormData.responsable_id}
+                onValueChange={(v) => setMovFormData({ ...movFormData, responsable_id: v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                <SelectContent>
+                  {personal.filter(p => p.activo).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nombre} {p.apellido}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Motivo</Label>
               <Input
-                value={movFormData.motivo || ""}
+                value={movFormData.motivo}
                 onChange={(e) => setMovFormData({ ...movFormData, motivo: e.target.value })}
-                placeholder="Motivo del movimiento..."
+                placeholder="Razón del movimiento"
               />
             </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsMovFormOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSubmitMovimiento} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              Registrar
+            </Button>
           </div>
         </FormDialog>
 
@@ -561,19 +611,19 @@ export default function Stock() {
         <DetailDialog
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
-          title="Detalle del Item"
+          title={selectedItem?.nombre || "Detalle de Item"}
         >
           {selectedItem && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <DetailRow label="Código" value={selectedItem.codigo} />
               <DetailRow label="Nombre" value={selectedItem.nombre} />
               <DetailRow label="Categoría" value={categoriaLabels[selectedItem.categoria]} />
               <DetailRow label="Unidad" value={selectedItem.unidad} />
-              <DetailRow label="Stock Actual" value={`${selectedItem.stockActual} ${selectedItem.unidad}`} />
-              <DetailRow label="Stock Mínimo" value={`${selectedItem.stockMinimo} ${selectedItem.unidad}`} />
+              <DetailRow label="Stock Actual" value={`${selectedItem.stock_actual}`} />
+              <DetailRow label="Stock Mínimo" value={`${selectedItem.stock_minimo}`} />
               <DetailRow label="Ubicación" value={selectedItem.ubicacion} />
-              <DetailRow label="Precio Unitario" value={`$${selectedItem.precioUnitario.toLocaleString("es-AR")}`} />
-              <DetailRow label="Valor Total" value={`$${(selectedItem.stockActual * selectedItem.precioUnitario).toLocaleString("es-AR")}`} />
+              <DetailRow label="Precio Unitario" value={`$${selectedItem.precio_unitario.toLocaleString("es-AR")}`} />
+              <DetailRow label="Estado" value={selectedItem.activo ? "Activo" : "Inactivo"} />
             </div>
           )}
         </DetailDialog>
@@ -584,7 +634,7 @@ export default function Stock() {
           onOpenChange={setIsDeleteOpen}
           onConfirm={handleConfirmDelete}
           title="Eliminar Item"
-          description={`¿Está seguro de eliminar "${selectedItem?.nombre}"? Esta acción no se puede deshacer.`}
+          description={`¿Estás seguro de eliminar ${selectedItem?.nombre}? Esta acción no se puede deshacer.`}
         />
       </div>
     </MainLayout>

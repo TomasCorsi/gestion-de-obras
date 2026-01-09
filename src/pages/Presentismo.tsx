@@ -23,10 +23,11 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DetailRow } from "@/components/shared/DetailRow";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { ClipboardList, Plus, Search, Eye, Pencil, Trash2, Calendar, Users, Clock } from "lucide-react";
-import { presentismoData as initialData, obrasData, personalData, clientesData } from "@/data/mockData";
-import { RegistroHH } from "@/types";
-import { toast } from "sonner";
+import { Plus, Search, Eye, Pencil, Trash2, Calendar, Users, Clock, Loader2 } from "lucide-react";
+import { usePresentismo, RegistroHHWithRelations, RegistroHHForm, EstadoPresentismo } from "@/hooks/usePresentismo";
+import { useObras } from "@/hooks/useObras";
+import { usePersonal } from "@/hooks/usePersonal";
+import { useClientes } from "@/hooks/useClientes";
 
 const estadoLabels: Record<string, string> = {
   presente: "Presente",
@@ -45,7 +46,11 @@ const estadoColors: Record<string, string> = {
 };
 
 export default function Presentismo() {
-  const [registros, setRegistros] = useState<RegistroHH[]>(initialData);
+  const { registros, loading, createRegistro, updateRegistro, deleteRegistro } = usePresentismo();
+  const { obras } = useObras();
+  const { personal } = usePersonal();
+  const { clientes } = useClientes();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [fechaFilter, setFechaFilter] = useState(new Date().toISOString().split("T")[0]);
   const [obraFilter, setObraFilter] = useState<string>("all");
@@ -55,15 +60,29 @@ export default function Presentismo() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedRegistro, setSelectedRegistro] = useState<RegistroHH | null>(null);
-  const [formData, setFormData] = useState<Partial<RegistroHH>>({});
-
-  // Get capataces
-  const capataces = personalData.filter(p => p.rol === "capataz");
+  const [selectedRegistro, setSelectedRegistro] = useState<RegistroHHWithRelations | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Get personal that can be registered (not admin roles)
-  const personalRegistrable = personalData.filter(p => 
-    ["maquinista", "chofer", "capataz"].includes(p.rol)
+  const [formData, setFormData] = useState<RegistroHHForm>({
+    fecha: fechaFilter,
+    persona_id: "",
+    obra_id: "",
+    cliente_id: "",
+    capataz_id: "",
+    hora_entrada: "07:00",
+    hora_salida: "15:00",
+    horas_normales: 8,
+    horas_extra: 0,
+    horas_totales: 8,
+    tarea: "",
+    estado: "presente",
+    observaciones: "",
+  });
+
+  // Get capataces and personal registrable
+  const capataces = personal.filter(p => p.rol === "capataz" && p.activo);
+  const personalRegistrable = personal.filter(p => 
+    ["maquinista", "chofer", "capataz"].includes(p.rol) && p.activo
   );
 
   // Filtered registros by date first
@@ -71,8 +90,9 @@ export default function Presentismo() {
   
   // Then apply other filters
   const filteredRegistros = registrosPorFecha.filter((reg) => {
-    const matchesSearch = reg.persona.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesObra = obraFilter === "all" || reg.obraId === obraFilter;
+    const personaNombre = reg.persona ? `${reg.persona.nombre} ${reg.persona.apellido}` : "";
+    const matchesSearch = personaNombre.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesObra = obraFilter === "all" || reg.obra_id === obraFilter;
     const matchesEstado = estadoFilter === "all" || reg.estado === estadoFilter;
     return matchesSearch && matchesObra && matchesEstado;
   });
@@ -80,17 +100,17 @@ export default function Presentismo() {
   // Stats for selected date
   const presentes = registrosPorFecha.filter(r => r.estado === "presente").length;
   const ausentes = registrosPorFecha.filter(r => r.estado === "ausente").length;
-  const totalHH = registrosPorFecha.reduce((acc, r) => acc + r.horasTotales, 0);
-  const totalHHExtra = registrosPorFecha.reduce((acc, r) => acc + r.horasExtra, 0);
+  const totalHH = registrosPorFecha.reduce((acc, r) => acc + r.horas_totales, 0);
+  const totalHHExtra = registrosPorFecha.reduce((acc, r) => acc + r.horas_extra, 0);
 
   // Filtered obras based on cliente
-  const filteredObras = formData.clienteId 
-    ? obrasData.filter(o => o.clienteId === formData.clienteId && o.estado === "activa")
-    : obrasData.filter(o => o.estado === "activa");
+  const filteredObras = formData.cliente_id 
+    ? obras.filter(o => o.cliente_id === formData.cliente_id && o.estado === "activa")
+    : obras.filter(o => o.estado === "activa");
 
   // Calculate hours
   const calcularHoras = (horaEntrada: string, horaSalida: string) => {
-    if (!horaEntrada || !horaSalida) return { horasNormales: 0, horasExtra: 0, horasTotales: 0 };
+    if (!horaEntrada || !horaSalida) return { horas_normales: 0, horas_extra: 0, horas_totales: 0 };
     
     const [entH, entM] = horaEntrada.split(":").map(Number);
     const [salH, salM] = horaSalida.split(":").map(Number);
@@ -99,11 +119,11 @@ export default function Presentismo() {
     const salidaMins = salH * 60 + salM;
     const totalMins = salidaMins - entradaMins - 60; // rest 1hr for lunch
     
-    const horasTotales = Math.max(0, totalMins / 60);
-    const horasNormales = Math.min(8, horasTotales);
-    const horasExtra = Math.max(0, horasTotales - 8);
+    const horas_totales = Math.max(0, totalMins / 60);
+    const horas_normales = Math.min(8, horas_totales);
+    const horas_extra = Math.max(0, horas_totales - 8);
     
-    return { horasNormales, horasExtra, horasTotales };
+    return { horas_normales, horas_extra, horas_totales };
   };
 
   // CRUD handlers
@@ -111,88 +131,98 @@ export default function Presentismo() {
     setSelectedRegistro(null);
     setFormData({
       fecha: fechaFilter,
-      personaId: "",
-      persona: "",
-      obraId: "",
-      obra: "",
-      clienteId: "",
-      cliente: "",
-      capatazId: "",
-      capataz: "",
-      horaEntrada: "07:00",
-      horaSalida: "15:00",
-      horasNormales: 8,
-      horasExtra: 0,
-      horasTotales: 8,
+      persona_id: "",
+      obra_id: "",
+      cliente_id: "",
+      capataz_id: "",
+      hora_entrada: "07:00",
+      hora_salida: "15:00",
+      horas_normales: 8,
+      horas_extra: 0,
+      horas_totales: 8,
       tarea: "",
       estado: "presente",
+      observaciones: "",
     });
     setIsFormOpen(true);
   };
 
-  const handleEdit = (registro: RegistroHH) => {
+  const handleEdit = (registro: RegistroHHWithRelations) => {
     setSelectedRegistro(registro);
-    setFormData({ ...registro });
+    setFormData({
+      fecha: registro.fecha,
+      persona_id: registro.persona_id,
+      obra_id: registro.obra_id,
+      cliente_id: registro.cliente_id,
+      capataz_id: registro.capataz_id,
+      hora_entrada: registro.hora_entrada,
+      hora_salida: registro.hora_salida,
+      horas_normales: registro.horas_normales,
+      horas_extra: registro.horas_extra,
+      horas_totales: registro.horas_totales,
+      tarea: registro.tarea,
+      estado: registro.estado,
+      observaciones: registro.observaciones || "",
+    });
     setIsFormOpen(true);
   };
 
-  const handleView = (registro: RegistroHH) => {
+  const handleView = (registro: RegistroHHWithRelations) => {
     setSelectedRegistro(registro);
     setIsDetailOpen(true);
   };
 
-  const handleDelete = (registro: RegistroHH) => {
+  const handleDelete = (registro: RegistroHHWithRelations) => {
     setSelectedRegistro(registro);
     setIsDeleteOpen(true);
   };
 
-  const handleSubmit = () => {
-    const persona = personalData.find(p => p.id === formData.personaId);
-    const obra = obrasData.find(o => o.id === formData.obraId);
-    const cliente = clientesData.find(c => c.id === formData.clienteId);
-    const capataz = personalData.find(p => p.id === formData.capatazId);
-    
+  const handleSubmit = async () => {
     const horas = formData.estado === "presente" 
-      ? calcularHoras(formData.horaEntrada || "", formData.horaSalida || "")
-      : { horasNormales: 0, horasExtra: 0, horasTotales: 0 };
+      ? calcularHoras(formData.hora_entrada, formData.hora_salida)
+      : { horas_normales: 0, horas_extra: 0, horas_totales: 0 };
 
-    const registroData: RegistroHH = {
+    const registroData: RegistroHHForm = {
       ...formData,
-      id: selectedRegistro?.id || String(Date.now()),
-      persona: persona ? `${persona.nombre} ${persona.apellido}` : "",
-      obra: obra?.nombre || "",
-      cliente: cliente?.nombre || "",
-      capataz: capataz ? `${capataz.nombre} ${capataz.apellido}` : "",
       ...horas,
-    } as RegistroHH;
+    };
 
+    setIsSubmitting(true);
     if (selectedRegistro) {
-      setRegistros(registros.map(r => r.id === selectedRegistro.id ? registroData : r));
-      toast.success("Registro actualizado correctamente");
+      await updateRegistro(selectedRegistro.id, registroData);
     } else {
-      setRegistros([registroData, ...registros]);
-      toast.success("Registro creado correctamente");
+      await createRegistro(registroData);
     }
+    setIsSubmitting(false);
     setIsFormOpen(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (selectedRegistro) {
-      setRegistros(registros.filter(r => r.id !== selectedRegistro.id));
-      toast.success("Registro eliminado correctamente");
+      await deleteRegistro(selectedRegistro.id);
     }
     setIsDeleteOpen(false);
   };
 
   // Update hours when times change
-  const handleTimeChange = (field: "horaEntrada" | "horaSalida", value: string) => {
+  const handleTimeChange = (field: "hora_entrada" | "hora_salida", value: string) => {
     const newFormData = { ...formData, [field]: value };
     const horas = calcularHoras(
-      field === "horaEntrada" ? value : formData.horaEntrada || "",
-      field === "horaSalida" ? value : formData.horaSalida || ""
+      field === "hora_entrada" ? value : formData.hora_entrada,
+      field === "hora_salida" ? value : formData.hora_salida
     );
     setFormData({ ...newFormData, ...horas });
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Presentismo (HH)" subtitle="Control de asistencia y horas trabajadas">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Presentismo (HH)" subtitle="Control de asistencia y horas trabajadas">
@@ -255,7 +285,7 @@ export default function Presentismo() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las obras</SelectItem>
-              {obrasData.filter(o => o.estado === "activa").map((obra) => (
+              {obras.filter(o => o.estado === "activa").map((obra) => (
                 <SelectItem key={obra.id} value={obra.id}>{obra.nombre}</SelectItem>
               ))}
             </SelectContent>
@@ -302,19 +332,21 @@ export default function Presentismo() {
               ) : (
                 filteredRegistros.map((reg) => (
                   <TableRow key={reg.id} className="border-border">
-                    <TableCell className="font-medium">{reg.persona}</TableCell>
-                    <TableCell>{reg.obra}</TableCell>
-                    <TableCell className="text-muted-foreground">{reg.cliente}</TableCell>
+                    <TableCell className="font-medium">
+                      {reg.persona ? `${reg.persona.nombre} ${reg.persona.apellido}` : "-"}
+                    </TableCell>
+                    <TableCell>{reg.obra?.nombre || "-"}</TableCell>
+                    <TableCell className="text-muted-foreground">{reg.cliente?.nombre || "-"}</TableCell>
                     <TableCell>
                       <Badge className={estadoColors[reg.estado]}>
                         {estadoLabels[reg.estado]}
                       </Badge>
                     </TableCell>
-                    <TableCell>{reg.horaEntrada || "-"}</TableCell>
-                    <TableCell>{reg.horaSalida || "-"}</TableCell>
-                    <TableCell>{reg.horasNormales}</TableCell>
-                    <TableCell className={reg.horasExtra > 0 ? "text-yellow-400 font-medium" : ""}>
-                      {reg.horasExtra}
+                    <TableCell>{reg.hora_entrada || "-"}</TableCell>
+                    <TableCell>{reg.hora_salida || "-"}</TableCell>
+                    <TableCell>{reg.horas_normales}</TableCell>
+                    <TableCell className={reg.horas_extra > 0 ? "text-yellow-400 font-medium" : ""}>
+                      {reg.horas_extra}
                     </TableCell>
                     <TableCell className="max-w-[150px] truncate">{reg.tarea || "-"}</TableCell>
                     <TableCell className="text-right">
@@ -342,14 +374,13 @@ export default function Presentismo() {
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           title={selectedRegistro ? "Editar Registro" : "Nuevo Registro de Asistencia"}
-          onSubmit={handleSubmit}
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Fecha</Label>
               <Input
                 type="date"
-                value={formData.fecha || ""}
+                value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
               />
             </div>
@@ -357,7 +388,7 @@ export default function Presentismo() {
               <Label>Estado</Label>
               <Select
                 value={formData.estado}
-                onValueChange={(v) => setFormData({ ...formData, estado: v as RegistroHH["estado"] })}
+                onValueChange={(v) => setFormData({ ...formData, estado: v as EstadoPresentismo })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -372,8 +403,8 @@ export default function Presentismo() {
             <div className="space-y-2 col-span-2">
               <Label>Persona</Label>
               <Select
-                value={formData.personaId}
-                onValueChange={(v) => setFormData({ ...formData, personaId: v })}
+                value={formData.persona_id}
+                onValueChange={(v) => setFormData({ ...formData, persona_id: v })}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar persona" /></SelectTrigger>
                 <SelectContent>
@@ -388,21 +419,12 @@ export default function Presentismo() {
             <div className="space-y-2">
               <Label>Cliente</Label>
               <Select
-                value={formData.clienteId}
-                onValueChange={(v) => {
-                  const cliente = clientesData.find(c => c.id === v);
-                  setFormData({ 
-                    ...formData, 
-                    clienteId: v,
-                    cliente: cliente?.nombre || "",
-                    obraId: "",
-                    obra: ""
-                  });
-                }}
+                value={formData.cliente_id}
+                onValueChange={(v) => setFormData({ ...formData, cliente_id: v, obra_id: "" })}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
                 <SelectContent>
-                  {clientesData.filter(c => c.activo).map((c) => (
+                  {clientes.filter(c => c.activo).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
                   ))}
                 </SelectContent>
@@ -411,11 +433,8 @@ export default function Presentismo() {
             <div className="space-y-2">
               <Label>Obra</Label>
               <Select
-                value={formData.obraId}
-                onValueChange={(v) => {
-                  const obra = obrasData.find(o => o.id === v);
-                  setFormData({ ...formData, obraId: v, obra: obra?.nombre || "" });
-                }}
+                value={formData.obra_id}
+                onValueChange={(v) => setFormData({ ...formData, obra_id: v })}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar obra" /></SelectTrigger>
                 <SelectContent>
@@ -428,73 +447,78 @@ export default function Presentismo() {
             <div className="space-y-2 col-span-2">
               <Label>Capataz Responsable</Label>
               <Select
-                value={formData.capatazId}
-                onValueChange={(v) => setFormData({ ...formData, capatazId: v })}
+                value={formData.capataz_id}
+                onValueChange={(v) => setFormData({ ...formData, capataz_id: v })}
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar capataz" /></SelectTrigger>
                 <SelectContent>
                   {capataces.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.nombre} {c.apellido}
-                    </SelectItem>
+                    <SelectItem key={c.id} value={c.id}>{c.nombre} {c.apellido}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            
             {formData.estado === "presente" && (
               <>
                 <div className="space-y-2">
                   <Label>Hora Entrada</Label>
                   <Input
                     type="time"
-                    value={formData.horaEntrada || ""}
-                    onChange={(e) => handleTimeChange("horaEntrada", e.target.value)}
+                    value={formData.hora_entrada}
+                    onChange={(e) => handleTimeChange("hora_entrada", e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Hora Salida</Label>
                   <Input
                     type="time"
-                    value={formData.horaSalida || ""}
-                    onChange={(e) => handleTimeChange("horaSalida", e.target.value)}
+                    value={formData.hora_salida}
+                    onChange={(e) => handleTimeChange("hora_salida", e.target.value)}
                   />
                 </div>
-                <div className="space-y-2 col-span-2">
-                  <Label>Tarea Realizada</Label>
+                <div className="space-y-2">
+                  <Label>Horas Normales</Label>
                   <Input
-                    value={formData.tarea || ""}
-                    onChange={(e) => setFormData({ ...formData, tarea: e.target.value })}
-                    placeholder="Descripción de la tarea..."
+                    type="number"
+                    value={formData.horas_normales}
+                    disabled
+                    className="bg-muted"
                   />
                 </div>
-                <div className="col-span-2 grid grid-cols-3 gap-4 p-3 bg-muted/50 rounded-lg">
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">HH Normales</div>
-                    <div className="text-xl font-bold">{formData.horasNormales?.toFixed(1) || 0}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">HH Extra</div>
-                    <div className="text-xl font-bold text-yellow-400">{formData.horasExtra?.toFixed(1) || 0}</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-sm text-muted-foreground">Total</div>
-                    <div className="text-xl font-bold text-primary">{formData.horasTotales?.toFixed(1) || 0}</div>
-                  </div>
+                <div className="space-y-2">
+                  <Label>Horas Extra</Label>
+                  <Input
+                    type="number"
+                    value={formData.horas_extra}
+                    disabled
+                    className="bg-muted"
+                  />
                 </div>
               </>
             )}
-            
-            {formData.estado !== "presente" && (
-              <div className="space-y-2 col-span-2">
-                <Label>Observaciones</Label>
-                <Input
-                  value={formData.observaciones || ""}
-                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                  placeholder="Motivo de ausencia, licencia, etc."
-                />
-              </div>
-            )}
+            <div className="space-y-2 col-span-2">
+              <Label>Tarea Realizada</Label>
+              <Input
+                value={formData.tarea}
+                onChange={(e) => setFormData({ ...formData, tarea: e.target.value })}
+                placeholder="Descripción de la tarea"
+              />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label>Observaciones</Label>
+              <Input
+                value={formData.observaciones}
+                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
+                placeholder="Notas adicionales"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {selectedRegistro ? "Actualizar" : "Crear"}
+            </Button>
           </div>
         </FormDialog>
 
@@ -502,33 +526,30 @@ export default function Presentismo() {
         <DetailDialog
           open={isDetailOpen}
           onOpenChange={setIsDetailOpen}
-          title="Detalle del Registro"
+          title="Detalle de Registro"
         >
           {selectedRegistro && (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <DetailRow label="Fecha" value={selectedRegistro.fecha} />
-              <DetailRow label="Persona" value={selectedRegistro.persona} />
-              <DetailRow label="Cliente" value={selectedRegistro.cliente} />
-              <DetailRow label="Obra" value={selectedRegistro.obra} />
-              <DetailRow label="Capataz" value={selectedRegistro.capataz} />
+              <DetailRow 
+                label="Persona" 
+                value={selectedRegistro.persona ? `${selectedRegistro.persona.nombre} ${selectedRegistro.persona.apellido}` : "-"} 
+              />
+              <DetailRow label="Obra" value={selectedRegistro.obra?.nombre || "-"} />
+              <DetailRow label="Cliente" value={selectedRegistro.cliente?.nombre || "-"} />
+              <DetailRow 
+                label="Capataz" 
+                value={selectedRegistro.capataz ? `${selectedRegistro.capataz.nombre} ${selectedRegistro.capataz.apellido}` : "-"} 
+              />
               <DetailRow 
                 label="Estado" 
-                value={
-                  <Badge className={estadoColors[selectedRegistro.estado]}>
-                    {estadoLabels[selectedRegistro.estado]}
-                  </Badge>
-                } 
+                value={<Badge className={estadoColors[selectedRegistro.estado]}>{estadoLabels[selectedRegistro.estado]}</Badge>} 
               />
-              {selectedRegistro.estado === "presente" && (
-                <>
-                  <DetailRow label="Hora Entrada" value={selectedRegistro.horaEntrada} />
-                  <DetailRow label="Hora Salida" value={selectedRegistro.horaSalida} />
-                  <DetailRow label="HH Normales" value={selectedRegistro.horasNormales.toString()} />
-                  <DetailRow label="HH Extra" value={selectedRegistro.horasExtra.toString()} />
-                  <DetailRow label="Total HH" value={selectedRegistro.horasTotales.toString()} />
-                  <DetailRow label="Tarea" value={selectedRegistro.tarea} />
-                </>
-              )}
+              <DetailRow label="Hora Entrada" value={selectedRegistro.hora_entrada || "-"} />
+              <DetailRow label="Hora Salida" value={selectedRegistro.hora_salida || "-"} />
+              <DetailRow label="Horas Normales" value={`${selectedRegistro.horas_normales}`} />
+              <DetailRow label="Horas Extra" value={`${selectedRegistro.horas_extra}`} />
+              <DetailRow label="Tarea" value={selectedRegistro.tarea || "-"} />
               {selectedRegistro.observaciones && (
                 <DetailRow label="Observaciones" value={selectedRegistro.observaciones} />
               )}
@@ -542,7 +563,7 @@ export default function Presentismo() {
           onOpenChange={setIsDeleteOpen}
           onConfirm={handleConfirmDelete}
           title="Eliminar Registro"
-          description={`¿Está seguro de eliminar el registro de "${selectedRegistro?.persona}"? Esta acción no se puede deshacer.`}
+          description="¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer."
         />
       </div>
     </MainLayout>

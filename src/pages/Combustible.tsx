@@ -31,7 +31,7 @@ import {
   User,
   DollarSign,
   Droplets,
-  Clock,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -43,9 +43,11 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { CargaCombustible } from "@/types";
-import { combustibleData as initialData, maquinariasData, personalData, clientesData, obrasData } from "@/data/mockData";
-import { toast } from "sonner";
+import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
+import { useClientes } from "@/hooks/useClientes";
+import { useObras } from "@/hooks/useObras";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { usePersonal } from "@/hooks/usePersonal";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -56,60 +58,60 @@ function formatCurrency(value: number): string {
 }
 
 export default function Combustible() {
-  const [cargas, setCargas] = useState<CargaCombustible[]>(initialData);
+  const { cargas, loading, createCarga, updateCarga, deleteCarga } = useCombustible();
+  const { clientes } = useClientes();
+  const { obras } = useObras();
+  const { maquinarias } = useMaquinarias();
+  const { personal } = usePersonal();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedCarga, setSelectedCarga] = useState<CargaCombustible | null>(null);
+  const [selectedCarga, setSelectedCarga] = useState<CargaCombustibleWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const operadores = personalData.filter(p => (p.rol === "maquinista" || p.rol === "chofer") && p.activo);
+  const operadores = personal.filter(p => (p.rol === "maquinista" || p.rol === "chofer") && p.activo);
 
-  const [formData, setFormData] = useState<Partial<CargaCombustible>>({
+  const [formData, setFormData] = useState<CargaCombustibleForm>({
     fecha: new Date().toISOString().split("T")[0],
-    clienteId: "",
-    cliente: "",
-    obraId: "",
-    obra: "",
-    maquinariaId: "",
-    maquinaria: "",
+    cliente_id: "",
+    obra_id: "",
+    maquinaria_id: "",
     litros: 0,
-    precioLitro: 950,
-    costoTotal: 0,
-    horasMaquina: 0,
+    precio_litro: 950,
+    costo_total: 0,
+    horas_maquina: 0,
     estacion: "",
     operador: "",
     comprobante: "",
   });
 
-  // Filtrar obras según el cliente seleccionado
-  const filteredObras = formData.clienteId 
-    ? obrasData.filter(o => o.clienteId === formData.clienteId && o.estado !== "finalizada")
-    : obrasData.filter(o => o.estado !== "finalizada");
+  // Filter obras by selected cliente
+  const filteredObras = formData.cliente_id 
+    ? obras.filter(o => o.cliente_id === formData.cliente_id && o.estado !== "finalizada")
+    : obras.filter(o => o.estado !== "finalizada");
 
   const filteredCargas = cargas.filter((c) =>
-    c.maquinaria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.operador.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.estacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.obra.toLowerCase().includes(searchTerm.toLowerCase())
+    c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleNew = () => {
     setIsEditing(false);
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
-      clienteId: "",
-      cliente: "",
-      obraId: "",
-      obra: "",
-      maquinariaId: "",
-      maquinaria: "",
+      cliente_id: "",
+      obra_id: "",
+      maquinaria_id: "",
       litros: 0,
-      precioLitro: 950,
-      costoTotal: 0,
-      horasMaquina: 0,
+      precio_litro: 950,
+      costo_total: 0,
+      horas_maquina: 0,
       estacion: "",
       operador: "",
       comprobante: "",
@@ -117,62 +119,75 @@ export default function Combustible() {
     setFormOpen(true);
   };
 
-  const handleEdit = (carga: CargaCombustible) => {
+  const handleEdit = (carga: CargaCombustibleWithRelations) => {
     setIsEditing(true);
     setSelectedCarga(carga);
-    setFormData(carga);
+    setFormData({
+      fecha: carga.fecha,
+      cliente_id: carga.cliente_id,
+      obra_id: carga.obra_id,
+      maquinaria_id: carga.maquinaria_id,
+      litros: carga.litros,
+      precio_litro: carga.precio_litro,
+      costo_total: carga.costo_total,
+      horas_maquina: carga.horas_maquina,
+      estacion: carga.estacion,
+      operador: carga.operador,
+      comprobante: carga.comprobante || "",
+    });
     setFormOpen(true);
   };
 
-  const handleView = (carga: CargaCombustible) => {
+  const handleView = (carga: CargaCombustibleWithRelations) => {
     setSelectedCarga(carga);
     setDetailOpen(true);
   };
 
-  const handleDelete = (carga: CargaCombustible) => {
+  const handleDelete = (carga: CargaCombustibleWithRelations) => {
     setSelectedCarga(carga);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedCarga) {
-      setCargas(cargas.filter((c) => c.id !== selectedCarga.id));
-      toast.success("Registro eliminado correctamente");
+      await deleteCarga(selectedCarga.id);
     }
     setDeleteOpen(false);
   };
 
   const calculateTotal = (litros: number, precio: number) => litros * precio;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedMaq = maquinariasData.find(m => m.id === formData.maquinariaId);
-    const selectedCliente = clientesData.find(c => c.id === formData.clienteId);
-    const selectedObra = obrasData.find(o => o.id === formData.obraId);
+    setIsSubmitting(true);
+    
     const cargaData = {
       ...formData,
-      cliente: selectedCliente?.nombre || "",
-      obra: selectedObra?.nombre || "",
-      maquinaria: selectedMaq?.nombre || "",
-      costoTotal: calculateTotal(formData.litros || 0, formData.precioLitro || 0),
+      costo_total: calculateTotal(formData.litros, formData.precio_litro),
     };
 
     if (isEditing && selectedCarga) {
-      setCargas(cargas.map((c) => c.id === selectedCarga.id ? { ...c, ...cargaData } : c));
-      toast.success("Registro actualizado correctamente");
+      await updateCarga(selectedCarga.id, cargaData);
     } else {
-      const newCarga: CargaCombustible = {
-        ...cargaData,
-        id: Date.now().toString(),
-      } as CargaCombustible;
-      setCargas([...cargas, newCarga]);
-      toast.success("Carga registrada correctamente");
+      await createCarga(cargaData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
 
   const totalLitros = cargas.reduce((sum, c) => sum + c.litros, 0);
-  const totalCosto = cargas.reduce((sum, c) => sum + c.costoTotal, 0);
+  const totalCosto = cargas.reduce((sum, c) => sum + c.costo_total, 0);
+
+  if (loading) {
+    return (
+      <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
@@ -225,15 +240,15 @@ export default function Combustible() {
                   </span>
                 </TableCell>
                 <TableCell className="text-foreground font-medium">
-                  {carga.cliente}
+                  {carga.cliente?.nombre || "-"}
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {carga.obra}
+                  {carga.obra?.nombre || "-"}
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-2">
                     <Truck className="w-4 h-4 text-primary" />
-                    <span className="font-medium text-foreground">{carga.maquinaria}</span>
+                    <span className="font-medium text-foreground">{carga.maquinaria?.nombre || "-"}</span>
                   </span>
                 </TableCell>
                 <TableCell>
@@ -249,7 +264,7 @@ export default function Combustible() {
                   </span>
                 </TableCell>
                 <TableCell className="font-mono font-medium text-foreground">
-                  {formatCurrency(carga.costoTotal)}
+                  {formatCurrency(carga.costo_total)}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -335,38 +350,26 @@ export default function Combustible() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="clienteId">Cliente *</Label>
+              <Label htmlFor="cliente_id">Cliente *</Label>
               <Select
-                value={formData.clienteId}
-                onValueChange={(value) => {
-                  const cliente = clientesData.find(c => c.id === value);
-                  setFormData({ 
-                    ...formData, 
-                    clienteId: value, 
-                    cliente: cliente?.nombre || "",
-                    obraId: "", // Reset obra when client changes
-                    obra: ""
-                  });
-                }}
+                value={formData.cliente_id}
+                onValueChange={(value) => setFormData({ ...formData, cliente_id: value, obra_id: "" })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {clientesData.filter(c => c.activo).map((c) => (
+                  {clientes.filter(c => c.activo).map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="obraId">Obra *</Label>
+              <Label htmlFor="obra_id">Obra *</Label>
               <Select
-                value={formData.obraId}
-                onValueChange={(value) => {
-                  const obra = obrasData.find(o => o.id === value);
-                  setFormData({ ...formData, obraId: value, obra: obra?.nombre || "" });
-                }}
+                value={formData.obra_id}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
@@ -379,16 +382,16 @@ export default function Combustible() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maquinariaId">Maquinaria *</Label>
+              <Label htmlFor="maquinaria_id">Maquinaria *</Label>
               <Select
-                value={formData.maquinariaId}
-                onValueChange={(value) => setFormData({ ...formData, maquinariaId: value })}
+                value={formData.maquinaria_id}
+                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar maquinaria" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {maquinariasData.map((m) => (
+                  {maquinarias.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>
                   ))}
                 </SelectContent>
@@ -434,7 +437,7 @@ export default function Combustible() {
                   setFormData({
                     ...formData,
                     litros,
-                    costoTotal: calculateTotal(litros, formData.precioLitro || 0),
+                    costo_total: calculateTotal(litros, formData.precio_litro),
                   });
                 }}
                 className="bg-muted border-border"
@@ -442,17 +445,17 @@ export default function Combustible() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="precioLitro">Precio/Litro *</Label>
+              <Label htmlFor="precio_litro">Precio/Litro *</Label>
               <Input
-                id="precioLitro"
+                id="precio_litro"
                 type="number"
-                value={formData.precioLitro}
+                value={formData.precio_litro}
                 onChange={(e) => {
                   const precio = parseFloat(e.target.value) || 0;
                   setFormData({
                     ...formData,
-                    precioLitro: precio,
-                    costoTotal: calculateTotal(formData.litros || 0, precio),
+                    precio_litro: precio,
+                    costo_total: calculateTotal(formData.litros, precio),
                   });
                 }}
                 className="bg-muted border-border"
@@ -460,31 +463,32 @@ export default function Combustible() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="costoTotal">Costo Total</Label>
+              <Label htmlFor="costo_total">Costo Total</Label>
               <Input
-                id="costoTotal"
-                value={formatCurrency(formData.costoTotal || 0)}
+                id="costo_total"
+                value={formatCurrency(formData.costo_total)}
                 className="bg-muted border-border font-mono"
-                readOnly
+                disabled
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horasMaquina">Horas Máquina *</Label>
+              <Label htmlFor="horas_maquina">Horas Máquina *</Label>
               <Input
-                id="horasMaquina"
+                id="horas_maquina"
                 type="number"
-                value={formData.horasMaquina}
-                onChange={(e) => setFormData({ ...formData, horasMaquina: parseFloat(e.target.value) || 0 })}
+                value={formData.horas_maquina}
+                onChange={(e) => setFormData({ ...formData, horas_maquina: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="comprobante">Nº Comprobante</Label>
+              <Label htmlFor="comprobante">Comprobante</Label>
               <Input
                 id="comprobante"
                 value={formData.comprobante}
                 onChange={(e) => setFormData({ ...formData, comprobante: e.target.value })}
+                placeholder="Número de factura o ticket"
                 className="bg-muted border-border"
               />
             </div>
@@ -493,7 +497,8 @@ export default function Combustible() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Guardar Cambios" : "Registrar Carga"}
             </Button>
           </div>
@@ -504,36 +509,43 @@ export default function Combustible() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Carga - ${selectedCarga?.fecha}`}
+        title="Detalle de Carga"
       >
         {selectedCarga && (
-          <div className="space-y-4">
+          <>
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={selectedCarga.fecha} />
-              <DetailRow label="Cliente" value={selectedCarga.cliente} />
-              <DetailRow label="Obra" value={selectedCarga.obra} />
-              <DetailRow label="Maquinaria" value={selectedCarga.maquinaria} />
-              <DetailRow label="Operador" value={selectedCarga.operador} />
-              <DetailRow label="Horas Máquina" value={`${selectedCarga.horasMaquina.toLocaleString()} h`} />
-            </DetailSection>
-            <DetailSection title="Carga">
-              <DetailRow label="Litros" value={`${selectedCarga.litros} L`} />
-              <DetailRow label="Precio/Litro" value={formatCurrency(selectedCarga.precioLitro)} />
-              <DetailRow label="Costo Total" value={<span className="font-bold text-primary">{formatCurrency(selectedCarga.costoTotal)}</span>} />
-            </DetailSection>
-            <DetailSection title="Estación">
+              <DetailRow label="Cliente" value={selectedCarga.cliente?.nombre} />
+              <DetailRow label="Obra" value={selectedCarga.obra?.nombre} />
               <DetailRow label="Estación" value={selectedCarga.estacion} />
-              <DetailRow label="Comprobante" value={selectedCarga.comprobante || "-"} />
             </DetailSection>
-          </div>
+            <DetailSection title="Maquinaria">
+              <DetailRow label="Equipo" value={selectedCarga.maquinaria?.nombre} />
+              <DetailRow label="Código" value={selectedCarga.maquinaria?.codigo} />
+              <DetailRow label="Operador" value={selectedCarga.operador} />
+              <DetailRow label="Horas Máquina" value={`${selectedCarga.horas_maquina} h`} />
+            </DetailSection>
+            <DetailSection title="Combustible">
+              <DetailRow label="Litros" value={`${selectedCarga.litros} L`} />
+              <DetailRow label="Precio/Litro" value={formatCurrency(selectedCarga.precio_litro)} />
+              <DetailRow label="Costo Total" value={formatCurrency(selectedCarga.costo_total)} />
+            </DetailSection>
+            {selectedCarga.comprobante && (
+              <DetailSection title="Comprobante">
+                <DetailRow label="Número" value={selectedCarga.comprobante} />
+              </DetailSection>
+            )}
+          </>
         )}
       </DetailDialog>
 
+      {/* Delete Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el registro de carga del ${selectedCarga?.fecha}.`}
+        title="Eliminar Registro"
+        description={`¿Estás seguro de eliminar este registro de carga? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );
