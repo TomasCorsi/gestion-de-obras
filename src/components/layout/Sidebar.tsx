@@ -18,28 +18,37 @@ import {
   Package,
   ClipboardList,
   Menu,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/hooks/useAuth";
 
-const menuItems = [
+type AppRole = 'admin' | 'capataz' | 'maquinista';
+
+interface MenuItem {
+  icon: typeof LayoutDashboard;
+  label: string;
+  path: string;
+  roles?: AppRole[]; // If undefined, accessible to all authenticated users
+}
+
+const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Building2, label: "Obras", path: "/obras" },
-  { icon: FileText, label: "Cotizaciones", path: "/cotizaciones" },
-  { icon: Users, label: "Clientes", path: "/clientes" },
-  { icon: HardHat, label: "Personal", path: "/personal" },
-  { icon: Truck, label: "Maquinarias", path: "/maquinarias" },
+  { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", roles: ['admin', 'capataz'] },
+  { icon: Users, label: "Clientes", path: "/clientes", roles: ['admin', 'capataz'] },
+  { icon: HardHat, label: "Personal", path: "/personal", roles: ['admin', 'capataz'] },
+  { icon: Truck, label: "Maquinarias", path: "/maquinarias", roles: ['admin', 'capataz'] },
   { icon: Route, label: "Viajes", path: "/viajes" },
   { icon: Receipt, label: "Remitos", path: "/remitos" },
   { icon: Fuel, label: "Combustible", path: "/combustible" },
   { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento" },
   { icon: Package, label: "Stock", path: "/stock" },
   { icon: ClipboardList, label: "Presentismo", path: "/presentismo" },
-  { icon: BarChart3, label: "Reportes", path: "/reportes" },
-  { icon: Settings, label: "Configuración", path: "/configuracion" },
+  { icon: BarChart3, label: "Reportes", path: "/reportes", roles: ['admin', 'capataz'] },
+  { icon: Settings, label: "Configuración", path: "/configuracion", roles: ['admin'] },
 ];
 
 interface SidebarContentProps {
@@ -49,6 +58,13 @@ interface SidebarContentProps {
 
 function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) {
   const location = useLocation();
+  const { hasRole } = useAuth();
+
+  // Filter menu items based on user role
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!item.roles) return true; // No role restriction
+    return item.roles.some(role => hasRole(role));
+  });
 
   return (
     <>
@@ -77,7 +93,7 @@ function SidebarContent({ collapsed = false, onNavigate }: SidebarContentProps) 
       {/* Navigation */}
       <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-2">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
 

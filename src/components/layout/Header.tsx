@@ -1,4 +1,4 @@
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,13 +12,39 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { MobileSidebar } from "./Sidebar";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
 }
 
+const roleLabels: Record<string, string> = {
+  admin: 'Administrador',
+  capataz: 'Capataz',
+  maquinista: 'Maquinista',
+};
+
 export function Header({ title, subtitle }: HeaderProps) {
+  const { profile, role, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   return (
     <header className="h-16 bg-card border-b border-border px-4 md:px-6 flex items-center justify-between">
       {/* Mobile Menu + Title */}
@@ -57,24 +83,43 @@ export function Header({ title, subtitle }: HeaderProps) {
             <Button variant="ghost" className="flex items-center gap-2 px-2">
               <Avatar className="h-8 w-8 border border-border">
                 <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
-                  AD
+                  {getInitials(profile?.nombre_completo)}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:flex flex-col items-start">
-                <span className="text-sm font-medium text-foreground">Admin</span>
-                <span className="text-xs text-muted-foreground">Administrador</span>
+                <span className="text-sm font-medium text-foreground line-clamp-1 max-w-[120px]">
+                  {profile?.nombre_completo || 'Usuario'}
+                </span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  {role && (
+                    <>
+                      <Shield className="w-3 h-3" />
+                      {roleLabels[role] || role}
+                    </>
+                  )}
+                </span>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 bg-popover border-border">
-            <DropdownMenuLabel className="text-foreground">Mi Cuenta</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-foreground">
+              <div className="flex flex-col">
+                <span>{profile?.nombre_completo || 'Usuario'}</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  {role && roleLabels[role]}
+                </span>
+              </div>
+            </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem className="text-foreground focus:bg-accent cursor-pointer">
               <User className="w-4 h-4 mr-2" />
               Perfil
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem className="text-destructive focus:bg-destructive/10 cursor-pointer">
+            <DropdownMenuItem 
+              onClick={handleSignOut}
+              className="text-destructive focus:bg-destructive/10 cursor-pointer"
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Cerrar Sesión
             </DropdownMenuItem>
