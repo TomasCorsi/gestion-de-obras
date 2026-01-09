@@ -18,11 +18,11 @@ import {
   Bell,
   Shield,
   Database,
-  Mail,
   Globe,
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import { UserManagement } from "@/components/configuracion/UserManagement";
 
 export default function Configuracion() {
   const [settings, setSettings] = useState({
@@ -254,6 +254,11 @@ export default function Configuracion() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* User Management */}
+      <div className="grid grid-cols-1 gap-6 mt-6">
+        <UserManagement />
       </div>
 
       {/* Save Button */}
