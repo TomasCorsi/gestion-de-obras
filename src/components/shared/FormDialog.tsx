@@ -5,8 +5,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 
 interface FormDialogProps {
   open: boolean;
@@ -15,6 +17,8 @@ interface FormDialogProps {
   description?: string;
   children: ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
+  onSubmit?: () => void;
+  submitLabel?: string;
 }
 
 const sizeClasses = {
@@ -31,6 +35,8 @@ export function FormDialog({
   description,
   children,
   size = "md",
+  onSubmit,
+  submitLabel = "Guardar",
 }: FormDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -46,6 +52,16 @@ export function FormDialog({
         <ScrollArea className="max-h-[70vh]">
           <div className="pr-4">{children}</div>
         </ScrollArea>
+        {onSubmit && (
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={onSubmit} className="bg-primary hover:bg-primary/90">
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );

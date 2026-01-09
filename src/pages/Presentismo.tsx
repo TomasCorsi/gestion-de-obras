@@ -1,5 +1,5 @@
 import { useState } from "react";
-import MainLayout from "@/components/layout/MainLayout";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -195,17 +195,10 @@ export default function Presentismo() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Presentismo (HH)" subtitle="Control de asistencia y horas trabajadas">
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <ClipboardList className="w-7 h-7 text-primary" />
-              Presentismo (HH)
-            </h1>
-            <p className="text-muted-foreground">Control de asistencia y horas trabajadas del personal</p>
-          </div>
+        {/* Action Button */}
+        <div className="flex justify-end">
           <Button onClick={handleNew} className="bg-primary hover:bg-primary/90">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Registro

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import MainLayout from "@/components/layout/MainLayout";
+import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,19 +189,8 @@ export default function Stock() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Stock e Inventario" subtitle="Gestión de materiales, repuestos y herramientas">
       <div className="space-y-6 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Package className="w-7 h-7 text-primary" />
-              Stock e Inventario
-            </h1>
-            <p className="text-muted-foreground">Gestión de materiales, repuestos y herramientas</p>
-          </div>
-        </div>
-
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-card border border-border rounded-xl p-4">
