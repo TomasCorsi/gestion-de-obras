@@ -9,7 +9,6 @@ export interface RegistroHHDB {
   fecha: string;
   persona_id: string;
   obra_id: string;
-  cliente_id: string;
   capataz_id: string;
   hora_entrada: string;
   hora_salida: string;
@@ -26,7 +25,6 @@ export interface RegistroHHDB {
 export interface RegistroHHWithRelations extends RegistroHHDB {
   persona?: { nombre: string; apellido: string };
   obra?: { nombre: string };
-  cliente?: { nombre: string };
   capataz?: { nombre: string; apellido: string };
 }
 
@@ -34,7 +32,6 @@ export interface RegistroHHForm {
   fecha: string;
   persona_id: string;
   obra_id: string;
-  cliente_id: string;
   capataz_id: string;
   hora_entrada: string;
   hora_salida: string;
@@ -58,7 +55,6 @@ export function usePresentismo() {
         *,
         persona:personal!registros_hh_persona_id_fkey(nombre, apellido),
         obra:obras(nombre),
-        cliente:clientes(nombre),
         capataz:personal!registros_hh_capataz_id_fkey(nombre, apellido)
       `)
       .order("fecha", { ascending: false });

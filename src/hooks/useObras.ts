@@ -8,7 +8,6 @@ export interface ObraDB {
   id: string;
   codigo: string;
   nombre: string;
-  cliente_id: string;
   ubicacion: string;
   descripcion: string;
   estado: EstadoObra;
@@ -23,14 +22,12 @@ export interface ObraDB {
 }
 
 export interface ObraWithRelations extends ObraDB {
-  cliente?: { nombre: string };
   responsable?: { nombre: string; apellido: string };
 }
 
 export interface ObraForm {
   codigo: string;
   nombre: string;
-  cliente_id: string;
   ubicacion: string;
   descripcion: string;
   estado: EstadoObra;
@@ -51,7 +48,6 @@ export function useObras() {
       .from("obras")
       .select(`
         *,
-        cliente:clientes(nombre),
         responsable:personal(nombre, apellido)
       `)
       .order("created_at", { ascending: false });

@@ -30,7 +30,6 @@ import {
   CheckCircle,
   XCircle,
   Send,
-  Copy,
   MoreVertical,
   Trash2,
   Eye,
@@ -48,7 +47,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useCotizaciones, CotizacionWithRelations, CotizacionForm, CotizacionItemForm, EstadoCotizacion } from "@/hooks/useCotizaciones";
-import { useClientes } from "@/hooks/useClientes";
+import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 
 const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
@@ -69,7 +68,7 @@ function formatCurrency(value: number): string {
 
 export default function Cotizaciones() {
   const { cotizaciones, loading, createCotizacion, updateCotizacion, deleteCotizacion } = useCotizaciones();
-  const { clientes } = useClientes();
+  const { obras } = useObras();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
@@ -82,7 +81,7 @@ export default function Cotizaciones() {
 
   const [formData, setFormData] = useState<CotizacionForm>({
     numero: "",
-    cliente_id: "",
+    obra_id: "",
     descripcion: "",
     fecha_creacion: new Date().toISOString().split("T")[0],
     fecha_vencimiento: "",
@@ -101,7 +100,7 @@ export default function Cotizaciones() {
   const filteredCotizaciones = cotizaciones.filter((cot) => {
     const matchesSearch =
       cot.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cot.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cot.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cot.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || cot.estado === estadoFilter;
     return matchesSearch && matchesEstado;
@@ -127,7 +126,7 @@ export default function Cotizaciones() {
     
     setFormData({
       numero: generateNumero(),
-      cliente_id: "",
+      obra_id: "",
       descripcion: "",
       fecha_creacion: new Date().toISOString().split("T")[0],
       fecha_vencimiento: vencimiento.toISOString().split("T")[0],
@@ -147,7 +146,7 @@ export default function Cotizaciones() {
     setSelectedCot(cot);
     setFormData({
       numero: cot.numero,
-      cliente_id: cot.cliente_id,
+      obra_id: cot.obra_id || "",
       descripcion: cot.descripcion,
       fecha_creacion: cot.fecha_creacion,
       fecha_vencimiento: cot.fecha_vencimiento,
@@ -252,7 +251,7 @@ export default function Cotizaciones() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por número, cliente o descripción..."
+            placeholder="Buscar por número, obra o descripción..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -296,7 +295,7 @@ export default function Cotizaciones() {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-xs font-mono text-primary">{cot.numero}</span>
-                    <h3 className="font-semibold text-foreground mt-1">{cot.cliente?.nombre || "-"}</h3>
+                    <h3 className="font-semibold text-foreground mt-1">{cot.obra?.nombre || "Sin obra asignada"}</h3>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -420,17 +419,18 @@ export default function Cotizaciones() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cliente_id">Cliente *</Label>
+              <Label htmlFor="obra_id">Obra (opcional)</Label>
               <Select
-                value={formData.cliente_id}
-                onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
+                value={formData.obra_id || ""}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value || undefined })}
               >
                 <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar cliente" />
+                  <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {clientes.filter(c => c.activo).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  <SelectItem value="">Sin asignar</SelectItem>
+                  {obras.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -496,13 +496,13 @@ export default function Cotizaciones() {
             </div>
           </div>
 
-          {/* Items */}
-          <div className="space-y-4">
+          {/* Items Section */}
+          <div className="border border-border rounded-lg p-4 space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Ítems</Label>
+              <Label className="text-lg font-semibold">Ítems</Label>
               <Button type="button" variant="outline" size="sm" onClick={addItem}>
                 <Plus className="w-4 h-4 mr-1" />
-                Agregar Item
+                Agregar Ítem
               </Button>
             </div>
             {items.map((item, index) => (
@@ -512,12 +512,12 @@ export default function Cotizaciones() {
                   <Input
                     value={item.descripcion}
                     onChange={(e) => updateItem(index, "descripcion", e.target.value)}
-                    placeholder="Descripción del servicio"
                     className="bg-muted border-border"
+                    placeholder="Descripción del ítem"
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
-                  <Label className="text-xs">Cantidad</Label>
+                <div className="col-span-1 space-y-1">
+                  <Label className="text-xs">Cant.</Label>
                   <Input
                     type="number"
                     value={item.cantidad}
@@ -527,14 +527,24 @@ export default function Cotizaciones() {
                 </div>
                 <div className="col-span-1 space-y-1">
                   <Label className="text-xs">Unidad</Label>
-                  <Input
+                  <Select
                     value={item.unidad}
-                    onChange={(e) => updateItem(index, "unidad", e.target.value)}
-                    className="bg-muted border-border"
-                  />
+                    onValueChange={(value) => updateItem(index, "unidad", value)}
+                  >
+                    <SelectTrigger className="bg-muted border-border">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover border-border">
+                      <SelectItem value="m³">m³</SelectItem>
+                      <SelectItem value="tn">tn</SelectItem>
+                      <SelectItem value="hr">hr</SelectItem>
+                      <SelectItem value="gl">gl</SelectItem>
+                      <SelectItem value="un">un</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="col-span-2 space-y-1">
-                  <Label className="text-xs">Precio Unit.</Label>
+                  <Label className="text-xs">P. Unit.</Label>
                   <Input
                     type="number"
                     value={item.precio_unitario}
@@ -542,12 +552,12 @@ export default function Cotizaciones() {
                     className="bg-muted border-border"
                   />
                 </div>
-                <div className="col-span-1 space-y-1">
+                <div className="col-span-2 space-y-1">
                   <Label className="text-xs">Subtotal</Label>
                   <Input
                     value={formatCurrency(item.subtotal)}
+                    readOnly
                     className="bg-muted border-border font-mono"
-                    disabled
                   />
                 </div>
                 <div className="col-span-1">
@@ -557,17 +567,16 @@ export default function Cotizaciones() {
                     size="icon"
                     onClick={() => removeItem(index)}
                     disabled={items.length === 1}
+                    className="text-destructive"
                   >
-                    <Trash2 className="w-4 h-4 text-destructive" />
+                    <Trash2 className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
             ))}
-          </div>
 
-          {/* Totals */}
-          <div className="flex justify-end">
-            <div className="w-64 space-y-2">
+            {/* Totals */}
+            <div className="border-t border-border pt-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Subtotal:</span>
                 <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
@@ -576,22 +585,21 @@ export default function Cotizaciones() {
                 <span className="text-muted-foreground">IVA (21%):</span>
                 <span className="font-mono">{formatCurrency(formData.iva)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold border-t border-border pt-2">
+              <div className="flex justify-between text-lg font-bold">
                 <span>Total:</span>
-                <span className="font-mono">{formatCurrency(formData.total)}</span>
+                <span className="font-mono text-primary">{formatCurrency(formData.total)}</span>
               </div>
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notas">Notas</Label>
+            <Label htmlFor="notas">Notas adicionales</Label>
             <Textarea
               id="notas"
               value={formData.notas}
               onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
               className="bg-muted border-border"
               rows={2}
-              placeholder="Notas adicionales para el cliente..."
             />
           </div>
 
@@ -599,9 +607,8 @@ export default function Cotizaciones() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? "Guardar Cambios" : "Crear Cotización"}
+            <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Cotización"}
             </Button>
           </div>
         </form>
@@ -611,30 +618,35 @@ export default function Cotizaciones() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Cotización ${selectedCot?.numero}`}
+        title="Detalle de Cotización"
       >
         {selectedCot && (
-          <>
+          <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Número" value={selectedCot.numero} />
-              <DetailRow label="Cliente" value={selectedCot.cliente?.nombre} />
+              <DetailRow label="Obra" value={selectedCot.obra?.nombre || "Sin asignar"} />
               <DetailRow label="Responsable" value={selectedCot.responsable} />
-              <DetailRow
-                label="Estado"
-                value={
-                  <Badge className={cn("status-badge", estadoConfig[selectedCot.estado]?.className)}>
-                    {estadoConfig[selectedCot.estado]?.label}
-                  </Badge>
-                }
-              />
+              <DetailRow label="Estado" value={estadoConfig[selectedCot.estado].label} />
             </DetailSection>
             <DetailSection title="Fechas">
-              <DetailRow label="Creación" value={selectedCot.fecha_creacion} />
-              <DetailRow label="Vencimiento" value={selectedCot.fecha_vencimiento} />
+              <DetailRow label="Fecha Creación" value={selectedCot.fecha_creacion} />
+              <DetailRow label="Fecha Vencimiento" value={selectedCot.fecha_vencimiento} />
             </DetailSection>
             <DetailSection title="Descripción">
-              <p className="text-muted-foreground">{selectedCot.descripcion}</p>
+              <p className="text-sm text-muted-foreground">{selectedCot.descripcion}</p>
             </DetailSection>
+            {selectedCot.items && selectedCot.items.length > 0 && (
+              <DetailSection title="Ítems">
+                <div className="space-y-2">
+                  {selectedCot.items.map((item, index) => (
+                    <div key={index} className="flex justify-between text-sm border-b border-border pb-2">
+                      <span>{item.descripcion}</span>
+                      <span className="font-mono">{item.cantidad} {item.unidad} x {formatCurrency(item.precio_unitario)} = {formatCurrency(item.subtotal)}</span>
+                    </div>
+                  ))}
+                </div>
+              </DetailSection>
+            )}
             <DetailSection title="Totales">
               <DetailRow label="Subtotal" value={formatCurrency(selectedCot.subtotal)} />
               <DetailRow label="IVA (21%)" value={formatCurrency(selectedCot.iva)} />
@@ -642,20 +654,20 @@ export default function Cotizaciones() {
             </DetailSection>
             {selectedCot.notas && (
               <DetailSection title="Notas">
-                <p className="text-muted-foreground">{selectedCot.notas}</p>
+                <p className="text-sm text-muted-foreground">{selectedCot.notas}</p>
               </DetailSection>
             )}
-          </>
+          </div>
         )}
       </DetailDialog>
 
-      {/* Delete Dialog */}
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         title="Eliminar Cotización"
-        description={`¿Estás seguro de eliminar la cotización ${selectedCot?.numero}? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro de que deseas eliminar la cotización "${selectedCot?.numero}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       cargas_combustible: {
         Row: {
-          cliente_id: string
           comprobante: string | null
           costo_total: number
           created_at: string
@@ -32,7 +31,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          cliente_id: string
           comprobante?: string | null
           costo_total: number
           created_at?: string
@@ -48,7 +46,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          cliente_id?: string
           comprobante?: string | null
           costo_total?: number
           created_at?: string
@@ -65,13 +62,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "cargas_combustible_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "cargas_combustible_maquinaria_id_fkey"
             columns: ["maquinaria_id"]
             isOneToOne: false
@@ -86,57 +76,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      clientes: {
-        Row: {
-          activo: boolean
-          contacto_principal: string
-          created_at: string
-          cuit: string
-          direccion: string
-          email: string
-          id: string
-          localidad: string
-          nombre: string
-          notas: string | null
-          provincia: string
-          razon_social: string | null
-          telefono: string
-          updated_at: string
-        }
-        Insert: {
-          activo?: boolean
-          contacto_principal: string
-          created_at?: string
-          cuit: string
-          direccion: string
-          email: string
-          id?: string
-          localidad: string
-          nombre: string
-          notas?: string | null
-          provincia: string
-          razon_social?: string | null
-          telefono: string
-          updated_at?: string
-        }
-        Update: {
-          activo?: boolean
-          contacto_principal?: string
-          created_at?: string
-          cuit?: string
-          direccion?: string
-          email?: string
-          id?: string
-          localidad?: string
-          nombre?: string
-          notas?: string | null
-          provincia?: string
-          razon_social?: string | null
-          telefono?: string
-          updated_at?: string
-        }
-        Relationships: []
       }
       cotizacion_items: {
         Row: {
@@ -181,7 +120,6 @@ export type Database = {
       }
       cotizaciones: {
         Row: {
-          cliente_id: string
           created_at: string
           descripcion: string
           estado: Database["public"]["Enums"]["estado_cotizacion"]
@@ -191,13 +129,13 @@ export type Database = {
           iva: number
           notas: string | null
           numero: string
+          obra_id: string | null
           responsable: string
           subtotal: number
           total: number
           updated_at: string
         }
         Insert: {
-          cliente_id: string
           created_at?: string
           descripcion: string
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
@@ -207,13 +145,13 @@ export type Database = {
           iva?: number
           notas?: string | null
           numero: string
+          obra_id?: string | null
           responsable: string
           subtotal?: number
           total?: number
           updated_at?: string
         }
         Update: {
-          cliente_id?: string
           created_at?: string
           descripcion?: string
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
@@ -223,6 +161,7 @@ export type Database = {
           iva?: number
           notas?: string | null
           numero?: string
+          obra_id?: string | null
           responsable?: string
           subtotal?: number
           total?: number
@@ -230,10 +169,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "cotizaciones_cliente_id_fkey"
-            columns: ["cliente_id"]
+            foreignKeyName: "cotizaciones_obra_id_fkey"
+            columns: ["obra_id"]
             isOneToOne: false
-            referencedRelation: "clientes"
+            referencedRelation: "obras"
             referencedColumns: ["id"]
           },
         ]
@@ -501,7 +440,6 @@ export type Database = {
       }
       obras: {
         Row: {
-          cliente_id: string
           codigo: string
           created_at: string
           descripcion: string
@@ -518,7 +456,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          cliente_id: string
           codigo: string
           created_at?: string
           descripcion: string
@@ -535,7 +472,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          cliente_id?: string
           codigo?: string
           created_at?: string
           descripcion?: string
@@ -552,13 +488,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "obras_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "obras_responsable_id_fkey"
             columns: ["responsable_id"]
@@ -649,7 +578,6 @@ export type Database = {
       registros_hh: {
         Row: {
           capataz_id: string
-          cliente_id: string
           created_at: string
           estado: Database["public"]["Enums"]["estado_presentismo"]
           fecha: string
@@ -667,7 +595,6 @@ export type Database = {
         }
         Insert: {
           capataz_id: string
-          cliente_id: string
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_presentismo"]
           fecha: string
@@ -685,7 +612,6 @@ export type Database = {
         }
         Update: {
           capataz_id?: string
-          cliente_id?: string
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_presentismo"]
           fecha?: string
@@ -710,13 +636,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "registros_hh_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "registros_hh_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
@@ -735,7 +654,6 @@ export type Database = {
       remitos: {
         Row: {
           cantidad: number
-          cliente_id: string
           created_at: string
           evidencia_url: string | null
           fecha: string
@@ -752,7 +670,6 @@ export type Database = {
         }
         Insert: {
           cantidad: number
-          cliente_id: string
           created_at?: string
           evidencia_url?: string | null
           fecha: string
@@ -769,7 +686,6 @@ export type Database = {
         }
         Update: {
           cantidad?: number
-          cliente_id?: string
           created_at?: string
           evidencia_url?: string | null
           fecha?: string
@@ -785,13 +701,6 @@ export type Database = {
           viaje_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "remitos_cliente_id_fkey"
-            columns: ["cliente_id"]
-            isOneToOne: false
-            referencedRelation: "clientes"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "remitos_obra_id_fkey"
             columns: ["obra_id"]

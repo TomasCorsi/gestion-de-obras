@@ -38,7 +38,6 @@ const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Building2, label: "Obras", path: "/obras" },
   { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", roles: ['admin', 'capataz'] },
-  { icon: Users, label: "Clientes", path: "/clientes", roles: ['admin', 'capataz'] },
   { icon: HardHat, label: "Personal", path: "/personal", roles: ['admin', 'capataz'] },
   { icon: Truck, label: "Maquinarias", path: "/maquinarias", roles: ['admin', 'capataz'] },
   { icon: Route, label: "Viajes", path: "/viajes" },

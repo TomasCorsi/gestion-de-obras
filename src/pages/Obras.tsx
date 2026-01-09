@@ -43,7 +43,6 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useObras, ObraWithRelations, ObraForm, EstadoObra } from "@/hooks/useObras";
-import { useClientes } from "@/hooks/useClientes";
 import { usePersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +55,6 @@ const estadoConfig: Record<EstadoObra, { label: string; className: string }> = {
 
 export default function Obras() {
   const { obras, loading, createObra, updateObra, deleteObra } = useObras();
-  const { clientes } = useClientes();
   const { personal } = usePersonal();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -71,7 +69,6 @@ export default function Obras() {
   const [formData, setFormData] = useState<ObraForm>({
     codigo: "",
     nombre: "",
-    cliente_id: "",
     ubicacion: "",
     descripcion: "",
     estado: "pendiente",
@@ -86,8 +83,8 @@ export default function Obras() {
   const filteredObras = obras.filter((obra) => {
     const matchesSearch =
       obra.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (obra.cliente?.nombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      obra.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+      obra.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      obra.ubicacion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || obra.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
@@ -103,7 +100,6 @@ export default function Obras() {
     setFormData({
       codigo: generateCodigo(),
       nombre: "",
-      cliente_id: "",
       ubicacion: "",
       descripcion: "",
       estado: "pendiente",
@@ -119,7 +115,6 @@ export default function Obras() {
     setFormData({
       codigo: obra.codigo,
       nombre: obra.nombre,
-      cliente_id: obra.cliente_id,
       ubicacion: obra.ubicacion,
       descripcion: obra.descripcion,
       estado: obra.estado,
@@ -181,7 +176,7 @@ export default function Obras() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nombre, cliente o código..."
+            placeholder="Buscar por nombre, código o ubicación..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -215,7 +210,6 @@ export default function Obras() {
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Código</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
               <TableHead className="text-muted-foreground font-medium">Ubicación</TableHead>
               <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
               <TableHead className="text-muted-foreground font-medium">Progreso</TableHead>
@@ -226,7 +220,7 @@ export default function Obras() {
           <TableBody>
             {filteredObras.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                   {searchTerm || estadoFilter !== "todos" ? "No se encontraron obras" : "No hay obras registradas"}
                 </TableCell>
               </TableRow>
@@ -246,7 +240,6 @@ export default function Obras() {
                       <span className="font-medium text-foreground">{obra.nombre}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{obra.cliente?.nombre || "-"}</TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <MapPin className="w-3 h-3" />
@@ -352,22 +345,6 @@ export default function Obras() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cliente_id">Cliente *</Label>
-              <Select
-                value={formData.cliente_id}
-                onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {clientes.filter(c => c.activo).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="responsable_id">Responsable</Label>
               <Select
                 value={formData.responsable_id || ""}
@@ -379,6 +356,22 @@ export default function Obras() {
                 <SelectContent className="bg-popover border-border">
                   {responsables.map((p) => (
                     <SelectItem key={p.id} value={p.id}>{p.nombre} {p.apellido}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado *</Label>
+              <Select
+                value={formData.estado}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoObra })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {Object.entries(estadoConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -405,22 +398,6 @@ export default function Obras() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="estado">Estado *</Label>
-              <Select
-                value={formData.estado}
-                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoObra })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {Object.entries(estadoConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="progreso">Progreso (%)</Label>
               <Input
                 id="progreso"
@@ -429,6 +406,16 @@ export default function Obras() {
                 max="100"
                 value={formData.progreso}
                 onChange={(e) => setFormData({ ...formData, progreso: parseInt(e.target.value) || 0 })}
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="presupuesto">Presupuesto</Label>
+              <Input
+                id="presupuesto"
+                type="number"
+                value={formData.presupuesto || ""}
+                onChange={(e) => setFormData({ ...formData, presupuesto: parseFloat(e.target.value) || undefined })}
                 className="bg-muted border-border"
               />
             </div>
@@ -453,23 +440,12 @@ export default function Obras() {
                 className="bg-muted border-border"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="presupuesto">Presupuesto</Label>
-              <Input
-                id="presupuesto"
-                type="number"
-                value={formData.presupuesto || ""}
-                onChange={(e) => setFormData({ ...formData, presupuesto: parseFloat(e.target.value) || undefined })}
-                className="bg-muted border-border"
-                placeholder="0"
-              />
-            </div>
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+            <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
               {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Obra"}
             </Button>
           </div>
@@ -480,43 +456,31 @@ export default function Obras() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={selectedObra?.nombre || ""}
+        title="Detalle de Obra"
       >
         {selectedObra && (
           <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Código" value={selectedObra.codigo} />
               <DetailRow label="Nombre" value={selectedObra.nombre} />
-              <DetailRow label="Cliente" value={selectedObra.cliente?.nombre || "-"} />
-              <DetailRow
-                label="Estado"
-                value={
-                  <Badge className={cn("status-badge", estadoConfig[selectedObra.estado].className)}>
-                    {estadoConfig[selectedObra.estado].label}
-                  </Badge>
-                }
-              />
-              <DetailRow label="Progreso" value={`${selectedObra.progreso}%`} />
-            </DetailSection>
-            <DetailSection title="Ubicación y Fechas">
               <DetailRow label="Ubicación" value={selectedObra.ubicacion} />
+              <DetailRow label="Descripción" value={selectedObra.descripcion} />
+            </DetailSection>
+            <DetailSection title="Estado">
+              <DetailRow label="Estado" value={estadoConfig[selectedObra.estado].label} />
+              <DetailRow label="Progreso" value={`${selectedObra.progreso}%`} />
+              <DetailRow label="Responsable" value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} />
+            </DetailSection>
+            <DetailSection title="Fechas">
               <DetailRow label="Fecha Inicio" value={selectedObra.fecha_inicio} />
               <DetailRow label="Fecha Fin Estimada" value={selectedObra.fecha_fin_estimada || "-"} />
               <DetailRow label="Fecha Fin Real" value={selectedObra.fecha_fin_real || "-"} />
             </DetailSection>
-            <DetailSection title="Responsable y Presupuesto">
-              <DetailRow 
-                label="Responsable" 
-                value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} 
-              />
-              <DetailRow 
-                label="Presupuesto" 
-                value={selectedObra.presupuesto ? `$${selectedObra.presupuesto.toLocaleString("es-AR")}` : "-"} 
-              />
-            </DetailSection>
-            <DetailSection title="Descripción">
-              <p className="text-sm text-muted-foreground">{selectedObra.descripcion}</p>
-            </DetailSection>
+            {selectedObra.presupuesto && (
+              <DetailSection title="Financiero">
+                <DetailRow label="Presupuesto" value={`$${selectedObra.presupuesto.toLocaleString()}`} />
+              </DetailSection>
+            )}
           </div>
         )}
       </DetailDialog>
