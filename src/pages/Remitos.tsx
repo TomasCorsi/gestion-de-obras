@@ -35,6 +35,7 @@ import {
   FileText,
   User,
   Package,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,38 +47,43 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { Remito } from "@/types";
-import { remitosData as initialData, viajesData, obrasData, clientesData } from "@/data/mockData";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
+import { useClientes } from "@/hooks/useClientes";
+import { useObras } from "@/hooks/useObras";
+import { useViajes } from "@/hooks/useViajes";
 
 export default function Remitos() {
-  const [remitos, setRemitos] = useState<Remito[]>(initialData);
+  const { remitos, loading, createRemito, updateRemito, deleteRemito } = useRemitos();
+  const { clientes } = useClientes();
+  const { obras } = useObras();
+  const { viajes } = useViajes();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedRemito, setSelectedRemito] = useState<Remito | null>(null);
+  const [selectedRemito, setSelectedRemito] = useState<RemitoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<Remito>>({
+  const [formData, setFormData] = useState<RemitoForm>({
     numero: "",
-    viajeId: "",
+    viaje_id: "",
     fecha: new Date().toISOString().split("T")[0],
-    cliente: "",
-    obra: "",
+    cliente_id: "",
+    obra_id: "",
     material: "",
     cantidad: 0,
     unidad: "m³",
-    recibidoPor: "",
+    recibido_por: "",
     firmado: false,
     observaciones: "",
   });
 
   const filteredRemitos = remitos.filter((r) =>
     r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.obra.toLowerCase().includes(searchTerm.toLowerCase())
+    r.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    r.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const generateNumero = () => {
@@ -90,67 +96,93 @@ export default function Remitos() {
     setIsEditing(false);
     setFormData({
       numero: generateNumero(),
-      viajeId: "",
+      viaje_id: "",
       fecha: new Date().toISOString().split("T")[0],
-      cliente: "",
-      obra: "",
+      cliente_id: "",
+      obra_id: "",
       material: "Tosca",
       cantidad: 18,
       unidad: "m³",
-      recibidoPor: "",
+      recibido_por: "",
       firmado: false,
       observaciones: "",
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (remito: Remito) => {
+  const handleEdit = (remito: RemitoWithRelations) => {
     setIsEditing(true);
     setSelectedRemito(remito);
-    setFormData(remito);
+    setFormData({
+      numero: remito.numero,
+      viaje_id: remito.viaje_id || "",
+      fecha: remito.fecha,
+      cliente_id: remito.cliente_id,
+      obra_id: remito.obra_id,
+      material: remito.material,
+      cantidad: remito.cantidad,
+      unidad: remito.unidad,
+      recibido_por: remito.recibido_por,
+      firmado: remito.firmado,
+      observaciones: remito.observaciones || "",
+    });
     setFormOpen(true);
   };
 
-  const handleView = (remito: Remito) => {
+  const handleView = (remito: RemitoWithRelations) => {
     setSelectedRemito(remito);
     setDetailOpen(true);
   };
 
-  const handleDelete = (remito: Remito) => {
+  const handleDelete = (remito: RemitoWithRelations) => {
     setSelectedRemito(remito);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedRemito) {
-      setRemitos(remitos.filter((r) => r.id !== selectedRemito.id));
-      toast.success("Remito eliminado correctamente");
+      await deleteRemito(selectedRemito.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
+    const dataToSend = {
+      ...formData,
+      viaje_id: formData.viaje_id || undefined,
+    };
+    
     if (isEditing && selectedRemito) {
-      setRemitos(remitos.map((r) => r.id === selectedRemito.id ? { ...r, ...formData } : r));
-      toast.success("Remito actualizado correctamente");
+      await updateRemito(selectedRemito.id, dataToSend);
     } else {
-      const newRemito: Remito = {
-        ...formData,
-        id: Date.now().toString(),
-      } as Remito;
-      setRemitos([...remitos, newRemito]);
-      toast.success("Remito creado correctamente");
+      await createRemito(dataToSend);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
 
-  const toggleFirmado = (remito: Remito) => {
-    setRemitos(remitos.map((r) =>
-      r.id === remito.id ? { ...r, firmado: !r.firmado } : r
-    ));
-    toast.success(remito.firmado ? "Remito desmarcado" : "Remito marcado como firmado");
+  const toggleFirmado = async (remito: RemitoWithRelations) => {
+    await updateRemito(remito.id, { firmado: !remito.firmado });
   };
+
+  // Filter obras by selected cliente
+  const filteredObras = formData.cliente_id 
+    ? obras.filter(o => o.cliente_id === formData.cliente_id)
+    : obras;
+
+  if (loading) {
+    return (
+      <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
@@ -209,8 +241,8 @@ export default function Remitos() {
                     {remito.fecha}
                   </span>
                 </TableCell>
-                <TableCell className="text-foreground">{remito.cliente}</TableCell>
-                <TableCell className="text-muted-foreground">{remito.obra}</TableCell>
+                <TableCell className="text-foreground">{remito.cliente?.nombre || "-"}</TableCell>
+                <TableCell className="text-muted-foreground">{remito.obra?.nombre || "-"}</TableCell>
                 <TableCell>
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <Package className="w-3 h-3" />
@@ -221,10 +253,10 @@ export default function Remitos() {
                   {remito.cantidad} {remito.unidad}
                 </TableCell>
                 <TableCell>
-                  {remito.recibidoPor ? (
+                  {remito.recibido_por ? (
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <User className="w-3 h-3" />
-                      {remito.recibidoPor}
+                      {remito.recibido_por}
                     </span>
                   ) : (
                     <span className="text-muted-foreground">-</span>
@@ -348,33 +380,52 @@ export default function Remitos() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cliente">Cliente *</Label>
+              <Label htmlFor="cliente_id">Cliente *</Label>
               <Select
-                value={formData.cliente}
-                onValueChange={(value) => setFormData({ ...formData, cliente: value })}
+                value={formData.cliente_id}
+                onValueChange={(value) => setFormData({ ...formData, cliente_id: value, obra_id: "" })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar cliente" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {clientesData.map((c) => (
-                    <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>
+                  {clientes.filter(c => c.activo).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="obra">Obra *</Label>
+              <Label htmlFor="obra_id">Obra *</Label>
               <Select
-                value={formData.obra}
-                onValueChange={(value) => setFormData({ ...formData, obra: value })}
+                value={formData.obra_id}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {obrasData.map((o) => (
-                    <SelectItem key={o.id} value={o.nombre}>{o.nombre}</SelectItem>
+                  {filteredObras.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="viaje_id">Viaje (opcional)</Label>
+              <Select
+                value={formData.viaje_id}
+                onValueChange={(value) => setFormData({ ...formData, viaje_id: value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Vincular a viaje" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="">Sin vincular</SelectItem>
+                  {viajes.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.fecha} - {v.origen} → {v.destino}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -416,11 +467,11 @@ export default function Remitos() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="recibidoPor">Recibido Por</Label>
+              <Label htmlFor="recibido_por">Recibido Por</Label>
               <Input
-                id="recibidoPor"
-                value={formData.recibidoPor}
-                onChange={(e) => setFormData({ ...formData, recibidoPor: e.target.value })}
+                id="recibido_por"
+                value={formData.recibido_por}
+                onChange={(e) => setFormData({ ...formData, recibido_por: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
@@ -447,7 +498,8 @@ export default function Remitos() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Guardar Cambios" : "Crear Remito"}
             </Button>
           </div>
@@ -461,42 +513,49 @@ export default function Remitos() {
         title={`Remito ${selectedRemito?.numero}`}
       >
         {selectedRemito && (
-          <div className="space-y-4">
+          <>
             <DetailSection title="Información General">
-              <DetailRow label="Número" value={<span className="font-mono text-primary">{selectedRemito.numero}</span>} />
+              <DetailRow label="Número" value={selectedRemito.numero} />
               <DetailRow label="Fecha" value={selectedRemito.fecha} />
+              <DetailRow label="Cliente" value={selectedRemito.cliente?.nombre} />
+              <DetailRow label="Obra" value={selectedRemito.obra?.nombre} />
+            </DetailSection>
+            <DetailSection title="Entrega">
+              <DetailRow label="Material" value={selectedRemito.material} />
+              <DetailRow label="Cantidad" value={`${selectedRemito.cantidad} ${selectedRemito.unidad}`} />
+              <DetailRow label="Recibido Por" value={selectedRemito.recibido_por || "-"} />
               <DetailRow
                 label="Estado"
                 value={
-                  <Badge className={cn("status-badge", selectedRemito.firmado ? "status-active" : "status-pending")}>
-                    {selectedRemito.firmado ? "Firmado" : "Pendiente"}
-                  </Badge>
+                  selectedRemito.firmado ? (
+                    <Badge className="status-badge status-active">Firmado</Badge>
+                  ) : (
+                    <Badge className="status-badge status-pending">Pendiente</Badge>
+                  )
                 }
               />
             </DetailSection>
-            <DetailSection title="Destino">
-              <DetailRow label="Cliente" value={selectedRemito.cliente} />
-              <DetailRow label="Obra" value={selectedRemito.obra} />
-              <DetailRow label="Recibido Por" value={selectedRemito.recibidoPor || "-"} />
-            </DetailSection>
-            <DetailSection title="Carga">
-              <DetailRow label="Material" value={selectedRemito.material} />
-              <DetailRow label="Cantidad" value={`${selectedRemito.cantidad} ${selectedRemito.unidad}`} />
-            </DetailSection>
-            {selectedRemito.observaciones && (
-              <DetailSection title="Observaciones">
-                <p className="text-sm text-muted-foreground">{selectedRemito.observaciones}</p>
+            {selectedRemito.viaje && (
+              <DetailSection title="Viaje Vinculado">
+                <DetailRow label="Ruta" value={`${selectedRemito.viaje.origen} → ${selectedRemito.viaje.destino}`} />
               </DetailSection>
             )}
-          </div>
+            {selectedRemito.observaciones && (
+              <DetailSection title="Observaciones">
+                <p className="text-muted-foreground">{selectedRemito.observaciones}</p>
+              </DetailSection>
+            )}
+          </>
         )}
       </DetailDialog>
 
+      {/* Delete Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el remito "${selectedRemito?.numero}".`}
+        title="Eliminar Remito"
+        description={`¿Estás seguro de eliminar el remito ${selectedRemito?.numero}? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

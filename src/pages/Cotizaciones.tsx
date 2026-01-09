@@ -2,7 +2,9 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Card,
   CardContent,
@@ -30,6 +32,10 @@ import {
   Send,
   Copy,
   MoreVertical,
+  Trash2,
+  Eye,
+  Edit,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -37,97 +43,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FormDialog } from "@/components/shared/FormDialog";
+import { DetailDialog } from "@/components/shared/DetailDialog";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { useCotizaciones, CotizacionWithRelations, CotizacionForm, CotizacionItemForm, EstadoCotizacion } from "@/hooks/useCotizaciones";
+import { useClientes } from "@/hooks/useClientes";
 import { cn } from "@/lib/utils";
 
-interface Cotizacion {
-  id: string;
-  numero: string;
-  cliente: string;
-  descripcion: string;
-  monto: number;
-  estado: "borrador" | "enviada" | "aprobada" | "rechazada" | "vencida";
-  fechaCreacion: string;
-  fechaVencimiento: string;
-  responsable: string;
-  items: number;
-}
-
-const cotizacionesDemo: Cotizacion[] = [
-  {
-    id: "1",
-    numero: "COT-2026-001",
-    cliente: "Constructora Andina S.A.",
-    descripcion: "Movimiento de 5,000 m³ de tierra para preparación de terreno",
-    monto: 2450000,
-    estado: "enviada",
-    fechaCreacion: "02/01/2026",
-    fechaVencimiento: "15/01/2026",
-    responsable: "Admin",
-    items: 4,
-  },
-  {
-    id: "2",
-    numero: "COT-2026-002",
-    cliente: "Inmobiliaria Del Sur",
-    descripcion: "Excavación y relleno para fundaciones",
-    monto: 890000,
-    estado: "enviada",
-    fechaCreacion: "03/01/2026",
-    fechaVencimiento: "12/01/2026",
-    responsable: "Admin",
-    items: 3,
-  },
-  {
-    id: "3",
-    numero: "COT-2026-003",
-    cliente: "Parque Industrial Norte",
-    descripcion: "Nivelación de 2 hectáreas para nave industrial",
-    monto: 5200000,
-    estado: "aprobada",
-    fechaCreacion: "28/12/2025",
-    fechaVencimiento: "20/01/2026",
-    responsable: "Admin",
-    items: 6,
-  },
-  {
-    id: "4",
-    numero: "COT-2026-004",
-    cliente: "Municipalidad de Trelew",
-    descripcion: "Compactación y mejora de suelo",
-    monto: 1750000,
-    estado: "borrador",
-    fechaCreacion: "05/01/2026",
-    fechaVencimiento: "25/01/2026",
-    responsable: "Admin",
-    items: 2,
-  },
-  {
-    id: "5",
-    numero: "COT-2025-089",
-    cliente: "Desarrollos Patagonia",
-    descripcion: "Provisión de tosca para relleno",
-    monto: 340000,
-    estado: "rechazada",
-    fechaCreacion: "15/12/2025",
-    fechaVencimiento: "30/12/2025",
-    responsable: "Admin",
-    items: 1,
-  },
-  {
-    id: "6",
-    numero: "COT-2025-078",
-    cliente: "Consorcio Vial Sur",
-    descripcion: "Movimiento de suelo para camino rural",
-    monto: 980000,
-    estado: "vencida",
-    fechaCreacion: "01/12/2025",
-    fechaVencimiento: "20/12/2025",
-    responsable: "Admin",
-    items: 3,
-  },
-];
-
-const estadoConfig = {
+const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
   borrador: { label: "Borrador", icon: FileText, className: "bg-muted/50 text-muted-foreground border-muted" },
   enviada: { label: "Enviada", icon: Send, className: "status-pending" },
   aprobada: { label: "Aprobada", icon: CheckCircle, className: "status-active" },
@@ -144,17 +68,182 @@ function formatCurrency(value: number): string {
 }
 
 export default function Cotizaciones() {
+  const { cotizaciones, loading, createCotizacion, updateCotizacion, deleteCotizacion } = useCotizaciones();
+  const { clientes } = useClientes();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [formOpen, setFormOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedCot, setSelectedCot] = useState<CotizacionWithRelations | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredCotizaciones = cotizacionesDemo.filter((cot) => {
+  const [formData, setFormData] = useState<CotizacionForm>({
+    numero: "",
+    cliente_id: "",
+    descripcion: "",
+    fecha_creacion: new Date().toISOString().split("T")[0],
+    fecha_vencimiento: "",
+    responsable: "",
+    subtotal: 0,
+    iva: 0,
+    total: 0,
+    estado: "borrador",
+    notas: "",
+  });
+
+  const [items, setItems] = useState<CotizacionItemForm[]>([
+    { descripcion: "", cantidad: 1, unidad: "m³", precio_unitario: 0, subtotal: 0 }
+  ]);
+
+  const filteredCotizaciones = cotizaciones.filter((cot) => {
     const matchesSearch =
       cot.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cot.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cot.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cot.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || cot.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
+
+  const generateNumero = () => {
+    const year = new Date().getFullYear();
+    const count = cotizaciones.length + 1;
+    return `COT-${year}-${count.toString().padStart(3, "0")}`;
+  };
+
+  const calculateTotals = (itemsList: CotizacionItemForm[]) => {
+    const subtotal = itemsList.reduce((sum, item) => sum + item.subtotal, 0);
+    const iva = subtotal * 0.21;
+    const total = subtotal + iva;
+    return { subtotal, iva, total };
+  };
+
+  const handleNew = () => {
+    setIsEditing(false);
+    const vencimiento = new Date();
+    vencimiento.setDate(vencimiento.getDate() + 15);
+    
+    setFormData({
+      numero: generateNumero(),
+      cliente_id: "",
+      descripcion: "",
+      fecha_creacion: new Date().toISOString().split("T")[0],
+      fecha_vencimiento: vencimiento.toISOString().split("T")[0],
+      responsable: "",
+      subtotal: 0,
+      iva: 0,
+      total: 0,
+      estado: "borrador",
+      notas: "",
+    });
+    setItems([{ descripcion: "", cantidad: 1, unidad: "m³", precio_unitario: 0, subtotal: 0 }]);
+    setFormOpen(true);
+  };
+
+  const handleEdit = (cot: CotizacionWithRelations) => {
+    setIsEditing(true);
+    setSelectedCot(cot);
+    setFormData({
+      numero: cot.numero,
+      cliente_id: cot.cliente_id,
+      descripcion: cot.descripcion,
+      fecha_creacion: cot.fecha_creacion,
+      fecha_vencimiento: cot.fecha_vencimiento,
+      responsable: cot.responsable,
+      subtotal: cot.subtotal,
+      iva: cot.iva,
+      total: cot.total,
+      estado: cot.estado,
+      notas: cot.notas || "",
+    });
+    setItems(cot.items?.map(i => ({
+      descripcion: i.descripcion,
+      cantidad: i.cantidad,
+      unidad: i.unidad,
+      precio_unitario: i.precio_unitario,
+      subtotal: i.subtotal,
+    })) || [{ descripcion: "", cantidad: 1, unidad: "m³", precio_unitario: 0, subtotal: 0 }]);
+    setFormOpen(true);
+  };
+
+  const handleView = (cot: CotizacionWithRelations) => {
+    setSelectedCot(cot);
+    setDetailOpen(true);
+  };
+
+  const handleDelete = (cot: CotizacionWithRelations) => {
+    setSelectedCot(cot);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (selectedCot) {
+      await deleteCotizacion(selectedCot.id);
+    }
+    setDeleteOpen(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    const totals = calculateTotals(items);
+    const cotData = {
+      ...formData,
+      ...totals,
+    };
+
+    if (isEditing && selectedCot) {
+      await updateCotizacion(selectedCot.id, cotData);
+    } else {
+      await createCotizacion(cotData, items);
+    }
+    
+    setIsSubmitting(false);
+    setFormOpen(false);
+  };
+
+  const updateStatus = async (cot: CotizacionWithRelations, newStatus: EstadoCotizacion) => {
+    await updateCotizacion(cot.id, { estado: newStatus });
+  };
+
+  const addItem = () => {
+    setItems([...items, { descripcion: "", cantidad: 1, unidad: "m³", precio_unitario: 0, subtotal: 0 }]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length > 1) {
+      const newItems = items.filter((_, i) => i !== index);
+      setItems(newItems);
+      const totals = calculateTotals(newItems);
+      setFormData({ ...formData, ...totals });
+    }
+  };
+
+  const updateItem = (index: number, field: keyof CotizacionItemForm, value: any) => {
+    const newItems = [...items];
+    newItems[index] = { ...newItems[index], [field]: value };
+    
+    if (field === "cantidad" || field === "precio_unitario") {
+      newItems[index].subtotal = newItems[index].cantidad * newItems[index].precio_unitario;
+    }
+    
+    setItems(newItems);
+    const totals = calculateTotals(newItems);
+    setFormData({ ...formData, ...totals });
+  };
+
+  if (loading) {
+    return (
+      <MainLayout title="Cotizaciones" subtitle="Presupuestos y propuestas comerciales">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Cotizaciones" subtitle="Presupuestos y propuestas comerciales">
@@ -177,14 +266,15 @@ export default function Cotizaciones() {
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
               <SelectItem value="todos">Todos</SelectItem>
-              <SelectItem value="borrador">Borrador</SelectItem>
-              <SelectItem value="enviada">Enviadas</SelectItem>
-              <SelectItem value="aprobada">Aprobadas</SelectItem>
-              <SelectItem value="rechazada">Rechazadas</SelectItem>
-              <SelectItem value="vencida">Vencidas</SelectItem>
+              {Object.entries(estadoConfig).map(([key, config]) => (
+                <SelectItem key={key} value={key}>{config.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial">
+          <Button 
+            onClick={handleNew}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Nueva Cotización
           </Button>
@@ -206,7 +296,7 @@ export default function Cotizaciones() {
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-xs font-mono text-primary">{cot.numero}</span>
-                    <h3 className="font-semibold text-foreground mt-1">{cot.cliente}</h3>
+                    <h3 className="font-semibold text-foreground mt-1">{cot.cliente?.nombre || "-"}</h3>
                   </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -215,26 +305,36 @@ export default function Cotizaciones() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem className="text-foreground cursor-pointer">
-                        <FileText className="w-4 h-4 mr-2" />
+                      <DropdownMenuItem onClick={() => handleView(cot)} className="cursor-pointer">
+                        <Eye className="w-4 h-4 mr-2" />
                         Ver detalle
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-foreground cursor-pointer">
-                        <Copy className="w-4 h-4 mr-2" />
-                        Duplicar
+                      <DropdownMenuItem onClick={() => handleEdit(cot)} className="cursor-pointer">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Editar
                       </DropdownMenuItem>
                       {cot.estado === "borrador" && (
-                        <DropdownMenuItem className="text-foreground cursor-pointer">
+                        <DropdownMenuItem onClick={() => updateStatus(cot, "enviada")} className="cursor-pointer">
                           <Send className="w-4 h-4 mr-2" />
                           Enviar
                         </DropdownMenuItem>
                       )}
-                      {cot.estado === "aprobada" && (
-                        <DropdownMenuItem className="text-success cursor-pointer">
-                          <CheckCircle className="w-4 h-4 mr-2" />
-                          Convertir a Obra
-                        </DropdownMenuItem>
+                      {cot.estado === "enviada" && (
+                        <>
+                          <DropdownMenuItem onClick={() => updateStatus(cot, "aprobada")} className="cursor-pointer text-success">
+                            <CheckCircle className="w-4 h-4 mr-2" />
+                            Aprobar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => updateStatus(cot, "rechazada")} className="cursor-pointer text-destructive">
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Rechazar
+                          </DropdownMenuItem>
+                        </>
                       )}
+                      <DropdownMenuItem onClick={() => handleDelete(cot)} className="cursor-pointer text-destructive">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -250,18 +350,18 @@ export default function Cotizaciones() {
                     {config.label}
                   </Badge>
                   <span className="text-lg font-bold text-foreground">
-                    {formatCurrency(cot.monto)}
+                    {formatCurrency(cot.total)}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Creación: {cot.fechaCreacion}
+                    Creación: {cot.fecha_creacion}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Vence: {cot.fechaVencimiento}
+                    Vence: {cot.fecha_vencimiento}
                   </span>
                 </div>
               </CardContent>
@@ -271,7 +371,7 @@ export default function Cotizaciones() {
                     <User className="w-3 h-3" />
                     {cot.responsable}
                   </span>
-                  <span>{cot.items} ítems</span>
+                  <span>{cot.items?.length || 0} ítems</span>
                 </div>
               </CardFooter>
             </Card>
@@ -282,10 +382,10 @@ export default function Cotizaciones() {
       {/* Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
         {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = cotizacionesDemo.filter((c) => c.estado === key).length;
-          const total = cotizacionesDemo
+          const count = cotizaciones.filter((c) => c.estado === key).length;
+          const total = cotizaciones
             .filter((c) => c.estado === key)
-            .reduce((sum, c) => sum + c.monto, 0);
+            .reduce((sum, c) => sum + c.total, 0);
           return (
             <div key={key} className="card-industrial p-4">
               <div className="flex items-center gap-2 mb-2">
@@ -299,6 +399,264 @@ export default function Cotizaciones() {
           );
         })}
       </div>
+
+      {/* Form Dialog */}
+      <FormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        title={isEditing ? "Editar Cotización" : "Nueva Cotización"}
+        size="xl"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="numero">Número *</Label>
+              <Input
+                id="numero"
+                value={formData.numero}
+                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                className="bg-muted border-border font-mono"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente_id">Cliente *</Label>
+              <Select
+                value={formData.cliente_id}
+                onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {clientes.filter(c => c.activo).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="responsable">Responsable *</Label>
+              <Input
+                id="responsable"
+                value={formData.responsable}
+                onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha_creacion">Fecha Creación *</Label>
+              <Input
+                id="fecha_creacion"
+                type="date"
+                value={formData.fecha_creacion}
+                onChange={(e) => setFormData({ ...formData, fecha_creacion: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha_vencimiento">Fecha Vencimiento *</Label>
+              <Input
+                id="fecha_vencimiento"
+                type="date"
+                value={formData.fecha_vencimiento}
+                onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado</Label>
+              <Select
+                value={formData.estado}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoCotizacion })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {Object.entries(estadoConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-3 space-y-2">
+              <Label htmlFor="descripcion">Descripción *</Label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                className="bg-muted border-border"
+                rows={2}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Items */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Ítems</Label>
+              <Button type="button" variant="outline" size="sm" onClick={addItem}>
+                <Plus className="w-4 h-4 mr-1" />
+                Agregar Item
+              </Button>
+            </div>
+            {items.map((item, index) => (
+              <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                <div className="col-span-5 space-y-1">
+                  <Label className="text-xs">Descripción</Label>
+                  <Input
+                    value={item.descripcion}
+                    onChange={(e) => updateItem(index, "descripcion", e.target.value)}
+                    placeholder="Descripción del servicio"
+                    className="bg-muted border-border"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs">Cantidad</Label>
+                  <Input
+                    type="number"
+                    value={item.cantidad}
+                    onChange={(e) => updateItem(index, "cantidad", parseFloat(e.target.value) || 0)}
+                    className="bg-muted border-border"
+                  />
+                </div>
+                <div className="col-span-1 space-y-1">
+                  <Label className="text-xs">Unidad</Label>
+                  <Input
+                    value={item.unidad}
+                    onChange={(e) => updateItem(index, "unidad", e.target.value)}
+                    className="bg-muted border-border"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <Label className="text-xs">Precio Unit.</Label>
+                  <Input
+                    type="number"
+                    value={item.precio_unitario}
+                    onChange={(e) => updateItem(index, "precio_unitario", parseFloat(e.target.value) || 0)}
+                    className="bg-muted border-border"
+                  />
+                </div>
+                <div className="col-span-1 space-y-1">
+                  <Label className="text-xs">Subtotal</Label>
+                  <Input
+                    value={formatCurrency(item.subtotal)}
+                    className="bg-muted border-border font-mono"
+                    disabled
+                  />
+                </div>
+                <div className="col-span-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => removeItem(index)}
+                    disabled={items.length === 1}
+                  >
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Totals */}
+          <div className="flex justify-end">
+            <div className="w-64 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">IVA (21%):</span>
+                <span className="font-mono">{formatCurrency(formData.iva)}</span>
+              </div>
+              <div className="flex justify-between text-lg font-bold border-t border-border pt-2">
+                <span>Total:</span>
+                <span className="font-mono">{formatCurrency(formData.total)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notas">Notas</Label>
+            <Textarea
+              id="notas"
+              value={formData.notas}
+              onChange={(e) => setFormData({ ...formData, notas: e.target.value })}
+              className="bg-muted border-border"
+              rows={2}
+              placeholder="Notas adicionales para el cliente..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {isEditing ? "Guardar Cambios" : "Crear Cotización"}
+            </Button>
+          </div>
+        </form>
+      </FormDialog>
+
+      {/* Detail Dialog */}
+      <DetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={`Cotización ${selectedCot?.numero}`}
+      >
+        {selectedCot && (
+          <>
+            <DetailSection title="Información General">
+              <DetailRow label="Número" value={selectedCot.numero} />
+              <DetailRow label="Cliente" value={selectedCot.cliente?.nombre} />
+              <DetailRow label="Responsable" value={selectedCot.responsable} />
+              <DetailRow
+                label="Estado"
+                value={
+                  <Badge className={cn("status-badge", estadoConfig[selectedCot.estado]?.className)}>
+                    {estadoConfig[selectedCot.estado]?.label}
+                  </Badge>
+                }
+              />
+            </DetailSection>
+            <DetailSection title="Fechas">
+              <DetailRow label="Creación" value={selectedCot.fecha_creacion} />
+              <DetailRow label="Vencimiento" value={selectedCot.fecha_vencimiento} />
+            </DetailSection>
+            <DetailSection title="Descripción">
+              <p className="text-muted-foreground">{selectedCot.descripcion}</p>
+            </DetailSection>
+            <DetailSection title="Totales">
+              <DetailRow label="Subtotal" value={formatCurrency(selectedCot.subtotal)} />
+              <DetailRow label="IVA (21%)" value={formatCurrency(selectedCot.iva)} />
+              <DetailRow label="Total" value={formatCurrency(selectedCot.total)} />
+            </DetailSection>
+            {selectedCot.notas && (
+              <DetailSection title="Notas">
+                <p className="text-muted-foreground">{selectedCot.notas}</p>
+              </DetailSection>
+            )}
+          </>
+        )}
+      </DetailDialog>
+
+      {/* Delete Dialog */}
+      <DeleteConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={confirmDelete}
+        title="Eliminar Cotización"
+        description={`¿Estás seguro de eliminar la cotización ${selectedCot?.numero}? Esta acción no se puede deshacer.`}
+      />
     </MainLayout>
   );
 }

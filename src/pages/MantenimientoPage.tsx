@@ -27,12 +27,12 @@ import {
   Edit,
   Trash2,
   Filter,
-  Truck,
   DollarSign,
   Clock,
   AlertTriangle,
   CheckCircle,
   Play,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,9 +44,8 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import type { Mantenimiento as MantenimientoType } from "@/types";
-import { mantenimientosData as initialData, maquinariasData } from "@/data/mockData";
-import { toast } from "sonner";
+import { useMantenimientos, MantenimientoWithRelations, MantenimientoForm, TipoMantenimiento, EstadoMantenimiento } from "@/hooks/useMantenimientos";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { cn } from "@/lib/utils";
 
 const tipoConfig: Record<string, { label: string; className: string }> = {
@@ -70,35 +69,37 @@ function formatCurrency(value: number): string {
 }
 
 export default function MantenimientoPage() {
-  const [mantenimientos, setMantenimientos] = useState<MantenimientoType[]>(initialData);
+  const { mantenimientos, loading, createMantenimiento, updateMantenimiento, deleteMantenimiento } = useMantenimientos();
+  const { maquinarias } = useMaquinarias();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedMant, setSelectedMant] = useState<MantenimientoType | null>(null);
+  const [selectedMant, setSelectedMant] = useState<MantenimientoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<MantenimientoType>>({
+  const [formData, setFormData] = useState<MantenimientoForm>({
     fecha: new Date().toISOString().split("T")[0],
-    maquinariaId: "",
-    maquinaria: "",
+    maquinaria_id: "",
     tipo: "preventivo",
     descripcion: "",
     repuestos: "",
-    costoRepuestos: 0,
-    costoManoObra: 0,
-    costoTotal: 0,
-    horasMaquina: 0,
+    costo_repuestos: 0,
+    costo_mano_obra: 0,
+    costo_total: 0,
+    horas_maquina: 0,
     tecnico: "",
     estado: "programado",
-    proximoMantenimiento: "",
+    proximo_mantenimiento: "",
     observaciones: "",
   });
 
   const filteredMantenimientos = mantenimientos.filter((m) => {
     const matchesSearch =
-      m.maquinaria.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      m.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || m.estado === estadoFilter;
     return matchesSearch && matchesEstado;
@@ -108,81 +109,93 @@ export default function MantenimientoPage() {
     setIsEditing(false);
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
-      maquinariaId: "",
-      maquinaria: "",
+      maquinaria_id: "",
       tipo: "preventivo",
       descripcion: "",
       repuestos: "",
-      costoRepuestos: 0,
-      costoManoObra: 0,
-      costoTotal: 0,
-      horasMaquina: 0,
+      costo_repuestos: 0,
+      costo_mano_obra: 0,
+      costo_total: 0,
+      horas_maquina: 0,
       tecnico: "",
       estado: "programado",
-      proximoMantenimiento: "",
+      proximo_mantenimiento: "",
       observaciones: "",
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (mant: MantenimientoType) => {
+  const handleEdit = (mant: MantenimientoWithRelations) => {
     setIsEditing(true);
     setSelectedMant(mant);
-    setFormData(mant);
+    setFormData({
+      fecha: mant.fecha,
+      maquinaria_id: mant.maquinaria_id,
+      tipo: mant.tipo,
+      descripcion: mant.descripcion,
+      repuestos: mant.repuestos || "",
+      costo_repuestos: mant.costo_repuestos,
+      costo_mano_obra: mant.costo_mano_obra,
+      costo_total: mant.costo_total,
+      horas_maquina: mant.horas_maquina,
+      tecnico: mant.tecnico,
+      estado: mant.estado,
+      proximo_mantenimiento: mant.proximo_mantenimiento || "",
+      observaciones: mant.observaciones || "",
+    });
     setFormOpen(true);
   };
 
-  const handleView = (mant: MantenimientoType) => {
+  const handleView = (mant: MantenimientoWithRelations) => {
     setSelectedMant(mant);
     setDetailOpen(true);
   };
 
-  const handleDelete = (mant: MantenimientoType) => {
+  const handleDelete = (mant: MantenimientoWithRelations) => {
     setSelectedMant(mant);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedMant) {
-      setMantenimientos(mantenimientos.filter((m) => m.id !== selectedMant.id));
-      toast.success("Mantenimiento eliminado correctamente");
+      await deleteMantenimiento(selectedMant.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedMaq = maquinariasData.find(m => m.id === formData.maquinariaId);
+    setIsSubmitting(true);
+    
     const mantData = {
       ...formData,
-      maquinaria: selectedMaq?.nombre || "",
-      costoTotal: (formData.costoRepuestos || 0) + (formData.costoManoObra || 0),
+      costo_total: formData.costo_repuestos + formData.costo_mano_obra,
+      proximo_mantenimiento: formData.proximo_mantenimiento || undefined,
     };
 
     if (isEditing && selectedMant) {
-      setMantenimientos(mantenimientos.map((m) =>
-        m.id === selectedMant.id ? { ...m, ...mantData } : m
-      ));
-      toast.success("Mantenimiento actualizado correctamente");
+      await updateMantenimiento(selectedMant.id, mantData);
     } else {
-      const newMant: MantenimientoType = {
-        ...mantData,
-        id: Date.now().toString(),
-      } as MantenimientoType;
-      setMantenimientos([...mantenimientos, newMant]);
-      toast.success("Mantenimiento registrado correctamente");
+      await createMantenimiento(mantData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
 
-  const updateStatus = (mant: MantenimientoType, newStatus: MantenimientoType["estado"]) => {
-    setMantenimientos(mantenimientos.map((m) =>
-      m.id === mant.id ? { ...m, estado: newStatus } : m
-    ));
-    toast.success(`Mantenimiento marcado como ${estadoConfig[newStatus].label}`);
+  const updateStatus = async (mant: MantenimientoWithRelations, newStatus: EstadoMantenimiento) => {
+    await updateMantenimiento(mant.id, { estado: newStatus });
   };
 
-  const totalCostos = mantenimientos.reduce((sum, m) => sum + m.costoTotal, 0);
+  if (loading) {
+    return (
+      <MainLayout title="Mantenimiento" subtitle="Gestión de mantenimiento de equipos">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Mantenimiento" subtitle="Gestión de mantenimiento de equipos">
@@ -239,7 +252,7 @@ export default function MantenimientoPage() {
                       <Wrench className="w-6 h-6 text-warning" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-foreground">{mant.maquinaria}</h3>
+                      <h3 className="font-semibold text-foreground">{mant.maquinaria?.nombre || "-"}</h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         {mant.fecha}
@@ -299,11 +312,11 @@ export default function MantenimientoPage() {
                 <div className="flex items-center justify-between pt-2 border-t border-border">
                   <span className="text-xs text-muted-foreground flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    {mant.horasMaquina.toLocaleString()} h
+                    {mant.horas_maquina.toLocaleString()} h
                   </span>
                   <span className="font-bold text-foreground flex items-center gap-1">
                     <DollarSign className="w-4 h-4 text-primary" />
-                    {formatCurrency(mant.costoTotal)}
+                    {formatCurrency(mant.costo_total)}
                   </span>
                 </div>
 
@@ -364,16 +377,16 @@ export default function MantenimientoPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maquinariaId">Maquinaria *</Label>
+              <Label htmlFor="maquinaria_id">Maquinaria *</Label>
               <Select
-                value={formData.maquinariaId}
-                onValueChange={(value) => setFormData({ ...formData, maquinariaId: value })}
+                value={formData.maquinaria_id}
+                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {maquinariasData.map((m) => (
+                  {maquinarias.map((m) => (
                     <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
                   ))}
                 </SelectContent>
@@ -383,7 +396,7 @@ export default function MantenimientoPage() {
               <Label htmlFor="tipo">Tipo *</Label>
               <Select
                 value={formData.tipo}
-                onValueChange={(value) => setFormData({ ...formData, tipo: value as MantenimientoType["tipo"] })}
+                onValueChange={(value) => setFormData({ ...formData, tipo: value as TipoMantenimiento })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -399,7 +412,7 @@ export default function MantenimientoPage() {
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={formData.estado}
-                onValueChange={(value) => setFormData({ ...formData, estado: value as MantenimientoType["estado"] })}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoMantenimiento })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -412,12 +425,12 @@ export default function MantenimientoPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horasMaquina">Horas Máquina *</Label>
+              <Label htmlFor="horas_maquina">Horas Máquina *</Label>
               <Input
-                id="horasMaquina"
+                id="horas_maquina"
                 type="number"
-                value={formData.horasMaquina}
-                onChange={(e) => setFormData({ ...formData, horasMaquina: parseFloat(e.target.value) || 0 })}
+                value={formData.horas_maquina}
+                onChange={(e) => setFormData({ ...formData, horas_maquina: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
                 required
               />
@@ -451,44 +464,45 @@ export default function MantenimientoPage() {
                 onChange={(e) => setFormData({ ...formData, repuestos: e.target.value })}
                 className="bg-muted border-border"
                 rows={2}
+                placeholder="Lista de repuestos utilizados..."
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="costoRepuestos">Costo Repuestos</Label>
+              <Label htmlFor="costo_repuestos">Costo Repuestos</Label>
               <Input
-                id="costoRepuestos"
+                id="costo_repuestos"
                 type="number"
-                value={formData.costoRepuestos}
-                onChange={(e) => setFormData({ ...formData, costoRepuestos: parseFloat(e.target.value) || 0 })}
+                value={formData.costo_repuestos}
+                onChange={(e) => setFormData({ ...formData, costo_repuestos: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="costoManoObra">Costo Mano de Obra</Label>
+              <Label htmlFor="costo_mano_obra">Costo Mano Obra</Label>
               <Input
-                id="costoManoObra"
+                id="costo_mano_obra"
                 type="number"
-                value={formData.costoManoObra}
-                onChange={(e) => setFormData({ ...formData, costoManoObra: parseFloat(e.target.value) || 0 })}
+                value={formData.costo_mano_obra}
+                onChange={(e) => setFormData({ ...formData, costo_mano_obra: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="costoTotal">Costo Total</Label>
+              <Label htmlFor="costo_total">Costo Total</Label>
               <Input
-                id="costoTotal"
-                value={formatCurrency((formData.costoRepuestos || 0) + (formData.costoManoObra || 0))}
+                id="costo_total"
+                value={formatCurrency(formData.costo_repuestos + formData.costo_mano_obra)}
                 className="bg-muted border-border font-mono"
-                readOnly
+                disabled
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="proximoMantenimiento">Próximo Mantenimiento</Label>
+              <Label htmlFor="proximo_mantenimiento">Próximo Mantenimiento</Label>
               <Input
-                id="proximoMantenimiento"
+                id="proximo_mantenimiento"
                 type="date"
-                value={formData.proximoMantenimiento}
-                onChange={(e) => setFormData({ ...formData, proximoMantenimiento: e.target.value })}
+                value={formData.proximo_mantenimiento}
+                onChange={(e) => setFormData({ ...formData, proximo_mantenimiento: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
@@ -507,7 +521,8 @@ export default function MantenimientoPage() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Guardar Cambios" : "Registrar Mantenimiento"}
             </Button>
           </div>
@@ -518,64 +533,54 @@ export default function MantenimientoPage() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Mantenimiento - ${selectedMant?.maquinaria}`}
-        size="lg"
+        title="Detalle de Mantenimiento"
       >
         {selectedMant && (
-          <div className="space-y-4">
+          <>
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={selectedMant.fecha} />
-              <DetailRow label="Maquinaria" value={selectedMant.maquinaria} />
+              <DetailRow label="Maquinaria" value={selectedMant.maquinaria?.nombre} />
               <DetailRow
                 label="Tipo"
-                value={
-                  <Badge className={cn("status-badge", tipoConfig[selectedMant.tipo].className)}>
-                    {tipoConfig[selectedMant.tipo].label}
-                  </Badge>
-                }
+                value={<Badge className={cn("status-badge", tipoConfig[selectedMant.tipo]?.className)}>{tipoConfig[selectedMant.tipo]?.label}</Badge>}
               />
               <DetailRow
                 label="Estado"
-                value={
-                  <Badge className={cn("status-badge", estadoConfig[selectedMant.estado].className)}>
-                    {estadoConfig[selectedMant.estado].label}
-                  </Badge>
-                }
+                value={<Badge className={cn("status-badge", estadoConfig[selectedMant.estado]?.className)}>{estadoConfig[selectedMant.estado]?.label}</Badge>}
               />
-              <DetailRow label="Horas Máquina" value={`${selectedMant.horasMaquina.toLocaleString()} h`} />
             </DetailSection>
             <DetailSection title="Trabajo Realizado">
               <DetailRow label="Descripción" value={selectedMant.descripcion} />
-              <DetailRow label="Técnico/Taller" value={selectedMant.tecnico} />
-              <DetailRow label="Repuestos" value={selectedMant.repuestos || "-"} />
+              <DetailRow label="Técnico" value={selectedMant.tecnico} />
+              <DetailRow label="Horas Máquina" value={`${selectedMant.horas_maquina} h`} />
+              {selectedMant.repuestos && <DetailRow label="Repuestos" value={selectedMant.repuestos} />}
             </DetailSection>
             <DetailSection title="Costos">
-              <DetailRow label="Costo Repuestos" value={formatCurrency(selectedMant.costoRepuestos)} />
-              <DetailRow label="Costo Mano de Obra" value={formatCurrency(selectedMant.costoManoObra)} />
-              <DetailRow
-                label="Costo Total"
-                value={<span className="font-bold text-primary">{formatCurrency(selectedMant.costoTotal)}</span>}
-              />
+              <DetailRow label="Repuestos" value={formatCurrency(selectedMant.costo_repuestos)} />
+              <DetailRow label="Mano de Obra" value={formatCurrency(selectedMant.costo_mano_obra)} />
+              <DetailRow label="Total" value={formatCurrency(selectedMant.costo_total)} />
             </DetailSection>
-            {selectedMant.proximoMantenimiento && (
-              <DetailSection title="Programación">
-                <DetailRow label="Próximo Mantenimiento" value={selectedMant.proximoMantenimiento} />
+            {selectedMant.proximo_mantenimiento && (
+              <DetailSection title="Próximo Mantenimiento">
+                <DetailRow label="Fecha" value={selectedMant.proximo_mantenimiento} />
               </DetailSection>
             )}
             {selectedMant.observaciones && (
               <DetailSection title="Observaciones">
-                <p className="text-sm text-muted-foreground">{selectedMant.observaciones}</p>
+                <p className="text-muted-foreground">{selectedMant.observaciones}</p>
               </DetailSection>
             )}
-          </div>
+          </>
         )}
       </DetailDialog>
 
+      {/* Delete Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el registro de mantenimiento.`}
+        title="Eliminar Mantenimiento"
+        description={`¿Estás seguro de eliminar este registro de mantenimiento? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

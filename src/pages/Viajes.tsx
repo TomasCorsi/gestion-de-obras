@@ -23,20 +23,18 @@ import {
 import {
   Plus,
   Search,
-  Route,
   MapPin,
-  Clock,
   MoreVertical,
   Eye,
   Edit,
   Trash2,
   Filter,
-  Truck,
   User,
   Calendar,
   Play,
   CheckCircle,
   XCircle,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,9 +46,10 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { Viaje } from "@/types";
-import { viajesData as initialData, obrasData, personalData, maquinariasData } from "@/data/mockData";
-import { toast } from "sonner";
+import { useViajes, ViajeWithRelations, ViajeForm, EstadoViaje } from "@/hooks/useViajes";
+import { useObras } from "@/hooks/useObras";
+import { usePersonal } from "@/hooks/usePersonal";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { cn } from "@/lib/utils";
 
 const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
@@ -61,41 +60,44 @@ const estadoConfig: Record<string, { label: string; icon: any; className: string
 };
 
 export default function Viajes() {
-  const [viajes, setViajes] = useState<Viaje[]>(initialData);
+  const { viajes, loading, createViaje, updateViaje, deleteViaje } = useViajes();
+  const { obras } = useObras();
+  const { personal } = usePersonal();
+  const { maquinarias } = useMaquinarias();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedViaje, setSelectedViaje] = useState<Viaje | null>(null);
+  const [selectedViaje, setSelectedViaje] = useState<ViajeWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const choferes = personalData.filter(p => p.rol === "chofer" && p.activo);
-  const camiones = maquinariasData.filter(m => m.tipo === "camion_articulado");
+  const choferes = personal.filter(p => p.rol === "chofer" && p.activo);
+  const camiones = maquinarias.filter(m => m.tipo === "camion_articulado");
+  const obrasActivas = obras.filter(o => o.estado === "activa");
 
-  const [formData, setFormData] = useState<Partial<Viaje>>({
+  const [formData, setFormData] = useState<ViajeForm>({
     fecha: new Date().toISOString().split("T")[0],
-    obraId: "",
-    obra: "",
-    choferId: "",
-    chofer: "",
-    camionId: "",
-    camion: "",
+    obra_id: "",
+    chofer_id: "",
+    camion_id: "",
     origen: "",
     destino: "",
     material: "",
     volumen: 0,
     estado: "programado",
-    horaInicio: "",
-    horaFin: "",
-    kmRecorridos: 0,
+    hora_inicio: "",
+    hora_fin: "",
+    km_recorridos: 0,
     observaciones: "",
   });
 
   const filteredViajes = viajes.filter((v) => {
     const matchesSearch =
-      v.obra.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.chofer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      v.chofer?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       v.material.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || v.estado === estadoFilter;
     return matchesSearch && matchesEstado;
@@ -105,81 +107,87 @@ export default function Viajes() {
     setIsEditing(false);
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
-      obraId: "",
-      obra: "",
-      choferId: "",
-      chofer: "",
-      camionId: "",
-      camion: "",
+      obra_id: "",
+      chofer_id: "",
+      camion_id: "",
       origen: "",
       destino: "",
       material: "Tosca",
       volumen: 18,
       estado: "programado",
-      horaInicio: "",
-      horaFin: "",
-      kmRecorridos: 0,
+      hora_inicio: "",
+      hora_fin: "",
+      km_recorridos: 0,
       observaciones: "",
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (viaje: Viaje) => {
+  const handleEdit = (viaje: ViajeWithRelations) => {
     setIsEditing(true);
     setSelectedViaje(viaje);
-    setFormData(viaje);
+    setFormData({
+      fecha: viaje.fecha,
+      obra_id: viaje.obra_id,
+      chofer_id: viaje.chofer_id,
+      camion_id: viaje.camion_id,
+      origen: viaje.origen,
+      destino: viaje.destino,
+      material: viaje.material,
+      volumen: viaje.volumen,
+      estado: viaje.estado,
+      hora_inicio: viaje.hora_inicio || "",
+      hora_fin: viaje.hora_fin || "",
+      km_recorridos: viaje.km_recorridos || 0,
+      observaciones: viaje.observaciones || "",
+    });
     setFormOpen(true);
   };
 
-  const handleView = (viaje: Viaje) => {
+  const handleView = (viaje: ViajeWithRelations) => {
     setSelectedViaje(viaje);
     setDetailOpen(true);
   };
 
-  const handleDelete = (viaje: Viaje) => {
+  const handleDelete = (viaje: ViajeWithRelations) => {
     setSelectedViaje(viaje);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedViaje) {
-      setViajes(viajes.filter((v) => v.id !== selectedViaje.id));
-      toast.success("Viaje eliminado correctamente");
+      await deleteViaje(selectedViaje.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const selectedObra = obrasData.find(o => o.id === formData.obraId);
-    const selectedChofer = choferes.find(c => c.id === formData.choferId);
-    const selectedCamion = camiones.find(c => c.id === formData.camionId);
+    setIsSubmitting(true);
     
-    const viajeData = {
-      ...formData,
-      obra: selectedObra?.nombre || "",
-      chofer: selectedChofer ? `${selectedChofer.nombre} ${selectedChofer.apellido}` : "",
-      camion: selectedCamion?.nombre || "",
-    };
-
     if (isEditing && selectedViaje) {
-      setViajes(viajes.map((v) => v.id === selectedViaje.id ? { ...v, ...viajeData } : v));
-      toast.success("Viaje actualizado correctamente");
+      await updateViaje(selectedViaje.id, formData);
     } else {
-      const newViaje: Viaje = {
-        ...viajeData,
-        id: Date.now().toString(),
-      } as Viaje;
-      setViajes([...viajes, newViaje]);
-      toast.success("Viaje creado correctamente");
+      await createViaje(formData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
 
-  const updateStatus = (viaje: Viaje, newStatus: Viaje["estado"]) => {
-    setViajes(viajes.map((v) => v.id === viaje.id ? { ...v, estado: newStatus } : v));
-    toast.success(`Viaje marcado como ${estadoConfig[newStatus].label}`);
+  const updateStatus = async (viaje: ViajeWithRelations, newStatus: EstadoViaje) => {
+    await updateViaje(viaje.id, { estado: newStatus });
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Viajes" subtitle="Registro de viajes y transporte">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Viajes" subtitle="Registro de viajes y transporte">
@@ -247,11 +255,13 @@ export default function Viajes() {
                       {viaje.fecha}
                     </span>
                   </TableCell>
-                  <TableCell className="font-medium text-foreground">{viaje.obra}</TableCell>
+                  <TableCell className="font-medium text-foreground">
+                    {viaje.obra?.nombre || "-"}
+                  </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <User className="w-3 h-3" />
-                      {viaje.chofer}
+                      {viaje.chofer ? `${viaje.chofer.nombre} ${viaje.chofer.apellido}` : "-"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -352,7 +362,7 @@ export default function Viajes() {
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={formData.estado}
-                onValueChange={(value) => setFormData({ ...formData, estado: value as Viaje["estado"] })}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoViaje })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue />
@@ -365,26 +375,26 @@ export default function Viajes() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="obraId">Obra *</Label>
+              <Label htmlFor="obra_id">Obra *</Label>
               <Select
-                value={formData.obraId}
-                onValueChange={(value) => setFormData({ ...formData, obraId: value })}
+                value={formData.obra_id}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {obrasData.filter(o => o.estado === "activa").map((obra) => (
+                  {obrasActivas.map((obra) => (
                     <SelectItem key={obra.id} value={obra.id}>{obra.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="choferId">Chofer *</Label>
+              <Label htmlFor="chofer_id">Chofer *</Label>
               <Select
-                value={formData.choferId}
-                onValueChange={(value) => setFormData({ ...formData, choferId: value })}
+                value={formData.chofer_id}
+                onValueChange={(value) => setFormData({ ...formData, chofer_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar chofer" />
@@ -397,10 +407,10 @@ export default function Viajes() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="camionId">Camión *</Label>
+              <Label htmlFor="camion_id">Camión *</Label>
               <Select
-                value={formData.camionId}
-                onValueChange={(value) => setFormData({ ...formData, camionId: value })}
+                value={formData.camion_id}
+                onValueChange={(value) => setFormData({ ...formData, camion_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar camión" />
@@ -455,32 +465,32 @@ export default function Viajes() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="kmRecorridos">Km Recorridos</Label>
+              <Label htmlFor="km_recorridos">Km Recorridos</Label>
               <Input
-                id="kmRecorridos"
+                id="km_recorridos"
                 type="number"
-                value={formData.kmRecorridos}
-                onChange={(e) => setFormData({ ...formData, kmRecorridos: parseFloat(e.target.value) || 0 })}
+                value={formData.km_recorridos}
+                onChange={(e) => setFormData({ ...formData, km_recorridos: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horaInicio">Hora Inicio</Label>
+              <Label htmlFor="hora_inicio">Hora Inicio</Label>
               <Input
-                id="horaInicio"
+                id="hora_inicio"
                 type="time"
-                value={formData.horaInicio}
-                onChange={(e) => setFormData({ ...formData, horaInicio: e.target.value })}
+                value={formData.hora_inicio}
+                onChange={(e) => setFormData({ ...formData, hora_inicio: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horaFin">Hora Fin</Label>
+              <Label htmlFor="hora_fin">Hora Fin</Label>
               <Input
-                id="horaFin"
+                id="hora_fin"
                 type="time"
-                value={formData.horaFin}
-                onChange={(e) => setFormData({ ...formData, horaFin: e.target.value })}
+                value={formData.hora_fin}
+                onChange={(e) => setFormData({ ...formData, hora_fin: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
@@ -499,7 +509,8 @@ export default function Viajes() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isEditing ? "Guardar Cambios" : "Crear Viaje"}
             </Button>
           </div>
@@ -510,51 +521,56 @@ export default function Viajes() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Viaje - ${selectedViaje?.fecha}`}
+        title={`Viaje - ${selectedViaje?.obra?.nombre || ""}`}
       >
         {selectedViaje && (
-          <div className="space-y-4">
+          <>
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={selectedViaje.fecha} />
+              <DetailRow label="Obra" value={selectedViaje.obra?.nombre} />
               <DetailRow
                 label="Estado"
                 value={
-                  <Badge className={cn("status-badge", estadoConfig[selectedViaje.estado].className)}>
-                    {estadoConfig[selectedViaje.estado].label}
+                  <Badge className={cn("status-badge", estadoConfig[selectedViaje.estado]?.className)}>
+                    {estadoConfig[selectedViaje.estado]?.label}
                   </Badge>
                 }
               />
-              <DetailRow label="Obra" value={selectedViaje.obra} />
             </DetailSection>
             <DetailSection title="Transporte">
-              <DetailRow label="Chofer" value={selectedViaje.chofer} />
-              <DetailRow label="Camión" value={selectedViaje.camion} />
-              <DetailRow label="Material" value={selectedViaje.material} />
-              <DetailRow label="Volumen" value={`${selectedViaje.volumen} m³`} />
-            </DetailSection>
-            <DetailSection title="Ruta">
+              <DetailRow 
+                label="Chofer" 
+                value={selectedViaje.chofer ? `${selectedViaje.chofer.nombre} ${selectedViaje.chofer.apellido}` : "-"} 
+              />
+              <DetailRow label="Camión" value={selectedViaje.camion?.nombre} />
               <DetailRow label="Origen" value={selectedViaje.origen} />
               <DetailRow label="Destino" value={selectedViaje.destino} />
-              <DetailRow label="Km Recorridos" value={selectedViaje.kmRecorridos ? `${selectedViaje.kmRecorridos} km` : "-"} />
             </DetailSection>
-            <DetailSection title="Horarios">
-              <DetailRow label="Hora Inicio" value={selectedViaje.horaInicio || "-"} />
-              <DetailRow label="Hora Fin" value={selectedViaje.horaFin || "-"} />
+            <DetailSection title="Carga">
+              <DetailRow label="Material" value={selectedViaje.material} />
+              <DetailRow label="Volumen" value={`${selectedViaje.volumen} m³`} />
+              <DetailRow label="Km Recorridos" value={selectedViaje.km_recorridos ? `${selectedViaje.km_recorridos} km` : "-"} />
+            </DetailSection>
+            <DetailSection title="Tiempos">
+              <DetailRow label="Hora Inicio" value={selectedViaje.hora_inicio || "-"} />
+              <DetailRow label="Hora Fin" value={selectedViaje.hora_fin || "-"} />
             </DetailSection>
             {selectedViaje.observaciones && (
               <DetailSection title="Observaciones">
-                <p className="text-sm text-muted-foreground">{selectedViaje.observaciones}</p>
+                <p className="text-muted-foreground">{selectedViaje.observaciones}</p>
               </DetailSection>
             )}
-          </div>
+          </>
         )}
       </DetailDialog>
 
+      {/* Delete Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el viaje del ${selectedViaje?.fecha}.`}
+        title="Eliminar Viaje"
+        description={`¿Estás seguro de eliminar el viaje a ${selectedViaje?.destino}? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );
