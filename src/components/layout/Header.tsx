@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { MobileSidebar } from "./Sidebar";
 
 interface HeaderProps {
   title: string;
@@ -19,19 +20,22 @@ interface HeaderProps {
 
 export function Header({ title, subtitle }: HeaderProps) {
   return (
-    <header className="h-16 bg-card border-b border-border px-6 flex items-center justify-between">
-      {/* Title */}
-      <div className="flex flex-col">
-        <h1 className="text-xl font-semibold text-foreground">{title}</h1>
-        {subtitle && (
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
-        )}
+    <header className="h-16 bg-card border-b border-border px-4 md:px-6 flex items-center justify-between">
+      {/* Mobile Menu + Title */}
+      <div className="flex items-center gap-3">
+        <MobileSidebar />
+        <div className="flex flex-col">
+          <h1 className="text-lg md:text-xl font-semibold text-foreground line-clamp-1">{title}</h1>
+          {subtitle && (
+            <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">{subtitle}</p>
+          )}
+        </div>
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-4">
-        {/* Search */}
-        <div className="relative hidden md:block">
+      <div className="flex items-center gap-2 md:gap-4">
+        {/* Search - Desktop only */}
+        <div className="relative hidden lg:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar..."
