@@ -27,7 +27,6 @@ import { Plus, Search, Eye, Pencil, Trash2, Calendar, Users, Clock, Loader2 } fr
 import { usePresentismo, RegistroHHWithRelations, RegistroHHForm, EstadoPresentismo } from "@/hooks/usePresentismo";
 import { useObras } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
-import { useClientes } from "@/hooks/useClientes";
 
 const estadoLabels: Record<string, string> = {
   presente: "Presente",
@@ -49,7 +48,6 @@ export default function Presentismo() {
   const { registros, loading, createRegistro, updateRegistro, deleteRegistro } = usePresentismo();
   const { obras } = useObras();
   const { personal } = usePersonal();
-  const { clientes } = useClientes();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [fechaFilter, setFechaFilter] = useState(new Date().toISOString().split("T")[0]);
@@ -67,7 +65,6 @@ export default function Presentismo() {
     fecha: fechaFilter,
     persona_id: "",
     obra_id: "",
-    cliente_id: "",
     capataz_id: "",
     hora_entrada: "07:00",
     hora_salida: "15:00",
@@ -103,10 +100,7 @@ export default function Presentismo() {
   const totalHH = registrosPorFecha.reduce((acc, r) => acc + r.horas_totales, 0);
   const totalHHExtra = registrosPorFecha.reduce((acc, r) => acc + r.horas_extra, 0);
 
-  // Filtered obras based on cliente
-  const filteredObras = formData.cliente_id 
-    ? obras.filter(o => o.cliente_id === formData.cliente_id && o.estado === "activa")
-    : obras.filter(o => o.estado === "activa");
+  const activeObras = obras.filter(o => o.estado === "activa");
 
   // Calculate hours
   const calcularHoras = (horaEntrada: string, horaSalida: string) => {
@@ -133,7 +127,6 @@ export default function Presentismo() {
       fecha: fechaFilter,
       persona_id: "",
       obra_id: "",
-      cliente_id: "",
       capataz_id: "",
       hora_entrada: "07:00",
       hora_salida: "15:00",
@@ -153,7 +146,6 @@ export default function Presentismo() {
       fecha: registro.fecha,
       persona_id: registro.persona_id,
       obra_id: registro.obra_id,
-      cliente_id: registro.cliente_id,
       capataz_id: registro.capataz_id,
       hora_entrada: registro.hora_entrada,
       hora_salida: registro.hora_salida,
@@ -285,7 +277,7 @@ export default function Presentismo() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas las obras</SelectItem>
-              {obras.filter(o => o.estado === "activa").map((obra) => (
+              {activeObras.map((obra) => (
                 <SelectItem key={obra.id} value={obra.id}>{obra.nombre}</SelectItem>
               ))}
             </SelectContent>
@@ -312,7 +304,6 @@ export default function Presentismo() {
               <TableRow className="border-border hover:bg-transparent">
                 <TableHead>Persona</TableHead>
                 <TableHead>Obra</TableHead>
-                <TableHead>Cliente</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Entrada</TableHead>
                 <TableHead>Salida</TableHead>
@@ -325,7 +316,7 @@ export default function Presentismo() {
             <TableBody>
               {filteredRegistros.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No hay registros para esta fecha
                   </TableCell>
                 </TableRow>
@@ -336,7 +327,6 @@ export default function Presentismo() {
                       {reg.persona ? `${reg.persona.nombre} ${reg.persona.apellido}` : "-"}
                     </TableCell>
                     <TableCell>{reg.obra?.nombre || "-"}</TableCell>
-                    <TableCell className="text-muted-foreground">{reg.cliente?.nombre || "-"}</TableCell>
                     <TableCell>
                       <Badge className={estadoColors[reg.estado]}>
                         {estadoLabels[reg.estado]}
@@ -417,20 +407,6 @@ export default function Presentismo() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Cliente</Label>
-              <Select
-                value={formData.cliente_id}
-                onValueChange={(v) => setFormData({ ...formData, cliente_id: v, obra_id: "" })}
-              >
-                <SelectTrigger><SelectValue placeholder="Seleccionar cliente" /></SelectTrigger>
-                <SelectContent>
-                  {clientes.filter(c => c.activo).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label>Obra</Label>
               <Select
                 value={formData.obra_id}
@@ -438,14 +414,14 @@ export default function Presentismo() {
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar obra" /></SelectTrigger>
                 <SelectContent>
-                  {filteredObras.map((o) => (
+                  {activeObras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 col-span-2">
-              <Label>Capataz Responsable</Label>
+            <div className="space-y-2">
+              <Label>Capataz</Label>
               <Select
                 value={formData.capataz_id}
                 onValueChange={(v) => setFormData({ ...formData, capataz_id: v })}
@@ -453,7 +429,9 @@ export default function Presentismo() {
                 <SelectTrigger><SelectValue placeholder="Seleccionar capataz" /></SelectTrigger>
                 <SelectContent>
                   {capataces.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre} {c.apellido}</SelectItem>
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.nombre} {c.apellido}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -477,31 +455,21 @@ export default function Presentismo() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Horas Normales</Label>
-                  <Input
-                    type="number"
-                    value={formData.horas_normales}
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Label>HH Normales</Label>
+                  <Input type="number" value={formData.horas_normales} readOnly className="bg-muted" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Horas Extra</Label>
-                  <Input
-                    type="number"
-                    value={formData.horas_extra}
-                    disabled
-                    className="bg-muted"
-                  />
+                  <Label>HH Extra</Label>
+                  <Input type="number" value={formData.horas_extra} readOnly className="bg-muted" />
                 </div>
               </>
             )}
             <div className="space-y-2 col-span-2">
-              <Label>Tarea Realizada</Label>
+              <Label>Tarea</Label>
               <Input
                 value={formData.tarea}
                 onChange={(e) => setFormData({ ...formData, tarea: e.target.value })}
-                placeholder="Descripción de la tarea"
+                placeholder="Descripción de la tarea realizada"
               />
             </div>
             <div className="space-y-2 col-span-2">
@@ -509,16 +477,17 @@ export default function Presentismo() {
               <Input
                 value={formData.observaciones}
                 onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                placeholder="Notas adicionales"
+                placeholder="Notas adicionales..."
               />
             </div>
-          </div>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="outline" onClick={() => setIsFormOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {selectedRegistro ? "Actualizar" : "Crear"}
-            </Button>
+            <div className="col-span-2 flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setIsFormOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleSubmit} disabled={isSubmitting}>
+                {isSubmitting ? "Guardando..." : selectedRegistro ? "Guardar Cambios" : "Crear Registro"}
+              </Button>
+            </div>
           </div>
         </FormDialog>
 
@@ -536,34 +505,29 @@ export default function Presentismo() {
                 value={selectedRegistro.persona ? `${selectedRegistro.persona.nombre} ${selectedRegistro.persona.apellido}` : "-"} 
               />
               <DetailRow label="Obra" value={selectedRegistro.obra?.nombre || "-"} />
-              <DetailRow label="Cliente" value={selectedRegistro.cliente?.nombre || "-"} />
               <DetailRow 
                 label="Capataz" 
                 value={selectedRegistro.capataz ? `${selectedRegistro.capataz.nombre} ${selectedRegistro.capataz.apellido}` : "-"} 
               />
-              <DetailRow 
-                label="Estado" 
-                value={<Badge className={estadoColors[selectedRegistro.estado]}>{estadoLabels[selectedRegistro.estado]}</Badge>} 
-              />
+              <DetailRow label="Estado" value={estadoLabels[selectedRegistro.estado]} />
               <DetailRow label="Hora Entrada" value={selectedRegistro.hora_entrada || "-"} />
               <DetailRow label="Hora Salida" value={selectedRegistro.hora_salida || "-"} />
-              <DetailRow label="Horas Normales" value={`${selectedRegistro.horas_normales}`} />
-              <DetailRow label="Horas Extra" value={`${selectedRegistro.horas_extra}`} />
+              <DetailRow label="HH Normales" value={selectedRegistro.horas_normales.toString()} />
+              <DetailRow label="HH Extra" value={selectedRegistro.horas_extra.toString()} />
+              <DetailRow label="HH Totales" value={selectedRegistro.horas_totales.toString()} />
               <DetailRow label="Tarea" value={selectedRegistro.tarea || "-"} />
-              {selectedRegistro.observaciones && (
-                <DetailRow label="Observaciones" value={selectedRegistro.observaciones} />
-              )}
+              <DetailRow label="Observaciones" value={selectedRegistro.observaciones || "-"} />
             </div>
           )}
         </DetailDialog>
 
-        {/* Delete Dialog */}
+        {/* Delete Confirm Dialog */}
         <DeleteConfirmDialog
           open={isDeleteOpen}
           onOpenChange={setIsDeleteOpen}
           onConfirm={handleConfirmDelete}
           title="Eliminar Registro"
-          description="¿Estás seguro de eliminar este registro? Esta acción no se puede deshacer."
+          description="¿Estás seguro de que deseas eliminar este registro de asistencia? Esta acción no se puede deshacer."
         />
       </div>
     </MainLayout>

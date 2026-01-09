@@ -11,7 +11,7 @@ import Register from "./pages/Register";
 import NoAccess from "./pages/NoAccess";
 import Obras from "./pages/Obras";
 import Cotizaciones from "./pages/Cotizaciones";
-import Clientes from "./pages/Clientes";
+
 import Personal from "./pages/Personal";
 import Maquinarias from "./pages/Maquinarias";
 import Viajes from "./pages/Viajes";
@@ -55,11 +55,6 @@ const App = () => (
             <Route path="/cotizaciones" element={
               <ProtectedRoute requiredRoles={['admin', 'capataz']}>
                 <Cotizaciones />
-              </ProtectedRoute>
-            } />
-            <Route path="/clientes" element={
-              <ProtectedRoute requiredRoles={['admin', 'capataz']}>
-                <Clientes />
               </ProtectedRoute>
             } />
             <Route path="/personal" element={

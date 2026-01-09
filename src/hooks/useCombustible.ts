@@ -5,7 +5,6 @@ import { toast } from "sonner";
 export interface CargaCombustibleDB {
   id: string;
   fecha: string;
-  cliente_id: string;
   obra_id: string;
   maquinaria_id: string;
   litros: number;
@@ -20,14 +19,12 @@ export interface CargaCombustibleDB {
 }
 
 export interface CargaCombustibleWithRelations extends CargaCombustibleDB {
-  cliente?: { nombre: string };
   obra?: { nombre: string };
   maquinaria?: { nombre: string; codigo: string };
 }
 
 export interface CargaCombustibleForm {
   fecha: string;
-  cliente_id: string;
   obra_id: string;
   maquinaria_id: string;
   litros: number;
@@ -49,7 +46,6 @@ export function useCombustible() {
       .from("cargas_combustible")
       .select(`
         *,
-        cliente:clientes(nombre),
         obra:obras(nombre),
         maquinaria:maquinarias(nombre, codigo)
       `)

@@ -7,7 +7,7 @@ export type EstadoCotizacion = "borrador" | "enviada" | "aprobada" | "rechazada"
 export interface CotizacionDB {
   id: string;
   numero: string;
-  cliente_id: string;
+  obra_id: string | null;
   descripcion: string;
   estado: EstadoCotizacion;
   fecha_creacion: string;
@@ -33,13 +33,13 @@ export interface CotizacionItemDB {
 }
 
 export interface CotizacionWithRelations extends CotizacionDB {
-  cliente?: { nombre: string };
+  obra?: { nombre: string };
   items?: CotizacionItemDB[];
 }
 
 export interface CotizacionForm {
   numero: string;
-  cliente_id: string;
+  obra_id?: string;
   descripcion: string;
   estado: EstadoCotizacion;
   fecha_creacion: string;
@@ -69,7 +69,7 @@ export function useCotizaciones() {
       .from("cotizaciones")
       .select(`
         *,
-        cliente:clientes(nombre),
+        obra:obras(nombre),
         items:cotizacion_items(*)
       `)
       .order("created_at", { ascending: false });

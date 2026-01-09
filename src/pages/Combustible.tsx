@@ -44,7 +44,6 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
-import { useClientes } from "@/hooks/useClientes";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
@@ -59,7 +58,6 @@ function formatCurrency(value: number): string {
 
 export default function Combustible() {
   const { cargas, loading, createCarga, updateCarga, deleteCarga } = useCombustible();
-  const { clientes } = useClientes();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
@@ -76,7 +74,6 @@ export default function Combustible() {
 
   const [formData, setFormData] = useState<CargaCombustibleForm>({
     fecha: new Date().toISOString().split("T")[0],
-    cliente_id: "",
     obra_id: "",
     maquinaria_id: "",
     litros: 0,
@@ -88,16 +85,12 @@ export default function Combustible() {
     comprobante: "",
   });
 
-  // Filter obras by selected cliente
-  const filteredObras = formData.cliente_id 
-    ? obras.filter(o => o.cliente_id === formData.cliente_id && o.estado !== "finalizada")
-    : obras.filter(o => o.estado !== "finalizada");
+  const activeObras = obras.filter(o => o.estado !== "finalizada");
 
   const filteredCargas = cargas.filter((c) =>
     c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.operador.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.estacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -105,7 +98,6 @@ export default function Combustible() {
     setIsEditing(false);
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
-      cliente_id: "",
       obra_id: "",
       maquinaria_id: "",
       litros: 0,
@@ -124,7 +116,6 @@ export default function Combustible() {
     setSelectedCarga(carga);
     setFormData({
       fecha: carga.fecha,
-      cliente_id: carga.cliente_id,
       obra_id: carga.obra_id,
       maquinaria_id: carga.maquinaria_id,
       litros: carga.litros,
@@ -217,7 +208,6 @@ export default function Combustible() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
               <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
@@ -240,9 +230,6 @@ export default function Combustible() {
                   </span>
                 </TableCell>
                 <TableCell className="text-foreground font-medium">
-                  {carga.cliente?.nombre || "-"}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
                   {carga.obra?.nombre || "-"}
                 </TableCell>
                 <TableCell>
@@ -350,22 +337,6 @@ export default function Combustible() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cliente_id">Cliente *</Label>
-              <Select
-                value={formData.cliente_id}
-                onValueChange={(value) => setFormData({ ...formData, cliente_id: value, obra_id: "" })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {clientes.filter(c => c.activo).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="obra_id">Obra *</Label>
               <Select
                 value={formData.obra_id}
@@ -375,7 +346,7 @@ export default function Combustible() {
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {filteredObras.map((o) => (
+                  {activeObras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.nombre} ({o.codigo})</SelectItem>
                   ))}
                 </SelectContent>
@@ -466,29 +437,28 @@ export default function Combustible() {
               <Label htmlFor="costo_total">Costo Total</Label>
               <Input
                 id="costo_total"
-                value={formatCurrency(formData.costo_total)}
+                type="number"
+                value={formData.costo_total}
+                readOnly
                 className="bg-muted border-border font-mono"
-                disabled
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horas_maquina">Horas Máquina *</Label>
+              <Label htmlFor="horas_maquina">Horas Máquina</Label>
               <Input
                 id="horas_maquina"
                 type="number"
                 value={formData.horas_maquina}
                 onChange={(e) => setFormData({ ...formData, horas_maquina: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="comprobante">Comprobante</Label>
+              <Label htmlFor="comprobante">Nro. Comprobante</Label>
               <Input
                 id="comprobante"
                 value={formData.comprobante}
                 onChange={(e) => setFormData({ ...formData, comprobante: e.target.value })}
-                placeholder="Número de factura o ticket"
                 className="bg-muted border-border"
               />
             </div>
@@ -497,9 +467,8 @@ export default function Combustible() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? "Guardar Cambios" : "Registrar Carga"}
+            <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Registrar Carga"}
             </Button>
           </div>
         </form>
@@ -509,43 +478,37 @@ export default function Combustible() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title="Detalle de Carga"
+        title="Detalle de Carga de Combustible"
       >
         {selectedCarga && (
-          <>
+          <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={selectedCarga.fecha} />
-              <DetailRow label="Cliente" value={selectedCarga.cliente?.nombre} />
-              <DetailRow label="Obra" value={selectedCarga.obra?.nombre} />
-              <DetailRow label="Estación" value={selectedCarga.estacion} />
-            </DetailSection>
-            <DetailSection title="Maquinaria">
-              <DetailRow label="Equipo" value={selectedCarga.maquinaria?.nombre} />
-              <DetailRow label="Código" value={selectedCarga.maquinaria?.codigo} />
+              <DetailRow label="Obra" value={selectedCarga.obra?.nombre || "-"} />
+              <DetailRow label="Maquinaria" value={selectedCarga.maquinaria?.nombre || "-"} />
               <DetailRow label="Operador" value={selectedCarga.operador} />
-              <DetailRow label="Horas Máquina" value={`${selectedCarga.horas_maquina} h`} />
             </DetailSection>
-            <DetailSection title="Combustible">
+            <DetailSection title="Carga">
+              <DetailRow label="Estación" value={selectedCarga.estacion} />
               <DetailRow label="Litros" value={`${selectedCarga.litros} L`} />
               <DetailRow label="Precio/Litro" value={formatCurrency(selectedCarga.precio_litro)} />
               <DetailRow label="Costo Total" value={formatCurrency(selectedCarga.costo_total)} />
             </DetailSection>
-            {selectedCarga.comprobante && (
-              <DetailSection title="Comprobante">
-                <DetailRow label="Número" value={selectedCarga.comprobante} />
-              </DetailSection>
-            )}
-          </>
+            <DetailSection title="Adicional">
+              <DetailRow label="Horas Máquina" value={selectedCarga.horas_maquina.toString()} />
+              <DetailRow label="Comprobante" value={selectedCarga.comprobante || "-"} />
+            </DetailSection>
+          </div>
         )}
       </DetailDialog>
 
-      {/* Delete Dialog */}
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        title="Eliminar Registro"
-        description={`¿Estás seguro de eliminar este registro de carga? Esta acción no se puede deshacer.`}
+        title="Eliminar Carga"
+        description={`¿Estás seguro de que deseas eliminar esta carga de combustible del ${selectedCarga?.fecha}? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

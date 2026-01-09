@@ -48,13 +48,11 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
-import { useClientes } from "@/hooks/useClientes";
 import { useObras } from "@/hooks/useObras";
 import { useViajes } from "@/hooks/useViajes";
 
 export default function Remitos() {
   const { remitos, loading, createRemito, updateRemito, deleteRemito } = useRemitos();
-  const { clientes } = useClientes();
   const { obras } = useObras();
   const { viajes } = useViajes();
   
@@ -70,7 +68,6 @@ export default function Remitos() {
     numero: "",
     viaje_id: "",
     fecha: new Date().toISOString().split("T")[0],
-    cliente_id: "",
     obra_id: "",
     material: "",
     cantidad: 0,
@@ -82,7 +79,6 @@ export default function Remitos() {
 
   const filteredRemitos = remitos.filter((r) =>
     r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.cliente?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     r.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -98,7 +94,6 @@ export default function Remitos() {
       numero: generateNumero(),
       viaje_id: "",
       fecha: new Date().toISOString().split("T")[0],
-      cliente_id: "",
       obra_id: "",
       material: "Tosca",
       cantidad: 18,
@@ -117,7 +112,6 @@ export default function Remitos() {
       numero: remito.numero,
       viaje_id: remito.viaje_id || "",
       fecha: remito.fecha,
-      cliente_id: remito.cliente_id,
       obra_id: remito.obra_id,
       material: remito.material,
       cantidad: remito.cantidad,
@@ -169,10 +163,7 @@ export default function Remitos() {
     await updateRemito(remito.id, { firmado: !remito.firmado });
   };
 
-  // Filter obras by selected cliente
-  const filteredObras = formData.cliente_id 
-    ? obras.filter(o => o.cliente_id === formData.cliente_id)
-    : obras;
+  const activeObras = obras.filter(o => o.estado !== "finalizada");
 
   if (loading) {
     return (
@@ -191,7 +182,7 @@ export default function Remitos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por número, cliente u obra..."
+            placeholder="Buscar por número u obra..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -213,7 +204,6 @@ export default function Remitos() {
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Número</TableHead>
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium">Material</TableHead>
               <TableHead className="text-muted-foreground font-medium">Cantidad</TableHead>
@@ -241,8 +231,7 @@ export default function Remitos() {
                     {remito.fecha}
                   </span>
                 </TableCell>
-                <TableCell className="text-foreground">{remito.cliente?.nombre || "-"}</TableCell>
-                <TableCell className="text-muted-foreground">{remito.obra?.nombre || "-"}</TableCell>
+                <TableCell className="text-foreground">{remito.obra?.nombre || "-"}</TableCell>
                 <TableCell>
                   <span className="flex items-center gap-1 text-muted-foreground">
                     <Package className="w-3 h-3" />
@@ -380,22 +369,6 @@ export default function Remitos() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cliente_id">Cliente *</Label>
-              <Select
-                value={formData.cliente_id}
-                onValueChange={(value) => setFormData({ ...formData, cliente_id: value, obra_id: "" })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar cliente" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {clientes.filter(c => c.activo).map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="obra_id">Obra *</Label>
               <Select
                 value={formData.obra_id}
@@ -405,7 +378,7 @@ export default function Remitos() {
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {filteredObras.map((o) => (
+                  {activeObras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
                 </SelectContent>
@@ -467,21 +440,24 @@ export default function Remitos() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="recibido_por">Recibido Por</Label>
+              <Label htmlFor="recibido_por">Recibido por *</Label>
               <Input
                 id="recibido_por"
                 value={formData.recibido_por}
                 onChange={(e) => setFormData({ ...formData, recibido_por: e.target.value })}
                 className="bg-muted border-border"
+                required
               />
             </div>
-            <div className="flex items-center space-x-2 pt-6">
-              <Switch
-                id="firmado"
-                checked={formData.firmado}
-                onCheckedChange={(checked) => setFormData({ ...formData, firmado: checked })}
-              />
-              <Label htmlFor="firmado">Remito Firmado</Label>
+            <div className="space-y-2 flex items-center pt-6">
+              <div className="flex items-center space-x-2">
+                <Switch
+                  id="firmado"
+                  checked={formData.firmado}
+                  onCheckedChange={(checked) => setFormData({ ...formData, firmado: checked })}
+                />
+                <Label htmlFor="firmado">Firmado</Label>
+              </div>
             </div>
             <div className="md:col-span-2 space-y-2">
               <Label htmlFor="observaciones">Observaciones</Label>
@@ -498,9 +474,8 @@ export default function Remitos() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isEditing ? "Guardar Cambios" : "Crear Remito"}
+            <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90">
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Remito"}
             </Button>
           </div>
         </form>
@@ -510,30 +485,20 @@ export default function Remitos() {
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
-        title={`Remito ${selectedRemito?.numero}`}
+        title="Detalle de Remito"
       >
         {selectedRemito && (
-          <>
+          <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Número" value={selectedRemito.numero} />
               <DetailRow label="Fecha" value={selectedRemito.fecha} />
-              <DetailRow label="Cliente" value={selectedRemito.cliente?.nombre} />
-              <DetailRow label="Obra" value={selectedRemito.obra?.nombre} />
+              <DetailRow label="Obra" value={selectedRemito.obra?.nombre || "-"} />
             </DetailSection>
             <DetailSection title="Entrega">
               <DetailRow label="Material" value={selectedRemito.material} />
               <DetailRow label="Cantidad" value={`${selectedRemito.cantidad} ${selectedRemito.unidad}`} />
-              <DetailRow label="Recibido Por" value={selectedRemito.recibido_por || "-"} />
-              <DetailRow
-                label="Estado"
-                value={
-                  selectedRemito.firmado ? (
-                    <Badge className="status-badge status-active">Firmado</Badge>
-                  ) : (
-                    <Badge className="status-badge status-pending">Pendiente</Badge>
-                  )
-                }
-              />
+              <DetailRow label="Recibido por" value={selectedRemito.recibido_por} />
+              <DetailRow label="Firmado" value={selectedRemito.firmado ? "Sí" : "No"} />
             </DetailSection>
             {selectedRemito.viaje && (
               <DetailSection title="Viaje Vinculado">
@@ -542,20 +507,20 @@ export default function Remitos() {
             )}
             {selectedRemito.observaciones && (
               <DetailSection title="Observaciones">
-                <p className="text-muted-foreground">{selectedRemito.observaciones}</p>
+                <p className="text-sm text-muted-foreground">{selectedRemito.observaciones}</p>
               </DetailSection>
             )}
-          </>
+          </div>
         )}
       </DetailDialog>
 
-      {/* Delete Dialog */}
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         title="Eliminar Remito"
-        description={`¿Estás seguro de eliminar el remito ${selectedRemito?.numero}? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro de que deseas eliminar el remito "${selectedRemito?.numero}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

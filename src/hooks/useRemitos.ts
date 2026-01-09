@@ -7,7 +7,6 @@ export interface RemitoDB {
   numero: string;
   viaje_id: string | null;
   fecha: string;
-  cliente_id: string;
   obra_id: string;
   material: string;
   cantidad: number;
@@ -21,7 +20,6 @@ export interface RemitoDB {
 }
 
 export interface RemitoWithRelations extends RemitoDB {
-  cliente?: { nombre: string };
   obra?: { nombre: string };
   viaje?: { origen: string; destino: string };
 }
@@ -30,7 +28,6 @@ export interface RemitoForm {
   numero: string;
   viaje_id?: string;
   fecha: string;
-  cliente_id: string;
   obra_id: string;
   material: string;
   cantidad: number;
@@ -51,7 +48,6 @@ export function useRemitos() {
       .from("remitos")
       .select(`
         *,
-        cliente:clientes(nombre),
         obra:obras(nombre),
         viaje:viajes(origen, destino)
       `)
