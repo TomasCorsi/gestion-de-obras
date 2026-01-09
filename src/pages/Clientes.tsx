@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -37,30 +38,29 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { Cliente } from "@/types";
-import { clientesData as initialData } from "@/data/mockData";
-import { toast } from "sonner";
+import { useClientes, ClienteDB, ClienteForm } from "@/hooks/useClientes";
 import { cn } from "@/lib/utils";
 
 export default function Clientes() {
-  const [clientes, setClientes] = useState<Cliente[]>(initialData);
+  const { clientes, loading, createCliente, updateCliente, deleteCliente } = useClientes();
   const [searchTerm, setSearchTerm] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [selectedCliente, setSelectedCliente] = useState<ClienteDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<Partial<Cliente>>({
+  const [formData, setFormData] = useState<ClienteForm>({
     nombre: "",
-    razonSocial: "",
+    razon_social: "",
     cuit: "",
     email: "",
     telefono: "",
     direccion: "",
     localidad: "",
     provincia: "",
-    contactoPrincipal: "",
+    contacto_principal: "",
     notas: "",
     activo: true,
   });
@@ -69,72 +69,87 @@ export default function Clientes() {
     (c) =>
       c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.cuit.includes(searchTerm) ||
-      c.contactoPrincipal.toLowerCase().includes(searchTerm.toLowerCase())
+      c.contacto_principal.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleNew = () => {
     setIsEditing(false);
     setFormData({
       nombre: "",
-      razonSocial: "",
+      razon_social: "",
       cuit: "",
       email: "",
       telefono: "",
       direccion: "",
       localidad: "",
       provincia: "",
-      contactoPrincipal: "",
+      contacto_principal: "",
       notas: "",
       activo: true,
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (cliente: Cliente) => {
+  const handleEdit = (cliente: ClienteDB) => {
     setIsEditing(true);
     setSelectedCliente(cliente);
-    setFormData(cliente);
+    setFormData({
+      nombre: cliente.nombre,
+      razon_social: cliente.razon_social || "",
+      cuit: cliente.cuit,
+      email: cliente.email,
+      telefono: cliente.telefono,
+      direccion: cliente.direccion,
+      localidad: cliente.localidad,
+      provincia: cliente.provincia,
+      contacto_principal: cliente.contacto_principal,
+      notas: cliente.notas || "",
+      activo: cliente.activo,
+    });
     setFormOpen(true);
   };
 
-  const handleView = (cliente: Cliente) => {
+  const handleView = (cliente: ClienteDB) => {
     setSelectedCliente(cliente);
     setDetailOpen(true);
   };
 
-  const handleDelete = (cliente: Cliente) => {
+  const handleDelete = (cliente: ClienteDB) => {
     setSelectedCliente(cliente);
     setDeleteOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedCliente) {
-      setClientes(clientes.filter((c) => c.id !== selectedCliente.id));
-      toast.success("Cliente eliminado correctamente");
+      await deleteCliente(selectedCliente.id);
     }
     setDeleteOpen(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
+    
     if (isEditing && selectedCliente) {
-      setClientes(
-        clientes.map((c) =>
-          c.id === selectedCliente.id ? { ...c, ...formData } : c
-        )
-      );
-      toast.success("Cliente actualizado correctamente");
+      await updateCliente(selectedCliente.id, formData);
     } else {
-      const newCliente: Cliente = {
-        ...formData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString().split("T")[0],
-      } as Cliente;
-      setClientes([...clientes, newCliente]);
-      toast.success("Cliente creado correctamente");
+      await createCliente(formData);
     }
+    
+    setIsSubmitting(false);
     setFormOpen(false);
   };
+
+  if (loading) {
+    return (
+      <MainLayout title="Clientes" subtitle="Gestión de clientes y contactos">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Clientes" subtitle="Gestión de clientes y contactos">
@@ -173,80 +188,88 @@ export default function Clientes() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredClientes.map((cliente, index) => (
-              <TableRow
-                key={cliente.id}
-                className="border-border table-row-hover animate-fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Building className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-foreground">{cliente.nombre}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">
-                  {cliente.cuit}
-                </TableCell>
-                <TableCell className="text-foreground">{cliente.contactoPrincipal}</TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Phone className="w-3 h-3" />
-                    {cliente.telefono}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    {cliente.localidad}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    className={cn(
-                      "status-badge",
-                      cliente.activo ? "status-active" : "status-inactive"
-                    )}
-                  >
-                    {cliente.activo ? "Activo" : "Inactivo"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem
-                        onClick={() => handleView(cliente)}
-                        className="text-foreground cursor-pointer"
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleEdit(cliente)}
-                        className="text-foreground cursor-pointer"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(cliente)}
-                        className="text-destructive cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {filteredClientes.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  {searchTerm ? "No se encontraron clientes" : "No hay clientes registrados"}
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredClientes.map((cliente, index) => (
+                <TableRow
+                  key={cliente.id}
+                  className="border-border table-row-hover animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Building className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium text-foreground">{cliente.nombre}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {cliente.cuit}
+                  </TableCell>
+                  <TableCell className="text-foreground">{cliente.contacto_principal}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Phone className="w-3 h-3" />
+                      {cliente.telefono}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      {cliente.localidad}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={cn(
+                        "status-badge",
+                        cliente.activo ? "status-active" : "status-inactive"
+                      )}
+                    >
+                      {cliente.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem
+                          onClick={() => handleView(cliente)}
+                          className="text-foreground cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleEdit(cliente)}
+                          className="text-foreground cursor-pointer"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(cliente)}
+                          className="text-destructive cursor-pointer"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -301,11 +324,11 @@ export default function Clientes() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="razonSocial">Razón Social</Label>
+              <Label htmlFor="razon_social">Razón Social</Label>
               <Input
-                id="razonSocial"
-                value={formData.razonSocial}
-                onChange={(e) => setFormData({ ...formData, razonSocial: e.target.value })}
+                id="razon_social"
+                value={formData.razon_social}
+                onChange={(e) => setFormData({ ...formData, razon_social: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
@@ -321,23 +344,24 @@ export default function Clientes() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="contactoPrincipal">Contacto Principal *</Label>
+              <Label htmlFor="contacto_principal">Contacto Principal *</Label>
               <Input
-                id="contactoPrincipal"
-                value={formData.contactoPrincipal}
-                onChange={(e) => setFormData({ ...formData, contactoPrincipal: e.target.value })}
+                id="contacto_principal"
+                value={formData.contacto_principal}
+                onChange={(e) => setFormData({ ...formData, contacto_principal: e.target.value })}
                 className="bg-muted border-border"
                 required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="bg-muted border-border"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -351,12 +375,13 @@ export default function Clientes() {
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="direccion">Dirección</Label>
+              <Label htmlFor="direccion">Dirección *</Label>
               <Input
                 id="direccion"
                 value={formData.direccion}
                 onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
                 className="bg-muted border-border"
+                required
               />
             </div>
             <div className="space-y-2">
@@ -402,8 +427,8 @@ export default function Clientes() {
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" className="bg-primary hover:bg-primary/90">
-              {isEditing ? "Guardar Cambios" : "Crear Cliente"}
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Cliente"}
             </Button>
           </div>
         </form>
@@ -419,7 +444,7 @@ export default function Clientes() {
           <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Nombre" value={selectedCliente.nombre} />
-              <DetailRow label="Razón Social" value={selectedCliente.razonSocial || "-"} />
+              <DetailRow label="Razón Social" value={selectedCliente.razon_social || "-"} />
               <DetailRow label="CUIT" value={selectedCliente.cuit} />
               <DetailRow
                 label="Estado"
@@ -431,7 +456,7 @@ export default function Clientes() {
               />
             </DetailSection>
             <DetailSection title="Contacto">
-              <DetailRow label="Contacto Principal" value={selectedCliente.contactoPrincipal} />
+              <DetailRow label="Contacto Principal" value={selectedCliente.contacto_principal} />
               <DetailRow
                 label="Email"
                 value={
@@ -469,12 +494,13 @@ export default function Clientes() {
         )}
       </DetailDialog>
 
-      {/* Delete Confirm */}
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
-        description={`Se eliminará el cliente "${selectedCliente?.nombre}". Esta acción no se puede deshacer.`}
+        title="Eliminar Cliente"
+        description={`¿Estás seguro de que deseas eliminar a "${selectedCliente?.nombre}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );

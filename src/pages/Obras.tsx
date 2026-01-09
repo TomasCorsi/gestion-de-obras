@@ -2,7 +2,10 @@ import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -24,7 +27,6 @@ import {
   Filter,
   Building2,
   MapPin,
-  Calendar,
   MoreVertical,
   Eye,
   Edit,
@@ -36,81 +38,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { FormDialog } from "@/components/shared/FormDialog";
+import { DetailDialog } from "@/components/shared/DetailDialog";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { useObras, ObraWithRelations, ObraForm, EstadoObra } from "@/hooks/useObras";
+import { useClientes } from "@/hooks/useClientes";
+import { usePersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
-interface Obra {
-  id: string;
-  codigo: string;
-  nombre: string;
-  cliente: string;
-  ubicacion: string;
-  estado: "activa" | "pendiente" | "finalizada" | "pausada";
-  fechaInicio: string;
-  fechaFin?: string;
-  progreso: number;
-  responsable: string;
-}
-
-const obrasDemo: Obra[] = [
-  {
-    id: "1",
-    codigo: "OBR-2025-045",
-    nombre: "Movimiento de Suelo - Lote 45",
-    cliente: "Constructora Andina S.A.",
-    ubicacion: "Ruta 40, Km 234",
-    estado: "activa",
-    fechaInicio: "15/12/2025",
-    progreso: 65,
-    responsable: "Juan Pérez",
-  },
-  {
-    id: "2",
-    codigo: "OBR-2026-001",
-    nombre: "Excavación Fundaciones",
-    cliente: "Inmobiliaria Del Sur",
-    ubicacion: "Av. Circunvalación 890",
-    estado: "activa",
-    fechaInicio: "02/01/2026",
-    progreso: 30,
-    responsable: "Carlos Gómez",
-  },
-  {
-    id: "3",
-    codigo: "OBR-2026-002",
-    nombre: "Nivelación Terreno Industrial",
-    cliente: "Parque Industrial Norte",
-    ubicacion: "Zona Franca, Sector B",
-    estado: "pendiente",
-    fechaInicio: "15/01/2026",
-    progreso: 0,
-    responsable: "María López",
-  },
-  {
-    id: "4",
-    codigo: "OBR-2025-038",
-    nombre: "Relleno y Compactación",
-    cliente: "Municipalidad de Trelew",
-    ubicacion: "Calle San Martín 1200",
-    estado: "pausada",
-    fechaInicio: "10/11/2025",
-    progreso: 45,
-    responsable: "Pedro Rodríguez",
-  },
-  {
-    id: "5",
-    codigo: "OBR-2025-032",
-    nombre: "Preparación Terreno Residencial",
-    cliente: "Desarrollos Patagonia",
-    ubicacion: "Barrio Norte, Manzana 12",
-    estado: "finalizada",
-    fechaInicio: "01/10/2025",
-    fechaFin: "20/12/2025",
-    progreso: 100,
-    responsable: "Ana Martínez",
-  },
-];
-
-const estadoConfig = {
+const estadoConfig: Record<EstadoObra, { label: string; className: string }> = {
   activa: { label: "Activa", className: "status-active" },
   pendiente: { label: "Pendiente", className: "status-pending" },
   finalizada: { label: "Finalizada", className: "status-inactive" },
@@ -118,17 +55,124 @@ const estadoConfig = {
 };
 
 export default function Obras() {
+  const { obras, loading, createObra, updateObra, deleteObra } = useObras();
+  const { clientes } = useClientes();
+  const { personal } = usePersonal();
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [formOpen, setFormOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [selectedObra, setSelectedObra] = useState<ObraWithRelations | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredObras = obrasDemo.filter((obra) => {
+  const [formData, setFormData] = useState<ObraForm>({
+    codigo: "",
+    nombre: "",
+    cliente_id: "",
+    ubicacion: "",
+    descripcion: "",
+    estado: "pendiente",
+    fecha_inicio: new Date().toISOString().split("T")[0],
+    progreso: 0,
+  });
+
+  const responsables = personal.filter(p => 
+    (p.rol === "capataz" || p.rol === "supervisor" || p.rol === "administrador") && p.activo
+  );
+
+  const filteredObras = obras.filter((obra) => {
     const matchesSearch =
       obra.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      obra.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (obra.cliente?.nombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       obra.codigo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || obra.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
+
+  const generateCodigo = () => {
+    const year = new Date().getFullYear();
+    const num = (obras.length + 1).toString().padStart(3, "0");
+    return `OBR-${year}-${num}`;
+  };
+
+  const handleNew = () => {
+    setIsEditing(false);
+    setFormData({
+      codigo: generateCodigo(),
+      nombre: "",
+      cliente_id: "",
+      ubicacion: "",
+      descripcion: "",
+      estado: "pendiente",
+      fecha_inicio: new Date().toISOString().split("T")[0],
+      progreso: 0,
+    });
+    setFormOpen(true);
+  };
+
+  const handleEdit = (obra: ObraWithRelations) => {
+    setIsEditing(true);
+    setSelectedObra(obra);
+    setFormData({
+      codigo: obra.codigo,
+      nombre: obra.nombre,
+      cliente_id: obra.cliente_id,
+      ubicacion: obra.ubicacion,
+      descripcion: obra.descripcion,
+      estado: obra.estado,
+      fecha_inicio: obra.fecha_inicio,
+      fecha_fin_estimada: obra.fecha_fin_estimada || undefined,
+      progreso: obra.progreso,
+      responsable_id: obra.responsable_id || undefined,
+      presupuesto: obra.presupuesto || undefined,
+    });
+    setFormOpen(true);
+  };
+
+  const handleView = (obra: ObraWithRelations) => {
+    setSelectedObra(obra);
+    setDetailOpen(true);
+  };
+
+  const handleDelete = (obra: ObraWithRelations) => {
+    setSelectedObra(obra);
+    setDeleteOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (selectedObra) {
+      await deleteObra(selectedObra.id);
+    }
+    setDeleteOpen(false);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    if (isEditing && selectedObra) {
+      await updateObra(selectedObra.id, formData);
+    } else {
+      await createObra(formData);
+    }
+    
+    setIsSubmitting(false);
+    setFormOpen(false);
+  };
+
+  if (loading) {
+    return (
+      <MainLayout title="Obras" subtitle="Gestión de proyectos y obras">
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Obras" subtitle="Gestión de proyectos y obras">
@@ -157,7 +201,7 @@ export default function Obras() {
               <SelectItem value="finalizada">Finalizadas</SelectItem>
             </SelectContent>
           </Select>
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial">
+          <Button onClick={handleNew} className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial">
             <Plus className="w-4 h-4 mr-2" />
             Nueva Obra
           </Button>
@@ -180,73 +224,83 @@ export default function Obras() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredObras.map((obra, index) => (
-              <TableRow
-                key={obra.id}
-                className="border-border table-row-hover animate-fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <TableCell className="font-mono text-sm text-primary">{obra.codigo}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Building2 className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-foreground">{obra.nombre}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{obra.cliente}</TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <MapPin className="w-3 h-3" />
-                    {obra.ubicacion}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <Badge className={cn("status-badge", estadoConfig[obra.estado].className)}>
-                    {estadoConfig[obra.estado].label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={cn(
-                          "h-full rounded-full transition-all",
-                          obra.progreso === 100 ? "bg-success" : "bg-primary"
-                        )}
-                        style={{ width: `${obra.progreso}%` }}
-                      />
-                    </div>
-                    <span className="text-sm text-muted-foreground font-mono">{obra.progreso}%</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground">{obra.responsable}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem className="text-foreground cursor-pointer">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-foreground cursor-pointer">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive cursor-pointer">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {filteredObras.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  {searchTerm || estadoFilter !== "todos" ? "No se encontraron obras" : "No hay obras registradas"}
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredObras.map((obra, index) => (
+                <TableRow
+                  key={obra.id}
+                  className="border-border table-row-hover animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <TableCell className="font-mono text-sm text-primary">{obra.codigo}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="font-medium text-foreground">{obra.nombre}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{obra.cliente?.nombre || "-"}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      {obra.ubicacion}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={cn("status-badge", estadoConfig[obra.estado].className)}>
+                      {estadoConfig[obra.estado].label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            obra.progreso === 100 ? "bg-success" : "bg-primary"
+                          )}
+                          style={{ width: `${obra.progreso}%` }}
+                        />
+                      </div>
+                      <span className="text-sm text-muted-foreground font-mono">{obra.progreso}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {obra.responsable ? `${obra.responsable.nombre} ${obra.responsable.apellido}` : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => handleView(obra)} className="text-foreground cursor-pointer">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(obra)} className="text-foreground cursor-pointer">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(obra)} className="text-destructive cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
@@ -254,7 +308,7 @@ export default function Obras() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
         {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = obrasDemo.filter((o) => o.estado === key).length;
+          const count = obras.filter((o) => o.estado === key).length;
           return (
             <div key={key} className="card-industrial p-4 flex items-center justify-between">
               <div>
@@ -266,6 +320,215 @@ export default function Obras() {
           );
         })}
       </div>
+
+      {/* Form Dialog */}
+      <FormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        title={isEditing ? "Editar Obra" : "Nueva Obra"}
+        description={isEditing ? "Modifica los datos de la obra" : "Ingresa los datos de la nueva obra"}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="codigo">Código *</Label>
+              <Input
+                id="codigo"
+                value={formData.codigo}
+                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                className="bg-muted border-border font-mono"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nombre">Nombre *</Label>
+              <Input
+                id="nombre"
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente_id">Cliente *</Label>
+              <Select
+                value={formData.cliente_id}
+                onValueChange={(value) => setFormData({ ...formData, cliente_id: value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {clientes.filter(c => c.activo).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="responsable_id">Responsable</Label>
+              <Select
+                value={formData.responsable_id || ""}
+                onValueChange={(value) => setFormData({ ...formData, responsable_id: value || undefined })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar responsable" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {responsables.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nombre} {p.apellido}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="ubicacion">Ubicación *</Label>
+              <Input
+                id="ubicacion"
+                value={formData.ubicacion}
+                onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="descripcion">Descripción *</Label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                className="bg-muted border-border"
+                rows={2}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="estado">Estado *</Label>
+              <Select
+                value={formData.estado}
+                onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoObra })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  {Object.entries(estadoConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="progreso">Progreso (%)</Label>
+              <Input
+                id="progreso"
+                type="number"
+                min="0"
+                max="100"
+                value={formData.progreso}
+                onChange={(e) => setFormData({ ...formData, progreso: parseInt(e.target.value) || 0 })}
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha_inicio">Fecha Inicio *</Label>
+              <Input
+                id="fecha_inicio"
+                type="date"
+                value={formData.fecha_inicio}
+                onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fecha_fin_estimada">Fecha Fin Estimada</Label>
+              <Input
+                id="fecha_fin_estimada"
+                type="date"
+                value={formData.fecha_fin_estimada || ""}
+                onChange={(e) => setFormData({ ...formData, fecha_fin_estimada: e.target.value || undefined })}
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="presupuesto">Presupuesto</Label>
+              <Input
+                id="presupuesto"
+                type="number"
+                value={formData.presupuesto || ""}
+                onChange={(e) => setFormData({ ...formData, presupuesto: parseFloat(e.target.value) || undefined })}
+                className="bg-muted border-border"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : isEditing ? "Guardar Cambios" : "Crear Obra"}
+            </Button>
+          </div>
+        </form>
+      </FormDialog>
+
+      {/* Detail Dialog */}
+      <DetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title={selectedObra?.nombre || ""}
+      >
+        {selectedObra && (
+          <div className="space-y-4">
+            <DetailSection title="Información General">
+              <DetailRow label="Código" value={selectedObra.codigo} />
+              <DetailRow label="Nombre" value={selectedObra.nombre} />
+              <DetailRow label="Cliente" value={selectedObra.cliente?.nombre || "-"} />
+              <DetailRow
+                label="Estado"
+                value={
+                  <Badge className={cn("status-badge", estadoConfig[selectedObra.estado].className)}>
+                    {estadoConfig[selectedObra.estado].label}
+                  </Badge>
+                }
+              />
+              <DetailRow label="Progreso" value={`${selectedObra.progreso}%`} />
+            </DetailSection>
+            <DetailSection title="Ubicación y Fechas">
+              <DetailRow label="Ubicación" value={selectedObra.ubicacion} />
+              <DetailRow label="Fecha Inicio" value={selectedObra.fecha_inicio} />
+              <DetailRow label="Fecha Fin Estimada" value={selectedObra.fecha_fin_estimada || "-"} />
+              <DetailRow label="Fecha Fin Real" value={selectedObra.fecha_fin_real || "-"} />
+            </DetailSection>
+            <DetailSection title="Responsable y Presupuesto">
+              <DetailRow 
+                label="Responsable" 
+                value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} 
+              />
+              <DetailRow 
+                label="Presupuesto" 
+                value={selectedObra.presupuesto ? `$${selectedObra.presupuesto.toLocaleString("es-AR")}` : "-"} 
+              />
+            </DetailSection>
+            <DetailSection title="Descripción">
+              <p className="text-sm text-muted-foreground">{selectedObra.descripcion}</p>
+            </DetailSection>
+          </div>
+        )}
+      </DetailDialog>
+
+      {/* Delete Confirm Dialog */}
+      <DeleteConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onConfirm={confirmDelete}
+        title="Eliminar Obra"
+        description={`¿Estás seguro de que deseas eliminar la obra "${selectedObra?.nombre}"? Esta acción no se puede deshacer.`}
+      />
     </MainLayout>
   );
 }
