@@ -17,7 +17,27 @@ interface CSVImportDialogProps {
   onImport: (maquinarias: MaquinariaForm[]) => Promise<void>;
 }
 
-const tiposValidos: TipoMaquinaria[] = ["excavadora", "cargadora", "camion_articulado", "topadora", "rodillo", "retroexcavadora", "motoniveladora"];
+const tiposValidos: TipoMaquinaria[] = [
+  "cargadora",
+  "compactador",
+  "retroexcavadora",
+  "minicargadora",
+  "motoniveladora",
+  "topador",
+  "pala_retro",
+  "batea",
+  "acoplado",
+  "camion",
+  "carreton",
+  "cisterna",
+  "tanque_cisterna",
+  "tanque_regador_tractor",
+  "soplador",
+  "zanjeadora",
+  "rastra",
+  "tractor",
+  "rastra_grosspal",
+];
 const estadosValidos: EstadoMaquinaria[] = ["operativa", "mantenimiento", "inactiva", "en_uso"];
 
 interface ParseResult {
@@ -143,7 +163,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
 
   const downloadTemplate = () => {
     const headers = "codigo,nombre,tipo,marca,anio,patente,estado,horas_acumuladas";
-    const example = "EXC-001,Excavadora CAT 320,excavadora,Caterpillar,2020,ABC123,operativa,1500";
+    const example = "CARG-001,Cargadora CAT 950,cargadora,Caterpillar,2020,ABC123,operativa,1500";
     const content = `${headers}\n${example}`;
     const blob = new Blob([content], { type: "text/csv" });
     const url = URL.createObjectURL(blob);

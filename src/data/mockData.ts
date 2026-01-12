@@ -12,12 +12,12 @@ export const personalData: Persona[] = [
 ];
 
 export const maquinariasData: Maquinaria[] = [
-  { id: "1", codigo: "EXC-001", nombre: "CAT 320D", tipo: "excavadora", marca: "Caterpillar", modelo: "320D", anio: 2019, estado: "en_uso", ubicacionActual: "Obra Lote 45", horasAcumuladas: 4520, proximoService: 5000, operadorAsignado: "Pedro Rodríguez" },
-  { id: "2", codigo: "CAR-001", nombre: "Komatsu WA380", tipo: "cargadora", marca: "Komatsu", modelo: "WA380-8", anio: 2020, estado: "operativa", ubicacionActual: "Base Central", horasAcumuladas: 3200, proximoService: 3500 },
-  { id: "3", codigo: "CAM-001", nombre: "Volvo A30G", tipo: "camion_articulado", marca: "Volvo", modelo: "A30G", anio: 2018, patente: "AB123CD", estado: "mantenimiento", ubicacionActual: "Taller", horasAcumuladas: 6800, proximoService: 7000 },
-  { id: "4", codigo: "TOP-001", nombre: "CAT D6T", tipo: "topadora", marca: "Caterpillar", modelo: "D6T", anio: 2021, estado: "en_uso", ubicacionActual: "Obra Circunvalación", horasAcumuladas: 2100, proximoService: 2500, operadorAsignado: "Roberto Sánchez" },
-  { id: "5", codigo: "ROD-001", nombre: "Bomag BW211", tipo: "rodillo", marca: "Bomag", modelo: "BW211D-50", anio: 2020, estado: "inactiva", ubicacionActual: "Base Central", horasAcumuladas: 1800, proximoService: 2000 },
-  { id: "6", codigo: "EXC-002", nombre: "Hyundai R210", tipo: "excavadora", marca: "Hyundai", modelo: "R210LC-9", anio: 2022, estado: "en_uso", ubicacionActual: "Obra Zona Franca", horasAcumuladas: 980, proximoService: 1000 },
+  { id: "1", codigo: "CARG-001", nombre: "CAT 950", tipo: "cargadora", marca: "Caterpillar", modelo: "950", anio: 2019, estado: "en_uso", ubicacionActual: "Obra Lote 45", horasAcumuladas: 4520, proximoService: 5000, operadorAsignado: "Pedro Rodríguez" },
+  { id: "2", codigo: "CARG-002", nombre: "Komatsu WA380", tipo: "cargadora", marca: "Komatsu", modelo: "WA380-8", anio: 2020, estado: "operativa", ubicacionActual: "Base Central", horasAcumuladas: 3200, proximoService: 3500 },
+  { id: "3", codigo: "CAM-001", nombre: "Volvo A30G", tipo: "camion", marca: "Volvo", modelo: "A30G", anio: 2018, patente: "AB123CD", estado: "mantenimiento", ubicacionActual: "Taller", horasAcumuladas: 6800, proximoService: 7000 },
+  { id: "4", codigo: "TOP-001", nombre: "CAT D6T", tipo: "topador", marca: "Caterpillar", modelo: "D6T", anio: 2021, estado: "en_uso", ubicacionActual: "Obra Circunvalación", horasAcumuladas: 2100, proximoService: 2500, operadorAsignado: "Roberto Sánchez" },
+  { id: "5", codigo: "COMP-001", nombre: "Bomag BW211", tipo: "compactador", marca: "Bomag", modelo: "BW211D-50", anio: 2020, estado: "inactiva", ubicacionActual: "Base Central", horasAcumuladas: 1800, proximoService: 2000 },
+  { id: "6", codigo: "RETRO-001", nombre: "Hyundai R210", tipo: "retroexcavadora", marca: "Hyundai", modelo: "R210LC-9", anio: 2022, estado: "en_uso", ubicacionActual: "Obra Zona Franca", horasAcumuladas: 980, proximoService: 1000 },
 ];
 
 export const obrasData: Obra[] = [

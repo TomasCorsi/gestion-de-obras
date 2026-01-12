@@ -50,13 +50,25 @@ import { cn } from "@/lib/utils";
 import { CSVImportDialog } from "@/components/maquinarias/CSVImportDialog";
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
-  excavadora: "Excavadora",
   cargadora: "Cargadora",
-  camion_articulado: "Camión Articulado",
-  topadora: "Topadora",
-  rodillo: "Rodillo",
+  compactador: "Compactador",
   retroexcavadora: "Retroexcavadora",
+  minicargadora: "Minicargadora",
   motoniveladora: "Motoniveladora",
+  topador: "Topador",
+  pala_retro: "Pala Retro",
+  batea: "Batea",
+  acoplado: "Acoplado",
+  camion: "Camión",
+  carreton: "Carretón",
+  cisterna: "Cisterna",
+  tanque_cisterna: "Tanque Cisterna",
+  tanque_regador_tractor: "Tanque Regador con Tractor",
+  soplador: "Soplador",
+  zanjeadora: "Zanjeadora",
+  rastra: "Rastra",
+  tractor: "Tractor",
+  rastra_grosspal: "Rastra Grosspal",
 };
 
 const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
@@ -86,7 +98,7 @@ export default function Maquinarias() {
   const [formData, setFormData] = useState<MaquinariaForm>({
     codigo: "",
     nombre: "",
-    tipo: "excavadora",
+    tipo: "cargadora",
     marca: "",
     anio: new Date().getFullYear(),
     patente: "",
@@ -107,7 +119,7 @@ export default function Maquinarias() {
     setFormData({
       codigo: "",
       nombre: "",
-      tipo: "excavadora",
+      tipo: "cargadora",
       marca: "",
       anio: new Date().getFullYear(),
       patente: "",

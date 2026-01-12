@@ -75,7 +75,7 @@ export default function Viajes() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const choferes = personal.filter(p => p.rol === "chofer" && p.activo);
-  const camiones = maquinarias.filter(m => m.tipo === "camion_articulado");
+  const camiones = maquinarias.filter(m => m.tipo === "camion");
   const obrasActivas = obras.filter(o => o.estado === "activa");
 
   const [formData, setFormData] = useState<ViajeForm>({
