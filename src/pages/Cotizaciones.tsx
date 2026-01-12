@@ -421,14 +421,14 @@ export default function Cotizaciones() {
             <div className="space-y-2">
               <Label htmlFor="obra_id">Obra (opcional)</Label>
               <Select
-                value={formData.obra_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, obra_id: value || undefined })}
+                value={formData.obra_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value === "none" ? undefined : value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="none">Sin asignar</SelectItem>
                   {obras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
