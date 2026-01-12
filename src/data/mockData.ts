@@ -21,11 +21,11 @@ export const maquinariasData: Maquinaria[] = [
 ];
 
 export const obrasData: Obra[] = [
-  { id: "1", codigo: "OBR-2025-045", nombre: "Movimiento de Suelo - Lote 45", ubicacion: "Ruta 40, Km 234", descripcion: "Movimiento de 5000m³ de suelo", estado: "activa", fechaInicio: "2025-12-15", progreso: 65, responsableId: "1", responsable: "Juan Pérez", presupuesto: 4500000 },
-  { id: "2", codigo: "OBR-2026-001", nombre: "Excavación Fundaciones", ubicacion: "Av. Circunvalación 890", descripcion: "Excavación para fundaciones de edificio", estado: "activa", fechaInicio: "2026-01-02", progreso: 30, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 1200000 },
-  { id: "3", codigo: "OBR-2026-002", nombre: "Nivelación Terreno Industrial", ubicacion: "Zona Franca, Sector B", descripcion: "Nivelación de 2 hectáreas", estado: "pendiente", fechaInicio: "2026-01-15", progreso: 0, responsableId: "1", responsable: "Juan Pérez", presupuesto: 6800000 },
-  { id: "4", codigo: "OBR-2025-038", nombre: "Relleno y Compactación", ubicacion: "Calle San Martín 1200", descripcion: "Relleno y compactación vía pública", estado: "pausada", fechaInicio: "2025-11-10", progreso: 45, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 2300000 },
-  { id: "5", codigo: "OBR-2025-032", nombre: "Preparación Terreno Residencial", ubicacion: "Barrio Norte, Manzana 12", descripcion: "Preparación completa del terreno", estado: "finalizada", fechaInicio: "2025-10-01", fechaFinReal: "2025-12-20", progreso: 100, responsableId: "1", responsable: "Juan Pérez", presupuesto: 3500000 },
+  { id: "1", nombre: "Movimiento de Suelo - Lote 45", ubicacion: "Ruta 40, Km 234", descripcion: "Movimiento de 5000m³ de suelo", estado: "activa", fechaInicio: "2025-12-15", responsableId: "1", responsable: "Juan Pérez" },
+  { id: "2", nombre: "Excavación Fundaciones", ubicacion: "Av. Circunvalación 890", descripcion: "Excavación para fundaciones de edificio", estado: "activa", fechaInicio: "2026-01-02", responsableId: "2", responsable: "Carlos Gómez" },
+  { id: "3", nombre: "Nivelación Terreno Industrial", ubicacion: "Zona Franca, Sector B", descripcion: "Nivelación de 2 hectáreas", estado: "pendiente", fechaInicio: "2026-01-15", responsableId: "1", responsable: "Juan Pérez" },
+  { id: "4", nombre: "Relleno y Compactación", ubicacion: "Calle San Martín 1200", descripcion: "Relleno y compactación vía pública", estado: "pausada", fechaInicio: "2025-11-10", responsableId: "2", responsable: "Carlos Gómez" },
+  { id: "5", nombre: "Preparación Terreno Residencial", ubicacion: "Barrio Norte, Manzana 12", descripcion: "Preparación completa del terreno", estado: "finalizada", fechaInicio: "2025-10-01", responsableId: "1", responsable: "Juan Pérez" },
 ];
 
 export const cotizacionesData: Cotizacion[] = [

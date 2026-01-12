@@ -440,49 +440,37 @@ export type Database = {
       }
       obras: {
         Row: {
-          codigo: string | null
           created_at: string
           descripcion: string | null
           estado: Database["public"]["Enums"]["estado_obra"]
           fecha_fin_estimada: string | null
-          fecha_fin_real: string | null
           fecha_inicio: string | null
           id: string
           nombre: string
-          presupuesto: number | null
-          progreso: number
           responsable_id: string | null
           ubicacion: string | null
           updated_at: string
         }
         Insert: {
-          codigo?: string | null
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_obra"]
           fecha_fin_estimada?: string | null
-          fecha_fin_real?: string | null
           fecha_inicio?: string | null
           id?: string
           nombre: string
-          presupuesto?: number | null
-          progreso?: number
           responsable_id?: string | null
           ubicacion?: string | null
           updated_at?: string
         }
         Update: {
-          codigo?: string | null
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_obra"]
           fecha_fin_estimada?: string | null
-          fecha_fin_real?: string | null
           fecha_inicio?: string | null
           id?: string
           nombre?: string
-          presupuesto?: number | null
-          progreso?: number
           responsable_id?: string | null
           ubicacion?: string | null
           updated_at?: string

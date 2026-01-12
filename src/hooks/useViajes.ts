@@ -24,7 +24,7 @@ export interface ViajeDB {
 }
 
 export interface ViajeWithRelations extends ViajeDB {
-  obra?: { nombre: string; codigo: string };
+  obra?: { nombre: string };
   chofer?: { nombre: string; apellido: string };
   camion?: { nombre: string; codigo: string };
 }
@@ -55,7 +55,7 @@ export function useViajes() {
       .from("viajes")
       .select(`
         *,
-        obra:obras(nombre, codigo),
+        obra:obras(nombre),
         chofer:personal!viajes_chofer_id_fkey(nombre, apellido),
         camion:maquinarias!viajes_camion_id_fkey(nombre, codigo)
       `)
