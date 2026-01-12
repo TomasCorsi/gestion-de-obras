@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -22,7 +21,6 @@ import {
   Plus,
   Search,
   Truck,
-  MapPin,
   Clock,
   MoreVertical,
   Eye,
@@ -30,9 +28,9 @@ import {
   Trash2,
   Filter,
   Wrench,
-  AlertTriangle,
   CheckCircle,
-  Gauge,
+  Building2,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,8 +42,9 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
-import { useMaquinarias, MaquinariaDB, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
+import { useMaquinarias, MaquinariaWithRelations, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
+import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
@@ -68,13 +67,14 @@ const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; classNa
 export default function Maquinarias() {
   const { maquinarias, loading, createMaquinaria, updateMaquinaria, deleteMaquinaria } = useMaquinarias();
   const { personal } = usePersonal();
+  const { obras } = useObras();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [selectedMaquinaria, setSelectedMaquinaria] = useState<MaquinariaDB | null>(null);
+  const [selectedMaquinaria, setSelectedMaquinaria] = useState<MaquinariaWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -85,13 +85,10 @@ export default function Maquinarias() {
     nombre: "",
     tipo: "excavadora",
     marca: "",
-    modelo: "",
     anio: new Date().getFullYear(),
     patente: "",
     estado: "operativa",
-    ubicacion_actual: "Base Central",
     horas_acumuladas: 0,
-    proximo_service: 500,
   });
 
   const filteredMaquinarias = maquinarias.filter((m) => {
@@ -109,18 +106,15 @@ export default function Maquinarias() {
       nombre: "",
       tipo: "excavadora",
       marca: "",
-      modelo: "",
       anio: new Date().getFullYear(),
       patente: "",
       estado: "operativa",
-      ubicacion_actual: "Base Central",
       horas_acumuladas: 0,
-      proximo_service: 500,
     });
     setFormOpen(true);
   };
 
-  const handleEdit = (maq: MaquinariaDB) => {
+  const handleEdit = (maq: MaquinariaWithRelations) => {
     setIsEditing(true);
     setSelectedMaquinaria(maq);
     setFormData({
@@ -128,24 +122,22 @@ export default function Maquinarias() {
       nombre: maq.nombre,
       tipo: maq.tipo,
       marca: maq.marca,
-      modelo: maq.modelo,
       anio: maq.anio,
       patente: maq.patente || "",
       estado: maq.estado,
-      ubicacion_actual: maq.ubicacion_actual,
       horas_acumuladas: maq.horas_acumuladas,
-      proximo_service: maq.proximo_service,
       operador_asignado_id: maq.operador_asignado_id || undefined,
+      obra_id: maq.obra_id || undefined,
     });
     setFormOpen(true);
   };
 
-  const handleView = (maq: MaquinariaDB) => {
+  const handleView = (maq: MaquinariaWithRelations) => {
     setSelectedMaquinaria(maq);
     setDetailOpen(true);
   };
 
-  const handleDelete = (maq: MaquinariaDB) => {
+  const handleDelete = (maq: MaquinariaWithRelations) => {
     setSelectedMaquinaria(maq);
     setDeleteOpen(true);
   };
@@ -169,14 +161,6 @@ export default function Maquinarias() {
     
     setIsSubmitting(false);
     setFormOpen(false);
-  };
-
-  const getServiceProgress = (maq: MaquinariaDB) => {
-    return Math.min((maq.horas_acumuladas / maq.proximo_service) * 100, 100);
-  };
-
-  const needsService = (maq: MaquinariaDB) => {
-    return maq.horas_acumuladas >= maq.proximo_service * 0.9;
   };
 
   if (loading) {
@@ -288,44 +272,32 @@ export default function Maquinarias() {
                       {config.label}
                     </Badge>
                     <span className="text-sm text-muted-foreground">
-                      {maq.marca} {maq.modelo}
+                      {maq.marca} • {maq.anio}
                     </span>
                   </div>
 
                   <div className="space-y-2 text-sm">
+                    {maq.obra && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Building2 className="w-4 h-4" />
+                        {maq.obra.nombre}
+                      </div>
+                    )}
+                    {maq.operador && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <User className="w-4 h-4" />
+                        {maq.operador.nombre} {maq.operador.apellido}
+                      </div>
+                    )}
                     <div className="flex items-center gap-2 text-muted-foreground">
-                      <MapPin className="w-4 h-4" />
-                      {maq.ubicacion_actual}
+                      <Clock className="w-4 h-4" />
+                      {maq.horas_acumuladas.toLocaleString()} horas
                     </div>
                   </div>
 
-                  {/* Service Progress */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        Horas: {maq.horas_acumuladas.toLocaleString()}
-                      </span>
-                      <span className={cn(
-                        "font-medium",
-                        needsService(maq) ? "text-warning" : "text-muted-foreground"
-                      )}>
-                        Service: {maq.proximo_service.toLocaleString()}h
-                      </span>
-                    </div>
-                    <Progress
-                      value={getServiceProgress(maq)}
-                      className={cn(
-                        "h-2",
-                        needsService(maq) && "[&>div]:bg-warning"
-                      )}
-                    />
-                  </div>
-
-                  {needsService(maq) && (
-                    <div className="flex items-center gap-2 p-2 bg-warning/10 border border-warning/20 rounded-lg">
-                      <AlertTriangle className="w-4 h-4 text-warning" />
-                      <span className="text-xs text-warning">Service próximo</span>
+                  {maq.patente && (
+                    <div className="text-xs text-muted-foreground">
+                      Patente: <span className="font-mono">{maq.patente}</span>
                     </div>
                   )}
                 </CardContent>
@@ -399,6 +371,23 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="obra_id">Obra</Label>
+              <Select
+                value={formData.obra_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value === "none" ? undefined : value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Sin asignar" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {obras.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="estado">Estado *</Label>
               <Select
                 value={formData.estado}
@@ -425,27 +414,6 @@ export default function Maquinarias() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="modelo">Modelo *</Label>
-              <Input
-                id="modelo"
-                value={formData.modelo}
-                onChange={(e) => setFormData({ ...formData, modelo: e.target.value })}
-                className="bg-muted border-border"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="anio">Año *</Label>
-              <Input
-                id="anio"
-                type="number"
-                value={formData.anio}
-                onChange={(e) => setFormData({ ...formData, anio: parseInt(e.target.value) })}
-                className="bg-muted border-border"
-                required
-              />
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="patente">Patente</Label>
               <Input
                 id="patente"
@@ -455,11 +423,12 @@ export default function Maquinarias() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="ubicacion_actual">Ubicación Actual *</Label>
+              <Label htmlFor="anio">Año *</Label>
               <Input
-                id="ubicacion_actual"
-                value={formData.ubicacion_actual}
-                onChange={(e) => setFormData({ ...formData, ubicacion_actual: e.target.value })}
+                id="anio"
+                type="number"
+                value={formData.anio}
+                onChange={(e) => setFormData({ ...formData, anio: parseInt(e.target.value) })}
                 className="bg-muted border-border"
                 required
               />
@@ -489,17 +458,6 @@ export default function Maquinarias() {
                 value={formData.horas_acumuladas}
                 onChange={(e) => setFormData({ ...formData, horas_acumuladas: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="proximo_service">Próximo Service (horas) *</Label>
-              <Input
-                id="proximo_service"
-                type="number"
-                value={formData.proximo_service}
-                onChange={(e) => setFormData({ ...formData, proximo_service: parseFloat(e.target.value) || 500 })}
-                className="bg-muted border-border"
-                required
               />
             </div>
           </div>
@@ -537,14 +495,16 @@ export default function Maquinarias() {
             </DetailSection>
             <DetailSection title="Detalles">
               <DetailRow label="Marca" value={selectedMaquinaria.marca} />
-              <DetailRow label="Modelo" value={selectedMaquinaria.modelo} />
               <DetailRow label="Año" value={selectedMaquinaria.anio.toString()} />
               <DetailRow label="Patente" value={selectedMaquinaria.patente || "-"} />
             </DetailSection>
-            <DetailSection title="Operación">
-              <DetailRow label="Ubicación" value={selectedMaquinaria.ubicacion_actual} />
+            <DetailSection title="Asignación">
+              <DetailRow label="Obra" value={selectedMaquinaria.obra?.nombre || "Sin asignar"} />
+              <DetailRow 
+                label="Operador" 
+                value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
+              />
               <DetailRow label="Horas Acumuladas" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
-              <DetailRow label="Próximo Service" value={`${selectedMaquinaria.proximo_service.toLocaleString()} h`} />
             </DetailSection>
           </div>
         )}

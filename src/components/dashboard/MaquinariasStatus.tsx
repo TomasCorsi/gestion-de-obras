@@ -6,17 +6,17 @@ interface Maquinaria {
   nombre: string;
   tipo: string;
   estado: "operativa" | "mantenimiento" | "inactiva" | "en_uso";
-  ubicacion: string;
-  horasHoy?: number;
+  obra?: string;
+  horas_acumuladas?: number;
 }
 
 const maquinariasDemo: Maquinaria[] = [
-  { id: "1", nombre: "CAT 320D", tipo: "Excavadora", estado: "en_uso", ubicacion: "Obra Lote 45", horasHoy: 6.5 },
-  { id: "2", nombre: "Komatsu WA380", tipo: "Cargadora", estado: "operativa", ubicacion: "Base Central", horasHoy: 0 },
-  { id: "3", nombre: "Volvo A30G", tipo: "Camión Articulado", estado: "mantenimiento", ubicacion: "Taller", horasHoy: 0 },
-  { id: "4", nombre: "CAT D6T", tipo: "Topadora", estado: "en_uso", ubicacion: "Obra Circunvalación", horasHoy: 4.2 },
-  { id: "5", nombre: "Bomag BW211", tipo: "Rodillo", estado: "inactiva", ubicacion: "Base Central", horasHoy: 0 },
-  { id: "6", nombre: "Hyundai R210", tipo: "Excavadora", estado: "en_uso", ubicacion: "Obra Zona Franca", horasHoy: 7.0 },
+  { id: "1", nombre: "CAT 320D", tipo: "Excavadora", estado: "en_uso", obra: "Obra Lote 45", horas_acumuladas: 1250 },
+  { id: "2", nombre: "Komatsu WA380", tipo: "Cargadora", estado: "operativa", obra: undefined, horas_acumuladas: 890 },
+  { id: "3", nombre: "Volvo A30G", tipo: "Camión Articulado", estado: "mantenimiento", obra: undefined, horas_acumuladas: 2100 },
+  { id: "4", nombre: "CAT D6T", tipo: "Topadora", estado: "en_uso", obra: "Obra Circunvalación", horas_acumuladas: 1580 },
+  { id: "5", nombre: "Bomag BW211", tipo: "Rodillo", estado: "inactiva", obra: undefined, horas_acumuladas: 450 },
+  { id: "6", nombre: "Hyundai R210", tipo: "Excavadora", estado: "en_uso", obra: "Obra Zona Franca", horas_acumuladas: 980 },
 ];
 
 const estadoConfig = {
@@ -70,12 +70,12 @@ export function MaquinariasStatus() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">{maq.nombre}</p>
-                  <p className="text-xs text-muted-foreground">{maq.tipo} • {maq.ubicacion}</p>
+                  <p className="text-xs text-muted-foreground">{maq.tipo} {maq.obra && `• ${maq.obra}`}</p>
                 </div>
               </div>
-              {maq.horasHoy > 0 && (
+              {maq.horas_acumuladas && maq.horas_acumuladas > 0 && (
                 <span className="text-sm font-mono text-muted-foreground">
-                  {maq.horasHoy}h
+                  {maq.horas_acumuladas.toLocaleString()}h
                 </span>
               )}
             </div>
