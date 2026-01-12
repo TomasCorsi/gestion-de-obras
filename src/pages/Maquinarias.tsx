@@ -22,6 +22,7 @@ import {
   Search,
   Truck,
   Clock,
+  Upload,
   MoreVertical,
   Eye,
   Edit,
@@ -46,6 +47,7 @@ import { useMaquinarias, MaquinariaWithRelations, MaquinariaForm, TipoMaquinaria
 import { usePersonal } from "@/hooks/usePersonal";
 import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
+import { CSVImportDialog } from "@/components/maquinarias/CSVImportDialog";
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
   excavadora: "Excavadora",
@@ -74,6 +76,7 @@ export default function Maquinarias() {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [csvImportOpen, setCsvImportOpen] = useState(false);
   const [selectedMaquinaria, setSelectedMaquinaria] = useState<MaquinariaWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -163,6 +166,12 @@ export default function Maquinarias() {
     setFormOpen(false);
   };
 
+  const handleCSVImport = async (maquinarias: MaquinariaForm[]) => {
+    for (const maq of maquinarias) {
+      await createMaquinaria(maq);
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout title="Maquinarias" subtitle="Control de equipos y flota">
@@ -204,6 +213,14 @@ export default function Maquinarias() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={() => setCsvImportOpen(true)}
+            className="border-border"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Importar CSV
+          </Button>
           <Button
             onClick={handleNew}
             className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
@@ -517,6 +534,13 @@ export default function Maquinarias() {
         onConfirm={confirmDelete}
         title="Eliminar Maquinaria"
         description={`¿Estás seguro de que deseas eliminar "${selectedMaquinaria?.nombre}"? Esta acción no se puede deshacer.`}
+      />
+
+      {/* CSV Import Dialog */}
+      <CSVImportDialog
+        open={csvImportOpen}
+        onOpenChange={setCsvImportOpen}
+        onImport={handleCSVImport}
       />
     </MainLayout>
   );
