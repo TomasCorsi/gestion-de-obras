@@ -32,18 +32,14 @@ export interface Maquinaria {
 
 export interface Obra {
   id: string;
-  codigo: string;
   nombre: string;
-  ubicacion: string;
-  descripcion: string;
+  ubicacion?: string;
+  descripcion?: string;
   estado: "activa" | "pendiente" | "finalizada" | "pausada";
-  fechaInicio: string;
+  fechaInicio?: string;
   fechaFinEstimada?: string;
-  fechaFinReal?: string;
-  progreso: number;
-  responsableId: string;
-  responsable: string;
-  presupuesto?: number;
+  responsableId?: string;
+  responsable?: string;
 }
 
 export interface Cotizacion {

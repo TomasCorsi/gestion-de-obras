@@ -347,7 +347,7 @@ export default function Combustible() {
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
                   {activeObras.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.nombre} ({o.codigo})</SelectItem>
+                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

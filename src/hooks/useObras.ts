@@ -6,17 +6,13 @@ export type EstadoObra = "activa" | "pendiente" | "finalizada" | "pausada";
 
 export interface ObraDB {
   id: string;
-  codigo: string;
   nombre: string;
-  ubicacion: string;
-  descripcion: string;
+  ubicacion: string | null;
+  descripcion: string | null;
   estado: EstadoObra;
-  fecha_inicio: string;
+  fecha_inicio: string | null;
   fecha_fin_estimada: string | null;
-  fecha_fin_real: string | null;
-  progreso: number;
   responsable_id: string | null;
-  presupuesto: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,21 +55,14 @@ export function useObras() {
   };
 
   const createObra = async (obra: ObraForm) => {
-    // Generate codigo automatically
-    const year = new Date().getFullYear();
-    const { count } = await supabase
-      .from("obras")
-      .select("*", { count: "exact", head: true });
-    const num = ((count || 0) + 1).toString().padStart(3, "0");
-    const codigo = `OBR-${year}-${num}`;
-
     const insertData = {
-      ...obra,
-      codigo,
-      ubicacion: obra.ubicacion || "",
-      descripcion: obra.descripcion || "",
-      fecha_inicio: obra.fecha_inicio || new Date().toISOString().split("T")[0],
-      progreso: 0,
+      nombre: obra.nombre,
+      estado: obra.estado,
+      ubicacion: obra.ubicacion || null,
+      descripcion: obra.descripcion || null,
+      fecha_inicio: obra.fecha_inicio || null,
+      fecha_fin_estimada: obra.fecha_fin_estimada || null,
+      responsable_id: obra.responsable_id || null,
     };
 
     const { data, error } = await supabase
