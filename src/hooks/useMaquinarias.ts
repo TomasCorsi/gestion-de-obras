@@ -2,7 +2,26 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type TipoMaquinaria = "excavadora" | "cargadora" | "camion_articulado" | "topadora" | "rodillo" | "retroexcavadora" | "motoniveladora";
+export type TipoMaquinaria = 
+  | "cargadora"
+  | "compactador"
+  | "retroexcavadora"
+  | "minicargadora"
+  | "motoniveladora"
+  | "topador"
+  | "pala_retro"
+  | "batea"
+  | "acoplado"
+  | "camion"
+  | "carreton"
+  | "cisterna"
+  | "tanque_cisterna"
+  | "tanque_regador_tractor"
+  | "soplador"
+  | "zanjeadora"
+  | "rastra"
+  | "tractor"
+  | "rastra_grosspal";
 export type EstadoMaquinaria = "operativa" | "mantenimiento" | "inactiva" | "en_uso";
 
 export interface MaquinariaDB {

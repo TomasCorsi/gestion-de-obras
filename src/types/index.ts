@@ -18,7 +18,7 @@ export interface Maquinaria {
   id: string;
   codigo: string;
   nombre: string;
-  tipo: "excavadora" | "cargadora" | "camion_articulado" | "topadora" | "rodillo" | "retroexcavadora" | "motoniveladora";
+  tipo: "cargadora" | "compactador" | "retroexcavadora" | "minicargadora" | "motoniveladora" | "topador" | "pala_retro" | "batea" | "acoplado" | "camion" | "carreton" | "cisterna" | "tanque_cisterna" | "tanque_regador_tractor" | "soplador" | "zanjeadora" | "rastra" | "tractor" | "rastra_grosspal";
   marca: string;
   modelo: string;
   anio: number;

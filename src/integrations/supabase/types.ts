@@ -900,13 +900,25 @@ export type Database = {
         | "auditor"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
-        | "excavadora"
         | "cargadora"
-        | "camion_articulado"
-        | "topadora"
-        | "rodillo"
+        | "compactador"
         | "retroexcavadora"
+        | "minicargadora"
         | "motoniveladora"
+        | "topador"
+        | "pala_retro"
+        | "batea"
+        | "acoplado"
+        | "camion"
+        | "carreton"
+        | "cisterna"
+        | "tanque_cisterna"
+        | "tanque_regador_tractor"
+        | "soplador"
+        | "zanjeadora"
+        | "rastra"
+        | "tractor"
+        | "rastra_grosspal"
       tipo_movimiento_stock: "entrada" | "salida" | "ajuste"
     }
     CompositeTypes: {
@@ -1066,13 +1078,25 @@ export const Constants = {
       ],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [
-        "excavadora",
         "cargadora",
-        "camion_articulado",
-        "topadora",
-        "rodillo",
+        "compactador",
         "retroexcavadora",
+        "minicargadora",
         "motoniveladora",
+        "topador",
+        "pala_retro",
+        "batea",
+        "acoplado",
+        "camion",
+        "carreton",
+        "cisterna",
+        "tanque_cisterna",
+        "tanque_regador_tractor",
+        "soplador",
+        "zanjeadora",
+        "rastra",
+        "tractor",
+        "rastra_grosspal",
       ],
       tipo_movimiento_stock: ["entrada", "salida", "ajuste"],
     },
