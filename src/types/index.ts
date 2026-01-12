@@ -1,21 +1,5 @@
 // Core types for Calamina Sur
 
-export interface Cliente {
-  id: string;
-  nombre: string;
-  razonSocial?: string;
-  cuit: string;
-  email: string;
-  telefono: string;
-  direccion: string;
-  localidad: string;
-  provincia: string;
-  contactoPrincipal: string;
-  notas?: string;
-  activo: boolean;
-  createdAt: string;
-}
-
 export interface Persona {
   id: string;
   nombre: string;
@@ -50,8 +34,6 @@ export interface Obra {
   id: string;
   codigo: string;
   nombre: string;
-  clienteId: string;
-  cliente: string;
   ubicacion: string;
   descripcion: string;
   estado: "activa" | "pendiente" | "finalizada" | "pausada";
@@ -67,8 +49,8 @@ export interface Obra {
 export interface Cotizacion {
   id: string;
   numero: string;
-  clienteId: string;
-  cliente: string;
+  obraId?: string;
+  obra?: string;
   descripcion: string;
   estado: "borrador" | "enviada" | "aprobada" | "rechazada" | "vencida";
   fechaCreacion: string;
@@ -116,7 +98,6 @@ export interface Remito {
   viajeId: string;
   viaje?: Viaje;
   fecha: string;
-  cliente: string;
   obra: string;
   material: string;
   cantidad: number;
@@ -130,8 +111,6 @@ export interface Remito {
 export interface CargaCombustible {
   id: string;
   fecha: string;
-  clienteId: string;
-  cliente: string;
   obraId: string;
   obra: string;
   maquinariaId: string;
@@ -217,8 +196,6 @@ export interface RegistroHH {
   persona: string;
   obraId: string;
   obra: string;
-  clienteId: string;
-  cliente: string;
   capatazId: string;
   capataz: string;
   horaEntrada: string;
