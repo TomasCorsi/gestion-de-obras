@@ -26,16 +26,13 @@ export interface ObraWithRelations extends ObraDB {
 }
 
 export interface ObraForm {
-  codigo: string;
   nombre: string;
-  ubicacion: string;
-  descripcion: string;
+  ubicacion?: string;
+  descripcion?: string;
   estado: EstadoObra;
-  fecha_inicio: string;
+  fecha_inicio?: string;
   fecha_fin_estimada?: string;
-  progreso: number;
   responsable_id?: string;
-  presupuesto?: number;
 }
 
 export function useObras() {
@@ -62,9 +59,26 @@ export function useObras() {
   };
 
   const createObra = async (obra: ObraForm) => {
+    // Generate codigo automatically
+    const year = new Date().getFullYear();
+    const { count } = await supabase
+      .from("obras")
+      .select("*", { count: "exact", head: true });
+    const num = ((count || 0) + 1).toString().padStart(3, "0");
+    const codigo = `OBR-${year}-${num}`;
+
+    const insertData = {
+      ...obra,
+      codigo,
+      ubicacion: obra.ubicacion || "",
+      descripcion: obra.descripcion || "",
+      fecha_inicio: obra.fecha_inicio || new Date().toISOString().split("T")[0],
+      progreso: 0,
+    };
+
     const { data, error } = await supabase
       .from("obras")
-      .insert([obra])
+      .insert([insertData])
       .select()
       .single();
 

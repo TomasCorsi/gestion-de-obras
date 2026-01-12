@@ -67,13 +67,13 @@ export default function Obras() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<ObraForm>({
-    codigo: "",
     nombre: "",
     ubicacion: "",
     descripcion: "",
     estado: "pendiente",
-    fecha_inicio: new Date().toISOString().split("T")[0],
-    progreso: 0,
+    fecha_inicio: "",
+    responsable_id: undefined,
+    fecha_fin_estimada: undefined,
   });
 
   const responsables = personal.filter(p => 
@@ -83,28 +83,21 @@ export default function Obras() {
   const filteredObras = obras.filter((obra) => {
     const matchesSearch =
       obra.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      obra.codigo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      obra.ubicacion.toLowerCase().includes(searchTerm.toLowerCase());
+      (obra.ubicacion?.toLowerCase() || "").includes(searchTerm.toLowerCase());
     const matchesEstado = estadoFilter === "todos" || obra.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
 
-  const generateCodigo = () => {
-    const year = new Date().getFullYear();
-    const num = (obras.length + 1).toString().padStart(3, "0");
-    return `OBR-${year}-${num}`;
-  };
-
   const handleNew = () => {
     setIsEditing(false);
     setFormData({
-      codigo: generateCodigo(),
       nombre: "",
       ubicacion: "",
       descripcion: "",
       estado: "pendiente",
-      fecha_inicio: new Date().toISOString().split("T")[0],
-      progreso: 0,
+      fecha_inicio: "",
+      responsable_id: undefined,
+      fecha_fin_estimada: undefined,
     });
     setFormOpen(true);
   };
@@ -113,16 +106,13 @@ export default function Obras() {
     setIsEditing(true);
     setSelectedObra(obra);
     setFormData({
-      codigo: obra.codigo,
       nombre: obra.nombre,
-      ubicacion: obra.ubicacion,
-      descripcion: obra.descripcion,
+      ubicacion: obra.ubicacion || "",
+      descripcion: obra.descripcion || "",
       estado: obra.estado,
-      fecha_inicio: obra.fecha_inicio,
+      fecha_inicio: obra.fecha_inicio || "",
       fecha_fin_estimada: obra.fecha_fin_estimada || undefined,
-      progreso: obra.progreso,
       responsable_id: obra.responsable_id || undefined,
-      presupuesto: obra.presupuesto || undefined,
     });
     setFormOpen(true);
   };
@@ -208,19 +198,17 @@ export default function Obras() {
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-medium">Código</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Ubicación</TableHead>
               <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Progreso</TableHead>
               <TableHead className="text-muted-foreground font-medium">Responsable</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Ubicación</TableHead>
               <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredObras.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                   {searchTerm || estadoFilter !== "todos" ? "No se encontraron obras" : "No hay obras registradas"}
                 </TableCell>
               </TableRow>
@@ -231,7 +219,6 @@ export default function Obras() {
                   className="border-border table-row-hover animate-fade-in"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
-                  <TableCell className="font-mono text-sm text-primary">{obra.codigo}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -241,32 +228,18 @@ export default function Obras() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      {obra.ubicacion}
-                    </span>
-                  </TableCell>
-                  <TableCell>
                     <Badge className={cn("status-badge", estadoConfig[obra.estado].className)}>
                       {estadoConfig[obra.estado].label}
                     </Badge>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            obra.progreso === 100 ? "bg-success" : "bg-primary"
-                          )}
-                          style={{ width: `${obra.progreso}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-muted-foreground font-mono">{obra.progreso}%</span>
-                    </div>
-                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {obra.responsable ? `${obra.responsable.nombre} ${obra.responsable.apellido}` : "-"}
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <MapPin className="w-3 h-3" />
+                      {obra.ubicacion || "-"}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -324,44 +297,19 @@ export default function Obras() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="codigo">Código *</Label>
-              <Input
-                id="codigo"
-                value={formData.codigo}
-                onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                className="bg-muted border-border font-mono"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre *</Label>
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="nombre">Obra *</Label>
               <Input
                 id="nombre"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 className="bg-muted border-border"
                 required
+                placeholder="Nombre de la obra"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="responsable_id">Responsable</Label>
-              <Select
-                value={formData.responsable_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, responsable_id: value || undefined })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar responsable" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {responsables.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>{p.nombre} {p.apellido}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="estado">Estado *</Label>
+              <Label htmlFor="estado">Estado</Label>
               <Select
                 value={formData.estado}
                 onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoObra })}
@@ -376,58 +324,52 @@ export default function Obras() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="responsable_id">Responsable</Label>
+              <Select
+                value={formData.responsable_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, responsable_id: value === "none" ? undefined : value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar responsable" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {responsables.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.nombre} {p.apellido}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="ubicacion">Ubicación *</Label>
+              <Label htmlFor="ubicacion">Ubicación</Label>
               <Input
                 id="ubicacion"
                 value={formData.ubicacion}
                 onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
                 className="bg-muted border-border"
-                required
+                placeholder="Ubicación de la obra"
               />
             </div>
             <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="descripcion">Descripción *</Label>
+              <Label htmlFor="descripcion">Descripción</Label>
               <Textarea
                 id="descripcion"
                 value={formData.descripcion}
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 className="bg-muted border-border"
                 rows={2}
-                required
+                placeholder="Descripción de la obra"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="progreso">Progreso (%)</Label>
-              <Input
-                id="progreso"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.progreso}
-                onChange={(e) => setFormData({ ...formData, progreso: parseInt(e.target.value) || 0 })}
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="presupuesto">Presupuesto</Label>
-              <Input
-                id="presupuesto"
-                type="number"
-                value={formData.presupuesto || ""}
-                onChange={(e) => setFormData({ ...formData, presupuesto: parseFloat(e.target.value) || undefined })}
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fecha_inicio">Fecha Inicio *</Label>
+              <Label htmlFor="fecha_inicio">Fecha Inicio</Label>
               <Input
                 id="fecha_inicio"
                 type="date"
                 value={formData.fecha_inicio}
                 onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
@@ -461,26 +403,16 @@ export default function Obras() {
         {selectedObra && (
           <div className="space-y-4">
             <DetailSection title="Información General">
-              <DetailRow label="Código" value={selectedObra.codigo} />
-              <DetailRow label="Nombre" value={selectedObra.nombre} />
-              <DetailRow label="Ubicación" value={selectedObra.ubicacion} />
-              <DetailRow label="Descripción" value={selectedObra.descripcion} />
-            </DetailSection>
-            <DetailSection title="Estado">
+              <DetailRow label="Obra" value={selectedObra.nombre} />
               <DetailRow label="Estado" value={estadoConfig[selectedObra.estado].label} />
-              <DetailRow label="Progreso" value={`${selectedObra.progreso}%`} />
               <DetailRow label="Responsable" value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} />
+              <DetailRow label="Ubicación" value={selectedObra.ubicacion || "-"} />
+              <DetailRow label="Descripción" value={selectedObra.descripcion || "-"} />
             </DetailSection>
             <DetailSection title="Fechas">
-              <DetailRow label="Fecha Inicio" value={selectedObra.fecha_inicio} />
+              <DetailRow label="Fecha Inicio" value={selectedObra.fecha_inicio || "-"} />
               <DetailRow label="Fecha Fin Estimada" value={selectedObra.fecha_fin_estimada || "-"} />
-              <DetailRow label="Fecha Fin Real" value={selectedObra.fecha_fin_real || "-"} />
             </DetailSection>
-            {selectedObra.presupuesto && (
-              <DetailSection title="Financiero">
-                <DetailRow label="Presupuesto" value={`$${selectedObra.presupuesto.toLocaleString()}`} />
-              </DetailSection>
-            )}
           </div>
         )}
       </DetailDialog>
