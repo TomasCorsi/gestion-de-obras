@@ -1,76 +1,4 @@
-import { Cliente, Persona, Maquinaria, Obra, Cotizacion, Viaje, Remito, CargaCombustible, Mantenimiento, ItemStock, MovimientoStock, RegistroHH } from "@/types";
-
-export const clientesData: Cliente[] = [
-  {
-    id: "1",
-    nombre: "Constructora Andina S.A.",
-    razonSocial: "Constructora Andina S.A.",
-    cuit: "30-71234567-8",
-    email: "contacto@constructoraandina.com",
-    telefono: "0280-4445566",
-    direccion: "Av. Roca 1234",
-    localidad: "Trelew",
-    provincia: "Chubut",
-    contactoPrincipal: "Roberto Méndez",
-    activo: true,
-    createdAt: "2024-01-15",
-  },
-  {
-    id: "2",
-    nombre: "Inmobiliaria Del Sur",
-    razonSocial: "Inmobiliaria Del Sur S.R.L.",
-    cuit: "30-70987654-3",
-    email: "ventas@delsur.com.ar",
-    telefono: "0280-4423344",
-    direccion: "San Martín 567",
-    localidad: "Rawson",
-    provincia: "Chubut",
-    contactoPrincipal: "Laura González",
-    activo: true,
-    createdAt: "2024-03-20",
-  },
-  {
-    id: "3",
-    nombre: "Parque Industrial Norte",
-    razonSocial: "Parque Industrial Norte S.A.",
-    cuit: "30-71555888-9",
-    email: "admin@pinorte.com.ar",
-    telefono: "0280-4478899",
-    direccion: "Zona Franca, Sector B",
-    localidad: "Puerto Madryn",
-    provincia: "Chubut",
-    contactoPrincipal: "Carlos Ruiz",
-    activo: true,
-    createdAt: "2024-02-10",
-  },
-  {
-    id: "4",
-    nombre: "Municipalidad de Trelew",
-    cuit: "30-99999999-1",
-    email: "obras@trelew.gob.ar",
-    telefono: "0280-4420000",
-    direccion: "Av. Fontana 240",
-    localidad: "Trelew",
-    provincia: "Chubut",
-    contactoPrincipal: "Ing. María Fernández",
-    activo: true,
-    createdAt: "2023-06-01",
-  },
-  {
-    id: "5",
-    nombre: "Desarrollos Patagonia",
-    razonSocial: "Desarrollos Patagonia S.A.",
-    cuit: "30-71666999-2",
-    email: "proyectos@despat.com.ar",
-    telefono: "0280-4455667",
-    direccion: "Belgrano 890",
-    localidad: "Trelew",
-    provincia: "Chubut",
-    contactoPrincipal: "Martín Acosta",
-    activo: true,
-    createdAt: "2024-05-12",
-  },
-];
+import { Persona, Maquinaria, Obra, Cotizacion, Viaje, Remito, CargaCombustible, Mantenimiento, ItemStock, MovimientoStock, RegistroHH } from "@/types";
 
 export const personalData: Persona[] = [
   { id: "1", nombre: "Juan", apellido: "Pérez", dni: "28456789", rol: "supervisor", telefono: "280-4551234", fechaIngreso: "2020-03-15", activo: true },
@@ -93,16 +21,16 @@ export const maquinariasData: Maquinaria[] = [
 ];
 
 export const obrasData: Obra[] = [
-  { id: "1", codigo: "OBR-2025-045", nombre: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", ubicacion: "Ruta 40, Km 234", descripcion: "Movimiento de 5000m³ de suelo", estado: "activa", fechaInicio: "2025-12-15", progreso: 65, responsableId: "1", responsable: "Juan Pérez", presupuesto: 4500000 },
-  { id: "2", codigo: "OBR-2026-001", nombre: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", ubicacion: "Av. Circunvalación 890", descripcion: "Excavación para fundaciones de edificio", estado: "activa", fechaInicio: "2026-01-02", progreso: 30, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 1200000 },
-  { id: "3", codigo: "OBR-2026-002", nombre: "Nivelación Terreno Industrial", clienteId: "3", cliente: "Parque Industrial Norte", ubicacion: "Zona Franca, Sector B", descripcion: "Nivelación de 2 hectáreas", estado: "pendiente", fechaInicio: "2026-01-15", progreso: 0, responsableId: "1", responsable: "Juan Pérez", presupuesto: 6800000 },
-  { id: "4", codigo: "OBR-2025-038", nombre: "Relleno y Compactación", clienteId: "4", cliente: "Municipalidad de Trelew", ubicacion: "Calle San Martín 1200", descripcion: "Relleno y compactación vía pública", estado: "pausada", fechaInicio: "2025-11-10", progreso: 45, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 2300000 },
-  { id: "5", codigo: "OBR-2025-032", nombre: "Preparación Terreno Residencial", clienteId: "5", cliente: "Desarrollos Patagonia", ubicacion: "Barrio Norte, Manzana 12", descripcion: "Preparación completa del terreno", estado: "finalizada", fechaInicio: "2025-10-01", fechaFinReal: "2025-12-20", progreso: 100, responsableId: "1", responsable: "Juan Pérez", presupuesto: 3500000 },
+  { id: "1", codigo: "OBR-2025-045", nombre: "Movimiento de Suelo - Lote 45", ubicacion: "Ruta 40, Km 234", descripcion: "Movimiento de 5000m³ de suelo", estado: "activa", fechaInicio: "2025-12-15", progreso: 65, responsableId: "1", responsable: "Juan Pérez", presupuesto: 4500000 },
+  { id: "2", codigo: "OBR-2026-001", nombre: "Excavación Fundaciones", ubicacion: "Av. Circunvalación 890", descripcion: "Excavación para fundaciones de edificio", estado: "activa", fechaInicio: "2026-01-02", progreso: 30, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 1200000 },
+  { id: "3", codigo: "OBR-2026-002", nombre: "Nivelación Terreno Industrial", ubicacion: "Zona Franca, Sector B", descripcion: "Nivelación de 2 hectáreas", estado: "pendiente", fechaInicio: "2026-01-15", progreso: 0, responsableId: "1", responsable: "Juan Pérez", presupuesto: 6800000 },
+  { id: "4", codigo: "OBR-2025-038", nombre: "Relleno y Compactación", ubicacion: "Calle San Martín 1200", descripcion: "Relleno y compactación vía pública", estado: "pausada", fechaInicio: "2025-11-10", progreso: 45, responsableId: "2", responsable: "Carlos Gómez", presupuesto: 2300000 },
+  { id: "5", codigo: "OBR-2025-032", nombre: "Preparación Terreno Residencial", ubicacion: "Barrio Norte, Manzana 12", descripcion: "Preparación completa del terreno", estado: "finalizada", fechaInicio: "2025-10-01", fechaFinReal: "2025-12-20", progreso: 100, responsableId: "1", responsable: "Juan Pérez", presupuesto: 3500000 },
 ];
 
 export const cotizacionesData: Cotizacion[] = [
   {
-    id: "1", numero: "COT-2026-001", clienteId: "1", cliente: "Constructora Andina S.A.", descripcion: "Movimiento de 5,000 m³ de tierra", estado: "enviada",
+    id: "1", numero: "COT-2026-001", obraId: "1", obra: "Movimiento de Suelo - Lote 45", descripcion: "Movimiento de 5,000 m³ de tierra", estado: "enviada",
     fechaCreacion: "2026-01-02", fechaVencimiento: "2026-01-15", responsable: "Admin",
     items: [
       { id: "1", descripcion: "Movimiento de suelo", unidad: "m³", cantidad: 5000, precioUnitario: 450, subtotal: 2250000 },
@@ -111,7 +39,7 @@ export const cotizacionesData: Cotizacion[] = [
     subtotal: 3100000, iva: 651000, total: 3751000,
   },
   {
-    id: "2", numero: "COT-2026-002", clienteId: "2", cliente: "Inmobiliaria Del Sur", descripcion: "Excavación y relleno para fundaciones", estado: "enviada",
+    id: "2", numero: "COT-2026-002", obraId: "2", obra: "Excavación Fundaciones", descripcion: "Excavación y relleno para fundaciones", estado: "enviada",
     fechaCreacion: "2026-01-03", fechaVencimiento: "2026-01-12", responsable: "Admin",
     items: [
       { id: "1", descripcion: "Excavación de fundaciones", unidad: "m³", cantidad: 800, precioUnitario: 520, subtotal: 416000 },
@@ -129,16 +57,16 @@ export const viajesData: Viaje[] = [
 ];
 
 export const remitosData: Remito[] = [
-  { id: "1", numero: "REM-2026-0001", viajeId: "1", fecha: "2026-01-08", cliente: "Constructora Andina S.A.", obra: "Movimiento de Suelo - Lote 45", material: "Tosca", cantidad: 18, unidad: "m³", recibidoPor: "Jorge Méndez", firmado: true },
-  { id: "2", numero: "REM-2026-0002", viajeId: "2", fecha: "2026-01-08", cliente: "Constructora Andina S.A.", obra: "Movimiento de Suelo - Lote 45", material: "Tosca", cantidad: 18, unidad: "m³", recibidoPor: "Jorge Méndez", firmado: true },
-  { id: "3", numero: "REM-2026-0003", viajeId: "3", fecha: "2026-01-08", cliente: "Inmobiliaria Del Sur", obra: "Excavación Fundaciones", material: "Tierra excavada", cantidad: 20, unidad: "m³", recibidoPor: "", firmado: false },
+  { id: "1", numero: "REM-2026-0001", viajeId: "1", fecha: "2026-01-08", obra: "Movimiento de Suelo - Lote 45", material: "Tosca", cantidad: 18, unidad: "m³", recibidoPor: "Jorge Méndez", firmado: true },
+  { id: "2", numero: "REM-2026-0002", viajeId: "2", fecha: "2026-01-08", obra: "Movimiento de Suelo - Lote 45", material: "Tosca", cantidad: 18, unidad: "m³", recibidoPor: "Jorge Méndez", firmado: true },
+  { id: "3", numero: "REM-2026-0003", viajeId: "3", fecha: "2026-01-08", obra: "Excavación Fundaciones", material: "Tierra excavada", cantidad: 20, unidad: "m³", recibidoPor: "", firmado: false },
 ];
 
 export const combustibleData: CargaCombustible[] = [
-  { id: "1", fecha: "2026-01-08", clienteId: "1", cliente: "Constructora Andina S.A.", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "1", maquinaria: "CAT 320D", litros: 280, precioLitro: 950, costoTotal: 266000, horasMaquina: 4520, estacion: "YPF Trelew", operador: "Pedro Rodríguez" },
-  { id: "2", fecha: "2026-01-07", clienteId: "2", cliente: "Inmobiliaria Del Sur", obraId: "2", obra: "Excavación Fundaciones", maquinariaId: "4", maquinaria: "CAT D6T", litros: 350, precioLitro: 950, costoTotal: 332500, horasMaquina: 2100, estacion: "Shell Rawson", operador: "Roberto Sánchez" },
-  { id: "3", fecha: "2026-01-06", clienteId: "3", cliente: "Parque Industrial Norte", obraId: "3", obra: "Nivelación Terreno Industrial", maquinariaId: "2", maquinaria: "Komatsu WA380", litros: 220, precioLitro: 950, costoTotal: 209000, horasMaquina: 3200, estacion: "YPF Trelew", operador: "Diego Torres" },
-  { id: "4", fecha: "2026-01-05", clienteId: "1", cliente: "Constructora Andina S.A.", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "6", maquinaria: "Hyundai R210", litros: 180, precioLitro: 950, costoTotal: 171000, horasMaquina: 980, estacion: "Axion Puerto Madryn", operador: "Pedro Rodríguez" },
+  { id: "1", fecha: "2026-01-08", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "1", maquinaria: "CAT 320D", litros: 280, precioLitro: 950, costoTotal: 266000, horasMaquina: 4520, estacion: "YPF Trelew", operador: "Pedro Rodríguez" },
+  { id: "2", fecha: "2026-01-07", obraId: "2", obra: "Excavación Fundaciones", maquinariaId: "4", maquinaria: "CAT D6T", litros: 350, precioLitro: 950, costoTotal: 332500, horasMaquina: 2100, estacion: "Shell Rawson", operador: "Roberto Sánchez" },
+  { id: "3", fecha: "2026-01-06", obraId: "3", obra: "Nivelación Terreno Industrial", maquinariaId: "2", maquinaria: "Komatsu WA380", litros: 220, precioLitro: 950, costoTotal: 209000, horasMaquina: 3200, estacion: "YPF Trelew", operador: "Diego Torres" },
+  { id: "4", fecha: "2026-01-05", obraId: "1", obra: "Movimiento de Suelo - Lote 45", maquinariaId: "6", maquinaria: "Hyundai R210", litros: 180, precioLitro: 950, costoTotal: 171000, horasMaquina: 980, estacion: "Axion Puerto Madryn", operador: "Pedro Rodríguez" },
 ];
 
 export const mantenimientosData: Mantenimiento[] = [
@@ -167,11 +95,11 @@ export const movimientosStockData: MovimientoStock[] = [
 ];
 
 export const presentismoData: RegistroHH[] = [
-  { id: "1", fecha: "2026-01-09", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "16:00", horasNormales: 8, horasExtra: 1, horasTotales: 9, tarea: "Operación excavadora", estado: "presente" },
-  { id: "2", fecha: "2026-01-09", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
-  { id: "3", fecha: "2026-01-09", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "07:00", horaSalida: "17:00", horasNormales: 8, horasExtra: 2, horasTotales: 10, tarea: "Operación topadora", estado: "presente" },
-  { id: "4", fecha: "2026-01-09", personaId: "7", persona: "Lucía Fernández", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "ausente", observaciones: "Sin aviso" },
-  { id: "5", fecha: "2026-01-08", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Operación excavadora", estado: "presente" },
-  { id: "6", fecha: "2026-01-08", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", clienteId: "1", cliente: "Constructora Andina S.A.", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
-  { id: "7", fecha: "2026-01-08", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", clienteId: "2", cliente: "Inmobiliaria Del Sur", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "licencia", observaciones: "Trámite personal" },
+  { id: "1", fecha: "2026-01-09", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "16:00", horasNormales: 8, horasExtra: 1, horasTotales: 9, tarea: "Operación excavadora", estado: "presente" },
+  { id: "2", fecha: "2026-01-09", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
+  { id: "3", fecha: "2026-01-09", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", capatazId: "8", capataz: "Diego Torres", horaEntrada: "07:00", horaSalida: "17:00", horasNormales: 8, horasExtra: 2, horasTotales: 10, tarea: "Operación topadora", estado: "presente" },
+  { id: "4", fecha: "2026-01-09", personaId: "7", persona: "Lucía Fernández", obraId: "2", obra: "Excavación Fundaciones", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "ausente", observaciones: "Sin aviso" },
+  { id: "5", fecha: "2026-01-08", personaId: "4", persona: "Pedro Rodríguez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Operación excavadora", estado: "presente" },
+  { id: "6", fecha: "2026-01-08", personaId: "5", persona: "Ana Martínez", obraId: "1", obra: "Movimiento de Suelo - Lote 45", capatazId: "2", capataz: "Carlos Gómez", horaEntrada: "07:00", horaSalida: "15:00", horasNormales: 8, horasExtra: 0, horasTotales: 8, tarea: "Transporte de material", estado: "presente" },
+  { id: "7", fecha: "2026-01-08", personaId: "6", persona: "Roberto Sánchez", obraId: "2", obra: "Excavación Fundaciones", capatazId: "8", capataz: "Diego Torres", horaEntrada: "", horaSalida: "", horasNormales: 0, horasExtra: 0, horasTotales: 0, tarea: "", estado: "licencia", observaciones: "Trámite personal" },
 ];
