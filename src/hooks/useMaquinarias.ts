@@ -11,16 +11,19 @@ export interface MaquinariaDB {
   nombre: string;
   tipo: TipoMaquinaria;
   marca: string;
-  modelo: string;
   anio: number;
   patente: string | null;
   estado: EstadoMaquinaria;
-  ubicacion_actual: string;
   horas_acumuladas: number;
-  proximo_service: number;
   operador_asignado_id: string | null;
+  obra_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface MaquinariaWithRelations extends MaquinariaDB {
+  operador?: { nombre: string; apellido: string } | null;
+  obra?: { nombre: string } | null;
 }
 
 export interface MaquinariaForm {
@@ -28,25 +31,27 @@ export interface MaquinariaForm {
   nombre: string;
   tipo: TipoMaquinaria;
   marca: string;
-  modelo: string;
   anio: number;
   patente?: string;
   estado: EstadoMaquinaria;
-  ubicacion_actual: string;
   horas_acumuladas: number;
-  proximo_service: number;
   operador_asignado_id?: string;
+  obra_id?: string;
 }
 
 export function useMaquinarias() {
-  const [maquinarias, setMaquinarias] = useState<MaquinariaDB[]>([]);
+  const [maquinarias, setMaquinarias] = useState<MaquinariaWithRelations[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchMaquinarias = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from("maquinarias")
-      .select("*")
+      .select(`
+        *,
+        operador:personal!operador_asignado_id(nombre, apellido),
+        obra:obras(nombre)
+      `)
       .order("nombre");
 
     if (error) {
@@ -59,9 +64,22 @@ export function useMaquinarias() {
   };
 
   const createMaquinaria = async (maq: MaquinariaForm) => {
+    const insertData = {
+      codigo: maq.codigo,
+      nombre: maq.nombre,
+      tipo: maq.tipo,
+      marca: maq.marca,
+      anio: maq.anio,
+      patente: maq.patente || null,
+      estado: maq.estado,
+      horas_acumuladas: maq.horas_acumuladas,
+      operador_asignado_id: maq.operador_asignado_id || null,
+      obra_id: maq.obra_id || null,
+    };
+
     const { data, error } = await supabase
       .from("maquinarias")
-      .insert([maq])
+      .insert([insertData])
       .select()
       .single();
 
@@ -77,9 +95,14 @@ export function useMaquinarias() {
   };
 
   const updateMaquinaria = async (id: string, maq: Partial<MaquinariaForm>) => {
+    const updateData: any = { ...maq };
+    if (maq.patente === "") updateData.patente = null;
+    if (maq.operador_asignado_id === undefined) updateData.operador_asignado_id = null;
+    if (maq.obra_id === undefined) updateData.obra_id = null;
+
     const { error } = await supabase
       .from("maquinarias")
-      .update(maq)
+      .update(updateData)
       .eq("id", id);
 
     if (error) {

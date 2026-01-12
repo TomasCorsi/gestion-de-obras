@@ -315,13 +315,11 @@ export type Database = {
           horas_acumuladas: number
           id: string
           marca: string
-          modelo: string
           nombre: string
+          obra_id: string | null
           operador_asignado_id: string | null
           patente: string | null
-          proximo_service: number
           tipo: Database["public"]["Enums"]["tipo_maquinaria"]
-          ubicacion_actual: string
           updated_at: string
         }
         Insert: {
@@ -332,13 +330,11 @@ export type Database = {
           horas_acumuladas?: number
           id?: string
           marca: string
-          modelo: string
           nombre: string
+          obra_id?: string | null
           operador_asignado_id?: string | null
           patente?: string | null
-          proximo_service: number
           tipo: Database["public"]["Enums"]["tipo_maquinaria"]
-          ubicacion_actual: string
           updated_at?: string
         }
         Update: {
@@ -349,16 +345,21 @@ export type Database = {
           horas_acumuladas?: number
           id?: string
           marca?: string
-          modelo?: string
           nombre?: string
+          obra_id?: string | null
           operador_asignado_id?: string | null
           patente?: string | null
-          proximo_service?: number
           tipo?: Database["public"]["Enums"]["tipo_maquinaria"]
-          ubicacion_actual?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "maquinarias_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "maquinarias_operador_asignado_id_fkey"
             columns: ["operador_asignado_id"]
