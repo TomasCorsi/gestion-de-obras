@@ -467,14 +467,14 @@ export default function Maquinarias() {
             <div className="space-y-2">
               <Label htmlFor="operador_asignado_id">Operador Asignado</Label>
               <Select
-                value={formData.operador_asignado_id || ""}
-                onValueChange={(value) => setFormData({ ...formData, operador_asignado_id: value || undefined })}
+                value={formData.operador_asignado_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, operador_asignado_id: value === "none" ? undefined : value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Sin asignar" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="">Sin asignar</SelectItem>
+                  <SelectItem value="none">Sin asignar</SelectItem>
                   {operadores.map((op) => (
                     <SelectItem key={op.id} value={op.id}>{op.nombre} {op.apellido}</SelectItem>
                   ))}
