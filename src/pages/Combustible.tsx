@@ -118,8 +118,8 @@ export default function Combustible() {
 
   const filteredCargas = cargas.filter((c) =>
     c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.operador.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.estacion.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.operador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.estacion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
