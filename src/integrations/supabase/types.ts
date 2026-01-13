@@ -891,13 +891,12 @@ export type Database = {
         | "enfermedad"
       estado_viaje: "programado" | "en_curso" | "completado" | "cancelado"
       rol_personal:
-        | "administrador"
-        | "supervisor"
         | "capataz"
         | "maquinista"
         | "chofer"
         | "administrativo"
-        | "auditor"
+        | "ayudante"
+        | "sereno"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
         | "cargadora"
@@ -1070,13 +1069,12 @@ export const Constants = {
       ],
       estado_viaje: ["programado", "en_curso", "completado", "cancelado"],
       rol_personal: [
-        "administrador",
-        "supervisor",
         "capataz",
         "maquinista",
         "chofer",
         "administrativo",
-        "auditor",
+        "ayudante",
+        "sereno",
       ],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [

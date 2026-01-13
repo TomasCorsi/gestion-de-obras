@@ -77,7 +77,7 @@ export default function Obras() {
   });
 
   const responsables = personal.filter(p => 
-    (p.rol === "capataz" || p.rol === "supervisor" || p.rol === "administrador") && p.activo
+    (p.rol === "capataz" || p.rol === "administrativo") && p.activo
   );
 
   const filteredObras = obras.filter((obra) => {
