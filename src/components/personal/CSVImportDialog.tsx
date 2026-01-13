@@ -116,6 +116,13 @@ function parseCSV(text: string): ParseResult {
     const activoRaw = row.activo?.toLowerCase().trim();
     const activo = activoRaw === "false" || activoRaw === "no" || activoRaw === "0" ? false : true;
 
+    // Parse sueldo
+    const sueldo = row.sueldo ? parseFloat(row.sueldo.replace(',', '.')) : undefined;
+    if (row.sueldo && (isNaN(sueldo!) || sueldo! < 0)) {
+      errors.push({ row: i + 1, message: `Sueldo inválido: ${row.sueldo}. Debe ser un número positivo` });
+      continue;
+    }
+
     valid.push({
       nombre: row.nombre || undefined,
       apellido: row.apellido || undefined,
@@ -127,6 +134,7 @@ function parseCSV(text: string): ParseResult {
       activo: activo,
       licencia: row.licencia || undefined,
       vencimiento_licencia: vencimientoLicencia,
+      sueldo: sueldo,
     });
   }
 
@@ -181,8 +189,8 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia"].join(";");
-    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025"].join(";");
+    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo"].join(";");
+    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000"].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });

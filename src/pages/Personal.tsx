@@ -85,6 +85,7 @@ export default function Personal() {
     activo: true,
     licencia: "",
     vencimiento_licencia: "",
+    sueldo: 0,
   });
 
   const filteredPersonal = personal.filter((p) => {
@@ -109,6 +110,7 @@ export default function Personal() {
       activo: true,
       licencia: "",
       vencimiento_licencia: "",
+      sueldo: 0,
     });
     setFormOpen(true);
   };
@@ -127,6 +129,7 @@ export default function Personal() {
       activo: persona.activo,
       licencia: persona.licencia || "",
       vencimiento_licencia: persona.vencimiento_licencia || "",
+      sueldo: persona.sueldo ?? 0,
     });
     setFormOpen(true);
   };
@@ -464,6 +467,19 @@ export default function Personal() {
                 className="bg-muted border-border"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="sueldo">Sueldo</Label>
+              <Input
+                id="sueldo"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.sueldo ?? 0}
+                onChange={(e) => setFormData({ ...formData, sueldo: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+                className="bg-muted border-border"
+              />
+            </div>
             <div className="flex items-center space-x-2">
               <Switch
                 id="activo"
@@ -518,6 +534,7 @@ export default function Personal() {
             </DetailSection>
             <DetailSection title="Empleo">
               <DetailRow label="Fecha de Ingreso" value={selectedPersona.fecha_ingreso} />
+              <DetailRow label="Sueldo" value={selectedPersona.sueldo ? `$${selectedPersona.sueldo.toLocaleString()}` : "-"} />
               <DetailRow label="Licencia" value={selectedPersona.licencia || "-"} />
               <DetailRow label="Vencimiento Licencia" value={selectedPersona.vencimiento_licencia || "-"} />
             </DetailSection>

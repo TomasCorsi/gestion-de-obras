@@ -16,6 +16,7 @@ export interface PersonalDB {
   activo: boolean;
   licencia: string | null;
   vencimiento_licencia: string | null;
+  sueldo: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,7 @@ export interface PersonalForm {
   activo?: boolean;
   licencia?: string;
   vencimiento_licencia?: string;
+  sueldo?: number;
 }
 
 export function usePersonal() {
