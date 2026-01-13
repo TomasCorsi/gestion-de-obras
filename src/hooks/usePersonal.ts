@@ -6,13 +6,13 @@ export type RolPersonal = "capataz" | "maquinista" | "chofer" | "administrativo"
 
 export interface PersonalDB {
   id: string;
-  nombre: string;
-  apellido: string;
-  dni: string;
+  nombre: string | null;
+  apellido: string | null;
+  dni: string | null;
   rol: RolPersonal;
   email: string | null;
-  telefono: string;
-  fecha_ingreso: string;
+  telefono: string | null;
+  fecha_ingreso: string | null;
   activo: boolean;
   licencia: string | null;
   vencimiento_licencia: string | null;
@@ -21,14 +21,14 @@ export interface PersonalDB {
 }
 
 export interface PersonalForm {
-  nombre: string;
-  apellido: string;
-  dni: string;
-  rol: RolPersonal;
+  nombre?: string;
+  apellido?: string;
+  dni?: string;
+  rol?: RolPersonal;
   email?: string;
-  telefono: string;
-  fecha_ingreso: string;
-  activo: boolean;
+  telefono?: string;
+  fecha_ingreso?: string;
+  activo?: boolean;
   licencia?: string;
   vencimiento_licencia?: string;
 }
