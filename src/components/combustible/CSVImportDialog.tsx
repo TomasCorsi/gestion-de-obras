@@ -40,6 +40,81 @@ function detectSeparator(line: string): string {
   return detectedSeparator;
 }
 
+function parseDate(dateStr: string): string | null {
+  if (!dateStr) return null;
+  
+  // Try YYYY-MM-DD format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return dateStr;
+  }
+  
+  // Try DD/MM/YYYY or D/M/YYYY format
+  const dmyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (dmyMatch) {
+    const [, day, month, year] = dmyMatch;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  
+  return null;
+}
+
+function findMaquinariaId(
+  value: string,
+  maquinariasMap: Record<string, string>
+): string | undefined {
+  if (!value) return undefined;
+  
+  const trimmed = value.trim();
+  
+  // Direct match by codigo
+  if (maquinariasMap[trimmed]) {
+    return maquinariasMap[trimmed];
+  }
+  
+  // Extract code from format like "708-TOPADOR-LIUGONG" (first part before dash)
+  const codePart = trimmed.split('-')[0]?.trim();
+  if (codePart && maquinariasMap[codePart]) {
+    return maquinariasMap[codePart];
+  }
+  
+  // Try case-insensitive match on codigo
+  const lowerTrimmed = trimmed.toLowerCase();
+  for (const [codigo, id] of Object.entries(maquinariasMap)) {
+    if (codigo.toLowerCase() === lowerTrimmed) {
+      return id;
+    }
+    // Also check if the codigo matches the first part
+    if (codigo.toLowerCase() === codePart?.toLowerCase()) {
+      return id;
+    }
+  }
+  
+  return undefined;
+}
+
+function findObraId(
+  value: string,
+  obrasMap: Record<string, string>
+): string | undefined {
+  if (!value) return undefined;
+  
+  const trimmed = value.trim().toLowerCase();
+  
+  // Direct match
+  if (obrasMap[trimmed]) {
+    return obrasMap[trimmed];
+  }
+  
+  // Partial match (obra name contains the search value)
+  for (const [nombre, id] of Object.entries(obrasMap)) {
+    if (nombre.includes(trimmed) || trimmed.includes(nombre)) {
+      return id;
+    }
+  }
+  
+  return undefined;
+}
+
 function parseCSV(
   text: string,
   obrasMap: Record<string, string>,
@@ -53,13 +128,31 @@ function parseCSV(
   const firstLine = lines[0];
   const separator = detectSeparator(firstLine);
 
-  const headers = firstLine.split(separator).map(h => h.trim().toLowerCase());
+  const headers = firstLine.split(separator).map(h => h.trim().toLowerCase().replace(/['"]/g, ''));
   
-  // Columnas requeridas
-  const requiredColumns = ["fecha", "maquinaria", "litros", "precio_litro"];
-  const missingColumns = requiredColumns.filter(col => !headers.includes(col));
-  if (missingColumns.length > 0) {
-    return { valid: [], errors: [{ row: 0, message: `Columnas faltantes: ${missingColumns.join(", ")}` }] };
+  // Map possible column names
+  const columnAliases: Record<string, string[]> = {
+    fecha: ['fecha', 'date'],
+    maquinaria: ['maquinaria', 'maquinaria_id', 'maquina', 'machine', 'equipo'],
+    obra: ['obra', 'obra_id', 'proyecto', 'project'],
+    litros: ['litros', 'liters', 'cantidad'],
+    precio_litro: ['precio_litro', 'precio', 'price', 'precio_por_litro'],
+    horas_maquina: ['horas_maquina', 'horas', 'hours'],
+    estacion: ['estacion', 'station', 'estación'],
+    operador: ['operador', 'operator', 'chofer', 'driver'],
+    comprobante: ['comprobante', 'factura', 'receipt', 'invoice'],
+  };
+
+  // Find column indices
+  const colIndex: Record<string, number> = {};
+  for (const [key, aliases] of Object.entries(columnAliases)) {
+    for (const alias of aliases) {
+      const idx = headers.indexOf(alias);
+      if (idx !== -1) {
+        colIndex[key] = idx;
+        break;
+      }
+    }
   }
 
   const valid: CargaCombustibleForm[] = [];
@@ -69,66 +162,63 @@ function parseCSV(
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = line.split(separator).map(v => v.trim());
-    const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] || "";
-    });
+    const values = line.split(separator).map(v => v.trim().replace(/['"]/g, ''));
+    
+    const getValue = (key: string): string => {
+      const idx = colIndex[key];
+      return idx !== undefined ? values[idx] || "" : "";
+    };
 
-    // Validar fecha
-    const fecha = row.fecha;
-    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      errors.push({ row: i + 1, message: `Fecha inválida: ${row.fecha}. Formato: YYYY-MM-DD` });
-      continue;
+    // Parse fecha (optional now)
+    const fechaRaw = getValue('fecha');
+    const fecha = fechaRaw ? parseDate(fechaRaw) : null;
+
+    // Buscar maquinaria (optional)
+    const maquinariaValue = getValue('maquinaria');
+    const maquinaria_id = maquinariaValue ? findMaquinariaId(maquinariaValue, maquinariasMap) : undefined;
+    
+    // Log warning but don't skip if machinery not found
+    if (maquinariaValue && !maquinaria_id) {
+      errors.push({ row: i + 1, message: `Maquinaria no encontrada: ${maquinariaValue}` });
     }
 
-    // Buscar maquinaria por código
-    const maquinariaCode = row.maquinaria?.trim();
-    const maquinaria_id = maquinariaCode ? maquinariasMap[maquinariaCode] : undefined;
-    if (!maquinaria_id) {
-      errors.push({ row: i + 1, message: `Maquinaria no encontrada: ${maquinariaCode}` });
-      continue;
+    // Buscar obra (optional)
+    const obraValue = getValue('obra');
+    const obra_id = obraValue ? findObraId(obraValue, obrasMap) : undefined;
+    
+    if (obraValue && !obra_id) {
+      errors.push({ row: i + 1, message: `Obra no encontrada: ${obraValue}` });
     }
 
-    // Buscar obra por nombre (opcional)
-    const obraNombre = row.obra?.trim().toLowerCase();
-    let obra_id = "";
-    if (obraNombre) {
-      obra_id = obrasMap[obraNombre] || "";
-      if (!obra_id) {
-        errors.push({ row: i + 1, message: `Obra no encontrada: ${row.obra}` });
-        continue;
-      }
-    }
+    // Parse litros (optional, default 0)
+    const litrosRaw = getValue('litros');
+    const litros = litrosRaw ? parseFloat(litrosRaw.replace(',', '.')) : 0;
 
-    // Validar litros
-    const litros = parseFloat(row.litros);
-    if (isNaN(litros) || litros <= 0) {
-      errors.push({ row: i + 1, message: `Litros inválidos: ${row.litros}` });
-      continue;
-    }
+    // Parse precio_litro (optional, default 0)
+    const precioRaw = getValue('precio_litro');
+    const precio_litro = precioRaw ? parseFloat(precioRaw.replace(',', '.')) : 0;
 
-    // Validar precio_litro
-    const precio_litro = parseFloat(row.precio_litro);
-    if (isNaN(precio_litro) || precio_litro <= 0) {
-      errors.push({ row: i + 1, message: `Precio por litro inválido: ${row.precio_litro}` });
-      continue;
-    }
-
-    const horas_maquina = row.horas_maquina ? parseFloat(row.horas_maquina) : 0;
+    const horasRaw = getValue('horas_maquina');
+    const horas_maquina = horasRaw ? parseFloat(horasRaw.replace(',', '.')) : 0;
+    
     const costo_total = litros * precio_litro;
 
+    // Only skip completely empty rows
+    if (!fecha && !maquinaria_id && !obra_id && litros === 0 && precio_litro === 0) {
+      continue;
+    }
+
     valid.push({
-      fecha,
-      obra_id: obra_id || "",
-      maquinaria_id,
-      litros,
-      precio_litro,
-      costo_total,
+      fecha: fecha || undefined,
+      obra_id: obra_id || undefined,
+      maquinaria_id: maquinaria_id || undefined,
+      litros: isNaN(litros) ? 0 : litros,
+      precio_litro: isNaN(precio_litro) ? 0 : precio_litro,
+      costo_total: isNaN(costo_total) ? 0 : costo_total,
       horas_maquina: isNaN(horas_maquina) ? 0 : horas_maquina,
-      estacion: row.estacion || "",
-      operador: row.operador || "",
-      comprobante: row.comprobante || undefined,
+      estacion: getValue('estacion') || undefined,
+      operador: getValue('operador') || undefined,
+      comprobante: getValue('comprobante') || undefined,
     });
   }
 
