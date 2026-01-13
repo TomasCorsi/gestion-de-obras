@@ -944,6 +944,8 @@ export type Database = {
         | "administrativo"
         | "ayudante"
         | "sereno"
+        | "mecanico"
+        | "topografo"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
         | "cargadora"
@@ -1122,6 +1124,8 @@ export const Constants = {
         "administrativo",
         "ayudante",
         "sereno",
+        "mecanico",
+        "topografo",
       ],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [

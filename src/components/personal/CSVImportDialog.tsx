@@ -25,6 +25,8 @@ const rolesMap: Record<string, RolPersonal> = {
   "administrativo": "administrativo",
   "ayudante": "ayudante",
   "sereno": "sereno",
+  "mecanico": "mecanico",
+  "topografo": "topografo",
 };
 
 interface ParseResult {

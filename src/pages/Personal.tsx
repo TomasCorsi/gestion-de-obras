@@ -59,6 +59,8 @@ const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   administrativo: { label: "Administrativo", color: "bg-pink-500/20 text-pink-400 border-pink-500/30" },
   ayudante: { label: "Ayudante", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
   sereno: { label: "Sereno", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
+  mecanico: { label: "Mecánico", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  topografo: { label: "Topógrafo", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
 };
 
 export default function Personal() {
