@@ -362,9 +362,13 @@ export default function Combustible() {
                   <SelectValue placeholder="Seleccionar maquinaria" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {maquinarias.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>{m.nombre} ({m.codigo})</SelectItem>
-                  ))}
+                  {[...maquinarias]
+                    .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
+                    .map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.codigo} - {m.nombre}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
