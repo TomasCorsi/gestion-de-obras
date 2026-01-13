@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import logoCalamina from "@/assets/logo-calamina-sur.png";
 import firmaPresidente from "@/assets/firma-presidente.png";
 import { 
@@ -7,14 +7,6 @@ import {
   CotizacionCategoriaDB, 
   CotizacionItemDB 
 } from "@/hooks/useCotizaciones";
-
-// Extend jsPDF type for autoTable
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
 
 const EMPRESA_INFO = {
   nombre: "CALAMINA SUR S.A.",
@@ -248,7 +240,7 @@ export async function generateCotizacionPDF(
   }
 
   // Generate table
-  doc.autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [["Núm", "Descripción", "Un.", "Cant", "Altura", "M³", "P. Unit.", "Total"]],
     body: tableData,
@@ -277,7 +269,7 @@ export async function generateCotizacionPDF(
     margin: { left: margin, right: margin },
   });
 
-  yPos = doc.lastAutoTable.finalY + 5;
+  yPos = (doc as any).lastAutoTable.finalY + 5;
 
   // ============== TOTALS ==============
   const totalsStartX = pageWidth - margin - 70;
