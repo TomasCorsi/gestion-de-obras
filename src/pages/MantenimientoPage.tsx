@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +44,10 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useMantenimientos, MantenimientoWithRelations, MantenimientoForm, TipoMantenimiento, EstadoMantenimiento } from "@/hooks/useMantenimientos";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 
 const tipoConfig: Record<string, { label: string; className: string }> = {
@@ -71,9 +73,16 @@ function formatCurrency(value: number): string {
 export default function MantenimientoPage() {
   const { mantenimientos, loading, createMantenimiento, updateMantenimiento, deleteMantenimiento } = useMantenimientos();
   const { maquinarias } = useMaquinarias();
+  const { obras } = useObras();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [filters, setFilters] = useState<FilterState>({
+    fechaDesde: undefined,
+    fechaHasta: undefined,
+    mes: undefined,
+    obraId: undefined,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -97,13 +106,26 @@ export default function MantenimientoPage() {
     observaciones: "",
   });
 
-  const filteredMantenimientos = mantenimientos.filter((m) => {
-    const matchesSearch =
-      m.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEstado = estadoFilter === "todos" || m.estado === estadoFilter;
-    return matchesSearch && matchesEstado;
-  });
+  const filteredMantenimientos = useMemo(() => {
+    // Apply date filters first (mantenimientos don't have obra_id, so we only filter by date)
+    const dateFiltered = mantenimientos.filter((m) => {
+      if (filters.fechaDesde || filters.fechaHasta) {
+        const itemDate = new Date(m.fecha);
+        if (filters.fechaDesde && itemDate < filters.fechaDesde) return false;
+        if (filters.fechaHasta && itemDate > filters.fechaHasta) return false;
+      }
+      return true;
+    });
+    
+    // Then apply search and status filters
+    return dateFiltered.filter((m) => {
+      const matchesSearch =
+        m.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesEstado = estadoFilter === "todos" || m.estado === estadoFilter;
+      return matchesSearch && matchesEstado;
+    });
+  }, [mantenimientos, filters, searchTerm, estadoFilter]);
 
   const handleNew = () => {
     setIsEditing(false);
@@ -199,6 +221,11 @@ export default function MantenimientoPage() {
 
   return (
     <MainLayout title="Mantenimiento" subtitle="Gestión de mantenimiento de equipos">
+      {/* Filter Bar */}
+      <div className="mb-4">
+        <FilterBar obras={obras} onFilterChange={setFilters} showObraFilter={false} />
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">

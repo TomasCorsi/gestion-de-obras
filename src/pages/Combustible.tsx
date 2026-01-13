@@ -45,6 +45,7 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -66,6 +67,12 @@ export default function Combustible() {
   const { personal } = usePersonal();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<FilterState>({
+    fechaDesde: undefined,
+    fechaHasta: undefined,
+    mes: undefined,
+    obraId: undefined,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -116,12 +123,25 @@ export default function Combustible() {
 
   const activeObras = obras.filter(o => o.estado !== "finalizada");
 
-  const filteredCargas = cargas.filter((c) =>
-    c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.operador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.estacion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCargas = useMemo(() => {
+    // Apply date and obra filters first
+    const dateFiltered = filterByDateAndObra(
+      cargas.map(c => ({ ...c, fecha: c.fecha, obra_id: c.obra_id })),
+      filters
+    );
+    
+    // Then apply search filter
+    return dateFiltered.filter((c) =>
+      c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.operador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.estacion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [cargas, filters, searchTerm]);
+
+  // Calculate stats based on filtered data
+  const totalLitros = filteredCargas.reduce((sum, c) => sum + c.litros, 0);
+  const totalCosto = filteredCargas.reduce((sum, c) => sum + c.costo_total, 0);
 
   const handleNew = () => {
     setIsEditing(false);
@@ -204,9 +224,6 @@ export default function Combustible() {
     setFormOpen(false);
   };
 
-  const totalLitros = cargas.reduce((sum, c) => sum + c.litros, 0);
-  const totalCosto = cargas.reduce((sum, c) => sum + c.costo_total, 0);
-
   if (loading) {
     return (
       <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
@@ -219,6 +236,11 @@ export default function Combustible() {
 
   return (
     <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
+      {/* Filter Bar */}
+      <div className="mb-4">
+        <FilterBar obras={obras} onFilterChange={setFilters} />
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,7 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
 import { useViajes } from "@/hooks/useViajes";
@@ -57,6 +58,12 @@ export default function Remitos() {
   const { viajes } = useViajes();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<FilterState>({
+    fechaDesde: undefined,
+    fechaHasta: undefined,
+    mes: undefined,
+    obraId: undefined,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -77,10 +84,19 @@ export default function Remitos() {
     observaciones: "",
   });
 
-  const filteredRemitos = remitos.filter((r) =>
-    r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredRemitos = useMemo(() => {
+    // Apply date and obra filters first
+    const dateFiltered = filterByDateAndObra(
+      remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
+      filters
+    );
+    
+    // Then apply search filter
+    return dateFiltered.filter((r) =>
+      r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [remitos, filters, searchTerm]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -177,6 +193,11 @@ export default function Remitos() {
 
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+      {/* Filter Bar */}
+      <div className="mb-4">
+        <FilterBar obras={obras} onFilterChange={setFilters} />
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
