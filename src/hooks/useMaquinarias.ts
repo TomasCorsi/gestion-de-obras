@@ -21,7 +21,9 @@ export type TipoMaquinaria =
   | "zanjeadora"
   | "rastra"
   | "tractor"
-  | "rastra_grosspal";
+  | "rastra_grosspal"
+  | "auto"
+  | "camioneta";
 export type EstadoMaquinaria = "operativa" | "mantenimiento" | "inactiva" | "en_uso";
 
 export interface MaquinariaDB {

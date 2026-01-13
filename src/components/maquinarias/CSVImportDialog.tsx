@@ -37,6 +37,8 @@ const tiposValidos: TipoMaquinaria[] = [
   "rastra",
   "tractor",
   "rastra_grosspal",
+  "auto",
+  "camioneta",
 ];
 const estadosValidos: EstadoMaquinaria[] = ["operativa", "mantenimiento", "inactiva", "en_uso"];
 

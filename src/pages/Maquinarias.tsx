@@ -69,6 +69,8 @@ const tiposConfig: Record<TipoMaquinaria, string> = {
   rastra: "Rastra",
   tractor: "Tractor",
   rastra_grosspal: "Rastra Grosspal",
+  auto: "Auto",
+  camioneta: "Camioneta",
 };
 
 const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
