@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -44,6 +45,7 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
@@ -334,6 +336,12 @@ export default function Personal() {
           );
         })}
       </div>
+
+      {/* Separator */}
+      <Separator className="my-8" />
+
+      {/* Asignaciones de Personal a Obras */}
+      <AsignacionesPersonalObra />
 
       {/* Form Dialog */}
       <FormDialog
