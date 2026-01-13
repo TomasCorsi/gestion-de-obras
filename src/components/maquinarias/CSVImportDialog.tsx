@@ -53,7 +53,11 @@ function parseCSV(text: string): ParseResult {
     return { valid: [], errors: [{ row: 0, message: "El archivo debe tener al menos una fila de encabezados y una de datos" }] };
   }
 
-  const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+  // Detectar separador: tabulación o coma
+  const firstLine = lines[0];
+  const separator = firstLine.includes("\t") ? "\t" : ",";
+
+  const headers = firstLine.split(separator).map(h => h.trim().toLowerCase());
   const requiredHeaders = ["codigo", "nombre", "tipo", "marca", "anio", "estado"];
   const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
   
@@ -68,50 +72,44 @@ function parseCSV(text: string): ParseResult {
     const line = lines[i].trim();
     if (!line) continue;
 
-    const values = line.split(",").map(v => v.trim());
+    const values = line.split(separator).map(v => v.trim());
     const row: Record<string, string> = {};
     headers.forEach((h, idx) => {
       row[h] = values[idx] || "";
     });
 
-    // Validaciones
-    if (!row.codigo) {
-      errors.push({ row: i + 1, message: "Código es requerido" });
-      continue;
-    }
-    if (!row.nombre) {
-      errors.push({ row: i + 1, message: "Nombre es requerido" });
-      continue;
-    }
-    if (!row.tipo || !tiposValidos.includes(row.tipo as TipoMaquinaria)) {
+    // Validaciones - ahora todos los campos son opcionales
+    const tipo = row.tipo?.toLowerCase();
+    if (tipo && !tiposValidos.includes(tipo as TipoMaquinaria)) {
       errors.push({ row: i + 1, message: `Tipo inválido: ${row.tipo}. Válidos: ${tiposValidos.join(", ")}` });
       continue;
     }
-    if (!row.marca) {
-      errors.push({ row: i + 1, message: "Marca es requerida" });
-      continue;
-    }
-    const anio = parseInt(row.anio);
-    if (isNaN(anio) || anio < 1900 || anio > new Date().getFullYear() + 1) {
-      errors.push({ row: i + 1, message: `Año inválido: ${row.anio}` });
-      continue;
-    }
-    if (!row.estado || !estadosValidos.includes(row.estado as EstadoMaquinaria)) {
+    
+    const estado = row.estado?.toLowerCase();
+    if (estado && !estadosValidos.includes(estado as EstadoMaquinaria)) {
       errors.push({ row: i + 1, message: `Estado inválido: ${row.estado}. Válidos: ${estadosValidos.join(", ")}` });
+      continue;
+    }
+
+    const anio = row.anio ? parseInt(row.anio) : undefined;
+    if (row.anio && (isNaN(anio!) || anio! < 1900 || anio! > new Date().getFullYear() + 1)) {
+      errors.push({ row: i + 1, message: `Año inválido: ${row.anio}` });
       continue;
     }
 
     const horas = row.horas_acumuladas ? parseFloat(row.horas_acumuladas) : 0;
 
     valid.push({
-      codigo: row.codigo,
-      nombre: row.nombre,
-      tipo: row.tipo as TipoMaquinaria,
-      marca: row.marca,
-      anio,
+      codigo: row.codigo || undefined,
+      nombre: row.nombre || undefined,
+      tipo: (tipo as TipoMaquinaria) || undefined,
+      marca: row.marca || undefined,
+      anio: anio,
       patente: row.patente || undefined,
-      estado: row.estado as EstadoMaquinaria,
+      estado: (estado as EstadoMaquinaria) || undefined,
       horas_acumuladas: isNaN(horas) ? 0 : horas,
+      obra_id: row.obra_id || undefined,
+      operador_asignado_id: row.operador_asignado_id || undefined,
     });
   }
 
@@ -128,8 +126,10 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    if (!selectedFile.name.endsWith(".csv")) {
-      toast.error("Por favor selecciona un archivo CSV");
+    const validExtensions = [".csv", ".tsv", ".txt"];
+    const hasValidExtension = validExtensions.some(ext => selectedFile.name.toLowerCase().endsWith(ext));
+    if (!hasValidExtension) {
+      toast.error("Por favor selecciona un archivo CSV o TSV");
       return;
     }
 
@@ -164,14 +164,17 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    const headers = "codigo,nombre,tipo,marca,anio,patente,estado,horas_acumuladas";
-    const example = "CARG-001,Cargadora CAT 950,cargadora,Caterpillar,2020,ABC123,operativa,1500";
+    // Formato separado por tabulaciones (compatible con Excel)
+    const headers = ["id", "codigo", "nombre", "tipo", "marca", "anio", "patente", "estado", "horas_acumuladas", "operador_asignado_id", "created_at", "updated_at", "obra_id"].join("\t");
+    const example = ["", "CARG-001", "Cargadora CAT 950", "cargadora", "Caterpillar", "2020", "ABC123", "operativa", "1500", "", "", "", ""].join("\t");
     const content = `${headers}\n${example}`;
-    const blob = new Blob([content], { type: "text/csv" });
+    // BOM para que Excel reconozca UTF-8
+    const bom = "\uFEFF";
+    const blob = new Blob([bom + content], { type: "text/tab-separated-values;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "maquinarias_template.csv";
+    a.download = "maquinarias_template.tsv";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -180,9 +183,9 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Importar Maquinarias desde CSV</DialogTitle>
+          <DialogTitle>Importar Maquinarias</DialogTitle>
           <DialogDescription>
-            Sube un archivo CSV con las maquinarias a importar
+            Sube un archivo CSV/TSV (separado por tabulaciones) con las maquinarias a importar
           </DialogDescription>
         </DialogHeader>
 
@@ -195,7 +198,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
             className="w-full"
           >
             <Download className="w-4 h-4 mr-2" />
-            Descargar plantilla CSV
+            Descargar plantilla (TSV)
           </Button>
 
           {/* File Upload */}
@@ -206,7 +209,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv"
+              accept=".csv,.tsv,.txt"
               onChange={handleFileChange}
               className="hidden"
             />
@@ -219,7 +222,7 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
               <div className="space-y-2">
                 <Upload className="w-8 h-8 mx-auto text-muted-foreground" />
                 <p className="text-sm text-muted-foreground">
-                  Haz clic para seleccionar un archivo CSV
+                  Haz clic para seleccionar un archivo (CSV/TSV)
                 </p>
               </div>
             )}
