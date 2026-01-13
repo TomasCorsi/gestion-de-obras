@@ -224,14 +224,14 @@ export function useReportesData() {
 
       const [obrasResult, maquinariasResult, viajesResult, combustibleResult, mantenimientosResult] = await Promise.all([
         supabase.from("obras").select("*"),
-        supabase.from("maquinarias").select("*"),
+        supabase.from("maquinarias").select("id, nombre, codigo, tipo, estado, obra_id"),
         supabase
           .from("viajes")
           .select("*")
           .gte("fecha", format(startOfCurrentWeek, "yyyy-MM-dd"))
           .lte("fecha", format(endOfCurrentWeek, "yyyy-MM-dd")),
-        supabase.from("cargas_combustible").select("*"),
-        supabase.from("mantenimientos").select("*"),
+        supabase.from("cargas_combustible").select("id, fecha, litros, costo_total, obra_id, maquinaria_id"),
+        supabase.from("mantenimientos").select("id, fecha, costo_total, maquinaria_id, maquinaria:maquinarias(obra_id)"),
       ]);
 
       if (obrasResult.data) setObras(obrasResult.data);
