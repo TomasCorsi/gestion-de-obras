@@ -34,6 +34,7 @@ import {
   User,
   Filter,
   CreditCard,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +47,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
+import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
@@ -60,13 +62,14 @@ const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
 };
 
 export default function Personal() {
-  const { personal, loading, createPersonal, updatePersonal, deletePersonal } = usePersonal();
+  const { personal, loading, createPersonal, updatePersonal, deletePersonal, fetchPersonal } = usePersonal();
   const { asignaciones } = useAsignacionesPersonal();
   const [searchTerm, setSearchTerm] = useState("");
   const [rolFilter, setRolFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<PersonalDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -196,6 +199,14 @@ export default function Personal() {
               ))}
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="border-border"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Importar
+          </Button>
           <Button
             onClick={handleNew}
             className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
@@ -521,6 +532,18 @@ export default function Personal() {
         onConfirm={confirmDelete}
         title="Eliminar Personal"
         description={`¿Estás seguro de que deseas eliminar a "${selectedPersona?.nombre} ${selectedPersona?.apellido}"? Esta acción no se puede deshacer.`}
+      />
+
+      {/* CSV Import Dialog */}
+      <CSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={async (records) => {
+          for (const record of records) {
+            await createPersonal(record);
+          }
+          await fetchPersonal();
+        }}
       />
     </MainLayout>
   );
