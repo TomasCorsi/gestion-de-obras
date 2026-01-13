@@ -33,6 +33,7 @@ import {
   DollarSign,
   Droplets,
   Loader2,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -48,6 +49,7 @@ import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } f
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
+import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -67,9 +69,35 @@ export default function Combustible() {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedCarga, setSelectedCarga] = useState<CargaCombustibleWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Mapas para importación CSV
+  const obrasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    obras.forEach(o => {
+      map[o.nombre.toLowerCase()] = o.id;
+    });
+    return map;
+  }, [obras]);
+
+  const maquinariasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.codigo) {
+        map[m.codigo] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
+
+  const handleCSVImport = async (cargasToImport: CargaCombustibleForm[]) => {
+    for (const carga of cargasToImport) {
+      await createCarga(carga);
+    }
+  };
 
   const operadores = personal.filter(p => (p.rol === "maquinista" || p.rol === "chofer") && p.activo);
 
@@ -194,13 +222,23 @@ export default function Combustible() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <Button
-          onClick={handleNew}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Registrar Carga
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+            className="border-border"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Importar
+          </Button>
+          <Button
+            onClick={handleNew}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Registrar Carga
+          </Button>
+        </div>
       </div>
 
       {/* Table */}
@@ -510,6 +548,15 @@ export default function Combustible() {
         onConfirm={confirmDelete}
         title="Eliminar Carga"
         description={`¿Estás seguro de que deseas eliminar esta carga de combustible del ${selectedCarga?.fecha}? Esta acción no se puede deshacer.`}
+      />
+
+      {/* CSV Import Dialog */}
+      <CombustibleCSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={handleCSVImport}
+        obrasMap={obrasMap}
+        maquinariasMap={maquinariasMap}
       />
     </MainLayout>
   );
