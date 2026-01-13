@@ -233,6 +233,30 @@ export default function MantenimientoPage() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">{mantenimientos.length}</p>
+            <p className="text-sm text-muted-foreground">Total Registros</p>
+          </div>
+          <Wrench className="w-8 h-8 text-primary" />
+        </div>
+        {Object.entries(estadoConfig).map(([key, config]) => {
+          const count = mantenimientos.filter((m) => m.estado === key).length;
+          const Icon = config.icon;
+          return (
+            <div key={key} className="card-industrial p-4 flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-foreground">{count}</p>
+                <p className="text-sm text-muted-foreground">{config.label}</p>
+              </div>
+              <Icon className="w-8 h-8 text-muted-foreground" />
+            </div>
+          );
+        })}
+      </div>
+
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMantenimientos.map((mant, index) => {
@@ -328,30 +352,6 @@ export default function MantenimientoPage() {
                 )}
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">{mantenimientos.length}</p>
-            <p className="text-sm text-muted-foreground">Total Registros</p>
-          </div>
-          <Wrench className="w-8 h-8 text-primary" />
-        </div>
-        {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = mantenimientos.filter((m) => m.estado === key).length;
-          const Icon = config.icon;
-          return (
-            <div key={key} className="card-industrial p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-foreground">{count}</p>
-                <p className="text-sm text-muted-foreground">{config.label}</p>
-              </div>
-              <Icon className="w-8 h-8 text-muted-foreground" />
-            </div>
           );
         })}
       </div>

@@ -197,6 +197,44 @@ export default function Remitos() {
         </Button>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">{remitos.length}</p>
+            <p className="text-sm text-muted-foreground">Total Remitos</p>
+          </div>
+          <Receipt className="w-8 h-8 text-primary" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">
+              {remitos.filter((r) => r.firmado).length}
+            </p>
+            <p className="text-sm text-muted-foreground">Firmados</p>
+          </div>
+          <CheckCircle className="w-8 h-8 text-success" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">
+              {remitos.filter((r) => !r.firmado).length}
+            </p>
+            <p className="text-sm text-muted-foreground">Pendientes</p>
+          </div>
+          <XCircle className="w-8 h-8 text-warning" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">
+              {remitos.reduce((sum, r) => sum + r.cantidad, 0)} m³
+            </p>
+            <p className="text-sm text-muted-foreground">Volumen Total</p>
+          </div>
+          <Package className="w-8 h-8 text-muted-foreground" />
+        </div>
+      </div>
+
       {/* Table */}
       <div className="card-industrial overflow-hidden">
         <Table>
@@ -298,44 +336,6 @@ export default function Remitos() {
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">{remitos.length}</p>
-            <p className="text-sm text-muted-foreground">Total Remitos</p>
-          </div>
-          <Receipt className="w-8 h-8 text-primary" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {remitos.filter((r) => r.firmado).length}
-            </p>
-            <p className="text-sm text-muted-foreground">Firmados</p>
-          </div>
-          <CheckCircle className="w-8 h-8 text-success" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {remitos.filter((r) => !r.firmado).length}
-            </p>
-            <p className="text-sm text-muted-foreground">Pendientes</p>
-          </div>
-          <XCircle className="w-8 h-8 text-warning" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {remitos.reduce((sum, r) => sum + r.cantidad, 0)} m³
-            </p>
-            <p className="text-sm text-muted-foreground">Volumen Total</p>
-          </div>
-          <Package className="w-8 h-8 text-muted-foreground" />
-        </div>
       </div>
 
       {/* Form Dialog */}
