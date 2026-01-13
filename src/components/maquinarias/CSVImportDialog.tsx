@@ -17,34 +17,66 @@ interface CSVImportDialogProps {
   onImport: (maquinarias: MaquinariaForm[]) => Promise<void>;
 }
 
-const tiposValidos: TipoMaquinaria[] = [
-  "cargadora",
-  "compactador",
-  "retroexcavadora",
-  "minicargadora",
-  "motoniveladora",
-  "topador",
-  "pala_retro",
-  "batea",
-  "acoplado",
-  "camion",
-  "carreton",
-  "cisterna",
-  "tanque_cisterna",
-  "tanque_regador_tractor",
-  "soplador",
-  "zanjeadora",
-  "rastra",
-  "tractor",
-  "rastra_grosspal",
-  "auto",
-  "camioneta",
-];
-const estadosValidos: EstadoMaquinaria[] = ["operativa", "mantenimiento", "inactiva", "en_uso"];
+// Mapeo de tipos con variantes de texto (lowercase para comparación)
+const tiposMap: Record<string, TipoMaquinaria> = {
+  "cargadora": "cargadora",
+  "compactador": "compactador",
+  "retroexcavadora": "retroexcavadora",
+  "minicargadora": "minicargadora",
+  "motoniveladora": "motoniveladora",
+  "topador": "topador",
+  "pala_retro": "pala_retro",
+  "pala retro": "pala_retro",
+  "batea": "batea",
+  "acoplado": "acoplado",
+  "camion": "camion",
+  "camión": "camion",
+  "carreton": "carreton",
+  "carretón": "carreton",
+  "cisterna": "cisterna",
+  "tanque_cisterna": "tanque_cisterna",
+  "tanque cisterna": "tanque_cisterna",
+  "tanque_regador_tractor": "tanque_regador_tractor",
+  "tanque regador tractor": "tanque_regador_tractor",
+  "soplador": "soplador",
+  "zanjeadora": "zanjeadora",
+  "rastra": "rastra",
+  "tractor": "tractor",
+  "rastra_grosspal": "rastra_grosspal",
+  "rastra grosspal": "rastra_grosspal",
+  "auto": "auto",
+  "camioneta": "camioneta",
+};
+
+// Mapeo de estados con variantes de texto
+const estadosMap: Record<string, EstadoMaquinaria> = {
+  "operativa": "operativa",
+  "mantenimiento": "mantenimiento",
+  "inactiva": "inactiva",
+  "en_uso": "en_uso",
+  "en uso": "en_uso",
+};
 
 interface ParseResult {
   valid: MaquinariaForm[];
   errors: { row: number; message: string }[];
+}
+
+function detectSeparator(line: string): string {
+  // Detectar el separador más común en la línea
+  const separators = [";", "\t", ","];
+  let maxCount = 0;
+  let detectedSeparator = ",";
+  
+  for (const sep of separators) {
+    const count = (line.match(new RegExp(sep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+    if (count > maxCount) {
+      maxCount = count;
+      detectedSeparator = sep;
+    }
+  }
+  
+  return detectedSeparator;
 }
 
 function parseCSV(text: string): ParseResult {
@@ -53,18 +85,12 @@ function parseCSV(text: string): ParseResult {
     return { valid: [], errors: [{ row: 0, message: "El archivo debe tener al menos una fila de encabezados y una de datos" }] };
   }
 
-  // Detectar separador: tabulación o coma
   const firstLine = lines[0];
-  const separator = firstLine.includes("\t") ? "\t" : ",";
+  const separator = detectSeparator(firstLine);
 
   const headers = firstLine.split(separator).map(h => h.trim().toLowerCase());
-  const requiredHeaders = ["codigo", "nombre", "tipo", "marca", "anio", "estado"];
-  const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
   
-  if (missingHeaders.length > 0) {
-    return { valid: [], errors: [{ row: 0, message: `Faltan columnas requeridas: ${missingHeaders.join(", ")}` }] };
-  }
-
+  // Ya no requerimos columnas obligatorias
   const valid: MaquinariaForm[] = [];
   const errors: { row: number; message: string }[] = [];
 
@@ -78,16 +104,19 @@ function parseCSV(text: string): ParseResult {
       row[h] = values[idx] || "";
     });
 
-    // Validaciones - ahora todos los campos son opcionales
-    const tipo = row.tipo?.toLowerCase();
-    if (tipo && !tiposValidos.includes(tipo as TipoMaquinaria)) {
-      errors.push({ row: i + 1, message: `Tipo inválido: ${row.tipo}. Válidos: ${tiposValidos.join(", ")}` });
+    // Normalizar tipo (convertir a lowercase y buscar en el mapa)
+    const tipoRaw = row.tipo?.toLowerCase().trim();
+    const tipo = tipoRaw ? tiposMap[tipoRaw] : undefined;
+    if (tipoRaw && !tipo) {
+      errors.push({ row: i + 1, message: `Tipo inválido: ${row.tipo}. Válidos: ${Object.keys(tiposMap).join(", ")}` });
       continue;
     }
     
-    const estado = row.estado?.toLowerCase();
-    if (estado && !estadosValidos.includes(estado as EstadoMaquinaria)) {
-      errors.push({ row: i + 1, message: `Estado inválido: ${row.estado}. Válidos: ${estadosValidos.join(", ")}` });
+    // Normalizar estado
+    const estadoRaw = row.estado?.toLowerCase().trim();
+    const estado = estadoRaw ? estadosMap[estadoRaw] : undefined;
+    if (estadoRaw && !estado) {
+      errors.push({ row: i + 1, message: `Estado inválido: ${row.estado}. Válidos: ${Object.keys(estadosMap).join(", ")}` });
       continue;
     }
 
@@ -102,11 +131,11 @@ function parseCSV(text: string): ParseResult {
     valid.push({
       codigo: row.codigo || undefined,
       nombre: row.nombre || undefined,
-      tipo: (tipo as TipoMaquinaria) || undefined,
+      tipo: tipo,
       marca: row.marca || undefined,
       anio: anio,
       patente: row.patente || undefined,
-      estado: (estado as EstadoMaquinaria) || undefined,
+      estado: estado,
       horas_acumuladas: isNaN(horas) ? 0 : horas,
       obra_id: row.obra_id || undefined,
       operador_asignado_id: row.operador_asignado_id || undefined,
@@ -164,17 +193,17 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    // Formato separado por tabulaciones (compatible con Excel)
-    const headers = ["id", "codigo", "nombre", "tipo", "marca", "anio", "patente", "estado", "horas_acumuladas", "operador_asignado_id", "created_at", "updated_at", "obra_id"].join("\t");
-    const example = ["", "CARG-001", "Cargadora CAT 950", "cargadora", "Caterpillar", "2020", "ABC123", "operativa", "1500", "", "", "", ""].join("\t");
+    // Formato separado por punto y coma (compatible con Excel en español)
+    const headers = ["id", "codigo", "nombre", "tipo", "marca", "anio", "patente", "estado", "horas_acumuladas", "operador_asignado_id", "created_at", "updated_at", "obra_id"].join(";");
+    const example = ["", "102", "102-Cargadora-CATERPILLAR", "Cargadora", "CATERPILLAR", "2020", "ABC123", "Operativa", "1500", "", "", "", ""].join(";");
     const content = `${headers}\n${example}`;
     // BOM para que Excel reconozca UTF-8
     const bom = "\uFEFF";
-    const blob = new Blob([bom + content], { type: "text/tab-separated-values;charset=utf-8" });
+    const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "maquinarias_template.tsv";
+    a.download = "maquinarias_template.csv";
     a.click();
     URL.revokeObjectURL(url);
   };
