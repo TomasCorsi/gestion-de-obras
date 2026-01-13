@@ -46,6 +46,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
+import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +61,7 @@ const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
 
 export default function Personal() {
   const { personal, loading, createPersonal, updatePersonal, deletePersonal } = usePersonal();
+  const { asignaciones } = useAsignacionesPersonal();
   const [searchTerm, setSearchTerm] = useState("");
   const [rolFilter, setRolFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
@@ -322,16 +324,23 @@ export default function Personal() {
         </Table>
       </div>
 
-      {/* Stats by Role */}
+      {/* Stats by Role - Disponibles */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mt-6">
         {Object.entries(rolesConfig).map(([key, config]) => {
-          const count = personal.filter((p) => p.rol === key && p.activo).length;
+          const totalActivo = personal.filter((p) => p.rol === key && p.activo).length;
+          const asignados = asignaciones
+            .filter((a) => a.rol === key)
+            .reduce((sum, a) => sum + a.cantidad, 0);
+          const disponibles = Math.max(0, totalActivo - asignados);
           return (
             <div key={key} className="card-industrial p-3 text-center">
-              <p className="text-xl font-bold text-foreground">{count}</p>
+              <p className="text-xl font-bold text-foreground">{disponibles}</p>
               <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
                 {config.label}
               </Badge>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                {asignados > 0 ? `${asignados} asignados` : "disponibles"}
+              </p>
             </div>
           );
         })}
