@@ -225,6 +225,23 @@ export default function Viajes() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        {Object.entries(estadoConfig).map(([key, config]) => {
+          const count = viajes.filter((v) => v.estado === key).length;
+          const Icon = config.icon;
+          return (
+            <div key={key} className="card-industrial p-4 flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-bold text-foreground">{count}</p>
+                <p className="text-sm text-muted-foreground">{config.label}</p>
+              </div>
+              <Icon className="w-6 h-6 text-muted-foreground" />
+            </div>
+          );
+        })}
+      </div>
+
       {/* Table */}
       <div className="card-industrial overflow-hidden">
         <Table>
@@ -319,23 +336,6 @@ export default function Viajes() {
             })}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = viajes.filter((v) => v.estado === key).length;
-          const Icon = config.icon;
-          return (
-            <div key={key} className="card-industrial p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-foreground">{count}</p>
-                <p className="text-sm text-muted-foreground">{config.label}</p>
-              </div>
-              <Icon className="w-6 h-6 text-muted-foreground" />
-            </div>
-          );
-        })}
       </div>
 
       {/* Form Dialog */}

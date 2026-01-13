@@ -249,6 +249,40 @@ export default function Combustible() {
         </div>
       </div>
 
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">{cargas.length}</p>
+            <p className="text-sm text-muted-foreground">Cargas Registradas</p>
+          </div>
+          <Fuel className="w-8 h-8 text-primary" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">{totalLitros.toLocaleString()} L</p>
+            <p className="text-sm text-muted-foreground">Litros Totales</p>
+          </div>
+          <Droplets className="w-8 h-8 text-primary" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCosto)}</p>
+            <p className="text-sm text-muted-foreground">Gasto Total</p>
+          </div>
+          <DollarSign className="w-8 h-8 text-warning" />
+        </div>
+        <div className="card-industrial p-4 flex items-center justify-between">
+          <div>
+            <p className="text-2xl font-bold text-foreground">
+              {cargas.length > 0 ? (totalLitros / cargas.length).toFixed(0) : 0} L
+            </p>
+            <p className="text-sm text-muted-foreground">Promedio/Carga</p>
+          </div>
+          <Fuel className="w-8 h-8 text-muted-foreground" />
+        </div>
+      </div>
+
       {/* Table */}
       <div className="card-industrial overflow-hidden">
         <Table>
@@ -327,40 +361,6 @@ export default function Combustible() {
             ))}
           </TableBody>
         </Table>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">{cargas.length}</p>
-            <p className="text-sm text-muted-foreground">Cargas Registradas</p>
-          </div>
-          <Fuel className="w-8 h-8 text-primary" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">{totalLitros.toLocaleString()} L</p>
-            <p className="text-sm text-muted-foreground">Litros Totales</p>
-          </div>
-          <Droplets className="w-8 h-8 text-primary" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCosto)}</p>
-            <p className="text-sm text-muted-foreground">Gasto Total</p>
-          </div>
-          <DollarSign className="w-8 h-8 text-warning" />
-        </div>
-        <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {cargas.length > 0 ? (totalLitros / cargas.length).toFixed(0) : 0} L
-            </p>
-            <p className="text-sm text-muted-foreground">Promedio/Carga</p>
-          </div>
-          <Fuel className="w-8 h-8 text-muted-foreground" />
-        </div>
       </div>
 
       {/* Form Dialog */}

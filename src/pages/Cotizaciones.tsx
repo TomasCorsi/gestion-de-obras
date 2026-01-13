@@ -280,6 +280,27 @@ export default function Cotizaciones() {
         </div>
       </div>
 
+      {/* Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        {Object.entries(estadoConfig).map(([key, config]) => {
+          const count = cotizaciones.filter((c) => c.estado === key).length;
+          const total = cotizaciones
+            .filter((c) => c.estado === key)
+            .reduce((sum, c) => sum + c.total, 0);
+          return (
+            <div key={key} className="card-industrial p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Badge className={cn("status-badge", config.className)}>
+                  {config.label}
+                </Badge>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{count}</p>
+              <p className="text-xs text-muted-foreground">{formatCurrency(total)}</p>
+            </div>
+          );
+        })}
+      </div>
+
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredCotizaciones.map((cot, index) => {
@@ -374,27 +395,6 @@ export default function Cotizaciones() {
                 </div>
               </CardFooter>
             </Card>
-          );
-        })}
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-6">
-        {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = cotizaciones.filter((c) => c.estado === key).length;
-          const total = cotizaciones
-            .filter((c) => c.estado === key)
-            .reduce((sum, c) => sum + c.total, 0);
-          return (
-            <div key={key} className="card-industrial p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className={cn("status-badge", config.className)}>
-                  {config.label}
-                </Badge>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{count}</p>
-              <p className="text-xs text-muted-foreground">{formatCurrency(total)}</p>
-            </div>
           );
         })}
       </div>
