@@ -46,6 +46,43 @@ export default function Reportes() {
   const totalViajes = viajes.length;
   const volumenTransportado = viajes.reduce((sum, v) => sum + (v.volumen || 0), 0);
 
+  // Gastos por Obra - agregando combustible y mantenimiento por obra
+  const obrasMap = new Map<string, { nombre: string; combustible: number; mantenimiento: number }>();
+  
+  // Initialize with all obras
+  obras.forEach(obra => {
+    obrasMap.set(obra.id, { nombre: obra.nombre, combustible: 0, mantenimiento: 0 });
+  });
+  
+  // Aggregate combustible by obra
+  combustible.forEach(c => {
+    if (c.obra_id && obrasMap.has(c.obra_id)) {
+      const current = obrasMap.get(c.obra_id)!;
+      current.combustible += c.costo_total || 0;
+    }
+  });
+  
+  // Aggregate mantenimiento by obra (via maquinaria)
+  mantenimientos.forEach(m => {
+    const obraId = m.maquinaria?.obra_id;
+    if (obraId && obrasMap.has(obraId)) {
+      const current = obrasMap.get(obraId)!;
+      current.mantenimiento += m.costo_total || 0;
+    }
+  });
+  
+  // Convert to chart data, only include obras with expenses
+  const gastosPorObra = Array.from(obrasMap.values())
+    .filter(o => o.combustible > 0 || o.mantenimiento > 0)
+    .map(o => ({
+      obra: o.nombre.length > 15 ? o.nombre.slice(0, 15) + "..." : o.nombre,
+      combustible: o.combustible,
+      mantenimiento: o.mantenimiento,
+      total: o.combustible + o.mantenimiento,
+    }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 8); // Top 8 obras
+
   // Prepare chart data
   const obrasPorEstado = [
     { name: "Activas", value: obras.filter(o => o.estado === "activa").length, color: "#22c55e" },
@@ -374,6 +411,57 @@ export default function Reportes() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gastos por Obra */}
+      <div className="grid grid-cols-1 gap-6 mt-6">
+        <Card className="card-industrial">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-primary" />
+              Gastos por Obra
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              {gastosPorObra.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={gastosPorObra} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
+                    <XAxis 
+                      type="number" 
+                      stroke="hsl(0 0% 50%)" 
+                      tick={{ fill: "hsl(0 0% 65%)" }}
+                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis 
+                      type="category" 
+                      dataKey="obra" 
+                      stroke="hsl(0 0% 50%)" 
+                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 12 }}
+                      width={120}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(0 0% 10%)",
+                        border: "1px solid hsl(0 0% 20%)",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                    <Legend />
+                    <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  No hay gastos registrados por obra
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
