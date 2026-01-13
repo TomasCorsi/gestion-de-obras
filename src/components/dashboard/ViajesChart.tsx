@@ -9,17 +9,33 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-const data = [
-  { dia: "Lun", viajes: 12, volumen: 340 },
-  { dia: "Mar", viajes: 18, volumen: 520 },
-  { dia: "Mié", viajes: 15, volumen: 410 },
-  { dia: "Jue", viajes: 22, volumen: 680 },
-  { dia: "Vie", viajes: 28, volumen: 820 },
-  { dia: "Sáb", viajes: 14, volumen: 390 },
-  { dia: "Dom", viajes: 5, volumen: 120 },
-];
+interface ViajesPorDia {
+  dia: string;
+  viajes: number;
+  volumen: number;
+}
 
-export function ViajesChart() {
+interface ViajesChartProps {
+  data: ViajesPorDia[];
+  loading?: boolean;
+}
+
+export function ViajesChart({ data, loading }: ViajesChartProps) {
+  const totalViajes = data.reduce((sum, d) => sum + d.viajes, 0);
+  const totalVolumen = data.reduce((sum, d) => sum + d.volumen, 0);
+
+  if (loading) {
+    return (
+      <div className="card-industrial p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Route className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-foreground">Viajes de la Semana</h3>
+        </div>
+        <div className="h-64 bg-muted/50 rounded-lg animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="card-industrial p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -74,11 +90,11 @@ export function ViajesChart() {
 
       <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
         <div className="text-center">
-          <p className="text-2xl font-bold text-foreground font-mono-numbers">114</p>
+          <p className="text-2xl font-bold text-foreground font-mono-numbers">{totalViajes}</p>
           <p className="text-xs text-muted-foreground">Viajes esta semana</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-foreground font-mono-numbers">3,280 m³</p>
+          <p className="text-2xl font-bold text-foreground font-mono-numbers">{totalVolumen.toLocaleString()} m³</p>
           <p className="text-xs text-muted-foreground">Volumen transportado</p>
         </div>
       </div>
