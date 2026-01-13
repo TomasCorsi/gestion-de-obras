@@ -22,7 +22,6 @@ import {
   Filter,
   FileText,
   Clock,
-  DollarSign,
   Calendar,
   User,
   CheckCircle,
@@ -33,6 +32,7 @@ import {
   Eye,
   Edit,
   Loader2,
+  Download,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,6 +56,8 @@ import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 import { CotizacionFormContent } from "@/components/cotizaciones/CotizacionFormContent";
 import { CotizacionTable } from "@/components/cotizaciones/CotizacionTable";
+import { generateCotizacionPDF } from "@/utils/generateCotizacionPDF";
+import { toast } from "sonner";
 
 const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
   borrador: { label: "Borrador", icon: FileText, className: "bg-muted/50 text-muted-foreground border-muted" },
@@ -226,6 +228,16 @@ export default function Cotizaciones() {
     await updateCotizacion(cot.id, { estado: newStatus });
   };
 
+  const handleDownloadPDF = async (cot: CotizacionWithRelations) => {
+    try {
+      await generateCotizacionPDF(cot, cot.obra?.nombre);
+      toast.success("PDF generado correctamente");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Error al generar el PDF");
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout title="Cotizaciones" subtitle="Presupuestos y propuestas comerciales">
@@ -320,6 +332,10 @@ export default function Cotizaciones() {
                       <DropdownMenuItem onClick={() => handleView(cot)} className="cursor-pointer">
                         <Eye className="w-4 h-4 mr-2" />
                         Ver detalle
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDownloadPDF(cot)} className="cursor-pointer">
+                        <Download className="w-4 h-4 mr-2" />
+                        Descargar PDF
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleEdit(cot)} className="cursor-pointer">
                         <Edit className="w-4 h-4 mr-2" />
@@ -452,9 +468,20 @@ export default function Cotizaciones() {
             
             {selectedCot.notas && (
               <DetailSection title="Notas">
-                <p className="text-sm text-muted-foreground">{selectedCot.notas}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedCot.notas}</p>
               </DetailSection>
             )}
+
+            {/* Download PDF Button */}
+            <div className="pt-4 border-t border-border">
+              <Button 
+                onClick={() => handleDownloadPDF(selectedCot)}
+                className="w-full bg-primary hover:bg-primary/90"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Descargar PDF
+              </Button>
+            </div>
           </div>
         )}
       </DetailDialog>
