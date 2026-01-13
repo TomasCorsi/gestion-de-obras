@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      asignaciones_personal_obra: {
+        Row: {
+          cantidad: number
+          costo_total: number | null
+          created_at: string
+          id: string
+          obra_id: string
+          observaciones: string | null
+          rol: Database["public"]["Enums"]["rol_personal"]
+          sueldo_mensual: number
+          updated_at: string
+        }
+        Insert: {
+          cantidad?: number
+          costo_total?: number | null
+          created_at?: string
+          id?: string
+          obra_id: string
+          observaciones?: string | null
+          rol: Database["public"]["Enums"]["rol_personal"]
+          sueldo_mensual?: number
+          updated_at?: string
+        }
+        Update: {
+          cantidad?: number
+          costo_total?: number | null
+          created_at?: string
+          id?: string
+          obra_id?: string
+          observaciones?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"]
+          sueldo_mensual?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asignaciones_personal_obra_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cargas_combustible: {
         Row: {
           comprobante: string | null

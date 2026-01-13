@@ -25,6 +25,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
+import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { format, startOfWeek } from "date-fns";
 import { es } from "date-fns/locale";
 
@@ -38,6 +39,7 @@ function formatCurrency(value: number): string {
 
 export default function Reportes() {
   const { loading, obras, maquinarias, viajes, combustible, mantenimientos } = useReportesData();
+  const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
 
   // Calculate stats from real data
   const totalCombustible = combustible.reduce((sum, c) => sum + (c.costo_total || 0), 0);
@@ -45,13 +47,17 @@ export default function Reportes() {
   const totalMantenimiento = mantenimientos.reduce((sum, m) => sum + (m.costo_total || 0), 0);
   const totalViajes = viajes.length;
   const volumenTransportado = viajes.reduce((sum, v) => sum + (v.volumen || 0), 0);
+  const totalSueldos = Object.values(asignacionesPorObra).reduce(
+    (sum, grupo) => sum + grupo.totalSueldos,
+    0
+  );
 
-  // Gastos por Obra - agregando combustible y mantenimiento por obra
-  const obrasMap = new Map<string, { nombre: string; combustible: number; mantenimiento: number }>();
+  // Gastos por Obra - agregando combustible, mantenimiento y sueldos por obra
+  const obrasMap = new Map<string, { nombre: string; combustible: number; mantenimiento: number; sueldos: number }>();
   
   // Initialize with all obras
   obras.forEach(obra => {
-    obrasMap.set(obra.id, { nombre: obra.nombre, combustible: 0, mantenimiento: 0 });
+    obrasMap.set(obra.id, { nombre: obra.nombre, combustible: 0, mantenimiento: 0, sueldos: 0 });
   });
   
   // Aggregate combustible by obra
@@ -70,15 +76,24 @@ export default function Reportes() {
       current.mantenimiento += m.costo_total || 0;
     }
   });
+
+  // Aggregate sueldos by obra
+  Object.entries(asignacionesPorObra).forEach(([obraId, grupo]) => {
+    if (obrasMap.has(obraId)) {
+      const current = obrasMap.get(obraId)!;
+      current.sueldos = grupo.totalSueldos;
+    }
+  });
   
   // Convert to chart data, only include obras with expenses
   const gastosPorObra = Array.from(obrasMap.values())
-    .filter(o => o.combustible > 0 || o.mantenimiento > 0)
+    .filter(o => o.combustible > 0 || o.mantenimiento > 0 || o.sueldos > 0)
     .map(o => ({
       obra: o.nombre.length > 15 ? o.nombre.slice(0, 15) + "..." : o.nombre,
       combustible: o.combustible,
       mantenimiento: o.mantenimiento,
-      total: o.combustible + o.mantenimiento,
+      sueldos: o.sueldos,
+      total: o.combustible + o.mantenimiento + o.sueldos,
     }))
     .sort((a, b) => b.total - a.total)
     .slice(0, 8); // Top 8 obras
@@ -454,7 +469,8 @@ export default function Reportes() {
                     />
                     <Legend />
                     <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
