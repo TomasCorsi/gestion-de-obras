@@ -17,47 +17,47 @@ export type Database = {
       cargas_combustible: {
         Row: {
           comprobante: string | null
-          costo_total: number
+          costo_total: number | null
           created_at: string
-          estacion: string
-          fecha: string
-          horas_maquina: number
+          estacion: string | null
+          fecha: string | null
+          horas_maquina: number | null
           id: string
-          litros: number
-          maquinaria_id: string
-          obra_id: string
-          operador: string
-          precio_litro: number
+          litros: number | null
+          maquinaria_id: string | null
+          obra_id: string | null
+          operador: string | null
+          precio_litro: number | null
           updated_at: string
         }
         Insert: {
           comprobante?: string | null
-          costo_total: number
+          costo_total?: number | null
           created_at?: string
-          estacion: string
-          fecha: string
-          horas_maquina: number
+          estacion?: string | null
+          fecha?: string | null
+          horas_maquina?: number | null
           id?: string
-          litros: number
-          maquinaria_id: string
-          obra_id: string
-          operador: string
-          precio_litro: number
+          litros?: number | null
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          operador?: string | null
+          precio_litro?: number | null
           updated_at?: string
         }
         Update: {
           comprobante?: string | null
-          costo_total?: number
+          costo_total?: number | null
           created_at?: string
-          estacion?: string
-          fecha?: string
-          horas_maquina?: number
+          estacion?: string | null
+          fecha?: string | null
+          horas_maquina?: number | null
           id?: string
-          litros?: number
-          maquinaria_id?: string
-          obra_id?: string
-          operador?: string
-          precio_litro?: number
+          litros?: number | null
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          operador?: string | null
+          precio_litro?: number | null
           updated_at?: string
         }
         Relationships: [
