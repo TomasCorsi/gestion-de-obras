@@ -360,7 +360,7 @@ export default function Combustible() {
                   .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
                   .map((m) => ({
                     value: m.id,
-                    label: `${m.codigo} - ${m.nombre}`,
+                    label: `${m.codigo} - ${m.tipo}`,
                   }))}
                 value={formData.maquinaria_id}
                 onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
