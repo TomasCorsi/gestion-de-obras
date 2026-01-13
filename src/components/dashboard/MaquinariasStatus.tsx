@@ -3,21 +3,18 @@ import { cn } from "@/lib/utils";
 
 interface Maquinaria {
   id: string;
-  nombre: string;
+  nombre: string | null;
+  codigo: string | null;
   tipo: string;
   estado: "operativa" | "mantenimiento" | "inactiva" | "en_uso";
-  obra?: string;
-  horas_acumuladas?: number;
+  horas_acumuladas: number;
+  obra?: { nombre: string } | null;
 }
 
-const maquinariasDemo: Maquinaria[] = [
-  { id: "1", nombre: "CAT 320D", tipo: "Excavadora", estado: "en_uso", obra: "Obra Lote 45", horas_acumuladas: 1250 },
-  { id: "2", nombre: "Komatsu WA380", tipo: "Cargadora", estado: "operativa", obra: undefined, horas_acumuladas: 890 },
-  { id: "3", nombre: "Volvo A30G", tipo: "Camión Articulado", estado: "mantenimiento", obra: undefined, horas_acumuladas: 2100 },
-  { id: "4", nombre: "CAT D6T", tipo: "Topadora", estado: "en_uso", obra: "Obra Circunvalación", horas_acumuladas: 1580 },
-  { id: "5", nombre: "Bomag BW211", tipo: "Rodillo", estado: "inactiva", obra: undefined, horas_acumuladas: 450 },
-  { id: "6", nombre: "Hyundai R210", tipo: "Excavadora", estado: "en_uso", obra: "Obra Zona Franca", horas_acumuladas: 980 },
-];
+interface MaquinariasStatusProps {
+  maquinarias: Maquinaria[];
+  loading?: boolean;
+}
 
 const estadoConfig = {
   operativa: { icon: CheckCircle, label: "Operativa", color: "text-success" },
@@ -26,11 +23,56 @@ const estadoConfig = {
   en_uso: { icon: Truck, label: "En Uso", color: "text-primary" },
 };
 
-export function MaquinariasStatus() {
-  const statusCounts = maquinariasDemo.reduce((acc, m) => {
+const tipoLabels: Record<string, string> = {
+  cargadora: "Cargadora",
+  compactador: "Compactador",
+  retroexcavadora: "Retroexcavadora",
+  minicargadora: "Minicargadora",
+  motoniveladora: "Motoniveladora",
+  topador: "Topador",
+  pala_retro: "Pala Retro",
+  batea: "Batea",
+  acoplado: "Acoplado",
+  camion: "Camión",
+  carreton: "Carretón",
+  cisterna: "Cisterna",
+  tanque_cisterna: "Tanque Cisterna",
+  tanque_regador_tractor: "Tanque Regador",
+  soplador: "Soplador",
+  zanjeadora: "Zanjeadora",
+  rastra: "Rastra",
+  tractor: "Tractor",
+  rastra_grosspal: "Rastra Grosspal",
+  auto: "Auto",
+  camioneta: "Camioneta",
+};
+
+export function MaquinariasStatus({ maquinarias, loading }: MaquinariasStatusProps) {
+  const statusCounts = maquinarias.reduce((acc, m) => {
     acc[m.estado] = (acc[m.estado] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+
+  const maquinariasEnMantenimiento = maquinarias.filter(m => m.estado === "mantenimiento");
+
+  if (loading) {
+    return (
+      <div className="card-industrial p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <Truck className="w-5 h-5 text-primary" />
+          <h3 className="font-semibold text-foreground">Estado de Maquinarias</h3>
+        </div>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="p-2 bg-muted/50 rounded-lg animate-pulse">
+              <div className="h-6 bg-muted rounded mb-1" />
+              <div className="h-3 bg-muted rounded w-2/3 mx-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card-industrial p-5">
@@ -55,41 +97,52 @@ export function MaquinariasStatus() {
 
       {/* List */}
       <div className="space-y-2 max-h-64 overflow-y-auto">
-        {maquinariasDemo.map((maq, index) => {
-          const config = estadoConfig[maq.estado];
-          const Icon = config.icon;
-          return (
-            <div
-              key={maq.id}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors animate-fade-in"
-              style={{ animationDelay: `${index * 30}ms` }}
-            >
-              <div className="flex items-center gap-3">
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center bg-muted", config.color)}>
-                  <Icon className="w-4 h-4" />
+        {maquinarias.length === 0 ? (
+          <p className="text-muted-foreground text-sm text-center py-4">No hay maquinarias registradas</p>
+        ) : (
+          maquinarias.slice(0, 6).map((maq, index) => {
+            const config = estadoConfig[maq.estado] || estadoConfig.operativa;
+            const Icon = config.icon;
+            return (
+              <div
+                key={maq.id}
+                className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors animate-fade-in"
+                style={{ animationDelay: `${index * 30}ms` }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center bg-muted", config.color)}>
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {maq.nombre || maq.codigo || "Sin nombre"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {tipoLabels[maq.tipo] || maq.tipo}
+                      {maq.obra?.nombre && ` • ${maq.obra.nombre}`}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">{maq.nombre}</p>
-                  <p className="text-xs text-muted-foreground">{maq.tipo} {maq.obra && `• ${maq.obra}`}</p>
-                </div>
+                {maq.horas_acumuladas > 0 && (
+                  <span className="text-sm font-mono text-muted-foreground">
+                    {maq.horas_acumuladas.toLocaleString()}h
+                  </span>
+                )}
               </div>
-              {maq.horas_acumuladas && maq.horas_acumuladas > 0 && (
-                <span className="text-sm font-mono text-muted-foreground">
-                  {maq.horas_acumuladas.toLocaleString()}h
-                </span>
-              )}
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Alert */}
-      <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg flex items-center gap-2">
-        <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
-        <p className="text-xs text-warning">
-          <span className="font-medium">Volvo A30G</span> requiere servicio programado
-        </p>
-      </div>
+      {maquinariasEnMantenimiento.length > 0 && (
+        <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-warning flex-shrink-0" />
+          <p className="text-xs text-warning">
+            <span className="font-medium">{maquinariasEnMantenimiento[0]?.nombre || maquinariasEnMantenimiento[0]?.codigo}</span> en mantenimiento
+          </p>
+        </div>
+      )}
     </div>
   );
 }

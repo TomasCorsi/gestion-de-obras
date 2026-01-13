@@ -23,42 +23,10 @@ import {
   Fuel,
   Wrench,
   TrendingUp,
-  Calendar,
 } from "lucide-react";
-import { obrasData, maquinariasData, viajesData, combustibleData, mantenimientosData } from "@/data/mockData";
-
-const obrasPorEstado = [
-  { name: "Activas", value: obrasData.filter(o => o.estado === "activa").length, color: "#22c55e" },
-  { name: "Pendientes", value: obrasData.filter(o => o.estado === "pendiente").length, color: "#eab308" },
-  { name: "Pausadas", value: obrasData.filter(o => o.estado === "pausada").length, color: "#ef4444" },
-  { name: "Finalizadas", value: obrasData.filter(o => o.estado === "finalizada").length, color: "#6b7280" },
-];
-
-const maquinariasPorEstado = [
-  { name: "En Uso", value: maquinariasData.filter(m => m.estado === "en_uso").length, color: "#B00020" },
-  { name: "Operativa", value: maquinariasData.filter(m => m.estado === "operativa").length, color: "#22c55e" },
-  { name: "Mantenimiento", value: maquinariasData.filter(m => m.estado === "mantenimiento").length, color: "#eab308" },
-  { name: "Inactiva", value: maquinariasData.filter(m => m.estado === "inactiva").length, color: "#6b7280" },
-];
-
-const viajesPorDia = [
-  { dia: "Lun", viajes: 12, volumen: 216 },
-  { dia: "Mar", viajes: 18, volumen: 324 },
-  { dia: "Mié", viajes: 15, volumen: 270 },
-  { dia: "Jue", viajes: 22, volumen: 396 },
-  { dia: "Vie", viajes: 28, volumen: 504 },
-  { dia: "Sáb", viajes: 14, volumen: 252 },
-  { dia: "Dom", viajes: 5, volumen: 90 },
-];
-
-const costosMensuales = [
-  { mes: "Ago", combustible: 650000, mantenimiento: 180000 },
-  { mes: "Sep", combustible: 720000, mantenimiento: 320000 },
-  { mes: "Oct", combustible: 680000, mantenimiento: 150000 },
-  { mes: "Nov", combustible: 750000, mantenimiento: 280000 },
-  { mes: "Dic", combustible: 820000, mantenimiento: 230000 },
-  { mes: "Ene", combustible: 978500, mantenimiento: 360000 },
-];
+import { useReportesData } from "@/hooks/useDashboardData";
+import { format, startOfWeek } from "date-fns";
+import { es } from "date-fns/locale";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -69,10 +37,72 @@ function formatCurrency(value: number): string {
 }
 
 export default function Reportes() {
-  const totalCombustible = combustibleData.reduce((sum, c) => sum + c.costoTotal, 0);
-  const totalMantenimiento = mantenimientosData.reduce((sum, m) => sum + m.costoTotal, 0);
-  const totalViajes = viajesData.length;
-  const volumenTransportado = viajesData.reduce((sum, v) => sum + v.volumen, 0);
+  const { loading, obras, maquinarias, viajes, combustible, mantenimientos } = useReportesData();
+
+  // Calculate stats from real data
+  const totalCombustible = combustible.reduce((sum, c) => sum + (c.costo_total || 0), 0);
+  const totalLitros = combustible.reduce((sum, c) => sum + (c.litros || 0), 0);
+  const totalMantenimiento = mantenimientos.reduce((sum, m) => sum + (m.costo_total || 0), 0);
+  const totalViajes = viajes.length;
+  const volumenTransportado = viajes.reduce((sum, v) => sum + (v.volumen || 0), 0);
+
+  // Prepare chart data
+  const obrasPorEstado = [
+    { name: "Activas", value: obras.filter(o => o.estado === "activa").length, color: "#22c55e" },
+    { name: "Pendientes", value: obras.filter(o => o.estado === "pendiente").length, color: "#eab308" },
+    { name: "Pausadas", value: obras.filter(o => o.estado === "pausada").length, color: "#ef4444" },
+    { name: "Finalizadas", value: obras.filter(o => o.estado === "finalizada").length, color: "#6b7280" },
+  ].filter(item => item.value > 0);
+
+  const maquinariasPorEstado = [
+    { name: "En Uso", value: maquinarias.filter(m => m.estado === "en_uso").length, color: "#B00020" },
+    { name: "Operativa", value: maquinarias.filter(m => m.estado === "operativa").length, color: "#22c55e" },
+    { name: "Mantenimiento", value: maquinarias.filter(m => m.estado === "mantenimiento").length, color: "#eab308" },
+    { name: "Inactiva", value: maquinarias.filter(m => m.estado === "inactiva").length, color: "#6b7280" },
+  ].filter(item => item.value > 0);
+
+  // Viajes por día de la semana
+  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+  const startOfCurrentWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
+  
+  const viajesPorDia = diasSemana.map((dia, index) => {
+    const fechaDia = format(
+      new Date(startOfCurrentWeek.getTime() + index * 24 * 60 * 60 * 1000),
+      "yyyy-MM-dd"
+    );
+    const viajesDelDia = viajes.filter(v => v.fecha === fechaDia);
+    return {
+      dia,
+      viajes: viajesDelDia.length,
+      volumen: viajesDelDia.reduce((sum, v) => sum + (v.volumen || 0), 0),
+    };
+  });
+
+  // Mock costos mensuales (could be enhanced with historical data)
+  const costosMensuales = [
+    { mes: "Ago", combustible: 0, mantenimiento: 0 },
+    { mes: "Sep", combustible: 0, mantenimiento: 0 },
+    { mes: "Oct", combustible: 0, mantenimiento: 0 },
+    { mes: "Nov", combustible: 0, mantenimiento: 0 },
+    { mes: "Dic", combustible: 0, mantenimiento: 0 },
+    { mes: "Ene", combustible: totalCombustible, mantenimiento: totalMantenimiento },
+  ];
+
+  if (loading) {
+    return (
+      <MainLayout title="Reportes" subtitle="Análisis y estadísticas">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="card-industrial">
+              <CardContent className="pt-6">
+                <div className="h-20 bg-muted/50 rounded animate-pulse" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </MainLayout>
+    );
+  }
 
   return (
     <MainLayout title="Reportes" subtitle="Análisis y estadísticas">
@@ -84,11 +114,11 @@ export default function Reportes() {
               <div>
                 <p className="text-sm text-muted-foreground">Obras Activas</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {obrasData.filter(o => o.estado === "activa").length}
+                  {obras.filter(o => o.estado === "activa").length}
                 </p>
-                <p className="text-xs text-success flex items-center gap-1 mt-1">
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                   <TrendingUp className="w-3 h-3" />
-                  +2 esta semana
+                  {obras.length} total registradas
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -102,10 +132,10 @@ export default function Reportes() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Viajes del Mes</p>
+                <p className="text-sm text-muted-foreground">Viajes Semana</p>
                 <p className="text-3xl font-bold text-foreground">{totalViajes}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {volumenTransportado} m³ transportados
+                  {volumenTransportado.toLocaleString()} m³ transportados
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-success/20 flex items-center justify-center">
@@ -122,7 +152,7 @@ export default function Reportes() {
                 <p className="text-sm text-muted-foreground">Gasto Combustible</p>
                 <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCombustible)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {combustibleData.reduce((sum, c) => sum + c.litros, 0).toLocaleString()} litros
+                  {totalLitros.toLocaleString()} litros
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-warning/20 flex items-center justify-center">
@@ -139,7 +169,7 @@ export default function Reportes() {
                 <p className="text-sm text-muted-foreground">Mantenimiento</p>
                 <p className="text-2xl font-bold text-foreground">{formatCurrency(totalMantenimiento)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {mantenimientosData.length} registros
+                  {mantenimientos.length} registros
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
@@ -162,30 +192,36 @@ export default function Reportes() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={obrasPorEstado}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {obrasPorEstado.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(0 0% 10%)",
-                      border: "1px solid hsl(0 0% 20%)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {obrasPorEstado.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={obrasPorEstado}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {obrasPorEstado.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(0 0% 10%)",
+                        border: "1px solid hsl(0 0% 20%)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  No hay datos disponibles
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap justify-center gap-4 mt-4">
               {obrasPorEstado.map((item) => (
@@ -210,30 +246,36 @@ export default function Reportes() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={maquinariasPorEstado}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {maquinariasPorEstado.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(0 0% 10%)",
-                      border: "1px solid hsl(0 0% 20%)",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {maquinariasPorEstado.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={maquinariasPorEstado}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {maquinariasPorEstado.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(0 0% 10%)",
+                        border: "1px solid hsl(0 0% 20%)",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  No hay datos disponibles
+                </div>
+              )}
             </div>
             <div className="flex flex-wrap justify-center gap-4 mt-4">
               {maquinariasPorEstado.map((item) => (

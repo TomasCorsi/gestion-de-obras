@@ -4,6 +4,7 @@ import { RecentObras } from "@/components/dashboard/RecentObras";
 import { MaquinariasStatus } from "@/components/dashboard/MaquinariasStatus";
 import { ViajesChart } from "@/components/dashboard/ViajesChart";
 import { CotizacionesPendientes } from "@/components/dashboard/CotizacionesPendientes";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import {
   Building2,
   Truck,
@@ -13,7 +14,26 @@ import {
   FileText,
 } from "lucide-react";
 
+function formatCurrency(value: number): string {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}K`;
+  }
+  return `$${value}`;
+}
+
 export default function Dashboard() {
+  const {
+    loading,
+    stats,
+    obrasRecientes,
+    maquinarias,
+    cotizaciones,
+    viajesSemana,
+  } = useDashboardData();
+
   return (
     <MainLayout
       title="Dashboard"
@@ -23,48 +43,45 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <KPICard
           title="Obras Activas"
-          value={8}
-          subtitle="2 iniciando esta semana"
+          value={stats.obrasActivas}
+          subtitle={`${obrasRecientes.length} registradas`}
           icon={Building2}
           variant="primary"
-          trend={{ value: 12, isPositive: true }}
         />
         <KPICard
           title="Maquinarias"
-          value={12}
-          subtitle="9 operativas"
+          value={stats.maquinariasTotal}
+          subtitle={`${stats.maquinariasOperativas} operativas`}
           icon={Truck}
           variant="success"
         />
         <KPICard
           title="Viajes Hoy"
-          value={24}
-          subtitle="1,280 m³ transportados"
+          value={stats.viajesHoy}
+          subtitle={`${stats.volumenHoy.toLocaleString()} m³ transportados`}
           icon={Route}
           variant="default"
-          trend={{ value: 8, isPositive: true }}
         />
         <KPICard
           title="Cotizaciones"
-          value={4}
+          value={stats.cotizacionesPendientes}
           subtitle="Pendientes de respuesta"
           icon={FileText}
           variant="warning"
         />
         <KPICard
           title="Personal Activo"
-          value={32}
-          subtitle="En obras hoy"
+          value={stats.personalActivo}
+          subtitle="Total registrado"
           icon={Users}
           variant="default"
         />
         <KPICard
-          title="Facturación Mes"
-          value="$4.2M"
-          subtitle="Enero 2026"
+          title="Facturación"
+          value={formatCurrency(stats.facturacionMes)}
+          subtitle="Cotizaciones aprobadas"
           icon={DollarSign}
           variant="primary"
-          trend={{ value: 15, isPositive: true }}
         />
       </div>
 
@@ -72,19 +89,19 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Obras */}
         <div className="lg:col-span-2">
-          <RecentObras />
+          <RecentObras obras={obrasRecientes} loading={loading} />
         </div>
 
         {/* Right Column - Maquinarias */}
         <div>
-          <MaquinariasStatus />
+          <MaquinariasStatus maquinarias={maquinarias} loading={loading} />
         </div>
       </div>
 
       {/* Second Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <ViajesChart />
-        <CotizacionesPendientes />
+        <ViajesChart data={viajesSemana} loading={loading} />
+        <CotizacionesPendientes cotizaciones={cotizaciones} loading={loading} />
       </div>
     </MainLayout>
   );
