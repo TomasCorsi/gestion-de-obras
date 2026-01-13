@@ -244,6 +244,12 @@ export default function Personal() {
         })}
       </div>
 
+      {/* Asignaciones de Personal a Obras */}
+      <AsignacionesPersonalObra />
+
+      {/* Separator */}
+      <Separator className="my-8" />
+
       {/* Table */}
       <div className="card-industrial overflow-hidden">
         <Table>
@@ -361,12 +367,6 @@ export default function Personal() {
           </TableBody>
         </Table>
       </div>
-
-      {/* Separator */}
-      <Separator className="my-8" />
-
-      {/* Asignaciones de Personal a Obras */}
-      <AsignacionesPersonalObra />
 
       {/* Form Dialog */}
       <FormDialog
