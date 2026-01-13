@@ -121,38 +121,98 @@ export type Database = {
           },
         ]
       }
+      cotizacion_categorias: {
+        Row: {
+          cotizacion_id: string
+          created_at: string | null
+          id: string
+          nombre: string
+          numero: number
+          orden: number | null
+        }
+        Insert: {
+          cotizacion_id: string
+          created_at?: string | null
+          id?: string
+          nombre: string
+          numero: number
+          orden?: number | null
+        }
+        Update: {
+          cotizacion_id?: string
+          created_at?: string | null
+          id?: string
+          nombre?: string
+          numero?: number
+          orden?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotizacion_categorias_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotizacion_items: {
         Row: {
+          altura_promedio: number | null
           cantidad: number
+          cantidad_m2: number | null
+          cantidad_m3: number | null
+          categoria_id: string | null
           cotizacion_id: string
           created_at: string
           descripcion: string
           id: string
+          numero: string | null
           precio_unitario: number
           subtotal: number
+          total: number | null
           unidad: string
         }
         Insert: {
+          altura_promedio?: number | null
           cantidad: number
+          cantidad_m2?: number | null
+          cantidad_m3?: number | null
+          categoria_id?: string | null
           cotizacion_id: string
           created_at?: string
           descripcion: string
           id?: string
+          numero?: string | null
           precio_unitario: number
           subtotal: number
+          total?: number | null
           unidad: string
         }
         Update: {
+          altura_promedio?: number | null
           cantidad?: number
+          cantidad_m2?: number | null
+          cantidad_m3?: number | null
+          categoria_id?: string | null
           cotizacion_id?: string
           created_at?: string
           descripcion?: string
           id?: string
+          numero?: string | null
           precio_unitario?: number
           subtotal?: number
+          total?: number | null
           unidad?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "cotizacion_items_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "cotizacion_categorias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "cotizacion_items_cotizacion_id_fkey"
             columns: ["cotizacion_id"]

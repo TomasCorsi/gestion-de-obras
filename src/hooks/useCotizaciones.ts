@@ -21,20 +21,36 @@ export interface CotizacionDB {
   updated_at: string;
 }
 
+export interface CotizacionCategoriaDB {
+  id: string;
+  cotizacion_id: string;
+  numero: number;
+  nombre: string;
+  orden: number;
+  created_at: string;
+}
+
 export interface CotizacionItemDB {
   id: string;
   cotizacion_id: string;
+  categoria_id: string | null;
+  numero: string | null;
   descripcion: string;
   unidad: string;
   cantidad: number;
+  cantidad_m2: number;
+  altura_promedio: number;
+  cantidad_m3: number;
   precio_unitario: number;
   subtotal: number;
+  total: number;
   created_at: string;
 }
 
 export interface CotizacionWithRelations extends CotizacionDB {
   obra?: { nombre: string };
   items?: CotizacionItemDB[];
+  categorias?: CotizacionCategoriaDB[];
 }
 
 export interface CotizacionForm {
@@ -51,12 +67,57 @@ export interface CotizacionForm {
   notas?: string;
 }
 
+export interface CotizacionCategoriaForm {
+  numero: number;
+  nombre: string;
+  orden: number;
+}
+
 export interface CotizacionItemForm {
+  categoria_id?: string;
+  categoria_index?: number; // For temporary tracking before saving
+  numero: string;
   descripcion: string;
   unidad: string;
   cantidad: number;
+  cantidad_m2: number;
+  altura_promedio: number;
+  cantidad_m3: number;
   precio_unitario: number;
   subtotal: number;
+  total: number;
+}
+
+// Available units
+export const UNIDADES = [
+  { value: "m³", label: "M³" },
+  { value: "m²", label: "M²" },
+  { value: "tn", label: "TN" },
+  { value: "hr", label: "HR" },
+  { value: "gl", label: "GL" },
+  { value: "un", label: "UN" },
+  { value: "ml", label: "ML" },
+  { value: "kg", label: "KG" },
+];
+
+// Calculate M3 from M2 and height
+export function calcularM3(cantidadM2: number, alturaPromedio: number): number {
+  return cantidadM2 * alturaPromedio;
+}
+
+// Calculate item total based on unit
+export function calcularTotalItem(item: CotizacionItemForm): number {
+  // For M2/M3 conversion, use M3 as the quantity
+  if (item.unidad === "m³" && item.cantidad_m2 > 0 && item.altura_promedio > 0) {
+    return item.cantidad_m3 * item.precio_unitario;
+  }
+  // For other units, use cantidad directly
+  return item.cantidad * item.precio_unitario;
+}
+
+// Calculate subtotal for an item (same as total for now)
+export function calcularSubtotalItem(item: CotizacionItemForm): number {
+  return calcularTotalItem(item);
 }
 
 export function useCotizaciones() {
@@ -70,7 +131,8 @@ export function useCotizaciones() {
       .select(`
         *,
         obra:obras(nombre),
-        items:cotizacion_items(*)
+        items:cotizacion_items(*),
+        categorias:cotizacion_categorias(*)
       `)
       .order("created_at", { ascending: false });
 
@@ -83,10 +145,27 @@ export function useCotizaciones() {
     setLoading(false);
   };
 
-  const createCotizacion = async (cot: CotizacionForm, items: CotizacionItemForm[]) => {
+  const createCotizacion = async (
+    cot: CotizacionForm, 
+    categorias: CotizacionCategoriaForm[], 
+    items: CotizacionItemForm[]
+  ) => {
+    // 1. Create the cotizacion
     const { data: cotData, error: cotError } = await supabase
       .from("cotizaciones")
-      .insert([cot])
+      .insert([{
+        numero: cot.numero,
+        obra_id: cot.obra_id || null,
+        descripcion: cot.descripcion,
+        estado: cot.estado,
+        fecha_creacion: cot.fecha_creacion,
+        fecha_vencimiento: cot.fecha_vencimiento,
+        responsable: cot.responsable,
+        subtotal: cot.subtotal,
+        iva: cot.iva,
+        total: cot.total,
+        notas: cot.notas || null,
+      }])
       .select()
       .single();
 
@@ -96,10 +175,47 @@ export function useCotizaciones() {
       return null;
     }
 
+    // 2. Create categories and map their IDs
+    const categoryIdMap: Record<number, string> = {};
+    
+    if (categorias.length > 0) {
+      const categoriasWithCotId = categorias.map(cat => ({
+        cotizacion_id: cotData.id,
+        numero: cat.numero,
+        nombre: cat.nombre,
+        orden: cat.orden,
+      }));
+
+      const { data: catData, error: catError } = await supabase
+        .from("cotizacion_categorias")
+        .insert(categoriasWithCotId)
+        .select();
+
+      if (catError) {
+        console.error("Error creating categorias:", catError);
+        toast.error("Error al crear categorías");
+      } else if (catData) {
+        catData.forEach((cat, index) => {
+          categoryIdMap[index] = cat.id;
+        });
+      }
+    }
+
+    // 3. Create items with category references
     if (items.length > 0) {
       const itemsWithCotId = items.map(item => ({
-        ...item,
         cotizacion_id: cotData.id,
+        categoria_id: item.categoria_index !== undefined ? categoryIdMap[item.categoria_index] : null,
+        numero: item.numero,
+        descripcion: item.descripcion,
+        unidad: item.unidad,
+        cantidad: item.cantidad,
+        cantidad_m2: item.cantidad_m2,
+        altura_promedio: item.altura_promedio,
+        cantidad_m3: item.cantidad_m3,
+        precio_unitario: item.precio_unitario,
+        subtotal: item.subtotal,
+        total: item.total,
       }));
 
       const { error: itemsError } = await supabase
@@ -117,16 +233,91 @@ export function useCotizaciones() {
     return cotData;
   };
 
-  const updateCotizacion = async (id: string, cot: Partial<CotizacionForm>) => {
+  const updateCotizacion = async (
+    id: string, 
+    cot: Partial<CotizacionForm>,
+    categorias?: CotizacionCategoriaForm[],
+    items?: CotizacionItemForm[]
+  ) => {
+    // Update the cotizacion
     const { error } = await supabase
       .from("cotizaciones")
-      .update(cot)
+      .update({
+        ...cot,
+        obra_id: cot.obra_id || null,
+      })
       .eq("id", id);
 
     if (error) {
       console.error("Error updating cotizacion:", error);
       toast.error("Error al actualizar cotización");
       return false;
+    }
+
+    // If categories and items are provided, update them
+    if (categorias !== undefined && items !== undefined) {
+      // Delete existing categories (cascades to items)
+      await supabase
+        .from("cotizacion_categorias")
+        .delete()
+        .eq("cotizacion_id", id);
+
+      // Delete existing items without category
+      await supabase
+        .from("cotizacion_items")
+        .delete()
+        .eq("cotizacion_id", id);
+
+      // Create new categories and map their IDs
+      const categoryIdMap: Record<number, string> = {};
+      
+      if (categorias.length > 0) {
+        const categoriasWithCotId = categorias.map(cat => ({
+          cotizacion_id: id,
+          numero: cat.numero,
+          nombre: cat.nombre,
+          orden: cat.orden,
+        }));
+
+        const { data: catData, error: catError } = await supabase
+          .from("cotizacion_categorias")
+          .insert(categoriasWithCotId)
+          .select();
+
+        if (catError) {
+          console.error("Error creating categorias:", catError);
+        } else if (catData) {
+          catData.forEach((cat, index) => {
+            categoryIdMap[index] = cat.id;
+          });
+        }
+      }
+
+      // Create new items
+      if (items.length > 0) {
+        const itemsWithCotId = items.map(item => ({
+          cotizacion_id: id,
+          categoria_id: item.categoria_index !== undefined ? categoryIdMap[item.categoria_index] : null,
+          numero: item.numero,
+          descripcion: item.descripcion,
+          unidad: item.unidad,
+          cantidad: item.cantidad,
+          cantidad_m2: item.cantidad_m2,
+          altura_promedio: item.altura_promedio,
+          cantidad_m3: item.cantidad_m3,
+          precio_unitario: item.precio_unitario,
+          subtotal: item.subtotal,
+          total: item.total,
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("cotizacion_items")
+          .insert(itemsWithCotId);
+
+        if (itemsError) {
+          console.error("Error creating cotizacion items:", itemsError);
+        }
+      }
     }
 
     toast.success("Cotización actualizada correctamente");
