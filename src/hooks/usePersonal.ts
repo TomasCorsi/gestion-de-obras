@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type RolPersonal = "administrador" | "supervisor" | "capataz" | "maquinista" | "chofer" | "administrativo" | "auditor";
+export type RolPersonal = "capataz" | "maquinista" | "chofer" | "administrativo" | "ayudante" | "sereno";
 
 export interface PersonalDB {
   id: string;
