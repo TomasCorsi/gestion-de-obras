@@ -10,6 +10,8 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 // Eagerly loaded pages (critical path)
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NoAccess from "./pages/NoAccess";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
@@ -50,6 +52,8 @@ const App = () => (
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
+              <Route path="/olvide-contrasena" element={<ForgotPassword />} />
+              <Route path="/restablecer-contrasena" element={<ResetPassword />} />
               <Route path="/sin-acceso" element={<NoAccess />} />
               <Route path="/install" element={<Install />} />
 
