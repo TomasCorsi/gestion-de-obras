@@ -182,8 +182,16 @@ export default function Combustible() {
     setIsSubmitting(true);
     
     const cargaData = {
-      ...formData,
-      costo_total: calculateTotal(formData.litros, formData.precio_litro),
+      fecha: formData.fecha || null,
+      obra_id: formData.obra_id || null,
+      maquinaria_id: formData.maquinaria_id || null,
+      litros: formData.litros || 0,
+      precio_litro: formData.precio_litro || 0,
+      costo_total: calculateTotal(formData.litros || 0, formData.precio_litro || 0),
+      horas_maquina: formData.horas_maquina || 0,
+      estacion: formData.estacion || null,
+      operador: formData.operador || null,
+      comprobante: formData.comprobante || null,
     };
 
     if (isEditing && selectedCarga) {
@@ -365,26 +373,26 @@ export default function Combustible() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="fecha">Fecha *</Label>
+              <Label htmlFor="fecha">Fecha</Label>
               <Input
                 id="fecha"
                 type="date"
                 value={formData.fecha}
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="obra_id">Obra *</Label>
+              <Label htmlFor="obra_id">Obra</Label>
               <Select
-                value={formData.obra_id}
-                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
+                value={formData.obra_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin asignar</SelectItem>
                   {activeObras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
                   ))}
@@ -392,31 +400,35 @@ export default function Combustible() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maquinaria_id">Maquinaria *</Label>
+              <Label htmlFor="maquinaria_id">Maquinaria</Label>
               <Combobox
-                options={[...maquinarias]
-                  .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
-                  .map((m) => ({
-                    value: m.id,
-                    label: `${m.codigo} - ${m.tipo}`,
-                  }))}
-                value={formData.maquinaria_id}
-                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
+                options={[
+                  { value: "none", label: "Sin asignar" },
+                  ...[...maquinarias]
+                    .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
+                    .map((m) => ({
+                      value: m.id,
+                      label: `${m.codigo} - ${m.tipo}`,
+                    }))
+                ]}
+                value={formData.maquinaria_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value === "none" ? "" : value })}
                 placeholder="Seleccionar maquinaria"
                 searchPlaceholder="Buscar por código..."
                 emptyText="No se encontró maquinaria."
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="operador">Operador *</Label>
+              <Label htmlFor="operador">Operador</Label>
               <Select
-                value={formData.operador}
-                onValueChange={(value) => setFormData({ ...formData, operador: value })}
+                value={formData.operador || "none"}
+                onValueChange={(value) => setFormData({ ...formData, operador: value === "none" ? "" : value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar operador" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin asignar</SelectItem>
                   {operadores.map((o) => (
                     <SelectItem key={o.id} value={`${o.nombre} ${o.apellido}`}>
                       {o.nombre} {o.apellido}
@@ -426,18 +438,17 @@ export default function Combustible() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="estacion">Estación *</Label>
+              <Label htmlFor="estacion">Estación</Label>
               <Input
                 id="estacion"
                 value={formData.estacion}
                 onChange={(e) => setFormData({ ...formData, estacion: e.target.value })}
                 placeholder="Ej: YPF Trelew"
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="litros">Litros *</Label>
+              <Label htmlFor="litros">Litros</Label>
               <Input
                 id="litros"
                 type="number"
@@ -451,11 +462,10 @@ export default function Combustible() {
                   });
                 }}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="precio_litro">Precio/Litro *</Label>
+              <Label htmlFor="precio_litro">Precio/Litro</Label>
               <Input
                 id="precio_litro"
                 type="number"
@@ -469,7 +479,6 @@ export default function Combustible() {
                   });
                 }}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">

@@ -24,15 +24,15 @@ export interface CargaCombustibleWithRelations extends CargaCombustibleDB {
 }
 
 export interface CargaCombustibleForm {
-  fecha: string;
-  obra_id: string;
-  maquinaria_id: string;
-  litros: number;
-  precio_litro: number;
-  costo_total: number;
-  horas_maquina: number;
-  estacion: string;
-  operador: string;
+  fecha?: string;
+  obra_id?: string;
+  maquinaria_id?: string;
+  litros?: number;
+  precio_litro?: number;
+  costo_total?: number;
+  horas_maquina?: number;
+  estacion?: string;
+  operador?: string;
   comprobante?: string;
 }
 
