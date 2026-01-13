@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useViajes, ViajeWithRelations, ViajeForm, EstadoViaje } from "@/hooks/useViajes";
 import { useObras } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
@@ -67,6 +68,12 @@ export default function Viajes() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [filters, setFilters] = useState<FilterState>({
+    fechaDesde: undefined,
+    fechaHasta: undefined,
+    mes: undefined,
+    obraId: undefined,
+  });
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -94,14 +101,23 @@ export default function Viajes() {
     observaciones: "",
   });
 
-  const filteredViajes = viajes.filter((v) => {
-    const matchesSearch =
-      v.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.chofer?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      v.material.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesEstado = estadoFilter === "todos" || v.estado === estadoFilter;
-    return matchesSearch && matchesEstado;
-  });
+  const filteredViajes = useMemo(() => {
+    // Apply date and obra filters first
+    const dateFiltered = filterByDateAndObra(
+      viajes.map(v => ({ ...v, fecha: v.fecha, obra_id: v.obra_id })),
+      filters
+    );
+    
+    // Then apply search and status filters
+    return dateFiltered.filter((v) => {
+      const matchesSearch =
+        v.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.chofer?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.material.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesEstado = estadoFilter === "todos" || v.estado === estadoFilter;
+      return matchesSearch && matchesEstado;
+    });
+  }, [viajes, filters, searchTerm, estadoFilter]);
 
   const handleNew = () => {
     setIsEditing(false);
@@ -191,6 +207,11 @@ export default function Viajes() {
 
   return (
     <MainLayout title="Viajes" subtitle="Registro de viajes y transporte">
+      {/* Filter Bar */}
+      <div className="mb-4">
+        <FilterBar obras={obras} onFilterChange={setFilters} />
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
