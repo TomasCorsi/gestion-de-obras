@@ -308,14 +308,14 @@ export type Database = {
       }
       maquinarias: {
         Row: {
-          anio: number
-          codigo: string
+          anio: number | null
+          codigo: string | null
           created_at: string
           estado: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas: number
           id: string
-          marca: string
-          nombre: string
+          marca: string | null
+          nombre: string | null
           obra_id: string | null
           operador_asignado_id: string | null
           patente: string | null
@@ -323,29 +323,29 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          anio: number
-          codigo: string
+          anio?: number | null
+          codigo?: string | null
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas?: number
           id?: string
-          marca: string
-          nombre: string
+          marca?: string | null
+          nombre?: string | null
           obra_id?: string | null
           operador_asignado_id?: string | null
           patente?: string | null
-          tipo: Database["public"]["Enums"]["tipo_maquinaria"]
+          tipo?: Database["public"]["Enums"]["tipo_maquinaria"]
           updated_at?: string
         }
         Update: {
-          anio?: number
-          codigo?: string
+          anio?: number | null
+          codigo?: string | null
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas?: number
           id?: string
-          marca?: string
-          nombre?: string
+          marca?: string | null
+          nombre?: string | null
           obra_id?: string | null
           operador_asignado_id?: string | null
           patente?: string | null

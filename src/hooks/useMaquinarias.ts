@@ -48,14 +48,14 @@ export interface MaquinariaWithRelations extends MaquinariaDB {
 }
 
 export interface MaquinariaForm {
-  codigo: string;
-  nombre: string;
-  tipo: TipoMaquinaria;
-  marca: string;
-  anio: number;
+  codigo?: string;
+  nombre?: string;
+  tipo?: TipoMaquinaria;
+  marca?: string;
+  anio?: number;
   patente?: string;
-  estado: EstadoMaquinaria;
-  horas_acumuladas: number;
+  estado?: EstadoMaquinaria;
+  horas_acumuladas?: number;
   operador_asignado_id?: string;
   obra_id?: string;
 }
@@ -86,14 +86,14 @@ export function useMaquinarias() {
 
   const createMaquinaria = async (maq: MaquinariaForm) => {
     const insertData = {
-      codigo: maq.codigo,
-      nombre: maq.nombre,
-      tipo: maq.tipo,
-      marca: maq.marca,
-      anio: maq.anio,
+      codigo: maq.codigo || null,
+      nombre: maq.nombre || null,
+      tipo: maq.tipo || "cargadora",
+      marca: maq.marca || null,
+      anio: maq.anio || null,
       patente: maq.patente || null,
-      estado: maq.estado,
-      horas_acumuladas: maq.horas_acumuladas,
+      estado: maq.estado || "operativa",
+      horas_acumuladas: maq.horas_acumuladas || 0,
       operador_asignado_id: maq.operador_asignado_id || null,
       obra_id: maq.obra_id || null,
     };

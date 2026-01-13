@@ -365,28 +365,26 @@ export default function Maquinarias() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="codigo">Código *</Label>
+              <Label htmlFor="codigo">Código</Label>
               <Input
                 id="codigo"
                 value={formData.codigo}
                 onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                 placeholder="EXC-001"
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre *</Label>
+              <Label htmlFor="nombre">Nombre</Label>
               <Input
                 id="nombre"
                 value={formData.nombre}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="tipo">Tipo *</Label>
+              <Label htmlFor="tipo">Tipo</Label>
               <Select
                 value={formData.tipo}
                 onValueChange={(value) => setFormData({ ...formData, tipo: value as TipoMaquinaria })}
@@ -419,7 +417,7 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="estado">Estado *</Label>
+              <Label htmlFor="estado">Estado</Label>
               <Select
                 value={formData.estado}
                 onValueChange={(value) => setFormData({ ...formData, estado: value as EstadoMaquinaria })}
@@ -435,13 +433,12 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="marca">Marca *</Label>
+              <Label htmlFor="marca">Marca</Label>
               <Input
                 id="marca"
                 value={formData.marca}
                 onChange={(e) => setFormData({ ...formData, marca: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
@@ -454,14 +451,13 @@ export default function Maquinarias() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="anio">Año *</Label>
+              <Label htmlFor="anio">Año</Label>
               <Input
                 id="anio"
                 type="number"
-                value={formData.anio}
-                onChange={(e) => setFormData({ ...formData, anio: parseInt(e.target.value) })}
+                value={formData.anio || ""}
+                onChange={(e) => setFormData({ ...formData, anio: e.target.value ? parseInt(e.target.value) : 0 })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
