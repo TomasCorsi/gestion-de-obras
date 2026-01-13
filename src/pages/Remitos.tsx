@@ -387,14 +387,14 @@ export default function Remitos() {
             <div className="space-y-2">
               <Label htmlFor="viaje_id">Viaje (opcional)</Label>
               <Select
-                value={formData.viaje_id}
-                onValueChange={(value) => setFormData({ ...formData, viaje_id: value })}
+                value={formData.viaje_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, viaje_id: value === "none" ? "" : value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Vincular a viaje" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="">Sin vincular</SelectItem>
+                  <SelectItem value="none">Sin vincular</SelectItem>
                   {viajes.map((v) => (
                     <SelectItem key={v.id} value={v.id}>
                       {v.fecha} - {v.origen} → {v.destino}
