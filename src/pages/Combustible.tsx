@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -354,23 +355,19 @@ export default function Combustible() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="maquinaria_id">Maquinaria *</Label>
-              <Select
+              <Combobox
+                options={[...maquinarias]
+                  .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
+                  .map((m) => ({
+                    value: m.id,
+                    label: `${m.codigo} - ${m.nombre}`,
+                  }))}
                 value={formData.maquinaria_id}
                 onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar maquinaria" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {[...maquinarias]
-                    .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
-                    .map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.codigo} - {m.nombre}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                placeholder="Seleccionar maquinaria"
+                searchPlaceholder="Buscar por código..."
+                emptyText="No se encontró maquinaria."
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="operador">Operador *</Label>
