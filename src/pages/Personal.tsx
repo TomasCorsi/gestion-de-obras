@@ -81,9 +81,10 @@ export default function Personal() {
   });
 
   const filteredPersonal = personal.filter((p) => {
+    const fullName = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
     const matchesSearch =
-      `${p.nombre} ${p.apellido}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.dni.includes(searchTerm);
+      fullName.includes(searchTerm.toLowerCase()) ||
+      (p.dni || "").includes(searchTerm);
     const matchesRol = rolFilter === "todos" || p.rol === rolFilter;
     return matchesSearch && matchesRol;
   });
@@ -236,12 +237,12 @@ export default function Personal() {
                         <User className="w-4 h-4 text-primary" />
                       </div>
                       <span className="font-medium text-foreground">
-                        {persona.nombre} {persona.apellido}
+                        {persona.nombre || ""} {persona.apellido || ""}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
-                    {persona.dni}
+                    {persona.dni || "-"}
                   </TableCell>
                   <TableCell>
                     <Badge className={cn("status-badge", rolesConfig[persona.rol]?.color)}>
@@ -251,13 +252,13 @@ export default function Personal() {
                   <TableCell>
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Phone className="w-3 h-3" />
-                      {persona.telefono}
+                      {persona.telefono || "-"}
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Calendar className="w-3 h-3" />
-                      {persona.fecha_ingreso}
+                      {persona.fecha_ingreso || "-"}
                     </span>
                   </TableCell>
                   <TableCell>
@@ -344,43 +345,40 @@ export default function Personal() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="nombre">Nombre *</Label>
+              <Label htmlFor="nombre">Nombre</Label>
               <Input
                 id="nombre"
-                value={formData.nombre}
+                value={formData.nombre || ""}
                 onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="apellido">Apellido *</Label>
+              <Label htmlFor="apellido">Apellido</Label>
               <Input
                 id="apellido"
-                value={formData.apellido}
+                value={formData.apellido || ""}
                 onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="dni">DNI *</Label>
+              <Label htmlFor="dni">DNI</Label>
               <Input
                 id="dni"
-                value={formData.dni}
+                value={formData.dni || ""}
                 onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="rol">Rol *</Label>
+              <Label htmlFor="rol">Rol</Label>
               <Select
-                value={formData.rol}
+                value={formData.rol || "chofer"}
                 onValueChange={(value) => setFormData({ ...formData, rol: value as RolPersonal })}
               >
                 <SelectTrigger className="bg-muted border-border">
-                  <SelectValue />
+                  <SelectValue placeholder="Seleccionar rol" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
                   {Object.entries(rolesConfig).map(([key, config]) => (
@@ -394,30 +392,28 @@ export default function Personal() {
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                value={formData.email || ""}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="bg-muted border-border"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="telefono">Teléfono *</Label>
+              <Label htmlFor="telefono">Teléfono</Label>
               <Input
                 id="telefono"
-                value={formData.telefono}
+                value={formData.telefono || ""}
                 onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="fecha_ingreso">Fecha de Ingreso *</Label>
+              <Label htmlFor="fecha_ingreso">Fecha de Ingreso</Label>
               <Input
                 id="fecha_ingreso"
                 type="date"
-                value={formData.fecha_ingreso}
+                value={formData.fecha_ingreso || ""}
                 onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })}
                 className="bg-muted border-border"
-                required
               />
             </div>
             <div className="space-y-2">

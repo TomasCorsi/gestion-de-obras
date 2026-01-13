@@ -489,46 +489,46 @@ export type Database = {
       personal: {
         Row: {
           activo: boolean
-          apellido: string
+          apellido: string | null
           created_at: string
-          dni: string
+          dni: string | null
           email: string | null
-          fecha_ingreso: string
+          fecha_ingreso: string | null
           id: string
           licencia: string | null
-          nombre: string
+          nombre: string | null
           rol: Database["public"]["Enums"]["rol_personal"]
-          telefono: string
+          telefono: string | null
           updated_at: string
           vencimiento_licencia: string | null
         }
         Insert: {
           activo?: boolean
-          apellido: string
+          apellido?: string | null
           created_at?: string
-          dni: string
+          dni?: string | null
           email?: string | null
-          fecha_ingreso: string
+          fecha_ingreso?: string | null
           id?: string
           licencia?: string | null
-          nombre: string
-          rol: Database["public"]["Enums"]["rol_personal"]
-          telefono: string
+          nombre?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"]
+          telefono?: string | null
           updated_at?: string
           vencimiento_licencia?: string | null
         }
         Update: {
           activo?: boolean
-          apellido?: string
+          apellido?: string | null
           created_at?: string
-          dni?: string
+          dni?: string | null
           email?: string | null
-          fecha_ingreso?: string
+          fecha_ingreso?: string | null
           id?: string
           licencia?: string | null
-          nombre?: string
+          nombre?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
-          telefono?: string
+          telefono?: string | null
           updated_at?: string
           vencimiento_licencia?: string | null
         }
