@@ -919,6 +919,8 @@ export type Database = {
         | "rastra"
         | "tractor"
         | "rastra_grosspal"
+        | "auto"
+        | "camioneta"
       tipo_movimiento_stock: "entrada" | "salida" | "ajuste"
     }
     CompositeTypes: {
@@ -1097,6 +1099,8 @@ export const Constants = {
         "rastra",
         "tractor",
         "rastra_grosspal",
+        "auto",
+        "camioneta",
       ],
       tipo_movimiento_stock: ["entrada", "salida", "ajuste"],
     },
