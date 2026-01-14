@@ -44,7 +44,13 @@ function formatNumber(value: number, decimals = 2): string {
   });
 }
 
-async function loadImageAsBase64(url: string): Promise<string> {
+interface ImageData {
+  base64: string;
+  width: number;
+  height: number;
+}
+
+async function loadImageAsBase64(url: string): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
@@ -55,7 +61,11 @@ async function loadImageAsBase64(url: string): Promise<string> {
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
+        resolve({
+          base64: canvas.toDataURL("image/png"),
+          width: img.width,
+          height: img.height,
+        });
       } else {
         reject(new Error("Could not get canvas context"));
       }
@@ -71,87 +81,87 @@ export async function generateCotizacionPDF(
 ): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 15;
-  let yPos = margin;
+  const margin = 10;
+  let yPos = 8;
 
   // Load images
-  let logoBase64 = "";
-  let firmaBase64 = "";
+  let logoData: ImageData | null = null;
+  let firmaData: ImageData | null = null;
   try {
-    logoBase64 = await loadImageAsBase64(logoCalamina);
+    logoData = await loadImageAsBase64(logoCalamina);
   } catch (e) {
     console.warn("Could not load logo:", e);
   }
   try {
-    firmaBase64 = await loadImageAsBase64(firmaPresidente);
+    firmaData = await loadImageAsBase64(firmaPresidente);
   } catch (e) {
     console.warn("Could not load firma:", e);
   }
 
   // ============== HEADER ==============
-  // Logo
-  if (logoBase64) {
-    doc.addImage(logoBase64, "PNG", margin, yPos, 40, 20);
+  // Logo - maintain aspect ratio
+  if (logoData) {
+    const logoWidth = 35;
+    const logoAspectRatio = logoData.height / logoData.width;
+    const logoHeight = logoWidth * logoAspectRatio;
+    doc.addImage(logoData.base64, "PNG", margin, yPos, logoWidth, logoHeight);
   }
 
-  // Company info (right side)
-  doc.setFontSize(12);
+  // Company info (right side) - compact
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 4, { align: "right" });
+  doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 3, { align: "right" });
   
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, pageWidth - margin, yPos + 10, { align: "right" });
-  doc.text(EMPRESA_INFO.direccion, pageWidth - margin, yPos + 15, { align: "right" });
-  doc.text(EMPRESA_INFO.localidad, pageWidth - margin, yPos + 20, { align: "right" });
-  doc.text(`Cel: ${EMPRESA_INFO.telefono}`, pageWidth - margin, yPos + 25, { align: "right" });
-  doc.text(EMPRESA_INFO.email, pageWidth - margin, yPos + 30, { align: "right" });
+  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, pageWidth - margin, yPos + 7, { align: "right" });
+  doc.text(EMPRESA_INFO.direccion, pageWidth - margin, yPos + 11, { align: "right" });
+  doc.text(EMPRESA_INFO.localidad, pageWidth - margin, yPos + 15, { align: "right" });
+  doc.text(`Cel: ${EMPRESA_INFO.telefono} | ${EMPRESA_INFO.email}`, pageWidth - margin, yPos + 19, { align: "right" });
 
-  yPos += 38;
+  yPos += 24;
 
   // Divider line
   doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.5);
+  doc.setLineWidth(0.3);
   doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 8;
+  yPos += 4;
 
   // ============== COTIZACIÓN INFO ==============
-  doc.setFontSize(14);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(180, 0, 0);
   doc.text(`COTIZACIÓN Nº: ${cotizacion.numero}`, margin, yPos);
   doc.setTextColor(0, 0, 0);
-  yPos += 8;
-
-  doc.setFontSize(10);
+  
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Fecha: ${cotizacion.fecha_creacion}`, margin, yPos);
-  doc.text(`Vence: ${cotizacion.fecha_vencimiento}`, margin + 60, yPos);
-  yPos += 8;
+  doc.text(`Fecha: ${cotizacion.fecha_creacion}  |  Vence: ${cotizacion.fecha_vencimiento}`, margin + 55, yPos);
+  yPos += 5;
 
   // ============== OBRA INFO ==============
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos - 4, pageWidth - margin * 2, 14, "F");
+  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 8, "F");
+  
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("Obra:", margin + 2, yPos + 3);
+  doc.setFont("helvetica", "normal");
+  doc.text(obraNombre || cotizacion.obra?.nombre || "Sin asignar", margin + 14, yPos + 3);
   
   doc.setFont("helvetica", "bold");
-  doc.text("Obra:", margin + 2, yPos + 2);
+  doc.text("Resp:", margin + 90, yPos + 3);
   doc.setFont("helvetica", "normal");
-  doc.text(obraNombre || cotizacion.obra?.nombre || "Sin asignar", margin + 18, yPos + 2);
-  
-  doc.setFont("helvetica", "bold");
-  doc.text("Responsable:", margin + 2, yPos + 7);
-  doc.setFont("helvetica", "normal");
-  doc.text(cotizacion.responsable, margin + 32, yPos + 7);
-  yPos += 16;
+  doc.text(cotizacion.responsable, margin + 102, yPos + 3);
+  yPos += 10;
 
   // ============== DESCRIPCIÓN ==============
   if (cotizacion.descripcion) {
-    doc.setFontSize(9);
+    doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
     const descripcionLines = doc.splitTextToSize(cotizacion.descripcion, pageWidth - margin * 2);
     doc.text(descripcionLines, margin, yPos);
-    yPos += descripcionLines.length * 4 + 4;
+    yPos += descripcionLines.length * 3 + 2;
   }
 
   // ============== ITEMS TABLE ==============
@@ -239,129 +249,101 @@ export async function generateCotizacionPDF(
     });
   }
 
-  // Generate table
+  // Generate table - compact
   autoTable(doc, {
     startY: yPos,
-    head: [["Núm", "Descripción", "Un.", "Cant", "Altura", "M³", "P. Unit.", "Total"]],
+    head: [["Nº", "Descripción", "Un.", "Cant", "Alt", "M³", "P.U.", "Total"]],
     body: tableData,
     theme: "grid",
     headStyles: {
       fillColor: [60, 60, 60],
       textColor: [255, 255, 255],
       fontStyle: "bold",
-      fontSize: 8,
+      fontSize: 6,
       halign: "center",
+      cellPadding: 1,
     },
     bodyStyles: {
-      fontSize: 8,
-      cellPadding: 2,
+      fontSize: 6,
+      cellPadding: 1,
     },
     columnStyles: {
-      0: { cellWidth: 12, halign: "center" },
-      1: { cellWidth: 55 },
-      2: { cellWidth: 12, halign: "center" },
-      3: { cellWidth: 18, halign: "right" },
-      4: { cellWidth: 15, halign: "right" },
-      5: { cellWidth: 18, halign: "right" },
-      6: { cellWidth: 25, halign: "right" },
-      7: { cellWidth: 25, halign: "right" },
+      0: { cellWidth: 10, halign: "center" },
+      1: { cellWidth: "auto" },
+      2: { cellWidth: 10, halign: "center" },
+      3: { cellWidth: 14, halign: "right" },
+      4: { cellWidth: 12, halign: "right" },
+      5: { cellWidth: 14, halign: "right" },
+      6: { cellWidth: 20, halign: "right" },
+      7: { cellWidth: 22, halign: "right" },
     },
     margin: { left: margin, right: margin },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  yPos = (doc as any).lastAutoTable.finalY + 3;
 
   // ============== TOTALS ==============
-  const totalsStartX = pageWidth - margin - 70;
+  const totalsStartX = pageWidth - margin - 55;
   
-  doc.setFontSize(10);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("Subtotal:", totalsStartX, yPos);
   doc.text(formatCurrency(cotizacion.subtotal), pageWidth - margin, yPos, { align: "right" });
-  yPos += 6;
+  yPos += 4;
 
   doc.text("IVA (21%):", totalsStartX, yPos);
   doc.text(formatCurrency(cotizacion.iva), pageWidth - margin, yPos, { align: "right" });
-  yPos += 6;
+  yPos += 4;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
+  doc.setFontSize(8);
   doc.setFillColor(245, 245, 245);
-  doc.rect(totalsStartX - 5, yPos - 5, 75, 10, "F");
-  doc.text("TOTAL:", totalsStartX, yPos);
-  doc.text(formatCurrency(cotizacion.total), pageWidth - margin, yPos, { align: "right" });
-  yPos += 15;
-
-  // Check if we need a new page
-  const remainingSpace = pageHeight - yPos - margin;
-  if (remainingSpace < 80) {
-    doc.addPage();
-    yPos = margin;
-  }
+  doc.rect(totalsStartX - 3, yPos - 3, 60, 7, "F");
+  doc.text("TOTAL:", totalsStartX, yPos + 1);
+  doc.text(formatCurrency(cotizacion.total), pageWidth - margin, yPos + 1, { align: "right" });
+  yPos += 8;
 
   // ============== NOTAS ==============
-  doc.setFontSize(10);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.text("NOTAS Y CONDICIONES:", margin, yPos);
-  yPos += 6;
+  yPos += 3;
 
-  doc.setFontSize(8);
+  doc.setFontSize(5.5);
   doc.setFont("helvetica", "normal");
   const notas = cotizacion.notas || NOTAS_DEFAULT;
   const notasLines = doc.splitTextToSize(notas, pageWidth - margin * 2);
   doc.text(notasLines, margin, yPos);
-  yPos += notasLines.length * 3.5 + 10;
-
-  // Check if we need a new page for signature
-  if (pageHeight - yPos < 60) {
-    doc.addPage();
-    yPos = margin;
-  }
+  yPos += notasLines.length * 2.2 + 4;
 
   // ============== FIRMA ==============
   const signatureX = pageWidth / 2;
   
-  // Signature image
-  if (firmaBase64) {
-    doc.addImage(firmaBase64, "PNG", signatureX - 25, yPos, 50, 25);
-    yPos += 28;
+  // Signature image - maintain aspect ratio
+  if (firmaData) {
+    const firmaWidth = 30;
+    const firmaAspectRatio = firmaData.height / firmaData.width;
+    const firmaHeight = firmaWidth * firmaAspectRatio;
+    doc.addImage(firmaData.base64, "PNG", signatureX - firmaWidth / 2, yPos, firmaWidth, firmaHeight);
+    yPos += firmaHeight + 1;
   } else {
-    yPos += 20;
+    yPos += 10;
   }
 
-  // Signature text
-  doc.setFontSize(9);
+  // Signature text - compact
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.text(EMPRESA_INFO.nombre, signatureX, yPos, { align: "center" });
-  yPos += 4;
+  yPos += 3;
   doc.setFont("helvetica", "normal");
-  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, signatureX, yPos, { align: "center" });
+  doc.setFontSize(6);
+  doc.text(`CUIT: ${EMPRESA_INFO.cuit} | ${EMPRESA_INFO.presidente.toUpperCase()} - PRESIDENTE`, signatureX, yPos, { align: "center" });
   yPos += 4;
-  doc.text(EMPRESA_INFO.presidente.toUpperCase(), signatureX, yPos, { align: "center" });
-  yPos += 4;
-  doc.text("PRESIDENTE", signatureX, yPos, { align: "center" });
-  yPos += 8;
   
   doc.setFont("helvetica", "italic");
   doc.text("Saluda Atte-", signatureX, yPos, { align: "center" });
-  yPos += 4;
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA_INFO.nombreFirma, signatureX, yPos, { align: "center" });
-
-  // ============== PAGE NUMBERS ==============
-  const totalPages = doc.internal.pages.length - 1;
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(128, 128, 128);
-    doc.text(
-      `Página ${i} de ${totalPages}`,
-      pageWidth / 2,
-      pageHeight - 8,
-      { align: "center" }
-    );
-  }
+  doc.text(EMPRESA_INFO.nombreFirma, signatureX + 18, yPos, { align: "center" });
 
   // Save PDF
   doc.save(`Cotizacion_${cotizacion.numero}.pdf`);
