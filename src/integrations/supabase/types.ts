@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      asignaciones_maquinaria_obra: {
+        Row: {
+          activa: boolean | null
+          costo_hora: number
+          created_at: string
+          fecha_fin: string | null
+          fecha_inicio: string | null
+          id: string
+          maquinaria_id: string
+          obra_id: string
+          observaciones: string | null
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean | null
+          costo_hora?: number
+          created_at?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          maquinaria_id: string
+          obra_id: string
+          observaciones?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean | null
+          costo_hora?: number
+          created_at?: string
+          fecha_fin?: string | null
+          fecha_inicio?: string | null
+          id?: string
+          maquinaria_id?: string
+          obra_id?: string
+          observaciones?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "asignaciones_maquinaria_obra_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asignaciones_maquinaria_obra_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       asignaciones_personal_obra: {
         Row: {
           cantidad: number

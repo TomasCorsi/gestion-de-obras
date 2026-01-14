@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,8 @@ import {
   Filter,
   CreditCard,
   Upload,
+  Users,
+  Truck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +50,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
+import { AsignacionesMaquinariaObra } from "@/components/maquinarias/AsignacionesMaquinariaObra";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
@@ -244,8 +248,25 @@ export default function Personal() {
         })}
       </div>
 
-      {/* Asignaciones de Personal a Obras */}
-      <AsignacionesPersonalObra />
+      {/* Asignaciones Tabs */}
+      <Tabs defaultValue="personal" className="mb-8">
+        <TabsList className="mb-4">
+          <TabsTrigger value="personal" className="flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Asignación de Personal
+          </TabsTrigger>
+          <TabsTrigger value="maquinarias" className="flex items-center gap-2">
+            <Truck className="w-4 h-4" />
+            Asignación de Maquinarias
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="personal">
+          <AsignacionesPersonalObra />
+        </TabsContent>
+        <TabsContent value="maquinarias">
+          <AsignacionesMaquinariaObra />
+        </TabsContent>
+      </Tabs>
 
       {/* Separator */}
       <Separator className="my-8" />

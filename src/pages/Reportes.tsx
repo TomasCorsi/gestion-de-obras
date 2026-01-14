@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
+import { useAsignacionesMaquinaria } from "@/hooks/useAsignacionesMaquinaria";
+import { useHorasMaquina } from "@/hooks/useHorasMaquina";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,6 +70,7 @@ interface ObraFinanciera {
   combustible: number;
   mantenimiento: number;
   sueldos: number;
+  horasMaquina: number;
   balance: number;
   rentabilidad: number;
 }
@@ -75,6 +78,8 @@ interface ObraFinanciera {
 export default function Reportes() {
   const { loading, obras, combustible, mantenimientos } = useReportesData();
   const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
+  const { asignaciones: asignacionesMaquinaria, loading: loadingAsignacionesMaq } = useAsignacionesMaquinaria();
+  const { horasMaquina, getHorasPorObraYMaquinaria } = useHorasMaquina();
   const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
 
   // Filter states
@@ -144,7 +149,14 @@ export default function Reportes() {
       // Sueldos are monthly, so we don't filter by date for now
       const gastoSueldos = asignacionesPorObra[obra.id]?.totalSueldos || 0;
 
-      const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos;
+      // Calculate machine hours cost
+      const asignacionesObraMaq = asignacionesMaquinaria.filter(a => a.obra_id === obra.id);
+      const gastoHorasMaquina = asignacionesObraMaq.reduce((total, asig) => {
+        const horas = getHorasPorObraYMaquinaria(asig.obra_id, asig.maquinaria_id, fechaInicio || undefined, fechaFin || undefined);
+        return total + (horas * asig.costo_hora);
+      }, 0);
+
+      const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos + gastoHorasMaquina;
       const balance = cotizacionTotal - gastosTotal;
       const rentabilidad = cotizacionTotal > 0 ? ((balance / cotizacionTotal) * 100) : 0;
 
@@ -157,11 +169,12 @@ export default function Reportes() {
         combustible: gastoCombustible,
         mantenimiento: gastoMantenimiento,
         sueldos: gastoSueldos,
+        horasMaquina: gastoHorasMaquina,
         balance,
         rentabilidad,
       };
     });
-  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, estadoFilter, fechaInicio, fechaFin]);
+  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, asignacionesMaquinaria, horasMaquina, estadoFilter, fechaInicio, fechaFin, getHorasPorObraYMaquinaria]);
 
   // Filter obras with financial activity and sort by cotizacion
   const obrasConActividad = obrasFinancieras
@@ -197,6 +210,7 @@ export default function Reportes() {
       combustible: o.combustible,
       mantenimiento: o.mantenimiento,
       sueldos: o.sueldos,
+      horasMaquina: o.horasMaquina,
     }));
 
   const isLoading = loading || loadingAsignaciones || loadingCotizaciones;
@@ -628,7 +642,8 @@ export default function Reportes() {
                   <Legend wrapperStyle={{ paddingTop: "10px" }} />
                   <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" />
                   <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" />
-                  <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" />
+                  <Bar dataKey="horasMaquina" stackId="a" fill="#8b5cf6" name="Horas Máquina" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -659,6 +674,7 @@ export default function Reportes() {
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Combustible</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Mantenimiento</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Sueldos</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Horas Máq.</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Total Gastos</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Balance</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground">Rentabilidad</th>
@@ -679,6 +695,9 @@ export default function Reportes() {
                       </td>
                       <td className="py-3 px-2 text-right text-blue-500 font-mono">
                         {formatCurrency(obra.sueldos)}
+                      </td>
+                      <td className="py-3 px-2 text-right text-purple-500 font-mono">
+                        {formatCurrency(obra.horasMaquina)}
                       </td>
                       <td className="py-3 px-2 text-right text-destructive font-mono">
                         {formatCurrency(obra.gastosTotal)}
@@ -717,6 +736,9 @@ export default function Reportes() {
                     </td>
                     <td className="py-3 px-2 text-right text-blue-500 font-mono font-bold">
                       {formatCurrency(obrasFinancieras.reduce((s, o) => s + o.sueldos, 0))}
+                    </td>
+                    <td className="py-3 px-2 text-right text-purple-500 font-mono font-bold">
+                      {formatCurrency(obrasFinancieras.reduce((s, o) => s + o.horasMaquina, 0))}
                     </td>
                     <td className="py-3 px-2 text-right text-destructive font-mono font-bold">
                       {formatCurrency(totalGastos)}
