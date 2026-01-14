@@ -90,7 +90,6 @@ export interface CotizacionItemForm {
 
 // Available units
 export const UNIDADES = [
-  { value: "m³", label: "M³" },
   { value: "m²", label: "M²" },
   { value: "tn", label: "TN" },
   { value: "hr", label: "HR" },
