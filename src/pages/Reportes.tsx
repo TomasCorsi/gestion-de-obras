@@ -8,26 +8,22 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  LineChart,
-  Line,
   Legend,
+  ComposedChart,
+  Line,
 } from "recharts";
 import {
   Building2,
-  Truck,
   DollarSign,
-  Route,
-  Fuel,
-  Wrench,
   TrendingUp,
+  TrendingDown,
+  FileText,
+  AlertTriangle,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
-import { format, startOfWeek } from "date-fns";
-import { es } from "date-fns/locale";
+import { useCotizaciones } from "@/hooks/useCotizaciones";
+import { Badge } from "@/components/ui/badge";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -37,112 +33,114 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+function formatCurrencyShort(value: number): string {
+  if (value >= 1000000) {
+    return `$${(value / 1000000).toFixed(1)}M`;
+  }
+  if (value >= 1000) {
+    return `$${(value / 1000).toFixed(0)}K`;
+  }
+  return `$${value}`;
+}
+
+interface ObraFinanciera {
+  obraId: string;
+  nombre: string;
+  cotizacionTotal: number;
+  gastosTotal: number;
+  combustible: number;
+  mantenimiento: number;
+  sueldos: number;
+  balance: number;
+  rentabilidad: number;
+}
+
 export default function Reportes() {
-  const { loading, obras, maquinarias, viajes, combustible, mantenimientos } = useReportesData();
+  const { loading, obras, combustible, mantenimientos } = useReportesData();
   const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
+  const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
 
-  // Calculate stats from real data
-  const totalCombustible = combustible.reduce((sum, c) => sum + (c.costo_total || 0), 0);
-  const totalLitros = combustible.reduce((sum, c) => sum + (c.litros || 0), 0);
-  const totalMantenimiento = mantenimientos.reduce((sum, m) => sum + (m.costo_total || 0), 0);
-  const totalViajes = viajes.length;
-  const volumenTransportado = viajes.reduce((sum, v) => sum + (v.volumen || 0), 0);
-  const totalSueldos = Object.values(asignacionesPorObra).reduce(
-    (sum, grupo) => sum + grupo.totalSueldos,
-    0
-  );
-
-  // Gastos por Obra - agregando combustible, mantenimiento y sueldos por obra
-  const obrasMap = new Map<string, { nombre: string; combustible: number; mantenimiento: number; sueldos: number }>();
-  
-  // Initialize with all obras
-  obras.forEach(obra => {
-    obrasMap.set(obra.id, { nombre: obra.nombre, combustible: 0, mantenimiento: 0, sueldos: 0 });
-  });
-  
-  // Aggregate combustible by obra
-  combustible.forEach(c => {
-    if (c.obra_id && obrasMap.has(c.obra_id)) {
-      const current = obrasMap.get(c.obra_id)!;
-      current.combustible += c.costo_total || 0;
-    }
-  });
-  
-  // Aggregate mantenimiento by obra (via maquinaria)
-  mantenimientos.forEach(m => {
-    const obraId = m.maquinaria?.obra_id;
-    if (obraId && obrasMap.has(obraId)) {
-      const current = obrasMap.get(obraId)!;
-      current.mantenimiento += m.costo_total || 0;
-    }
-  });
-
-  // Aggregate sueldos by obra
-  Object.entries(asignacionesPorObra).forEach(([obraId, grupo]) => {
-    if (obrasMap.has(obraId)) {
-      const current = obrasMap.get(obraId)!;
-      current.sueldos = grupo.totalSueldos;
-    }
-  });
-  
-  // Convert to chart data, only include obras with expenses
-  const gastosPorObra = Array.from(obrasMap.values())
-    .filter(o => o.combustible > 0 || o.mantenimiento > 0 || o.sueldos > 0)
-    .map(o => ({
-      obra: o.nombre.length > 15 ? o.nombre.slice(0, 15) + "..." : o.nombre,
-      combustible: o.combustible,
-      mantenimiento: o.mantenimiento,
-      sueldos: o.sueldos,
-      total: o.combustible + o.mantenimiento + o.sueldos,
-    }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 8); // Top 8 obras
-
-  // Prepare chart data
-  const obrasPorEstado = [
-    { name: "Activas", value: obras.filter(o => o.estado === "activa").length, color: "#22c55e" },
-    { name: "Pendientes", value: obras.filter(o => o.estado === "pendiente").length, color: "#eab308" },
-    { name: "Pausadas", value: obras.filter(o => o.estado === "pausada").length, color: "#ef4444" },
-    { name: "Finalizadas", value: obras.filter(o => o.estado === "finalizada").length, color: "#6b7280" },
-  ].filter(item => item.value > 0);
-
-  const maquinariasPorEstado = [
-    { name: "En Uso", value: maquinarias.filter(m => m.estado === "en_uso").length, color: "#B00020" },
-    { name: "Operativa", value: maquinarias.filter(m => m.estado === "operativa").length, color: "#22c55e" },
-    { name: "Mantenimiento", value: maquinarias.filter(m => m.estado === "mantenimiento").length, color: "#eab308" },
-    { name: "Inactiva", value: maquinarias.filter(m => m.estado === "inactiva").length, color: "#6b7280" },
-  ].filter(item => item.value > 0);
-
-  // Viajes por día de la semana
-  const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
-  const startOfCurrentWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
-  
-  const viajesPorDia = diasSemana.map((dia, index) => {
-    const fechaDia = format(
-      new Date(startOfCurrentWeek.getTime() + index * 24 * 60 * 60 * 1000),
-      "yyyy-MM-dd"
+  // Build financial data per obra
+  const obrasFinancieras: ObraFinanciera[] = obras.map((obra) => {
+    // Get cotizaciones aprobadas for this obra
+    const cotizacionesObra = cotizaciones.filter(
+      (c) => c.obra_id === obra.id && c.estado === "aprobada"
     );
-    const viajesDelDia = viajes.filter(v => v.fecha === fechaDia);
+    const cotizacionTotal = cotizacionesObra.reduce((sum, c) => sum + (c.total || 0), 0);
+
+    // Get gastos
+    const gastoCombustible = combustible
+      .filter((c) => c.obra_id === obra.id)
+      .reduce((sum, c) => sum + (c.costo_total || 0), 0);
+
+    const gastoMantenimiento = mantenimientos
+      .filter((m) => m.maquinaria?.obra_id === obra.id)
+      .reduce((sum, m) => sum + (m.costo_total || 0), 0);
+
+    const gastoSueldos = asignacionesPorObra[obra.id]?.totalSueldos || 0;
+
+    const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos;
+    const balance = cotizacionTotal - gastosTotal;
+    const rentabilidad = cotizacionTotal > 0 ? ((balance / cotizacionTotal) * 100) : 0;
+
     return {
-      dia,
-      viajes: viajesDelDia.length,
-      volumen: viajesDelDia.reduce((sum, v) => sum + (v.volumen || 0), 0),
+      obraId: obra.id,
+      nombre: obra.nombre,
+      cotizacionTotal,
+      gastosTotal,
+      combustible: gastoCombustible,
+      mantenimiento: gastoMantenimiento,
+      sueldos: gastoSueldos,
+      balance,
+      rentabilidad,
     };
   });
 
-  // Mock costos mensuales (could be enhanced with historical data)
-  const costosMensuales = [
-    { mes: "Ago", combustible: 0, mantenimiento: 0 },
-    { mes: "Sep", combustible: 0, mantenimiento: 0 },
-    { mes: "Oct", combustible: 0, mantenimiento: 0 },
-    { mes: "Nov", combustible: 0, mantenimiento: 0 },
-    { mes: "Dic", combustible: 0, mantenimiento: 0 },
-    { mes: "Ene", combustible: totalCombustible, mantenimiento: totalMantenimiento },
-  ];
+  // Filter obras with financial activity and sort by cotizacion
+  const obrasConActividad = obrasFinancieras
+    .filter((o) => o.cotizacionTotal > 0 || o.gastosTotal > 0)
+    .sort((a, b) => b.cotizacionTotal - a.cotizacionTotal);
 
-  if (loading) {
+  // Calculate totals
+  const totalCotizaciones = obrasFinancieras.reduce((sum, o) => sum + o.cotizacionTotal, 0);
+  const totalGastos = obrasFinancieras.reduce((sum, o) => sum + o.gastosTotal, 0);
+  const totalBalance = totalCotizaciones - totalGastos;
+  const obrasConPerdida = obrasFinancieras.filter((o) => o.balance < 0 && o.cotizacionTotal > 0).length;
+
+  // Prepare chart data - Cotizaciones vs Gastos
+  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 10).map((o) => ({
+    obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "..." : o.nombre,
+    cotizacion: o.cotizacionTotal,
+    gastos: o.gastosTotal,
+    balance: o.balance,
+  }));
+
+  // Prepare chart data - Desglose de gastos por obra
+  const chartDataGastosDesglose = obrasConActividad
+    .filter((o) => o.gastosTotal > 0)
+    .slice(0, 8)
+    .map((o) => ({
+      obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "..." : o.nombre,
+      combustible: o.combustible,
+      mantenimiento: o.mantenimiento,
+      sueldos: o.sueldos,
+    }));
+
+  // Prepare chart data - Balance por obra (positivo/negativo)
+  const chartDataBalance = obrasConActividad
+    .filter((o) => o.cotizacionTotal > 0)
+    .slice(0, 10)
+    .map((o) => ({
+      obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "..." : o.nombre,
+      balance: o.balance,
+      rentabilidad: o.rentabilidad,
+    }));
+
+  const isLoading = loading || loadingAsignaciones || loadingCotizaciones;
+
+  if (isLoading) {
     return (
-      <MainLayout title="Reportes" subtitle="Análisis y estadísticas">
+      <MainLayout title="Reportes" subtitle="Cotizaciones vs Gastos por Obra">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           {[1, 2, 3, 4].map((i) => (
             <Card key={i} className="card-industrial">
@@ -157,41 +155,24 @@ export default function Reportes() {
   }
 
   return (
-    <MainLayout title="Reportes" subtitle="Análisis y estadísticas">
+    <MainLayout title="Reportes" subtitle="Cotizaciones vs Gastos por Obra">
       {/* KPIs Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="card-industrial">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Obras Activas</p>
-                <p className="text-3xl font-bold text-foreground">
-                  {obras.filter(o => o.estado === "activa").length}
+                <p className="text-sm text-muted-foreground">Cotizaciones Aprobadas</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatCurrencyShort(totalCotizaciones)}
                 </p>
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {obras.length} total registradas
-                </p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                <Building2 className="w-6 h-6 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-industrial">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">Viajes Semana</p>
-                <p className="text-3xl font-bold text-foreground">{totalViajes}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {volumenTransportado.toLocaleString()} m³ transportados
+                  <FileText className="w-3 h-3" />
+                  {cotizaciones.filter((c) => c.estado === "aprobada").length} cotizaciones
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-success/20 flex items-center justify-center">
-                <Route className="w-6 h-6 text-success" />
+                <DollarSign className="w-6 h-6 text-success" />
               </div>
             </div>
           </CardContent>
@@ -201,14 +182,16 @@ export default function Reportes() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Gasto Combustible</p>
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCombustible)}</p>
+                <p className="text-sm text-muted-foreground">Gastos Totales</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {formatCurrencyShort(totalGastos)}
+                </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {totalLitros.toLocaleString()} litros
+                  Combustible + Mantenimiento + Sueldos
                 </p>
               </div>
               <div className="w-12 h-12 rounded-lg bg-warning/20 flex items-center justify-center">
-                <Fuel className="w-6 h-6 text-warning" />
+                <TrendingDown className="w-6 h-6 text-warning" />
               </div>
             </div>
           </CardContent>
@@ -218,186 +201,74 @@ export default function Reportes() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Mantenimiento</p>
-                <p className="text-2xl font-bold text-foreground">{formatCurrency(totalMantenimiento)}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {mantenimientos.length} registros
+                <p className="text-sm text-muted-foreground">Balance General</p>
+                <p className={`text-2xl font-bold ${totalBalance >= 0 ? "text-success" : "text-destructive"}`}>
+                  {formatCurrencyShort(totalBalance)}
+                </p>
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                  {totalBalance >= 0 ? (
+                    <TrendingUp className="w-3 h-3 text-success" />
+                  ) : (
+                    <TrendingDown className="w-3 h-3 text-destructive" />
+                  )}
+                  {totalCotizaciones > 0
+                    ? `${((totalBalance / totalCotizaciones) * 100).toFixed(1)}% rentabilidad`
+                    : "Sin cotizaciones"}
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                <Wrench className="w-6 h-6 text-orange-500" />
+              <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                totalBalance >= 0 ? "bg-success/20" : "bg-destructive/20"
+              }`}>
+                <TrendingUp className={`w-6 h-6 ${totalBalance >= 0 ? "text-success" : "text-destructive"}`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="card-industrial">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Obras con Pérdida</p>
+                <p className="text-2xl font-bold text-foreground">{obrasConPerdida}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Gastos mayores a cotización
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-lg bg-destructive/20 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Obras por Estado */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-primary" />
-              Obras por Estado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              {obrasPorEstado.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={obrasPorEstado}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {obrasPorEstado.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(0 0% 10%)",
-                        border: "1px solid hsl(0 0% 20%)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No hay datos disponibles
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              {obrasPorEstado.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-muted-foreground">
-                    {item.name}: {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Maquinarias por Estado */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Truck className="w-5 h-5 text-primary" />
-              Maquinarias por Estado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              {maquinariasPorEstado.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={maquinariasPorEstado}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {maquinariasPorEstado.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(0 0% 10%)",
-                        border: "1px solid hsl(0 0% 20%)",
-                        borderRadius: "8px",
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No hay datos disponibles
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              {maquinariasPorEstado.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-muted-foreground">
-                    {item.name}: {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts Row 2 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Viajes por Día */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Route className="w-5 h-5 text-primary" />
-              Viajes de la Semana
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
+      {/* Chart: Cotizaciones vs Gastos */}
+      <Card className="card-industrial mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
+            Cotizaciones vs Gastos por Obra
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-96">
+            {chartDataCotizacionesVsGastos.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={viajesPorDia}>
+                <BarChart data={chartDataCotizacionesVsGastos} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
-                  <XAxis dataKey="dia" stroke="hsl(0 0% 50%)" tick={{ fill: "hsl(0 0% 65%)" }} />
-                  <YAxis stroke="hsl(0 0% 50%)" tick={{ fill: "hsl(0 0% 65%)" }} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "hsl(0 0% 10%)",
-                      border: "1px solid hsl(0 0% 20%)",
-                      borderRadius: "8px",
-                    }}
-                    formatter={(value: number, name: string) => {
-                      if (name === "viajes") return [value, "Viajes"];
-                      return [`${value} m³`, "Volumen"];
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="viajes" fill="#B00020" name="Viajes" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="volumen" fill="#22c55e" name="Volumen (m³)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Costos Mensuales */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-primary" />
-              Costos Operativos (6 meses)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-72">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={costosMensuales}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
-                  <XAxis dataKey="mes" stroke="hsl(0 0% 50%)" tick={{ fill: "hsl(0 0% 65%)" }} />
-                  <YAxis
+                  <XAxis
+                    type="number"
                     stroke="hsl(0 0% 50%)"
                     tick={{ fill: "hsl(0 0% 65%)" }}
-                    tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                    tickFormatter={(value) => formatCurrencyShort(value)}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="obra"
+                    stroke="hsl(0 0% 50%)"
+                    tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
+                    width={100}
                   />
                   <Tooltip
                     contentStyle={{
@@ -405,59 +276,116 @@ export default function Reportes() {
                       border: "1px solid hsl(0 0% 20%)",
                       borderRadius: "8px",
                     }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number, name: string) => [
+                      formatCurrency(value),
+                      name === "cotizacion" ? "Cotización" : name === "gastos" ? "Gastos" : "Balance",
+                    ]}
                   />
-                  <Legend />
-                  <Line
-                    type="monotone"
-                    dataKey="combustible"
-                    stroke="#eab308"
-                    strokeWidth={2}
-                    dot={{ fill: "#eab308" }}
-                    name="Combustible"
+                  <Legend
+                    formatter={(value) =>
+                      value === "cotizacion" ? "Cotización Aprobada" : value === "gastos" ? "Gastos Totales" : value
+                    }
                   />
-                  <Line
-                    type="monotone"
-                    dataKey="mantenimiento"
-                    stroke="#f97316"
-                    strokeWidth={2}
-                    dot={{ fill: "#f97316" }}
-                    name="Mantenimiento"
-                  />
-                </LineChart>
+                  <Bar dataKey="cotizacion" fill="#22c55e" name="cotizacion" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="gastos" fill="#ef4444" name="gastos" radius={[0, 4, 4, 0]} />
+                </BarChart>
               </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <FileText className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No hay datos de cotizaciones aprobadas o gastos</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Gastos por Obra */}
-      <div className="grid grid-cols-1 gap-6 mt-6">
+      {/* Charts Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Balance por Obra */}
         <Card className="card-industrial">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-primary" />
-              Gastos por Obra
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Rentabilidad por Obra
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
-              {gastosPorObra.length > 0 ? (
+              {chartDataBalance.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={gastosPorObra} layout="vertical">
+                  <ComposedChart data={chartDataBalance} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
-                    <XAxis 
-                      type="number" 
-                      stroke="hsl(0 0% 50%)" 
+                    <XAxis
+                      type="number"
+                      stroke="hsl(0 0% 50%)"
                       tick={{ fill: "hsl(0 0% 65%)" }}
-                      tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+                      tickFormatter={(value) => formatCurrencyShort(value)}
                     />
-                    <YAxis 
-                      type="category" 
-                      dataKey="obra" 
-                      stroke="hsl(0 0% 50%)" 
-                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 12 }}
-                      width={120}
+                    <YAxis
+                      type="category"
+                      dataKey="obra"
+                      stroke="hsl(0 0% 50%)"
+                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
+                      width={100}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(0 0% 10%)",
+                        border: "1px solid hsl(0 0% 20%)",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number, name: string) => [
+                        name === "balance" ? formatCurrency(value) : `${value.toFixed(1)}%`,
+                        name === "balance" ? "Balance" : "Rentabilidad",
+                      ]}
+                    />
+                    <Legend />
+                    <Bar
+                      dataKey="balance"
+                      name="Balance"
+                      radius={[0, 4, 4, 0]}
+                      fill="#3b82f6"
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  No hay datos de rentabilidad
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Desglose de Gastos */}
+        <Card className="card-industrial">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-primary" />
+              Desglose de Gastos por Obra
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              {chartDataGastosDesglose.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartDataGastosDesglose} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
+                    <XAxis
+                      type="number"
+                      stroke="hsl(0 0% 50%)"
+                      tick={{ fill: "hsl(0 0% 65%)" }}
+                      tickFormatter={(value) => formatCurrencyShort(value)}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="obra"
+                      stroke="hsl(0 0% 50%)"
+                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
+                      width={100}
                     />
                     <Tooltip
                       contentStyle={{
@@ -468,20 +396,130 @@ export default function Reportes() {
                       formatter={(value: number) => formatCurrency(value)}
                     />
                     <Legend />
-                    <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" />
+                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" />
                     <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No hay gastos registrados por obra
+                  No hay gastos registrados
                 </div>
               )}
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Table: Detalle por Obra */}
+      <Card className="card-industrial">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Building2 className="w-5 h-5 text-primary" />
+            Detalle Financiero por Obra
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {obrasConActividad.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground">Obra</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Cotización</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Combustible</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Mantenimiento</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Sueldos</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Total Gastos</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Balance</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground">Rentabilidad</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {obrasConActividad.map((obra) => (
+                    <tr key={obra.obraId} className="border-b border-border/50 hover:bg-muted/30">
+                      <td className="py-3 px-2 font-medium">{obra.nombre}</td>
+                      <td className="py-3 px-2 text-right text-success font-mono">
+                        {formatCurrency(obra.cotizacionTotal)}
+                      </td>
+                      <td className="py-3 px-2 text-right text-warning font-mono">
+                        {formatCurrency(obra.combustible)}
+                      </td>
+                      <td className="py-3 px-2 text-right text-orange-500 font-mono">
+                        {formatCurrency(obra.mantenimiento)}
+                      </td>
+                      <td className="py-3 px-2 text-right text-blue-500 font-mono">
+                        {formatCurrency(obra.sueldos)}
+                      </td>
+                      <td className="py-3 px-2 text-right text-destructive font-mono">
+                        {formatCurrency(obra.gastosTotal)}
+                      </td>
+                      <td className={`py-3 px-2 text-right font-mono font-bold ${
+                        obra.balance >= 0 ? "text-success" : "text-destructive"
+                      }`}>
+                        {formatCurrency(obra.balance)}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        {obra.cotizacionTotal > 0 ? (
+                          <Badge 
+                            variant={obra.rentabilidad >= 0 ? "default" : "destructive"}
+                            className={obra.rentabilidad >= 0 ? "bg-success text-success-foreground" : ""}
+                          >
+                            {obra.rentabilidad.toFixed(1)}%
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-border bg-muted/20">
+                    <td className="py-3 px-2 font-bold">TOTAL</td>
+                    <td className="py-3 px-2 text-right text-success font-mono font-bold">
+                      {formatCurrency(totalCotizaciones)}
+                    </td>
+                    <td className="py-3 px-2 text-right text-warning font-mono font-bold">
+                      {formatCurrency(obrasFinancieras.reduce((s, o) => s + o.combustible, 0))}
+                    </td>
+                    <td className="py-3 px-2 text-right text-orange-500 font-mono font-bold">
+                      {formatCurrency(obrasFinancieras.reduce((s, o) => s + o.mantenimiento, 0))}
+                    </td>
+                    <td className="py-3 px-2 text-right text-blue-500 font-mono font-bold">
+                      {formatCurrency(obrasFinancieras.reduce((s, o) => s + o.sueldos, 0))}
+                    </td>
+                    <td className="py-3 px-2 text-right text-destructive font-mono font-bold">
+                      {formatCurrency(totalGastos)}
+                    </td>
+                    <td className={`py-3 px-2 text-right font-mono font-bold ${
+                      totalBalance >= 0 ? "text-success" : "text-destructive"
+                    }`}>
+                      {formatCurrency(totalBalance)}
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      {totalCotizaciones > 0 && (
+                        <Badge 
+                          variant={totalBalance >= 0 ? "default" : "destructive"}
+                          className={totalBalance >= 0 ? "bg-success text-success-foreground" : ""}
+                        >
+                          {((totalBalance / totalCotizaciones) * 100).toFixed(1)}%
+                        </Badge>
+                      )}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          ) : (
+            <div className="py-12 text-center text-muted-foreground">
+              <Building2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+              <p>No hay datos financieros disponibles</p>
+              <p className="text-sm mt-1">Agregue cotizaciones aprobadas o registre gastos en las obras</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </MainLayout>
   );
 }
