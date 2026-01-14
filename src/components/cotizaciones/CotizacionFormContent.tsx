@@ -373,11 +373,12 @@ export function CotizacionFormContent({
                             />
                           </div>
                           <div className="col-span-3">
-                            <Input
+                            <Textarea
                               value={item.descripcion}
                               onChange={(e) => updateItem(item.originalIndex, "descripcion", e.target.value)}
-                              placeholder="Descripción"
-                              className="bg-muted border-border text-sm p-2 h-8"
+                              placeholder="Descripción del ítem"
+                              className="bg-muted border-border text-sm p-2 min-h-[32px] resize-y"
+                              rows={1}
                             />
                           </div>
                           <div className="col-span-1">
