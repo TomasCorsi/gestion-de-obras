@@ -41,10 +41,10 @@ import {
   Trash2,
   Clock,
   Building2,
+  Hash,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAsignacionesMaquinaria, AsignacionMaquinariaForm } from "@/hooks/useAsignacionesMaquinaria";
-import { useHorasMaquina } from "@/hooks/useHorasMaquina";
 import { useMaquinarias, TipoMaquinaria } from "@/hooks/useMaquinarias";
 import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
@@ -73,6 +73,11 @@ const tiposConfig: Record<TipoMaquinaria, { label: string; color: string }> = {
   camioneta: { label: "Camioneta", color: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30" },
 };
 
+const tiposArray = Object.entries(tiposConfig).map(([key, value]) => ({
+  value: key as TipoMaquinaria,
+  label: value.label,
+}));
+
 const formatCurrency = (value: number): string => {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -84,7 +89,6 @@ const formatCurrency = (value: number): string => {
 
 export function AsignacionesMaquinariaObra() {
   const { asignaciones, asignacionesPorObra, loading, createAsignacion, updateAsignacion, deleteAsignacion } = useAsignacionesMaquinaria();
-  const { horasMaquina, getHorasPorObraYMaquinaria } = useHorasMaquina();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
   const [formOpen, setFormOpen] = useState(false);
@@ -92,23 +96,25 @@ export function AsignacionesMaquinariaObra() {
   const [selectedAsignacion, setSelectedAsignacion] = useState<string | null>(null);
   const [formData, setFormData] = useState<AsignacionMaquinariaForm>({
     obra_id: "",
-    maquinaria_id: "",
+    tipo_maquinaria: "cargadora",
+    cantidad: 1,
+    horas: 0,
     costo_hora: 0,
     activa: true,
   });
 
   const obrasActivas = obras.filter(o => o.estado === "activa" || o.estado === "pendiente");
   
-  // Get maquinarias that are not already assigned to the selected obra
-  const maquinariasDisponibles = maquinarias.filter(m => {
+  // Check if tipo is already assigned to the selected obra
+  const tiposDisponibles = tiposArray.filter(tipo => {
     if (!formData.obra_id) return true;
-    // When editing, include the current maquinaria
+    // When editing, include the current tipo
     if (isEditing) {
       const currentAsig = asignaciones.find(a => a.id === selectedAsignacion);
-      if (currentAsig && currentAsig.maquinaria_id === m.id) return true;
+      if (currentAsig && currentAsig.tipo_maquinaria === tipo.value) return true;
     }
-    // Exclude maquinarias already assigned to this obra
-    return !asignaciones.some(a => a.obra_id === formData.obra_id && a.maquinaria_id === m.id);
+    // Exclude tipos already assigned to this obra
+    return !asignaciones.some(a => a.obra_id === formData.obra_id && a.tipo_maquinaria === tipo.value);
   });
 
   const handleNew = () => {
@@ -116,7 +122,9 @@ export function AsignacionesMaquinariaObra() {
     setSelectedAsignacion(null);
     setFormData({
       obra_id: "",
-      maquinaria_id: "",
+      tipo_maquinaria: "cargadora",
+      cantidad: 1,
+      horas: 0,
       costo_hora: 0,
       activa: true,
     });
@@ -128,7 +136,9 @@ export function AsignacionesMaquinariaObra() {
     setSelectedAsignacion(asignacion.id);
     setFormData({
       obra_id: asignacion.obra_id,
-      maquinaria_id: asignacion.maquinaria_id,
+      tipo_maquinaria: asignacion.tipo_maquinaria || "cargadora",
+      cantidad: asignacion.cantidad || 1,
+      horas: asignacion.horas || 0,
       costo_hora: asignacion.costo_hora,
       activa: asignacion.activa,
       observaciones: asignacion.observaciones || "",
@@ -150,11 +160,15 @@ export function AsignacionesMaquinariaObra() {
     setFormOpen(false);
   };
 
+  // Calculate subtotal for current form
+  const subtotalForm = formData.cantidad * formData.horas * formData.costo_hora;
+
   // Calculate total cost of machine hours across all obras
   const calcularCostoTotalHoras = () => {
     return asignaciones.reduce((total, asig) => {
-      const horas = getHorasPorObraYMaquinaria(asig.obra_id, asig.maquinaria_id);
-      return total + (horas * asig.costo_hora);
+      const cantidad = asig.cantidad || 1;
+      const horas = asig.horas || 0;
+      return total + (cantidad * horas * asig.costo_hora);
     }, 0);
   };
 
@@ -162,21 +176,22 @@ export function AsignacionesMaquinariaObra() {
   const calcularCostoObra = (obraId: string) => {
     const asigObra = asignaciones.filter(a => a.obra_id === obraId);
     return asigObra.reduce((total, asig) => {
-      const horas = getHorasPorObraYMaquinaria(asig.obra_id, asig.maquinaria_id);
-      return total + (horas * asig.costo_hora);
+      const cantidad = asig.cantidad || 1;
+      const horas = asig.horas || 0;
+      return total + (cantidad * horas * asig.costo_hora);
     }, 0);
   };
 
-  // Count machines by type
+  // Count machines by type from maquinarias table
   const maquinariasPorTipo = maquinarias.reduce((acc, maq) => {
     acc[maq.tipo] = (acc[maq.tipo] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  // Count assignments by type
+  // Count assignments by tipo_maquinaria
   const asignacionesPorTipo = asignaciones.reduce((acc, asig) => {
-    if (asig.maquinaria?.tipo) {
-      acc[asig.maquinaria.tipo] = (acc[asig.maquinaria.tipo] || 0) + 1;
+    if (asig.tipo_maquinaria) {
+      acc[asig.tipo_maquinaria] = (acc[asig.tipo_maquinaria] || 0) + (asig.cantidad || 1);
     }
     return acc;
   }, {} as Record<string, number>);
@@ -197,10 +212,10 @@ export function AsignacionesMaquinariaObra() {
         {Object.entries(tiposConfig).slice(0, 8).map(([key, config]) => {
           const total = maquinariasPorTipo[key] || 0;
           const asignados = asignacionesPorTipo[key] || 0;
-          if (total === 0) return null;
+          if (total === 0 && asignados === 0) return null;
           return (
             <div key={key} className="card-industrial p-3 text-center">
-              <p className="text-xl font-bold text-foreground">{total}</p>
+              <p className="text-xl font-bold text-foreground">{asignados || total}</p>
               <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
                 {config.label}
               </Badge>
@@ -222,7 +237,7 @@ export function AsignacionesMaquinariaObra() {
             <div>
               <CardTitle className="text-lg">Asignación de Maquinarias a Obras</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Gestión de costos por hora de maquinaria
+                Gestión de costos por tipo de maquinaria, cantidad y horas
               </p>
             </div>
           </div>
@@ -260,7 +275,7 @@ export function AsignacionesMaquinariaObra() {
                       <Building2 className="w-4 h-4 text-primary" />
                       <span className="font-medium">{data.obra?.nombre || "Obra sin nombre"}</span>
                       <Badge variant="outline" className="text-xs">
-                        {data.asignaciones.length} máquinas
+                        {data.asignaciones.length} tipos
                       </Badge>
                     </div>
                     <span className="font-semibold text-primary">
@@ -270,8 +285,8 @@ export function AsignacionesMaquinariaObra() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border">
-                        <TableHead className="text-muted-foreground">Maquinaria</TableHead>
-                        <TableHead className="text-muted-foreground">Tipo</TableHead>
+                        <TableHead className="text-muted-foreground w-16">Cant</TableHead>
+                        <TableHead className="text-muted-foreground">Tipo Maquinaria</TableHead>
                         <TableHead className="text-muted-foreground text-right">Costo/Hora</TableHead>
                         <TableHead className="text-muted-foreground text-right">Horas</TableHead>
                         <TableHead className="text-muted-foreground text-right">Total</TableHead>
@@ -281,26 +296,24 @@ export function AsignacionesMaquinariaObra() {
                     </TableHeader>
                     <TableBody>
                       {data.asignaciones.map((asig) => {
-                        const horas = getHorasPorObraYMaquinaria(asig.obra_id, asig.maquinaria_id);
-                        const totalAsig = horas * asig.costo_hora;
+                        const cantidad = asig.cantidad || 1;
+                        const horas = asig.horas || 0;
+                        const totalAsig = cantidad * horas * asig.costo_hora;
+                        const tipo = asig.tipo_maquinaria as TipoMaquinaria;
                         return (
                           <TableRow key={asig.id} className="border-border">
                             <TableCell>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm">
-                                  {asig.maquinaria?.codigo || "-"}
-                                </span>
-                                <span className="text-muted-foreground">
-                                  {asig.maquinaria?.nombre || ""}
-                                </span>
+                              <div className="flex items-center gap-1">
+                                <Hash className="w-3 h-3 text-muted-foreground" />
+                                <span className="font-semibold">{cantidad}</span>
                               </div>
                             </TableCell>
                             <TableCell>
                               <Badge className={cn(
                                 "status-badge text-xs",
-                                tiposConfig[asig.maquinaria?.tipo as TipoMaquinaria]?.color
+                                tiposConfig[tipo]?.color
                               )}>
-                                {tiposConfig[asig.maquinaria?.tipo as TipoMaquinaria]?.label || asig.maquinaria?.tipo}
+                                {tiposConfig[tipo]?.label || tipo}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right font-mono">
@@ -309,7 +322,7 @@ export function AsignacionesMaquinariaObra() {
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <Clock className="w-3 h-3 text-muted-foreground" />
-                                <span>{horas.toFixed(1)}</span>
+                                <span>{horas}</span>
                               </div>
                             </TableCell>
                             <TableCell className="text-right font-semibold">
@@ -370,7 +383,7 @@ export function AsignacionesMaquinariaObra() {
               <Label>Obra</Label>
               <Select
                 value={formData.obra_id}
-                onValueChange={(value) => setFormData({ ...formData, obra_id: value, maquinaria_id: "" })}
+                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
                   <SelectValue placeholder="Seleccionar obra" />
@@ -386,54 +399,97 @@ export function AsignacionesMaquinariaObra() {
             </div>
 
             <div className="space-y-2">
-              <Label>Maquinaria</Label>
+              <Label>Tipo de Maquinaria</Label>
               <Select
-                value={formData.maquinaria_id}
-                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value })}
-                disabled={!formData.obra_id}
+                value={formData.tipo_maquinaria}
+                onValueChange={(value) => setFormData({ ...formData, tipo_maquinaria: value as TipoMaquinaria })}
               >
                 <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar maquinaria" />
+                  <SelectValue placeholder="Seleccionar tipo" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border max-h-[300px]">
-                  {maquinariasDisponibles
-                    .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
-                    .map((maq) => (
-                      <SelectItem key={maq.id} value={maq.id}>
-                        {maq.codigo} - {tiposConfig[maq.tipo]?.label || maq.tipo}
-                        {maq.nombre ? ` (${maq.nombre})` : ""}
-                      </SelectItem>
-                    ))}
+                  {tiposDisponibles.map((tipo) => (
+                    <SelectItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Cantidad</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.cantidad}
+                  onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 1 })}
+                  className="bg-muted border-border"
+                  placeholder="1"
+                />
+                <p className="text-xs text-muted-foreground">Máquinas de este tipo</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Horas</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={formData.horas}
+                  onChange={(e) => setFormData({ ...formData, horas: parseFloat(e.target.value) || 0 })}
+                  className="bg-muted border-border"
+                  placeholder="0"
+                />
+                <p className="text-xs text-muted-foreground">Horas totales</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>Costo por Hora ($)</Label>
+              <Label>Costo por Hora</Label>
               <Input
                 type="number"
+                min="0"
                 value={formData.costo_hora}
                 onChange={(e) => setFormData({ ...formData, costo_hora: parseFloat(e.target.value) || 0 })}
                 className="bg-muted border-border"
-                min="0"
-                step="100"
+                placeholder="0"
               />
             </div>
 
-            <div className="flex items-center justify-between">
-              <Label>Asignación Activa</Label>
+            {/* Subtotal Preview */}
+            <div className="p-3 rounded-lg bg-accent/50 border border-border">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal:</span>
+                <span className="font-semibold text-primary">
+                  {formatCurrency(subtotalForm)}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                = {formData.cantidad} × {formData.horas} hrs × {formatCurrency(formData.costo_hora)}
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
               <Switch
+                id="activa"
                 checked={formData.activa}
                 onCheckedChange={(checked) => setFormData({ ...formData, activa: checked })}
               />
+              <Label htmlFor="activa">Asignación activa</Label>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
-                {isEditing ? "Actualizar" : "Crear"}
+              <Button 
+                type="submit" 
+                className="bg-primary hover:bg-primary/90"
+                disabled={!formData.obra_id || !formData.tipo_maquinaria}
+              >
+                {isEditing ? "Guardar Cambios" : "Crear Asignación"}
               </Button>
             </div>
           </form>

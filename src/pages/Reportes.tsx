@@ -27,7 +27,6 @@ import {
 import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { useAsignacionesMaquinaria } from "@/hooks/useAsignacionesMaquinaria";
-import { useHorasMaquina } from "@/hooks/useHorasMaquina";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,7 +78,6 @@ export default function Reportes() {
   const { loading, obras, combustible, mantenimientos } = useReportesData();
   const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
   const { asignaciones: asignacionesMaquinaria, loading: loadingAsignacionesMaq } = useAsignacionesMaquinaria();
-  const { horasMaquina, getHorasPorObraYMaquinaria } = useHorasMaquina();
   const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
 
   // Filter states
@@ -149,11 +147,13 @@ export default function Reportes() {
       // Sueldos are monthly, so we don't filter by date for now
       const gastoSueldos = asignacionesPorObra[obra.id]?.totalSueldos || 0;
 
-      // Calculate machine hours cost
-      const asignacionesObraMaq = asignacionesMaquinaria.filter(a => a.obra_id === obra.id);
+      // Calculate machine hours cost - now directly from assignments
+      const asignacionesObraMaq = asignacionesMaquinaria.filter(a => a.obra_id === obra.id && a.activa);
       const gastoHorasMaquina = asignacionesObraMaq.reduce((total, asig) => {
-        const horas = getHorasPorObraYMaquinaria(asig.obra_id, asig.maquinaria_id, fechaInicio || undefined, fechaFin || undefined);
-        return total + (horas * asig.costo_hora);
+        const cantidad = asig.cantidad || 1;
+        const horas = asig.horas || 0;
+        const costoHora = asig.costo_hora || 0;
+        return total + (cantidad * horas * costoHora);
       }, 0);
 
       const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos + gastoHorasMaquina;
@@ -174,7 +174,7 @@ export default function Reportes() {
         rentabilidad,
       };
     });
-  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, asignacionesMaquinaria, horasMaquina, estadoFilter, fechaInicio, fechaFin, getHorasPorObraYMaquinaria]);
+  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, asignacionesMaquinaria, estadoFilter, fechaInicio, fechaFin]);
 
   // Filter obras with financial activity and sort by cotizacion
   const obrasConActividad = obrasFinancieras

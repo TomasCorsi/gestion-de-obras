@@ -6,7 +6,10 @@ import { TipoMaquinaria, EstadoMaquinaria } from "./useMaquinarias";
 export interface AsignacionMaquinariaObra {
   id: string;
   obra_id: string;
-  maquinaria_id: string;
+  maquinaria_id: string | null;
+  tipo_maquinaria: TipoMaquinaria | null;
+  cantidad: number;
+  horas: number;
   costo_hora: number;
   fecha_inicio: string | null;
   fecha_fin: string | null;
@@ -20,7 +23,7 @@ export interface AsignacionMaquinariaObra {
     nombre: string | null;
     tipo: TipoMaquinaria;
     estado: EstadoMaquinaria;
-  };
+  } | null;
   obra?: {
     id: string;
     nombre: string;
@@ -30,12 +33,13 @@ export interface AsignacionMaquinariaObra {
 
 export interface AsignacionMaquinariaForm {
   obra_id: string;
-  maquinaria_id: string;
+  tipo_maquinaria: TipoMaquinaria;
+  cantidad: number;
+  horas: number;
   costo_hora: number;
-  fecha_inicio?: string;
-  fecha_fin?: string;
   activa?: boolean;
   observaciones?: string;
+  maquinaria_id?: string;
 }
 
 export function useAsignacionesMaquinaria() {

@@ -17,38 +17,51 @@ export type Database = {
       asignaciones_maquinaria_obra: {
         Row: {
           activa: boolean | null
+          cantidad: number | null
           costo_hora: number
           created_at: string
           fecha_fin: string | null
           fecha_inicio: string | null
+          horas: number | null
           id: string
-          maquinaria_id: string
+          maquinaria_id: string | null
           obra_id: string
           observaciones: string | null
+          tipo_maquinaria: Database["public"]["Enums"]["tipo_maquinaria"] | null
           updated_at: string
         }
         Insert: {
           activa?: boolean | null
+          cantidad?: number | null
           costo_hora?: number
           created_at?: string
           fecha_fin?: string | null
           fecha_inicio?: string | null
+          horas?: number | null
           id?: string
-          maquinaria_id: string
+          maquinaria_id?: string | null
           obra_id: string
           observaciones?: string | null
+          tipo_maquinaria?:
+            | Database["public"]["Enums"]["tipo_maquinaria"]
+            | null
           updated_at?: string
         }
         Update: {
           activa?: boolean | null
+          cantidad?: number | null
           costo_hora?: number
           created_at?: string
           fecha_fin?: string | null
           fecha_inicio?: string | null
+          horas?: number | null
           id?: string
-          maquinaria_id?: string
+          maquinaria_id?: string | null
           obra_id?: string
           observaciones?: string | null
+          tipo_maquinaria?:
+            | Database["public"]["Enums"]["tipo_maquinaria"]
+            | null
           updated_at?: string
         }
         Relationships: [
