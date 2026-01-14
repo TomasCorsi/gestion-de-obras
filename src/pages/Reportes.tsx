@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -19,9 +19,10 @@ import {
   TrendingDown,
   FileText,
   AlertTriangle,
-  Calendar,
   Filter,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
@@ -81,6 +82,10 @@ export default function Reportes() {
   const [fechaFin, setFechaFin] = useState<string>("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
 
+  // Pagination state for chart
+  const [paginaGrafico, setPaginaGrafico] = useState(0);
+  const OBRAS_POR_PAGINA = 5;
+
   // Check if filters are active
   const hasActiveFilters = fechaInicio || fechaFin || estadoFilter !== "todos";
 
@@ -90,6 +95,11 @@ export default function Reportes() {
     setFechaFin("");
     setEstadoFilter("todos");
   };
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPaginaGrafico(0);
+  }, [estadoFilter, fechaInicio, fechaFin]);
 
   // Helper function to check if a date is within the filter range
   const isWithinDateRange = (fecha: string | null | undefined): boolean => {
@@ -164,14 +174,19 @@ export default function Reportes() {
   const totalBalance = totalCotizaciones - totalGastos;
   const obrasConPerdida = obrasFinancieras.filter((o) => o.balance < 0 && o.cotizacionTotal > 0).length;
 
-  // Prepare chart data - New vertical grouped bar chart style (limited to 5 obras for readability)
-  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 5).map((o) => ({
-    obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "…" : o.nombre,
-    obraFull: o.nombre,
-    Cotización: o.cotizacionTotal,
-    Gastos: o.gastosTotal,
-    Balance: o.balance,
-  }));
+  // Pagination calculations
+  const totalPaginas = Math.ceil(obrasConActividad.length / OBRAS_POR_PAGINA);
+  
+  // Prepare chart data - Paginated vertical grouped bar chart
+  const chartDataCotizacionesVsGastos = obrasConActividad
+    .slice(paginaGrafico * OBRAS_POR_PAGINA, (paginaGrafico + 1) * OBRAS_POR_PAGINA)
+    .map((o) => ({
+      obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "…" : o.nombre,
+      obraFull: o.nombre,
+      Cotización: o.cotizacionTotal,
+      Gastos: o.gastosTotal,
+      Balance: o.balance,
+    }));
 
   // Prepare chart data - Desglose de gastos por obra
   const chartDataGastosDesglose = obrasConActividad
@@ -532,6 +547,40 @@ export default function Reportes() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination Controls */}
+          {obrasConActividad.length > OBRAS_POR_PAGINA && (
+            <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaGrafico((p) => Math.max(0, p - 1))}
+                disabled={paginaGrafico === 0}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Anterior
+              </Button>
+
+              <span className="text-sm text-muted-foreground">
+                Página {paginaGrafico + 1} de {totalPaginas}
+                <span className="ml-2 text-xs">
+                  ({paginaGrafico * OBRAS_POR_PAGINA + 1}-
+                  {Math.min((paginaGrafico + 1) * OBRAS_POR_PAGINA, obrasConActividad.length)} de{" "}
+                  {obrasConActividad.length} obras)
+                </span>
+              </span>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPaginaGrafico((p) => Math.min(totalPaginas - 1, p + 1))}
+                disabled={paginaGrafico >= totalPaginas - 1}
+              >
+                Siguiente
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
             </div>
           )}
         </CardContent>
