@@ -315,6 +315,7 @@ export default function Cotizaciones() {
               key={cot.id}
               className="card-industrial animate-fade-in hover:border-primary/30 transition-all cursor-pointer"
               style={{ animationDelay: `${index * 50}ms` }}
+              onClick={() => handleView(cot)}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -323,7 +324,7 @@ export default function Cotizaciones() {
                     <h3 className="font-semibold text-foreground mt-1">{cot.obra?.nombre || "Sin obra asignada"}</h3>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
                         <MoreVertical className="w-4 h-4 text-muted-foreground" />
                       </Button>
@@ -414,7 +415,7 @@ export default function Cotizaciones() {
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Cotización" : "Nueva Cotización"}
-        size="xl"
+        size="full"
       >
         <CotizacionFormContent
           formData={formData}
@@ -436,26 +437,60 @@ export default function Cotizaciones() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         title="Detalle de Cotización"
+        size="2xl"
       >
         {selectedCot && (
-          <div className="space-y-4">
-            <DetailSection title="Información General">
-              <DetailRow label="Número" value={selectedCot.numero} />
-              <DetailRow label="Obra" value={selectedCot.obra?.nombre || "Sin asignar"} />
-              <DetailRow label="Responsable" value={selectedCot.responsable} />
-              <DetailRow label="Estado" value={estadoConfig[selectedCot.estado].label} />
-            </DetailSection>
-            <DetailSection title="Fechas">
-              <DetailRow label="Fecha Creación" value={selectedCot.fecha_creacion} />
-              <DetailRow label="Fecha Vencimiento" value={selectedCot.fecha_vencimiento} />
-            </DetailSection>
-            <DetailSection title="Descripción">
-              <p className="text-sm text-muted-foreground">{selectedCot.descripcion}</p>
-            </DetailSection>
+          <div className="space-y-6">
+            {/* Header Info Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-1">Número</p>
+                <p className="font-mono font-bold text-primary text-lg">{selectedCot.numero}</p>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-1">Obra</p>
+                <p className="font-semibold text-foreground">{selectedCot.obra?.nombre || "Sin asignar"}</p>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-1">Estado</p>
+                <Badge className={cn("status-badge mt-1", estadoConfig[selectedCot.estado].className)}>
+                  {estadoConfig[selectedCot.estado].label}
+                </Badge>
+              </div>
+              <div className="bg-muted/30 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-1">Total</p>
+                <p className="font-bold text-primary text-xl">{formatCurrency(selectedCot.total)}</p>
+              </div>
+            </div>
+
+            {/* Secondary Info */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <User className="w-4 h-4" />
+                <span>Responsable: <span className="text-foreground font-medium">{selectedCot.responsable}</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="w-4 h-4" />
+                <span>Creación: <span className="text-foreground font-medium">{selectedCot.fecha_creacion}</span></span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span>Vencimiento: <span className="text-foreground font-medium">{selectedCot.fecha_vencimiento}</span></span>
+              </div>
+            </div>
+
+            {/* Description */}
+            {selectedCot.descripcion && (
+              <div className="bg-muted/20 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase">Descripción</p>
+                <p className="text-sm text-foreground">{selectedCot.descripcion}</p>
+              </div>
+            )}
             
             {/* Items Table */}
             {selectedCot.items && selectedCot.items.length > 0 && (
-              <DetailSection title="Detalle de Ítems">
+              <div>
+                <p className="text-xs text-muted-foreground mb-3 font-semibold uppercase">Detalle de Ítems</p>
                 <CotizacionTable
                   items={selectedCot.items}
                   categorias={selectedCot.categorias || []}
@@ -463,23 +498,35 @@ export default function Cotizaciones() {
                   iva={selectedCot.iva}
                   total={selectedCot.total}
                 />
-              </DetailSection>
+              </div>
             )}
             
+            {/* Notes */}
             {selectedCot.notas && (
-              <DetailSection title="Notas">
-                <p className="text-sm text-muted-foreground whitespace-pre-line">{selectedCot.notas}</p>
-              </DetailSection>
+              <div className="bg-muted/20 rounded-lg p-4">
+                <p className="text-xs text-muted-foreground mb-2 font-semibold uppercase">Notas</p>
+                <p className="text-sm text-foreground whitespace-pre-line">{selectedCot.notas}</p>
+              </div>
             )}
 
-            {/* Download PDF Button */}
-            <div className="pt-4 border-t border-border">
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t border-border">
               <Button 
                 onClick={() => handleDownloadPDF(selectedCot)}
-                className="w-full bg-primary hover:bg-primary/90"
+                className="flex-1 bg-primary hover:bg-primary/90"
               >
                 <Download className="w-4 h-4 mr-2" />
                 Descargar PDF
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setDetailOpen(false);
+                  handleEdit(selectedCot);
+                }}
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Editar
               </Button>
             </div>
           </div>
