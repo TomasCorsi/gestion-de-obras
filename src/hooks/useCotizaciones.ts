@@ -106,17 +106,13 @@ export function calcularM3(cantidadM2: number, alturaPromedio: number): number {
 
 // Calculate item total based on unit
 export function calcularTotalItem(item: CotizacionItemForm): number {
-  // For M³ units with M2 and height, use calculated M3
-  if (item.unidad === "m³" && item.cantidad_m2 > 0 && item.altura_promedio > 0) {
-    return item.cantidad_m3 * item.precio_unitario;
+  // If there's a height value, calculate using M3 (M2 × Altura = M3)
+  if (item.altura_promedio > 0 && item.cantidad_m2 > 0) {
+    const m3 = item.cantidad_m2 * item.altura_promedio;
+    return m3 * item.precio_unitario;
   }
   
-  // For M³ units with direct M3 input (without M2/height conversion)
-  if (item.unidad === "m³" && item.cantidad_m3 > 0) {
-    return item.cantidad_m3 * item.precio_unitario;
-  }
-  
-  // For TN, KG, UN, GL, HR, ML - use cantidad_m2 as the quantity field
+  // For all other units - use cantidad_m2 as the quantity field
   // (since M2 column is being repurposed as the general quantity input)
   if (item.cantidad_m2 > 0) {
     return item.cantidad_m2 * item.precio_unitario;
