@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -9,8 +10,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  ComposedChart,
-  Line,
+  Cell,
+  LabelList,
 } from "recharts";
 import {
   Building2,
@@ -19,11 +20,26 @@ import {
   TrendingDown,
   FileText,
   AlertTriangle,
+  Calendar,
+  Filter,
+  X,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { es } from "date-fns/locale";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -46,6 +62,7 @@ function formatCurrencyShort(value: number): string {
 interface ObraFinanciera {
   obraId: string;
   nombre: string;
+  estado: string;
   cotizacionTotal: number;
   gastosTotal: number;
   combustible: number;
@@ -60,41 +77,82 @@ export default function Reportes() {
   const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
   const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
 
-  // Build financial data per obra
-  const obrasFinancieras: ObraFinanciera[] = obras.map((obra) => {
-    // Get cotizaciones aprobadas for this obra
-    const cotizacionesObra = cotizaciones.filter(
-      (c) => c.obra_id === obra.id && c.estado === "aprobada"
-    );
-    const cotizacionTotal = cotizacionesObra.reduce((sum, c) => sum + (c.total || 0), 0);
+  // Filter states
+  const [fechaInicio, setFechaInicio] = useState<string>("");
+  const [fechaFin, setFechaFin] = useState<string>("");
+  const [estadoFilter, setEstadoFilter] = useState<string>("todos");
 
-    // Get gastos
-    const gastoCombustible = combustible
-      .filter((c) => c.obra_id === obra.id)
-      .reduce((sum, c) => sum + (c.costo_total || 0), 0);
+  // Check if filters are active
+  const hasActiveFilters = fechaInicio || fechaFin || estadoFilter !== "todos";
 
-    const gastoMantenimiento = mantenimientos
-      .filter((m) => m.maquinaria?.obra_id === obra.id)
-      .reduce((sum, m) => sum + (m.costo_total || 0), 0);
+  // Clear all filters
+  const clearFilters = () => {
+    setFechaInicio("");
+    setFechaFin("");
+    setEstadoFilter("todos");
+  };
 
-    const gastoSueldos = asignacionesPorObra[obra.id]?.totalSueldos || 0;
+  // Helper function to check if a date is within the filter range
+  const isWithinDateRange = (fecha: string | null | undefined): boolean => {
+    if (!fecha) return true;
+    if (!fechaInicio && !fechaFin) return true;
+    
+    try {
+      const date = parseISO(fecha);
+      const start = fechaInicio ? parseISO(fechaInicio) : new Date(0);
+      const end = fechaFin ? parseISO(fechaFin) : new Date(9999, 11, 31);
+      return isWithinInterval(date, { start, end });
+    } catch {
+      return true;
+    }
+  };
 
-    const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos;
-    const balance = cotizacionTotal - gastosTotal;
-    const rentabilidad = cotizacionTotal > 0 ? ((balance / cotizacionTotal) * 100) : 0;
+  // Build financial data per obra with filters applied
+  const obrasFinancieras: ObraFinanciera[] = useMemo(() => {
+    // Filter obras by status
+    const filteredObras = estadoFilter === "todos" 
+      ? obras 
+      : obras.filter(o => o.estado === estadoFilter);
 
-    return {
-      obraId: obra.id,
-      nombre: obra.nombre,
-      cotizacionTotal,
-      gastosTotal,
-      combustible: gastoCombustible,
-      mantenimiento: gastoMantenimiento,
-      sueldos: gastoSueldos,
-      balance,
-      rentabilidad,
-    };
-  });
+    return filteredObras.map((obra) => {
+      // Get cotizaciones aprobadas for this obra (filtered by date)
+      const cotizacionesObra = cotizaciones.filter(
+        (c) => c.obra_id === obra.id && 
+               c.estado === "aprobada" &&
+               isWithinDateRange(c.fecha_creacion)
+      );
+      const cotizacionTotal = cotizacionesObra.reduce((sum, c) => sum + (c.total || 0), 0);
+
+      // Get gastos filtered by date
+      const gastoCombustible = combustible
+        .filter((c) => c.obra_id === obra.id && isWithinDateRange(c.fecha))
+        .reduce((sum, c) => sum + (c.costo_total || 0), 0);
+
+      const gastoMantenimiento = mantenimientos
+        .filter((m) => m.maquinaria?.obra_id === obra.id && isWithinDateRange(m.fecha))
+        .reduce((sum, m) => sum + (m.costo_total || 0), 0);
+
+      // Sueldos are monthly, so we don't filter by date for now
+      const gastoSueldos = asignacionesPorObra[obra.id]?.totalSueldos || 0;
+
+      const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos;
+      const balance = cotizacionTotal - gastosTotal;
+      const rentabilidad = cotizacionTotal > 0 ? ((balance / cotizacionTotal) * 100) : 0;
+
+      return {
+        obraId: obra.id,
+        nombre: obra.nombre,
+        estado: obra.estado,
+        cotizacionTotal,
+        gastosTotal,
+        combustible: gastoCombustible,
+        mantenimiento: gastoMantenimiento,
+        sueldos: gastoSueldos,
+        balance,
+        rentabilidad,
+      };
+    });
+  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, estadoFilter, fechaInicio, fechaFin]);
 
   // Filter obras with financial activity and sort by cotizacion
   const obrasConActividad = obrasFinancieras
@@ -107,12 +165,13 @@ export default function Reportes() {
   const totalBalance = totalCotizaciones - totalGastos;
   const obrasConPerdida = obrasFinancieras.filter((o) => o.balance < 0 && o.cotizacionTotal > 0).length;
 
-  // Prepare chart data - Cotizaciones vs Gastos
-  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 10).map((o) => ({
-    obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "..." : o.nombre,
-    cotizacion: o.cotizacionTotal,
-    gastos: o.gastosTotal,
-    balance: o.balance,
+  // Prepare chart data - New vertical grouped bar chart style
+  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 8).map((o) => ({
+    obra: o.nombre.length > 15 ? o.nombre.slice(0, 15) + "..." : o.nombre,
+    obraFull: o.nombre,
+    Cotización: o.cotizacionTotal,
+    Gastos: o.gastosTotal,
+    Balance: o.balance,
   }));
 
   // Prepare chart data - Desglose de gastos por obra
@@ -124,16 +183,6 @@ export default function Reportes() {
       combustible: o.combustible,
       mantenimiento: o.mantenimiento,
       sueldos: o.sueldos,
-    }));
-
-  // Prepare chart data - Balance por obra (positivo/negativo)
-  const chartDataBalance = obrasConActividad
-    .filter((o) => o.cotizacionTotal > 0)
-    .slice(0, 10)
-    .map((o) => ({
-      obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "..." : o.nombre,
-      balance: o.balance,
-      rentabilidad: o.rentabilidad,
     }));
 
   const isLoading = loading || loadingAsignaciones || loadingCotizaciones;
@@ -154,8 +203,94 @@ export default function Reportes() {
     );
   }
 
+  // Custom label renderer for bar chart
+  const renderCustomLabel = (props: any) => {
+    const { x, y, width, value } = props;
+    if (value === 0) return null;
+    return (
+      <text
+        x={x + width / 2}
+        y={y - 5}
+        fill="hsl(var(--foreground))"
+        textAnchor="middle"
+        fontSize={10}
+        fontWeight="bold"
+      >
+        {formatCurrencyShort(value)}
+      </text>
+    );
+  };
+
   return (
     <MainLayout title="Reportes" subtitle="Cotizaciones vs Gastos por Obra">
+      {/* Filters Section */}
+      <Card className="card-industrial mb-6">
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap items-end gap-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-2 w-full lg:w-auto lg:mb-0">
+              <Filter className="w-4 h-4" />
+              <span className="text-sm font-medium">Filtros</span>
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="fechaInicio" className="text-xs text-muted-foreground">
+                Fecha Inicio
+              </Label>
+              <Input
+                id="fechaInicio"
+                type="date"
+                value={fechaInicio}
+                onChange={(e) => setFechaInicio(e.target.value)}
+                className="w-40"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="fechaFin" className="text-xs text-muted-foreground">
+                Fecha Fin
+              </Label>
+              <Input
+                id="fechaFin"
+                type="date"
+                value={fechaFin}
+                onChange={(e) => setFechaFin(e.target.value)}
+                className="w-40"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="estado" className="text-xs text-muted-foreground">
+                Estado de Obra
+              </Label>
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="activa">Activa</SelectItem>
+                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                  <SelectItem value="finalizada">Finalizada</SelectItem>
+                  <SelectItem value="pausada">Pausada</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {hasActiveFilters && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={clearFilters}
+                className="flex items-center gap-1"
+              >
+                <X className="w-3 h-3" />
+                Limpiar
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* KPIs Summary */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card className="card-industrial">
@@ -243,7 +378,7 @@ export default function Reportes() {
         </Card>
       </div>
 
-      {/* Chart: Cotizaciones vs Gastos */}
+      {/* Main Chart: Cotizaciones vs Gastos - Vertical Bar Chart */}
       <Card className="card-industrial mb-6">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
@@ -252,42 +387,75 @@ export default function Reportes() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-96">
+          <div className="h-[400px]">
             {chartDataCotizacionesVsGastos.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartDataCotizacionesVsGastos} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
+                <BarChart 
+                  data={chartDataCotizacionesVsGastos} 
+                  margin={{ top: 30, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
-                    type="number"
-                    stroke="hsl(0 0% 50%)"
-                    tick={{ fill: "hsl(0 0% 65%)" }}
-                    tickFormatter={(value) => formatCurrencyShort(value)}
+                    dataKey="obra"
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    angle={-25}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
                   />
                   <YAxis
-                    type="category"
-                    dataKey="obra"
-                    stroke="hsl(0 0% 50%)"
-                    tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
-                    width={100}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    tickFormatter={(value) => formatCurrencyShort(value)}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "hsl(0 0% 10%)",
-                      border: "1px solid hsl(0 0% 20%)",
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
                     }}
                     formatter={(value: number, name: string) => [
                       formatCurrency(value),
-                      name === "cotizacion" ? "Cotización" : name === "gastos" ? "Gastos" : "Balance",
+                      name,
                     ]}
+                    labelFormatter={(label: string, payload: any) => {
+                      const data = payload?.[0]?.payload;
+                      return data?.obraFull || label;
+                    }}
                   />
-                  <Legend
-                    formatter={(value) =>
-                      value === "cotizacion" ? "Cotización Aprobada" : value === "gastos" ? "Gastos Totales" : value
-                    }
+                  <Legend 
+                    wrapperStyle={{ paddingTop: "10px" }}
                   />
-                  <Bar dataKey="cotizacion" fill="#22c55e" name="cotizacion" radius={[0, 4, 4, 0]} />
-                  <Bar dataKey="gastos" fill="#ef4444" name="gastos" radius={[0, 4, 4, 0]} />
+                  <Bar 
+                    dataKey="Cotización" 
+                    fill="#14b8a6" 
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  >
+                    <LabelList dataKey="Cotización" content={renderCustomLabel} />
+                  </Bar>
+                  <Bar 
+                    dataKey="Gastos" 
+                    fill="#f87171" 
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  >
+                    <LabelList dataKey="Gastos" content={renderCustomLabel} />
+                  </Bar>
+                  <Bar 
+                    dataKey="Balance" 
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  >
+                    {chartDataCotizacionesVsGastos.map((entry, index) => (
+                      <Cell 
+                        key={`cell-${index}`} 
+                        fill={entry.Balance >= 0 ? "#22c55e" : "#ef4444"} 
+                      />
+                    ))}
+                    <LabelList dataKey="Balance" content={renderCustomLabel} />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -299,117 +467,131 @@ export default function Reportes() {
               </div>
             )}
           </div>
+
+          {/* Summary Table below the chart */}
+          {chartDataCotizacionesVsGastos.length > 0 && (
+            <div className="mt-6 overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 px-3 font-medium text-muted-foreground w-28">Métrica</th>
+                    {chartDataCotizacionesVsGastos.map((item, index) => (
+                      <th key={index} className="text-center py-2 px-2 font-medium text-muted-foreground text-xs">
+                        {item.obra}
+                      </th>
+                    ))}
+                    <th className="text-center py-2 px-3 font-bold text-foreground bg-muted/30">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 px-3 font-medium flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm bg-[#14b8a6]"></span>
+                      Cotización
+                    </td>
+                    {chartDataCotizacionesVsGastos.map((item, index) => (
+                      <td key={index} className="text-center py-2 px-2 font-mono text-xs">
+                        {formatCurrencyShort(item.Cotización)}
+                      </td>
+                    ))}
+                    <td className="text-center py-2 px-3 font-mono font-bold text-success bg-muted/30">
+                      {formatCurrencyShort(chartDataCotizacionesVsGastos.reduce((s, i) => s + i.Cotización, 0))}
+                    </td>
+                  </tr>
+                  <tr className="border-b border-border/50">
+                    <td className="py-2 px-3 font-medium flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm bg-[#f87171]"></span>
+                      Gastos
+                    </td>
+                    {chartDataCotizacionesVsGastos.map((item, index) => (
+                      <td key={index} className="text-center py-2 px-2 font-mono text-xs">
+                        {formatCurrencyShort(item.Gastos)}
+                      </td>
+                    ))}
+                    <td className="text-center py-2 px-3 font-mono font-bold text-destructive bg-muted/30">
+                      {formatCurrencyShort(chartDataCotizacionesVsGastos.reduce((s, i) => s + i.Gastos, 0))}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 px-3 font-medium flex items-center gap-2">
+                      <span className="w-3 h-3 rounded-sm bg-[#22c55e]"></span>
+                      Balance
+                    </td>
+                    {chartDataCotizacionesVsGastos.map((item, index) => (
+                      <td key={index} className={`text-center py-2 px-2 font-mono text-xs font-bold ${
+                        item.Balance >= 0 ? "text-success" : "text-destructive"
+                      }`}>
+                        {formatCurrencyShort(item.Balance)}
+                      </td>
+                    ))}
+                    <td className={`text-center py-2 px-3 font-mono font-bold bg-muted/30 ${
+                      chartDataCotizacionesVsGastos.reduce((s, i) => s + i.Balance, 0) >= 0 
+                        ? "text-success" 
+                        : "text-destructive"
+                    }`}>
+                      {formatCurrencyShort(chartDataCotizacionesVsGastos.reduce((s, i) => s + i.Balance, 0))}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Balance por Obra */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              Rentabilidad por Obra
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              {chartDataBalance.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={chartDataBalance} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
-                    <XAxis
-                      type="number"
-                      stroke="hsl(0 0% 50%)"
-                      tick={{ fill: "hsl(0 0% 65%)" }}
-                      tickFormatter={(value) => formatCurrencyShort(value)}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="obra"
-                      stroke="hsl(0 0% 50%)"
-                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(0 0% 10%)",
-                        border: "1px solid hsl(0 0% 20%)",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number, name: string) => [
-                        name === "balance" ? formatCurrency(value) : `${value.toFixed(1)}%`,
-                        name === "balance" ? "Balance" : "Rentabilidad",
-                      ]}
-                    />
-                    <Legend />
-                    <Bar
-                      dataKey="balance"
-                      name="Balance"
-                      radius={[0, 4, 4, 0]}
-                      fill="#3b82f6"
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No hay datos de rentabilidad
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Desglose de Gastos */}
-        <Card className="card-industrial">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-primary" />
-              Desglose de Gastos por Obra
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
-              {chartDataGastosDesglose.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartDataGastosDesglose} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(0 0% 20%)" />
-                    <XAxis
-                      type="number"
-                      stroke="hsl(0 0% 50%)"
-                      tick={{ fill: "hsl(0 0% 65%)" }}
-                      tickFormatter={(value) => formatCurrencyShort(value)}
-                    />
-                    <YAxis
-                      type="category"
-                      dataKey="obra"
-                      stroke="hsl(0 0% 50%)"
-                      tick={{ fill: "hsl(0 0% 65%)", fontSize: 11 }}
-                      width={100}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(0 0% 10%)",
-                        border: "1px solid hsl(0 0% 20%)",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => formatCurrency(value)}
-                    />
-                    <Legend />
-                    <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" />
-                    <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" />
-                    <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="h-full flex items-center justify-center text-muted-foreground">
-                  No hay gastos registrados
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Desglose de Gastos Chart */}
+      <Card className="card-industrial mb-6">
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-primary" />
+            Desglose de Gastos por Obra
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
+            {chartDataGastosDesglose.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={chartDataGastosDesglose} 
+                  margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="obra"
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    angle={-25}
+                    textAnchor="end"
+                    height={60}
+                    interval={0}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                    tickFormatter={(value) => formatCurrencyShort(value)}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                    }}
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+                  <Legend wrapperStyle={{ paddingTop: "10px" }} />
+                  <Bar dataKey="combustible" stackId="a" fill="#eab308" name="Combustible" />
+                  <Bar dataKey="mantenimiento" stackId="a" fill="#f97316" name="Mantenimiento" />
+                  <Bar dataKey="sueldos" stackId="a" fill="#3b82f6" name="Sueldos" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                No hay gastos registrados
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Table: Detalle por Obra */}
       <Card className="card-industrial">
