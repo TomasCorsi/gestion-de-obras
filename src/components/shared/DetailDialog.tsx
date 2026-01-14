@@ -12,7 +12,7 @@ interface DetailDialogProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   children: ReactNode;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "full";
 }
 
 const sizeClasses = {
@@ -20,6 +20,8 @@ const sizeClasses = {
   md: "max-w-lg",
   lg: "max-w-2xl",
   xl: "max-w-4xl",
+  "2xl": "max-w-6xl",
+  full: "max-w-[95vw] w-[95vw]",
 };
 
 export function DetailDialog({
@@ -35,7 +37,7 @@ export function DetailDialog({
         <DialogHeader>
           <DialogTitle className="text-foreground">{title}</DialogTitle>
         </DialogHeader>
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="max-h-[80vh]">
           <div className="pr-4">{children}</div>
         </ScrollArea>
       </DialogContent>
