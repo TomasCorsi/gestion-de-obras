@@ -11,7 +11,6 @@ import {
   ResponsiveContainer,
   Legend,
   Cell,
-  LabelList,
 } from "recharts";
 import {
   Building2,
@@ -165,9 +164,9 @@ export default function Reportes() {
   const totalBalance = totalCotizaciones - totalGastos;
   const obrasConPerdida = obrasFinancieras.filter((o) => o.balance < 0 && o.cotizacionTotal > 0).length;
 
-  // Prepare chart data - New vertical grouped bar chart style
-  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 8).map((o) => ({
-    obra: o.nombre.length > 15 ? o.nombre.slice(0, 15) + "..." : o.nombre,
+  // Prepare chart data - New vertical grouped bar chart style (limited to 5 obras for readability)
+  const chartDataCotizacionesVsGastos = obrasConActividad.slice(0, 5).map((o) => ({
+    obra: o.nombre.length > 12 ? o.nombre.slice(0, 12) + "…" : o.nombre,
     obraFull: o.nombre,
     Cotización: o.cotizacionTotal,
     Gastos: o.gastosTotal,
@@ -203,22 +202,18 @@ export default function Reportes() {
     );
   }
 
-  // Custom label renderer for bar chart
-  const renderCustomLabel = (props: any) => {
-    const { x, y, width, value } = props;
-    if (value === 0) return null;
-    return (
-      <text
-        x={x + width / 2}
-        y={y - 5}
-        fill="hsl(var(--foreground))"
-        textAnchor="middle"
-        fontSize={10}
-        fontWeight="bold"
-      >
-        {formatCurrencyShort(value)}
-      </text>
-    );
+  // Format axis tick with better abbreviation
+  const formatAxisTick = (value: number): string => {
+    if (Math.abs(value) >= 1000000000) {
+      return `$${(value / 1000000000).toFixed(0)}B`;
+    }
+    if (Math.abs(value) >= 1000000) {
+      return `$${(value / 1000000).toFixed(0)}M`;
+    }
+    if (Math.abs(value) >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`;
+    }
+    return `$${value}`;
   };
 
   return (
@@ -387,33 +382,39 @@ export default function Reportes() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-[400px]">
+          <div className="h-[350px]">
             {chartDataCotizacionesVsGastos.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart 
                   data={chartDataCotizacionesVsGastos} 
-                  margin={{ top: 30, right: 30, left: 20, bottom: 60 }}
+                  margin={{ top: 20, right: 20, left: 10, bottom: 40 }}
+                  barCategoryGap="20%"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
                   <XAxis
                     dataKey="obra"
                     stroke="hsl(var(--muted-foreground))"
-                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                    angle={-25}
-                    textAnchor="end"
-                    height={60}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={{ stroke: "hsl(var(--border))" }}
+                    height={40}
                     interval={0}
                   />
                   <YAxis
                     stroke="hsl(var(--muted-foreground))"
-                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                    tickFormatter={(value) => formatCurrencyShort(value)}
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={formatAxisTick}
+                    width={70}
                   />
                   <Tooltip
+                    cursor={{ fill: "hsl(var(--muted)/0.1)" }}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
                       borderRadius: "8px",
+                      padding: "12px",
                     }}
                     formatter={(value: number, name: string) => [
                       formatCurrency(value),
@@ -426,27 +427,25 @@ export default function Reportes() {
                   />
                   <Legend 
                     wrapperStyle={{ paddingTop: "10px" }}
+                    iconType="square"
+                    iconSize={12}
                   />
                   <Bar 
                     dataKey="Cotización" 
                     fill="#14b8a6" 
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  >
-                    <LabelList dataKey="Cotización" content={renderCustomLabel} />
-                  </Bar>
+                    maxBarSize={60}
+                  />
                   <Bar 
                     dataKey="Gastos" 
                     fill="#f87171" 
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
-                  >
-                    <LabelList dataKey="Gastos" content={renderCustomLabel} />
-                  </Bar>
+                    maxBarSize={60}
+                  />
                   <Bar 
                     dataKey="Balance" 
                     radius={[4, 4, 0, 0]}
-                    maxBarSize={50}
+                    maxBarSize={60}
                   >
                     {chartDataCotizacionesVsGastos.map((entry, index) => (
                       <Cell 
@@ -454,7 +453,6 @@ export default function Reportes() {
                         fill={entry.Balance >= 0 ? "#22c55e" : "#ef4444"} 
                       />
                     ))}
-                    <LabelList dataKey="Balance" content={renderCustomLabel} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
