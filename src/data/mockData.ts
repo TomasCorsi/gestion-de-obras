@@ -30,7 +30,7 @@ export const obrasData: Obra[] = [
 
 export const cotizacionesData: Cotizacion[] = [
   {
-    id: "1", numero: "COT-2026-001", obraId: "1", obra: "Movimiento de Suelo - Lote 45", descripcion: "Movimiento de 5,000 m³ de tierra", estado: "enviada",
+    id: "1", numero: "2026-001", obraId: "1", obra: "Movimiento de Suelo - Lote 45", descripcion: "Movimiento de 5,000 m³ de tierra", estado: "enviada",
     fechaCreacion: "2026-01-02", fechaVencimiento: "2026-01-15", responsable: "Admin",
     items: [
       { id: "1", descripcion: "Movimiento de suelo", unidad: "m³", cantidad: 5000, precioUnitario: 450, subtotal: 2250000 },
@@ -39,7 +39,7 @@ export const cotizacionesData: Cotizacion[] = [
     subtotal: 3100000, iva: 651000, total: 3751000,
   },
   {
-    id: "2", numero: "COT-2026-002", obraId: "2", obra: "Excavación Fundaciones", descripcion: "Excavación y relleno para fundaciones", estado: "enviada",
+    id: "2", numero: "2026-002", obraId: "2", obra: "Excavación Fundaciones", descripcion: "Excavación y relleno para fundaciones", estado: "enviada",
     fechaCreacion: "2026-01-03", fechaVencimiento: "2026-01-12", responsable: "Admin",
     items: [
       { id: "1", descripcion: "Excavación de fundaciones", unidad: "m³", cantidad: 800, precioUnitario: 520, subtotal: 416000 },

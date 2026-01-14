@@ -117,7 +117,7 @@ export default function Cotizaciones() {
   const generateNumero = () => {
     const year = new Date().getFullYear();
     const count = cotizaciones.length + 1;
-    return `COT-${year}-${count.toString().padStart(3, "0")}`;
+    return `${year}-${count.toString().padStart(3, "0")}`;
   };
 
   const handleNew = () => {
