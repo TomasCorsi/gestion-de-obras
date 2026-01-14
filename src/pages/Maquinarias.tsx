@@ -109,9 +109,10 @@ export default function Maquinarias() {
   });
 
   const filteredMaquinarias = maquinarias.filter((m) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
-      m.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      m.codigo.toLowerCase().includes(searchTerm.toLowerCase());
+      (m.nombre?.toLowerCase() || "").includes(searchLower) ||
+      (m.codigo?.toLowerCase() || "").includes(searchLower);
     const matchesEstado = estadoFilter === "todos" || m.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
