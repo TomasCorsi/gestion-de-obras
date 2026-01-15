@@ -209,13 +209,14 @@ export function AsignacionesMaquinariaObra() {
     <div className="space-y-6">
       {/* Stats by Machine Type */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-        {Object.entries(tiposConfig).slice(0, 8).map(([key, config]) => {
+        {Object.entries(tiposConfig).map(([key, config]) => {
           const total = maquinariasPorTipo[key] || 0;
           const asignados = asignacionesPorTipo[key] || 0;
           if (total === 0 && asignados === 0) return null;
+          const disponibles = Math.max(0, total - asignados);
           return (
             <div key={key} className="card-industrial p-3 text-center">
-              <p className="text-xl font-bold text-foreground">{asignados || total}</p>
+              <p className="text-xl font-bold text-foreground">{disponibles}</p>
               <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
                 {config.label}
               </Badge>
