@@ -15,7 +15,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { AppLauncher } from "./AppLauncher";
 
 interface TopNavbarProps {
-  title: string;
+  title?: string;
   subtitle?: string;
 }
 
@@ -60,20 +60,22 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
           </div>
         </Link>
 
-        {/* Divider */}
-        <div className="hidden sm:block h-8 w-px bg-border" />
-
-        {/* Page Title */}
-        <div className="flex flex-col">
-          <h1 className="text-base md:text-lg font-semibold text-foreground line-clamp-1">
-            {title}
-          </h1>
-          {subtitle && (
-            <p className="text-xs text-muted-foreground hidden md:block">
-              {subtitle}
-            </p>
-          )}
-        </div>
+        {/* Divider & Page Title - only show if title provided */}
+        {title && (
+          <>
+            <div className="hidden sm:block h-8 w-px bg-border" />
+            <div className="flex flex-col">
+              <h1 className="text-base md:text-lg font-semibold text-foreground line-clamp-1">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-xs text-muted-foreground hidden md:block">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Right: Actions */}

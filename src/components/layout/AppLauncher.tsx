@@ -42,7 +42,7 @@ const appCategories: AppCategory[] = [
   {
     name: "Principal",
     apps: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/", color: "bg-primary" },
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary" },
     ],
   },
   {
