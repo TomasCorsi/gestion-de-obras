@@ -999,6 +999,51 @@ export type Database = {
         }
         Relationships: []
       }
+      vacaciones: {
+        Row: {
+          aprobado_por: string | null
+          created_at: string
+          dias_totales: number
+          estado: string
+          fecha_aprobacion: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id: string
+          motivo: string
+          observaciones: string | null
+          personal_id: string
+          updated_at: string
+        }
+        Insert: {
+          aprobado_por?: string | null
+          created_at?: string
+          dias_totales: number
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_fin: string
+          fecha_inicio: string
+          id?: string
+          motivo?: string
+          observaciones?: string | null
+          personal_id: string
+          updated_at?: string
+        }
+        Update: {
+          aprobado_por?: string | null
+          created_at?: string
+          dias_totales?: number
+          estado?: string
+          fecha_aprobacion?: string | null
+          fecha_fin?: string
+          fecha_inicio?: string
+          id?: string
+          motivo?: string
+          observaciones?: string | null
+          personal_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       viajes: {
         Row: {
           camion_id: string
