@@ -19,6 +19,7 @@ import NotFound from "./pages/NotFound";
 
 // Lazy loaded pages (code splitting)
 const Index = lazy(() => import("./pages/Index"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Obras = lazy(() => import("./pages/Obras"));
 const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
 const Personal = lazy(() => import("./pages/Personal"));
@@ -61,6 +62,7 @@ const App = () => (
 
               {/* Protected routes - All authenticated users */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/obras" element={<ProtectedRoute><Obras /></ProtectedRoute>} />
               <Route path="/viajes" element={<ProtectedRoute><Viajes /></ProtectedRoute>} />
               <Route path="/remitos" element={<ProtectedRoute><Remitos /></ProtectedRoute>} />
