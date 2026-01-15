@@ -33,6 +33,48 @@ export interface VacacionForm {
   observaciones?: string;
 }
 
+// Calcular antigüedad en años
+export const calcularAntiguedad = (fechaIngreso: string | null): number | null => {
+  if (!fechaIngreso) return null;
+  const ingreso = new Date(fechaIngreso);
+  const hoy = new Date();
+  const diffMs = hoy.getTime() - ingreso.getTime();
+  return Math.floor(diffMs / (365.25 * 24 * 60 * 60 * 1000));
+};
+
+// Calcular días base por antigüedad (legislación Argentina/Paraguay)
+export const calcularDiasBase = (antiguedad: number | null): number => {
+  if (antiguedad === null) return 14;
+  if (antiguedad < 5) return 14;
+  if (antiguedad < 10) return 21;
+  if (antiguedad < 20) return 28;
+  return 35;
+};
+
+// Calcular días usados (vacaciones aprobadas del año actual)
+export const calcularDiasUsados = (vacaciones: VacacionDB[], personalId: string): number => {
+  const añoActual = new Date().getFullYear();
+  return vacaciones
+    .filter(v => 
+      v.personal_id === personalId && 
+      v.estado === "aprobada" &&
+      new Date(v.fecha_inicio).getFullYear() === añoActual
+    )
+    .reduce((sum, v) => sum + v.dias_totales, 0);
+};
+
+// Calcular días pendientes de aprobación
+export const calcularDiasPendientes = (vacaciones: VacacionDB[], personalId: string): number => {
+  const añoActual = new Date().getFullYear();
+  return vacaciones
+    .filter(v => 
+      v.personal_id === personalId && 
+      v.estado === "pendiente" &&
+      new Date(v.fecha_inicio).getFullYear() === añoActual
+    )
+    .reduce((sum, v) => sum + v.dias_totales, 0);
+};
+
 export function useVacaciones() {
   const [vacaciones, setVacaciones] = useState<VacacionDB[]>([]);
   const [loading, setLoading] = useState(true);
