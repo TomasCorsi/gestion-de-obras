@@ -657,6 +657,56 @@ export type Database = {
           },
         ]
       }
+      otros_gastos: {
+        Row: {
+          categoria: string
+          comprobante: string | null
+          created_at: string
+          descripcion: string
+          fecha: string
+          id: string
+          monto: number
+          obra_id: string | null
+          observaciones: string | null
+          proveedor: string | null
+          updated_at: string
+        }
+        Insert: {
+          categoria: string
+          comprobante?: string | null
+          created_at?: string
+          descripcion: string
+          fecha: string
+          id?: string
+          monto?: number
+          obra_id?: string | null
+          observaciones?: string | null
+          proveedor?: string | null
+          updated_at?: string
+        }
+        Update: {
+          categoria?: string
+          comprobante?: string | null
+          created_at?: string
+          descripcion?: string
+          fecha?: string
+          id?: string
+          monto?: number
+          obra_id?: string | null
+          observaciones?: string | null
+          proveedor?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "otros_gastos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal: {
         Row: {
           activo: boolean
