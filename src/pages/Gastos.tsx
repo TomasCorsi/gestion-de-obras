@@ -54,11 +54,23 @@ import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } f
 import { useOtrosGastos, OtroGastoWithRelations, OtroGastoForm, categoriasGasto, CategoriaGasto } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
-import { usePersonal } from "@/hooks/usePersonal";
+import { usePersonal, RolPersonal } from "@/hooks/usePersonal";
+import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { AsignacionesMaquinariaObra } from "@/components/maquinarias/AsignacionesMaquinariaObra";
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
 import { cn } from "@/lib/utils";
+
+const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
+  capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
+  maquinista: { label: "Maquinista", color: "bg-orange-500/20 text-orange-400 border-orange-500/30" },
+  chofer: { label: "Chofer", color: "bg-green-500/20 text-green-400 border-green-500/30" },
+  administrativo: { label: "Administrativo", color: "bg-pink-500/20 text-pink-400 border-pink-500/30" },
+  ayudante: { label: "Ayudante", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+  sereno: { label: "Sereno", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
+  mecanico: { label: "Mecánico", color: "bg-red-500/20 text-red-400 border-red-500/30" },
+  topografo: { label: "Topógrafo", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
+};
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -74,6 +86,7 @@ export default function Gastos() {
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
+  const { asignaciones } = useAsignacionesPersonal();
   
   const [activeTab, setActiveTab] = useState("maquinarias");
   
@@ -393,6 +406,28 @@ export default function Gastos() {
 
         {/* Tab: Personal */}
         <TabsContent value="personal">
+          {/* Stats by Role - Disponibles */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
+            {Object.entries(rolesConfig).map(([key, config]) => {
+              const totalActivo = personal.filter((p) => p.rol === key && p.activo).length;
+              const asignados = asignaciones
+                .filter((a) => a.rol === key)
+                .reduce((sum, a) => sum + a.cantidad, 0);
+              const disponibles = Math.max(0, totalActivo - asignados);
+              return (
+                <div key={key} className="card-industrial p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{disponibles}</p>
+                  <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
+                    {config.label}
+                  </Badge>
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {asignados > 0 ? `${asignados} asignados` : "disponibles"}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
           <AsignacionesPersonalObra />
         </TabsContent>
 
