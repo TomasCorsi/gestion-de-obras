@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -43,11 +44,16 @@ import {
   Filter,
   Calendar,
   User,
+  ListTodo,
+  CalendarDays,
+  Calculator,
 } from "lucide-react";
 import { useVacaciones, VacacionDB, VacacionForm, EstadoVacacion } from "@/hooks/useVacaciones";
-import { usePersonal, PersonalDB } from "@/hooks/usePersonal";
+import { usePersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 import { differenceInDays, parseISO } from "date-fns";
+import { CalendarioVacaciones } from "./CalendarioVacaciones";
+import { SaldoVacacionesTable } from "./SaldoVacacionesTable";
 
 const estadoConfig: Record<EstadoVacacion, { label: string; color: string; icon: React.ReactNode }> = {
   pendiente: { 
@@ -206,185 +212,216 @@ export function VacacionesTab() {
 
   return (
     <div className="space-y-6">
-      {/* Actions Bar */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por empleado..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-            <SelectTrigger className="w-40 bg-card border-border">
-              <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
-              <SelectItem value="todos">Todos</SelectItem>
-              {Object.entries(estadoConfig).map(([key, config]) => (
-                <SelectItem key={key} value={key}>{config.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            onClick={handleNew}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Solicitud
-          </Button>
-        </div>
-      </div>
+      {/* Sub-tabs para las diferentes vistas */}
+      <Tabs defaultValue="solicitudes" className="w-full">
+        <TabsList className="bg-muted/50 border border-border">
+          <TabsTrigger value="solicitudes" className="flex items-center gap-2 data-[state=active]:bg-background">
+            <ListTodo className="w-4 h-4" />
+            Solicitudes
+          </TabsTrigger>
+          <TabsTrigger value="calendario" className="flex items-center gap-2 data-[state=active]:bg-background">
+            <CalendarDays className="w-4 h-4" />
+            Calendario
+          </TabsTrigger>
+          <TabsTrigger value="saldo" className="flex items-center gap-2 data-[state=active]:bg-background">
+            <Calculator className="w-4 h-4" />
+            Saldo por Empleado
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="card-industrial p-4 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <Clock className="w-5 h-5 text-yellow-400" />
-            <p className="text-2xl font-bold text-foreground">{pendientes}</p>
+        {/* Tab Solicitudes - Contenido original */}
+        <TabsContent value="solicitudes" className="space-y-6 mt-6">
+          {/* Actions Bar */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por empleado..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-card border-border"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger className="w-40 bg-card border-border">
+                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {Object.entries(estadoConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                onClick={handleNew}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Solicitud
+              </Button>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">Pendientes</p>
-        </div>
-        <div className="card-industrial p-4 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <CheckCircle className="w-5 h-5 text-green-400" />
-            <p className="text-2xl font-bold text-foreground">{aprobadas}</p>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">Aprobadas</p>
-        </div>
-        <div className="card-industrial p-4 text-center">
-          <div className="flex items-center justify-center gap-2">
-            <XCircle className="w-5 h-5 text-red-400" />
-            <p className="text-2xl font-bold text-foreground">{rechazadas}</p>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">Rechazadas</p>
-        </div>
-      </div>
 
-      {/* Table */}
-      <div className="card-industrial overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-medium">Empleado</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Desde</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Hasta</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Días</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Motivo</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
-              <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredVacaciones.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                  {searchTerm || estadoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredVacaciones.map((vacacion, index) => (
-                <TableRow
-                  key={vacacion.id}
-                  className="border-border table-row-hover animate-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="font-medium text-foreground">
-                        {vacacion.personal?.nombre || ""} {vacacion.personal?.apellido || ""}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {vacacion.fecha_inicio}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {vacacion.fecha_fin}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium text-foreground">{vacacion.dias_totales}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-muted-foreground">
-                      {motivoConfig[vacacion.motivo] || vacacion.motivo}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={cn("status-badge flex items-center gap-1 w-fit", estadoConfig[vacacion.estado]?.color)}>
-                      {estadoConfig[vacacion.estado]?.icon}
-                      {estadoConfig[vacacion.estado]?.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border-border">
-                        <DropdownMenuItem
-                          onClick={() => handleView(vacacion)}
-                          className="text-foreground cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Ver detalle
-                        </DropdownMenuItem>
-                        {vacacion.estado === "pendiente" && (
-                          <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="card-industrial p-4 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Clock className="w-5 h-5 text-yellow-400" />
+                <p className="text-2xl font-bold text-foreground">{pendientes}</p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Pendientes</p>
+            </div>
+            <div className="card-industrial p-4 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-400" />
+                <p className="text-2xl font-bold text-foreground">{aprobadas}</p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Aprobadas</p>
+            </div>
+            <div className="card-industrial p-4 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <XCircle className="w-5 h-5 text-red-400" />
+                <p className="text-2xl font-bold text-foreground">{rechazadas}</p>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">Rechazadas</p>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="card-industrial overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground font-medium">Empleado</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Desde</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Hasta</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Días</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Motivo</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+                  <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredVacaciones.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {searchTerm || estadoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredVacaciones.map((vacacion, index) => (
+                    <TableRow
+                      key={vacacion.id}
+                      className="border-border table-row-hover animate-fade-in"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <User className="w-4 h-4 text-primary" />
+                          </div>
+                          <span className="font-medium text-foreground">
+                            {vacacion.personal?.nombre || ""} {vacacion.personal?.apellido || ""}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {vacacion.fecha_inicio}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {vacacion.fecha_fin}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium text-foreground">{vacacion.dias_totales}</span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground">
+                          {motivoConfig[vacacion.motivo] || vacacion.motivo}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn("status-badge flex items-center gap-1 w-fit", estadoConfig[vacacion.estado]?.color)}>
+                          {estadoConfig[vacacion.estado]?.icon}
+                          {estadoConfig[vacacion.estado]?.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover border-border">
                             <DropdownMenuItem
-                              onClick={() => handleAprobar(vacacion)}
-                              className="text-green-400 cursor-pointer"
-                            >
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Aprobar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleRechazar(vacacion)}
-                              className="text-red-400 cursor-pointer"
-                            >
-                              <XCircle className="w-4 h-4 mr-2" />
-                              Rechazar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(vacacion)}
+                              onClick={() => handleView(vacacion)}
                               className="text-foreground cursor-pointer"
                             >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver detalle
                             </DropdownMenuItem>
-                          </>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(vacacion)}
-                          className="text-destructive cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                            {vacacion.estado === "pendiente" && (
+                              <>
+                                <DropdownMenuItem
+                                  onClick={() => handleAprobar(vacacion)}
+                                  className="text-green-400 cursor-pointer"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Aprobar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleRechazar(vacacion)}
+                                  className="text-red-400 cursor-pointer"
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Rechazar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleEdit(vacacion)}
+                                  className="text-foreground cursor-pointer"
+                                >
+                                  <Edit className="w-4 h-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                              </>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(vacacion)}
+                              className="text-destructive cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        {/* Tab Calendario */}
+        <TabsContent value="calendario" className="mt-6">
+          <CalendarioVacaciones vacaciones={vacaciones} />
+        </TabsContent>
+
+        {/* Tab Saldo por Empleado */}
+        <TabsContent value="saldo" className="mt-6">
+          <SaldoVacacionesTable vacaciones={vacaciones} personal={personal} />
+        </TabsContent>
+      </Tabs>
 
       {/* Form Dialog */}
       <FormDialog
