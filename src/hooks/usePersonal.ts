@@ -74,14 +74,28 @@ export function usePersonal() {
   };
 
   const updatePersonal = async (id: string, persona: Partial<PersonalForm>) => {
+    // Clean up the data - remove undefined values and ensure proper types
+    const cleanedData: Record<string, unknown> = {};
+    
+    Object.entries(persona).forEach(([key, value]) => {
+      if (value !== undefined) {
+        // Convert empty strings to null for optional fields
+        if (value === "" && key !== "nombre" && key !== "apellido") {
+          cleanedData[key] = null;
+        } else {
+          cleanedData[key] = value;
+        }
+      }
+    });
+
     const { error } = await supabase
       .from("personal")
-      .update(persona)
+      .update(cleanedData)
       .eq("id", id);
 
     if (error) {
       console.error("Error updating personal:", error);
-      toast.error("Error al actualizar personal");
+      toast.error("Error al actualizar personal: " + error.message);
       return false;
     }
 
