@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -35,6 +36,8 @@ import {
   Filter,
   CreditCard,
   Upload,
+  Users,
+  Palmtree,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -47,6 +50,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
+import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
@@ -177,180 +181,199 @@ export default function Personal() {
 
   return (
     <MainLayout title="Personal" subtitle="Gestión de empleados y roles">
-      {/* Actions Bar */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre o DNI..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={rolFilter} onValueChange={setRolFilter}>
-            <SelectTrigger className="w-40 bg-card border-border">
-              <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Rol" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
-              <SelectItem value="todos">Todos</SelectItem>
-              {Object.entries(rolesConfig).map(([key, config]) => (
-                <SelectItem key={key} value={key}>{config.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => setImportOpen(true)}
-            className="border-border"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Importar
-          </Button>
-          <Button
-            onClick={handleNew}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Personal
-          </Button>
-        </div>
-      </div>
+      <Tabs defaultValue="empleados" className="space-y-6">
+        <TabsList className="bg-card border border-border">
+          <TabsTrigger value="empleados" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Users className="w-4 h-4 mr-2" />
+            Empleados
+          </TabsTrigger>
+          <TabsTrigger value="vacaciones" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Palmtree className="w-4 h-4 mr-2" />
+            Vacaciones
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Stats by Role */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 mb-6">
-        {Object.entries(rolesConfig).map(([key, config]) => {
-          const totalActivo = personal.filter((p) => p.rol === key && p.activo).length;
-          return (
-            <div key={key} className="card-industrial p-3 text-center">
-              <p className="text-xl font-bold text-foreground">{totalActivo}</p>
-              <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
-                {config.label}
-              </Badge>
+        <TabsContent value="empleados" className="space-y-6">
+          {/* Actions Bar */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o DNI..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-card border-border"
+              />
             </div>
-          );
-        })}
-      </div>
+            <div className="flex gap-2">
+              <Select value={rolFilter} onValueChange={setRolFilter}>
+                <SelectTrigger className="w-40 bg-card border-border">
+                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Rol" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {Object.entries(rolesConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+                className="border-border"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Importar
+              </Button>
+              <Button
+                onClick={handleNew}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nuevo Personal
+              </Button>
+            </div>
+          </div>
 
-      {/* Table */}
-      <div className="card-industrial overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-medium">Nombre</TableHead>
-              <TableHead className="text-muted-foreground font-medium">DNI</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Rol</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Teléfono</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Ingreso</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Licencia</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
-              <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredPersonal.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  {searchTerm || rolFilter !== "todos" ? "No se encontró personal" : "No hay personal registrado"}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredPersonal.map((persona, index) => (
-                <TableRow
-                  key={persona.id}
-                  className="border-border table-row-hover animate-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
-                      </div>
-                      <span className="font-medium text-foreground">
-                        {persona.nombre || ""} {persona.apellido || ""}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {persona.dni || "-"}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={cn("status-badge", rolesConfig[persona.rol]?.color)}>
-                      {rolesConfig[persona.rol]?.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Phone className="w-3 h-3" />
-                      {persona.telefono || "-"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {persona.fecha_ingreso || "-"}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {persona.licencia ? (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <CreditCard className="w-3 h-3" />
-                        {persona.licencia}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={cn(
-                        "status-badge",
-                        persona.activo ? "status-active" : "status-inactive"
-                      )}
-                    >
-                      {persona.activo ? "Activo" : "Inactivo"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border-border">
-                        <DropdownMenuItem
-                          onClick={() => handleView(persona)}
-                          className="text-foreground cursor-pointer"
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          Ver detalle
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleEdit(persona)}
-                          className="text-foreground cursor-pointer"
-                        >
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDelete(persona)}
-                          className="text-destructive cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {/* Stats by Role */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+            {Object.entries(rolesConfig).map(([key, config]) => {
+              const totalActivo = personal.filter((p) => p.rol === key && p.activo).length;
+              return (
+                <div key={key} className="card-industrial p-3 text-center">
+                  <p className="text-xl font-bold text-foreground">{totalActivo}</p>
+                  <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
+                    {config.label}
+                  </Badge>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Table */}
+          <div className="card-industrial overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-muted-foreground font-medium">Nombre</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">DNI</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Rol</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Teléfono</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Ingreso</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Licencia</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+                  <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {filteredPersonal.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      {searchTerm || rolFilter !== "todos" ? "No se encontró personal" : "No hay personal registrado"}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredPersonal.map((persona, index) => (
+                    <TableRow
+                      key={persona.id}
+                      className="border-border table-row-hover animate-fade-in"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <User className="w-4 h-4 text-primary" />
+                          </div>
+                          <span className="font-medium text-foreground">
+                            {persona.nombre || ""} {persona.apellido || ""}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm text-muted-foreground">
+                        {persona.dni || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn("status-badge", rolesConfig[persona.rol]?.color)}>
+                          {rolesConfig[persona.rol]?.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Phone className="w-3 h-3" />
+                          {persona.telefono || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="w-3 h-3" />
+                          {persona.fecha_ingreso || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        {persona.licencia ? (
+                          <span className="flex items-center gap-1 text-muted-foreground">
+                            <CreditCard className="w-3 h-3" />
+                            {persona.licencia}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={cn(
+                            "status-badge",
+                            persona.activo ? "status-active" : "status-inactive"
+                          )}
+                        >
+                          {persona.activo ? "Activo" : "Inactivo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem
+                              onClick={() => handleView(persona)}
+                              className="text-foreground cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver detalle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(persona)}
+                              className="text-foreground cursor-pointer"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDelete(persona)}
+                              className="text-destructive cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="vacaciones">
+          <VacacionesTab />
+        </TabsContent>
+      </Tabs>
 
       {/* Form Dialog */}
       <FormDialog
