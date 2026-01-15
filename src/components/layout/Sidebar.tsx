@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
   { icon: Truck, label: "Maquinarias", path: "/maquinarias", roles: ['admin', 'capataz'] },
   { icon: Route, label: "Viajes", path: "/viajes" },
   { icon: Receipt, label: "Remitos", path: "/remitos" },
-  { icon: Fuel, label: "Combustible", path: "/combustible" },
+  { icon: Fuel, label: "Gastos", path: "/gastos" },
   { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento" },
   { icon: Package, label: "Stock", path: "/stock" },
   { icon: ClipboardList, label: "Presentismo", path: "/presentismo" },

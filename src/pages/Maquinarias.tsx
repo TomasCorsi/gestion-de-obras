@@ -48,7 +48,6 @@ import { usePersonal } from "@/hooks/usePersonal";
 import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 import { CSVImportDialog } from "@/components/maquinarias/CSVImportDialog";
-import { AsignacionesMaquinariaObra } from "@/components/maquinarias/AsignacionesMaquinariaObra";
 import { Separator } from "@/components/ui/separator";
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
@@ -265,11 +264,6 @@ export default function Maquinarias() {
         })}
       </div>
 
-      {/* Asignaciones de Maquinarias a Obras */}
-      <Separator className="my-8" />
-      <AsignacionesMaquinariaObra />
-
-      <Separator className="my-8" />
 
       {/* Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

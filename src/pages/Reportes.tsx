@@ -28,6 +28,7 @@ import { useReportesData } from "@/hooks/useDashboardData";
 import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { useAsignacionesMaquinaria } from "@/hooks/useAsignacionesMaquinaria";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
+import { useOtrosGastos } from "@/hooks/useOtrosGastos";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,6 +71,7 @@ interface ObraFinanciera {
   mantenimiento: number;
   sueldos: number;
   horasMaquina: number;
+  otrosGastos: number;
   balance: number;
   rentabilidad: number;
 }
@@ -79,6 +81,7 @@ export default function Reportes() {
   const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
   const { asignaciones: asignacionesMaquinaria, loading: loadingAsignacionesMaq } = useAsignacionesMaquinaria();
   const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
+  const { gastos: otrosGastosList, loading: loadingOtrosGastos } = useOtrosGastos();
 
   // Filter states
   const [fechaInicio, setFechaInicio] = useState<string>("");
@@ -156,7 +159,12 @@ export default function Reportes() {
         return total + (cantidad * horas * costoHora);
       }, 0);
 
-      const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos + gastoHorasMaquina;
+      // Calculate otros gastos
+      const gastoOtros = otrosGastosList
+        .filter((g) => g.obra_id === obra.id && isWithinDateRange(g.fecha))
+        .reduce((sum, g) => sum + (g.monto || 0), 0);
+
+      const gastosTotal = gastoCombustible + gastoMantenimiento + gastoSueldos + gastoHorasMaquina + gastoOtros;
       const balance = cotizacionTotal - gastosTotal;
       const rentabilidad = cotizacionTotal > 0 ? ((balance / cotizacionTotal) * 100) : 0;
 
@@ -170,11 +178,12 @@ export default function Reportes() {
         mantenimiento: gastoMantenimiento,
         sueldos: gastoSueldos,
         horasMaquina: gastoHorasMaquina,
+        otrosGastos: gastoOtros,
         balance,
         rentabilidad,
       };
     });
-  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, asignacionesMaquinaria, estadoFilter, fechaInicio, fechaFin]);
+  }, [obras, cotizaciones, combustible, mantenimientos, asignacionesPorObra, asignacionesMaquinaria, otrosGastosList, estadoFilter, fechaInicio, fechaFin]);
 
   // Filter obras with financial activity and sort by cotizacion
   const obrasConActividad = obrasFinancieras
@@ -211,9 +220,10 @@ export default function Reportes() {
       mantenimiento: o.mantenimiento,
       sueldos: o.sueldos,
       horasMaquina: o.horasMaquina,
+      otrosGastos: o.otrosGastos,
     }));
 
-  const isLoading = loading || loadingAsignaciones || loadingCotizaciones;
+  const isLoading = loading || loadingAsignaciones || loadingCotizaciones || loadingOtrosGastos;
 
   if (isLoading) {
     return (

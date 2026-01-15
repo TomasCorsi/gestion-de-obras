@@ -25,7 +25,7 @@ const Personal = lazy(() => import("./pages/Personal"));
 const Maquinarias = lazy(() => import("./pages/Maquinarias"));
 const Viajes = lazy(() => import("./pages/Viajes"));
 const Remitos = lazy(() => import("./pages/Remitos"));
-const Combustible = lazy(() => import("./pages/Combustible"));
+const Gastos = lazy(() => import("./pages/Gastos"));
 const Mantenimiento = lazy(() => import("./pages/MantenimientoPage"));
 const Stock = lazy(() => import("./pages/Stock"));
 const Presentismo = lazy(() => import("./pages/Presentismo"));
@@ -64,7 +64,7 @@ const App = () => (
               <Route path="/obras" element={<ProtectedRoute><Obras /></ProtectedRoute>} />
               <Route path="/viajes" element={<ProtectedRoute><Viajes /></ProtectedRoute>} />
               <Route path="/remitos" element={<ProtectedRoute><Remitos /></ProtectedRoute>} />
-              <Route path="/combustible" element={<ProtectedRoute><Combustible /></ProtectedRoute>} />
+              <Route path="/gastos" element={<ProtectedRoute><Gastos /></ProtectedRoute>} />
               <Route path="/mantenimiento" element={<ProtectedRoute><Mantenimiento /></ProtectedRoute>} />
               <Route path="/stock" element={<ProtectedRoute><Stock /></ProtectedRoute>} />
               <Route path="/presentismo" element={<ProtectedRoute><Presentismo /></ProtectedRoute>} />
