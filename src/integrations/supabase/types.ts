@@ -711,14 +711,18 @@ export type Database = {
         Row: {
           activo: boolean
           apellido: string | null
+          banco: string | null
           created_at: string
           dni: string | null
           email: string | null
           fecha_ingreso: string | null
           id: string
+          legajo: string | null
           licencia: string | null
           nombre: string | null
+          numero_cuenta: string | null
           rol: Database["public"]["Enums"]["rol_personal"]
+          situacion_laboral: string | null
           sueldo: number | null
           telefono: string | null
           updated_at: string
@@ -727,14 +731,18 @@ export type Database = {
         Insert: {
           activo?: boolean
           apellido?: string | null
+          banco?: string | null
           created_at?: string
           dni?: string | null
           email?: string | null
           fecha_ingreso?: string | null
           id?: string
+          legajo?: string | null
           licencia?: string | null
           nombre?: string | null
+          numero_cuenta?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
+          situacion_laboral?: string | null
           sueldo?: number | null
           telefono?: string | null
           updated_at?: string
@@ -743,14 +751,18 @@ export type Database = {
         Update: {
           activo?: boolean
           apellido?: string | null
+          banco?: string | null
           created_at?: string
           dni?: string | null
           email?: string | null
           fecha_ingreso?: string | null
           id?: string
+          legajo?: string | null
           licencia?: string | null
           nombre?: string | null
+          numero_cuenta?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
+          situacion_laboral?: string | null
           sueldo?: number | null
           telefono?: string | null
           updated_at?: string

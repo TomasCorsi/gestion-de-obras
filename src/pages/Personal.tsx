@@ -38,6 +38,9 @@ import {
   Upload,
   Users,
   Palmtree,
+  FileText,
+  Building,
+  Wallet,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -89,6 +92,10 @@ export default function Personal() {
     licencia: "",
     vencimiento_licencia: "",
     sueldo: 0,
+    legajo: "",
+    situacion_laboral: "blanco",
+    banco: "",
+    numero_cuenta: "",
   });
 
   const filteredPersonal = personal.filter((p) => {
@@ -114,6 +121,10 @@ export default function Personal() {
       licencia: "",
       vencimiento_licencia: "",
       sueldo: 0,
+      legajo: "",
+      situacion_laboral: "blanco",
+      banco: "",
+      numero_cuenta: "",
     });
     setFormOpen(true);
   };
@@ -133,6 +144,10 @@ export default function Personal() {
       licencia: persona.licencia || "",
       vencimiento_licencia: persona.vencimiento_licencia || "",
       sueldo: persona.sueldo ?? 0,
+      legajo: persona.legajo || "",
+      situacion_laboral: persona.situacion_laboral || "blanco",
+      banco: persona.banco || "",
+      numero_cuenta: persona.numero_cuenta || "",
     });
     setFormOpen(true);
   };
@@ -498,6 +513,59 @@ export default function Personal() {
               <Label htmlFor="activo">Empleado Activo</Label>
             </div>
           </div>
+
+          <Separator className="my-4" />
+          <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Información Bancaria y Administrativa
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="legajo">Legajo</Label>
+              <Input
+                id="legajo"
+                value={formData.legajo || ""}
+                onChange={(e) => setFormData({ ...formData, legajo: e.target.value })}
+                placeholder="Número de legajo"
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="situacion_laboral">Situación Laboral</Label>
+              <Select
+                value={formData.situacion_laboral || "blanco"}
+                onValueChange={(value) => setFormData({ ...formData, situacion_laboral: value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar situación" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="blanco">En Blanco</SelectItem>
+                  <SelectItem value="negro">En Negro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="banco">Banco</Label>
+              <Input
+                id="banco"
+                value={formData.banco || ""}
+                onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                placeholder="Nombre del banco"
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="numero_cuenta">Número de Cuenta</Label>
+              <Input
+                id="numero_cuenta"
+                value={formData.numero_cuenta || ""}
+                onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
+                placeholder="Número de cuenta bancaria"
+                className="bg-muted border-border"
+              />
+            </div>
+          </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
               Cancelar
@@ -542,10 +610,28 @@ export default function Personal() {
               <DetailRow label="Email" value={selectedPersona.email || "-"} />
             </DetailSection>
             <DetailSection title="Empleo">
+              <DetailRow label="Legajo" value={selectedPersona.legajo || "-"} />
               <DetailRow label="Fecha de Ingreso" value={selectedPersona.fecha_ingreso} />
               <DetailRow label="Sueldo" value={selectedPersona.sueldo ? `$${selectedPersona.sueldo.toLocaleString()}` : "-"} />
               <DetailRow label="Licencia" value={selectedPersona.licencia || "-"} />
               <DetailRow label="Vencimiento Licencia" value={selectedPersona.vencimiento_licencia || "-"} />
+            </DetailSection>
+            <DetailSection title="Información Bancaria">
+              <DetailRow 
+                label="Situación Laboral" 
+                value={
+                  <Badge className={cn(
+                    "status-badge",
+                    selectedPersona.situacion_laboral === "blanco" 
+                      ? "bg-green-500/20 text-green-400 border-green-500/30" 
+                      : "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
+                  )}>
+                    {selectedPersona.situacion_laboral === "blanco" ? "En Blanco" : "En Negro"}
+                  </Badge>
+                } 
+              />
+              <DetailRow label="Banco" value={selectedPersona.banco || "-"} />
+              <DetailRow label="Número de Cuenta" value={selectedPersona.numero_cuenta || "-"} />
             </DetailSection>
           </div>
         )}

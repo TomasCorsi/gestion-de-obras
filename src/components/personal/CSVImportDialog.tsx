@@ -125,6 +125,10 @@ function parseCSV(text: string): ParseResult {
       continue;
     }
 
+    // Parse situacion_laboral (default blanco)
+    const situacionRaw = row.situacion_laboral?.toLowerCase().trim();
+    const situacion_laboral = situacionRaw === "negro" ? "negro" : "blanco";
+
     valid.push({
       nombre: row.nombre || undefined,
       apellido: row.apellido || undefined,
@@ -137,6 +141,10 @@ function parseCSV(text: string): ParseResult {
       licencia: row.licencia || undefined,
       vencimiento_licencia: vencimientoLicencia,
       sueldo: sueldo,
+      legajo: row.legajo || undefined,
+      situacion_laboral: situacion_laboral,
+      banco: row.banco || undefined,
+      numero_cuenta: row.numero_cuenta || undefined,
     });
   }
 
@@ -191,8 +199,8 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo"].join(";");
-    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000"].join(";");
+    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo", "legajo", "situacion_laboral", "banco", "numero_cuenta"].join(";");
+    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000", "001", "blanco", "Banco Nación", "1234567890"].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });

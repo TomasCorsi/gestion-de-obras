@@ -17,6 +17,10 @@ export interface PersonalDB {
   licencia: string | null;
   vencimiento_licencia: string | null;
   sueldo: number | null;
+  legajo: string | null;
+  situacion_laboral: string | null;
+  banco: string | null;
+  numero_cuenta: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +37,10 @@ export interface PersonalForm {
   licencia?: string;
   vencimiento_licencia?: string;
   sueldo?: number;
+  legajo?: string;
+  situacion_laboral?: string;
+  banco?: string;
+  numero_cuenta?: string;
 }
 
 export function usePersonal() {
