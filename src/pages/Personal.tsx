@@ -54,6 +54,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
+import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
@@ -211,6 +212,10 @@ export default function Personal() {
           <TabsTrigger value="vacaciones" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Palmtree className="w-4 h-4 mr-2" />
             Vacaciones
+          </TabsTrigger>
+          <TabsTrigger value="liquidaciones" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <Wallet className="w-4 h-4 mr-2" />
+            Liquidaciones
           </TabsTrigger>
         </TabsList>
 
@@ -393,6 +398,10 @@ export default function Personal() {
 
         <TabsContent value="vacaciones">
           <VacacionesTab />
+        </TabsContent>
+
+        <TabsContent value="liquidaciones">
+          <LiquidacionesTab personal={personal} />
         </TabsContent>
       </Tabs>
 
