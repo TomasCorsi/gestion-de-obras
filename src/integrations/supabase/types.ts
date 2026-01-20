@@ -719,6 +719,7 @@ export type Database = {
           id: string
           legajo: string | null
           licencia: string | null
+          modalidad_pago: string | null
           nombre: string | null
           numero_cuenta: string | null
           rol: Database["public"]["Enums"]["rol_personal"]
@@ -740,6 +741,7 @@ export type Database = {
           id?: string
           legajo?: string | null
           licencia?: string | null
+          modalidad_pago?: string | null
           nombre?: string | null
           numero_cuenta?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
@@ -761,6 +763,7 @@ export type Database = {
           id?: string
           legajo?: string | null
           licencia?: string | null
+          modalidad_pago?: string | null
           nombre?: string | null
           numero_cuenta?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]

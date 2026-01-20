@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, AlertCircle, CheckCircle, Download } from "lucide-react";
 import { toast } from "sonner";
-import { PersonalForm, RolPersonal } from "@/hooks/usePersonal";
+import { PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 
 interface CSVImportDialogProps {
   open: boolean;
@@ -136,6 +136,10 @@ function parseCSV(text: string): ParseResult {
     const situacionRaw = row.situacion_laboral?.toLowerCase().trim();
     const situacion_laboral = situacionRaw === "negro" ? "negro" : "blanco";
 
+    // Parse modalidad_pago (default mensual)
+    const modalidadRaw = row.modalidad_pago?.toLowerCase().trim();
+    const modalidad_pago: ModalidadPago = modalidadRaw === "quincenal" ? "quincenal" : "mensual";
+
     valid.push({
       nombre: row.nombre || undefined,
       apellido: row.apellido || undefined,
@@ -149,6 +153,7 @@ function parseCSV(text: string): ParseResult {
       vencimiento_licencia: vencimientoLicencia,
       sueldo: sueldo,
       sueldo_negro: sueldo_negro,
+      modalidad_pago: modalidad_pago,
       legajo: row.legajo || undefined,
       situacion_laboral: situacion_laboral,
       banco: row.banco || undefined,
@@ -207,8 +212,8 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo", "sueldo_negro", "legajo", "situacion_laboral", "banco", "numero_cuenta"].join(";");
-    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000", "50000", "001", "blanco", "Banco Nación", "1234567890"].join(";");
+    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo", "sueldo_negro", "modalidad_pago", "legajo", "situacion_laboral", "banco", "numero_cuenta"].join(";");
+    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000", "50000", "mensual", "001", "blanco", "Banco Nación", "1234567890"].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });

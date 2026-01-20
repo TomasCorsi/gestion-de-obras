@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type RolPersonal = "capataz" | "maquinista" | "chofer" | "administrativo" | "ayudante" | "sereno" | "mecanico" | "topografo";
+export type ModalidadPago = "mensual" | "quincenal";
 
 export interface PersonalDB {
   id: string;
@@ -18,6 +19,7 @@ export interface PersonalDB {
   vencimiento_licencia: string | null;
   sueldo: number | null;
   sueldo_negro: number | null;
+  modalidad_pago: string | null;
   legajo: string | null;
   situacion_laboral: string | null;
   banco: string | null;
@@ -39,6 +41,7 @@ export interface PersonalForm {
   vencimiento_licencia?: string;
   sueldo?: number;
   sueldo_negro?: number;
+  modalidad_pago?: ModalidadPago;
   legajo?: string;
   situacion_laboral?: string;
   banco?: string;

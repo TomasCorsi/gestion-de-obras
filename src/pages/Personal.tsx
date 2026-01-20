@@ -54,7 +54,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
-import { usePersonal, PersonalDB, PersonalForm, RolPersonal } from "@/hooks/usePersonal";
+import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
@@ -93,6 +93,7 @@ export default function Personal() {
     vencimiento_licencia: "",
     sueldo: 0,
     sueldo_negro: 0,
+    modalidad_pago: "mensual",
     legajo: "",
     situacion_laboral: "blanco",
     banco: "",
@@ -123,6 +124,7 @@ export default function Personal() {
       vencimiento_licencia: "",
       sueldo: 0,
       sueldo_negro: 0,
+      modalidad_pago: "mensual",
       legajo: "",
       situacion_laboral: "blanco",
       banco: "",
@@ -147,6 +149,7 @@ export default function Personal() {
       vencimiento_licencia: persona.vencimiento_licencia || "",
       sueldo: persona.sueldo ?? 0,
       sueldo_negro: persona.sueldo_negro ?? 0,
+      modalidad_pago: (persona.modalidad_pago as ModalidadPago) || "mensual",
       legajo: persona.legajo || "",
       situacion_laboral: persona.situacion_laboral || "blanco",
       banco: persona.banco || "",
@@ -530,6 +533,21 @@ export default function Personal() {
                 className="bg-muted/50 border-border font-semibold text-primary cursor-not-allowed"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="modalidad_pago">Modalidad de Pago</Label>
+              <Select
+                value={formData.modalidad_pago || "mensual"}
+                onValueChange={(value) => setFormData({ ...formData, modalidad_pago: value as ModalidadPago })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar modalidad" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="mensual">Mensual</SelectItem>
+                  <SelectItem value="quincenal">Quincenal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2">
@@ -648,6 +666,19 @@ export default function Personal() {
                   <span className="font-semibold text-primary">
                     ${((selectedPersona.sueldo ?? 0) + (selectedPersona.sueldo_negro ?? 0)).toLocaleString()}
                   </span>
+                } 
+              />
+              <DetailRow 
+                label="Modalidad de Pago" 
+                value={
+                  <Badge className={cn(
+                    "status-badge",
+                    selectedPersona.modalidad_pago === "quincenal" 
+                      ? "bg-blue-500/20 text-blue-400 border-blue-500/30" 
+                      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                  )}>
+                    {selectedPersona.modalidad_pago === "quincenal" ? "Quincenal" : "Mensual"}
+                  </Badge>
                 } 
               />
               <DetailRow label="Licencia" value={selectedPersona.licencia || "-"} />
