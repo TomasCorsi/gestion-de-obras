@@ -92,6 +92,7 @@ export default function Personal() {
     licencia: "",
     vencimiento_licencia: "",
     sueldo: 0,
+    sueldo_negro: 0,
     legajo: "",
     situacion_laboral: "blanco",
     banco: "",
@@ -121,6 +122,7 @@ export default function Personal() {
       licencia: "",
       vencimiento_licencia: "",
       sueldo: 0,
+      sueldo_negro: 0,
       legajo: "",
       situacion_laboral: "blanco",
       banco: "",
@@ -144,6 +146,7 @@ export default function Personal() {
       licencia: persona.licencia || "",
       vencimiento_licencia: persona.vencimiento_licencia || "",
       sueldo: persona.sueldo ?? 0,
+      sueldo_negro: persona.sueldo_negro ?? 0,
       legajo: persona.legajo || "",
       situacion_laboral: persona.situacion_laboral || "blanco",
       banco: persona.banco || "",
@@ -492,7 +495,7 @@ export default function Personal() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="sueldo">Sueldo</Label>
+              <Label htmlFor="sueldo">Sueldo en Blanco</Label>
               <Input
                 id="sueldo"
                 type="number"
@@ -504,6 +507,31 @@ export default function Personal() {
                 className="bg-muted border-border"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="sueldo_negro">Sueldo en Negro</Label>
+              <Input
+                id="sueldo_negro"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.sueldo_negro ?? 0}
+                onChange={(e) => setFormData({ ...formData, sueldo_negro: parseFloat(e.target.value) || 0 })}
+                placeholder="0.00"
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sueldo_total">Sueldo Total</Label>
+              <Input
+                id="sueldo_total"
+                type="text"
+                value={`$${((formData.sueldo ?? 0) + (formData.sueldo_negro ?? 0)).toLocaleString()}`}
+                readOnly
+                className="bg-muted/50 border-border font-semibold text-primary cursor-not-allowed"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center space-x-2">
               <Switch
                 id="activo"
@@ -612,7 +640,16 @@ export default function Personal() {
             <DetailSection title="Empleo">
               <DetailRow label="Legajo" value={selectedPersona.legajo || "-"} />
               <DetailRow label="Fecha de Ingreso" value={selectedPersona.fecha_ingreso} />
-              <DetailRow label="Sueldo" value={selectedPersona.sueldo ? `$${selectedPersona.sueldo.toLocaleString()}` : "-"} />
+              <DetailRow label="Sueldo en Blanco" value={selectedPersona.sueldo ? `$${selectedPersona.sueldo.toLocaleString()}` : "-"} />
+              <DetailRow label="Sueldo en Negro" value={selectedPersona.sueldo_negro ? `$${selectedPersona.sueldo_negro.toLocaleString()}` : "-"} />
+              <DetailRow 
+                label="Sueldo Total" 
+                value={
+                  <span className="font-semibold text-primary">
+                    ${((selectedPersona.sueldo ?? 0) + (selectedPersona.sueldo_negro ?? 0)).toLocaleString()}
+                  </span>
+                } 
+              />
               <DetailRow label="Licencia" value={selectedPersona.licencia || "-"} />
               <DetailRow label="Vencimiento Licencia" value={selectedPersona.vencimiento_licencia || "-"} />
             </DetailSection>

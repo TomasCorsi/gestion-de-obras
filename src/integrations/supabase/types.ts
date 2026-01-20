@@ -724,6 +724,7 @@ export type Database = {
           rol: Database["public"]["Enums"]["rol_personal"]
           situacion_laboral: string | null
           sueldo: number | null
+          sueldo_negro: number | null
           telefono: string | null
           updated_at: string
           vencimiento_licencia: string | null
@@ -744,6 +745,7 @@ export type Database = {
           rol?: Database["public"]["Enums"]["rol_personal"]
           situacion_laboral?: string | null
           sueldo?: number | null
+          sueldo_negro?: number | null
           telefono?: string | null
           updated_at?: string
           vencimiento_licencia?: string | null
@@ -764,6 +766,7 @@ export type Database = {
           rol?: Database["public"]["Enums"]["rol_personal"]
           situacion_laboral?: string | null
           sueldo?: number | null
+          sueldo_negro?: number | null
           telefono?: string | null
           updated_at?: string
           vencimiento_licencia?: string | null

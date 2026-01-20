@@ -17,6 +17,7 @@ export interface PersonalDB {
   licencia: string | null;
   vencimiento_licencia: string | null;
   sueldo: number | null;
+  sueldo_negro: number | null;
   legajo: string | null;
   situacion_laboral: string | null;
   banco: string | null;
@@ -37,6 +38,7 @@ export interface PersonalForm {
   licencia?: string;
   vencimiento_licencia?: string;
   sueldo?: number;
+  sueldo_negro?: number;
   legajo?: string;
   situacion_laboral?: string;
   banco?: string;

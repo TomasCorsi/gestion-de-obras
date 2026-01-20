@@ -125,6 +125,13 @@ function parseCSV(text: string): ParseResult {
       continue;
     }
 
+    // Parse sueldo_negro
+    const sueldo_negro = row.sueldo_negro ? parseFloat(row.sueldo_negro.replace(',', '.')) : undefined;
+    if (row.sueldo_negro && (isNaN(sueldo_negro!) || sueldo_negro! < 0)) {
+      errors.push({ row: i + 1, message: `Sueldo en negro inválido: ${row.sueldo_negro}. Debe ser un número positivo` });
+      continue;
+    }
+
     // Parse situacion_laboral (default blanco)
     const situacionRaw = row.situacion_laboral?.toLowerCase().trim();
     const situacion_laboral = situacionRaw === "negro" ? "negro" : "blanco";
@@ -141,6 +148,7 @@ function parseCSV(text: string): ParseResult {
       licencia: row.licencia || undefined,
       vencimiento_licencia: vencimientoLicencia,
       sueldo: sueldo,
+      sueldo_negro: sueldo_negro,
       legajo: row.legajo || undefined,
       situacion_laboral: situacion_laboral,
       banco: row.banco || undefined,
@@ -199,8 +207,8 @@ export function CSVImportDialog({ open, onOpenChange, onImport }: CSVImportDialo
   };
 
   const downloadTemplate = () => {
-    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo", "legajo", "situacion_laboral", "banco", "numero_cuenta"].join(";");
-    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000", "001", "blanco", "Banco Nación", "1234567890"].join(";");
+    const headers = ["nombre", "apellido", "dni", "rol", "email", "telefono", "fecha_ingreso", "activo", "licencia", "vencimiento_licencia", "sueldo", "sueldo_negro", "legajo", "situacion_laboral", "banco", "numero_cuenta"].join(";");
+    const example = ["Juan", "Pérez", "12345678", "Maquinista", "juan@email.com", "1155667788", "01/01/2024", "true", "B2", "31/12/2025", "150000", "50000", "001", "blanco", "Banco Nación", "1234567890"].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });
