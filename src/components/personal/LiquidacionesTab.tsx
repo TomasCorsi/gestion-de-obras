@@ -1,0 +1,410 @@
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Upload,
+  Download,
+  FileText,
+  CheckCircle,
+  AlertTriangle,
+  XCircle,
+  Building,
+} from "lucide-react";
+import { PersonalDB } from "@/hooks/usePersonal";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+type BancoDestino = "galicia" | "santander";
+
+interface LiquidacionRow {
+  legajo: string;
+  nombreArchivo: string;
+  importe: number;
+  status: "listo" | "sin_cuenta" | "no_encontrado";
+  empleado?: PersonalDB;
+}
+
+interface LiquidacionesTabProps {
+  personal: PersonalDB[];
+}
+
+const bancos: { value: BancoDestino; label: string }[] = [
+  { value: "galicia", label: "Banco Galicia" },
+  { value: "santander", label: "Banco Santander" },
+];
+
+function detectSeparator(line: string): string {
+  const semicolons = (line.match(/;/g) || []).length;
+  const tabs = (line.match(/\t/g) || []).length;
+  const commas = (line.match(/,/g) || []).length;
+  
+  if (semicolons >= tabs && semicolons >= commas) return ";";
+  if (tabs >= commas) return "\t";
+  return ",";
+}
+
+function parseNumber(value: string): number {
+  if (!value) return 0;
+  // Remove thousand separators (.) and replace comma with dot for decimals
+  const cleaned = value
+    .replace(/\s/g, "")
+    .replace(/\./g, "")
+    .replace(",", ".");
+  return parseFloat(cleaned) || 0;
+}
+
+function findColumnIndex(headers: string[], possibleNames: string[]): number {
+  const normalizedHeaders = headers.map(h => h.toLowerCase().trim());
+  for (const name of possibleNames) {
+    const idx = normalizedHeaders.findIndex(h => h.includes(name.toLowerCase()));
+    if (idx !== -1) return idx;
+  }
+  return -1;
+}
+
+export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
+  const [banco, setBanco] = useState<BancoDestino | "">("");
+  const [rows, setRows] = useState<LiquidacionRow[]>([]);
+  const [fileName, setFileName] = useState<string>("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!banco) {
+      toast.error("Selecciona un banco antes de cargar el archivo");
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      processCSV(text);
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  const processCSV = (text: string) => {
+    const lines = text.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) {
+      toast.error("El archivo no tiene datos suficientes");
+      return;
+    }
+
+    const separator = detectSeparator(lines[0]);
+    const headers = lines[0].split(separator).map(h => h.trim());
+    
+    // Find column indices
+    const legajoIdx = findColumnIndex(headers, ["legajo", "leg", "nro", "numero"]);
+    const importeIdx = findColumnIndex(headers, ["neto", "cobrar", "importe", "total", "liquido"]);
+    const nombreIdx = findColumnIndex(headers, ["nombre", "apellido", "empleado"]);
+
+    if (legajoIdx === -1) {
+      toast.error("No se encontró la columna de Legajo");
+      return;
+    }
+    if (importeIdx === -1) {
+      toast.error("No se encontró la columna de Importe/Neto a cobrar");
+      return;
+    }
+
+    const processedRows: LiquidacionRow[] = [];
+
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(separator).map(c => c.trim());
+      if (cols.length <= Math.max(legajoIdx, importeIdx)) continue;
+
+      const legajo = cols[legajoIdx]?.trim();
+      const importe = parseNumber(cols[importeIdx]);
+      const nombreArchivo = nombreIdx !== -1 ? cols[nombreIdx]?.trim() : "";
+
+      if (!legajo || importe === 0) continue;
+
+      // Find employee by legajo
+      const empleado = personal.find(p => p.legajo === legajo);
+
+      let status: LiquidacionRow["status"] = "no_encontrado";
+      if (empleado) {
+        status = empleado.numero_cuenta ? "listo" : "sin_cuenta";
+      }
+
+      processedRows.push({
+        legajo,
+        nombreArchivo,
+        importe,
+        status,
+        empleado,
+      });
+    }
+
+    if (processedRows.length === 0) {
+      toast.error("No se encontraron registros válidos en el archivo");
+      return;
+    }
+
+    setRows(processedRows);
+    toast.success(`Se procesaron ${processedRows.length} registros`);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+
+    if (!banco) {
+      toast.error("Selecciona un banco antes de cargar el archivo");
+      return;
+    }
+
+    setFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      processCSV(text);
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const generateCSV = () => {
+    const readyRows = rows.filter(r => r.status === "listo");
+    if (readyRows.length === 0) {
+      toast.error("No hay registros listos para generar la planilla");
+      return;
+    }
+
+    const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
+    const today = new Date().toISOString().split("T")[0];
+    
+    // CSV with BOM for UTF-8
+    const BOM = "\uFEFF";
+    const header = "Numero de cuenta;Nombre completo;Importe;Concepto";
+    const csvRows = readyRows.map(row => {
+      const nombreCompleto = `${row.empleado?.nombre || ""} ${row.empleado?.apellido || ""}`.trim();
+      const numeroCuenta = row.empleado?.numero_cuenta || "";
+      const importe = row.importe.toFixed(2);
+      return `${numeroCuenta};${nombreCompleto};${importe};1`;
+    });
+
+    const csvContent = BOM + header + "\n" + csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Pagos_${bancoLabel.replace(/\s/g, "_")}_${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Planilla generada para ${readyRows.length} empleados`);
+  };
+
+  const clearData = () => {
+    setRows([]);
+    setFileName("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const stats = {
+    listos: rows.filter(r => r.status === "listo").length,
+    sinCuenta: rows.filter(r => r.status === "sin_cuenta").length,
+    noEncontrado: rows.filter(r => r.status === "no_encontrado").length,
+  };
+
+  const totalImporte = rows
+    .filter(r => r.status === "listo")
+    .reduce((sum, r) => sum + r.importe, 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="card-industrial p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <FileText className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Generador de Planilla de Pagos</h3>
+            <p className="text-sm text-muted-foreground">
+              Sube la planilla del estudio contable y genera el archivo para el banco
+            </p>
+          </div>
+        </div>
+
+        {/* Bank Selector */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Building className="w-4 h-4" />
+              Banco destino
+            </Label>
+            <Select value={banco} onValueChange={(v) => setBanco(v as BancoDestino)}>
+              <SelectTrigger className="bg-muted border-border">
+                <SelectValue placeholder="Seleccionar banco..." />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                {bancos.map((b) => (
+                  <SelectItem key={b.value} value={b.value}>
+                    {b.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* File Upload Zone */}
+        <div
+          className={cn(
+            "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
+            banco 
+              ? "border-primary/50 bg-primary/5 hover:border-primary cursor-pointer" 
+              : "border-border bg-muted/50 cursor-not-allowed opacity-60"
+          )}
+          onDrop={banco ? handleDrop : undefined}
+          onDragOver={banco ? handleDragOver : undefined}
+          onClick={() => banco && fileInputRef.current?.click()}
+        >
+          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco ? "text-primary" : "text-muted-foreground")} />
+          <p className="text-foreground font-medium">
+            {banco ? "Arrastra tu archivo CSV aquí" : "Selecciona un banco primero"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {banco ? "o haz clic para seleccionar (planilla de liquidación del estudio contable)" : ""}
+          </p>
+          {fileName && (
+            <Badge variant="outline" className="mt-3">
+              {fileName}
+            </Badge>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.txt,.tsv"
+            onChange={handleFileSelect}
+            className="hidden"
+            disabled={!banco}
+          />
+        </div>
+      </div>
+
+      {/* Results */}
+      {rows.length > 0 && (
+        <div className="card-industrial overflow-hidden">
+          {/* Summary Bar */}
+          <div className="p-4 border-b border-border bg-muted/30 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4 text-green-500" />
+                <span className="text-sm text-foreground">{stats.listos} listos</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm text-foreground">{stats.sinCuenta} sin cuenta</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-foreground">{stats.noEncontrado} no encontrados</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                Total a pagar: <strong className="text-foreground">${totalImporte.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</strong>
+              </span>
+              <Button variant="outline" size="sm" onClick={clearData}>
+                Limpiar
+              </Button>
+              <Button 
+                onClick={generateCSV}
+                disabled={stats.listos === 0}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Descargar CSV
+              </Button>
+            </div>
+          </div>
+
+          {/* Data Table */}
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground font-medium">Legajo</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Nombre (archivo)</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Nombre (sistema)</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Cuenta</TableHead>
+                <TableHead className="text-muted-foreground font-medium text-right">Importe</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, idx) => (
+                <TableRow key={idx} className="border-border">
+                  <TableCell className="font-mono text-sm">{row.legajo}</TableCell>
+                  <TableCell className="text-muted-foreground">{row.nombreArchivo || "-"}</TableCell>
+                  <TableCell>
+                    {row.empleado 
+                      ? `${row.empleado.nombre || ""} ${row.empleado.apellido || ""}`.trim()
+                      : <span className="text-destructive">No encontrado</span>
+                    }
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">
+                    {row.empleado?.numero_cuenta || (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    ${row.importe.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell>
+                    {row.status === "listo" && (
+                      <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Listo
+                      </Badge>
+                    )}
+                    {row.status === "sin_cuenta" && (
+                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Sin cuenta
+                      </Badge>
+                    )}
+                    {row.status === "no_encontrado" && (
+                      <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
+                        <XCircle className="w-3 h-3 mr-1" />
+                        No existe
+                      </Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
