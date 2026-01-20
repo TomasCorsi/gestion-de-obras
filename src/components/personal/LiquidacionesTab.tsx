@@ -38,7 +38,7 @@ interface LiquidacionRow {
   legajo: string;
   nombreArchivo: string;
   importe: number;
-  status: "listo" | "sin_cuenta" | "no_encontrado";
+  status: "listo" | "sin_cuenta" | "no_encontrado" | "modalidad_incorrecta";
   empleado?: PersonalDB;
 }
 
@@ -179,7 +179,15 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
 
         let status: LiquidacionRow["status"] = "no_encontrado";
         if (empleado) {
-          status = empleado.numero_cuenta ? "listo" : "sin_cuenta";
+          // Verificar que la modalidad coincida
+          const empleadoModalidad = empleado.modalidad_pago || "mensual";
+          if (empleadoModalidad !== modalidad) {
+            status = "modalidad_incorrecta";
+          } else if (empleado.numero_cuenta) {
+            status = "listo";
+          } else {
+            status = "sin_cuenta";
+          }
         }
 
         processedRows.push({
@@ -274,7 +282,15 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
 
       let status: LiquidacionRow["status"] = "no_encontrado";
       if (empleado) {
-        status = empleado.numero_cuenta ? "listo" : "sin_cuenta";
+        // Verificar que la modalidad coincida
+        const empleadoModalidad = empleado.modalidad_pago || "mensual";
+        if (empleadoModalidad !== modalidad) {
+          status = "modalidad_incorrecta";
+        } else if (empleado.numero_cuenta) {
+          status = "listo";
+        } else {
+          status = "sin_cuenta";
+        }
       }
 
       processedRows.push({
@@ -390,6 +406,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     listos: rows.filter(r => r.status === "listo").length,
     sinCuenta: rows.filter(r => r.status === "sin_cuenta").length,
     noEncontrado: rows.filter(r => r.status === "no_encontrado").length,
+    modalidadIncorrecta: rows.filter(r => r.status === "modalidad_incorrecta").length,
   };
 
   const totalImporte = rows
@@ -505,6 +522,12 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
                 <XCircle className="w-4 h-4 text-red-500" />
                 <span className="text-sm text-foreground">{stats.noEncontrado} no encontrados</span>
               </div>
+              {stats.modalidadIncorrecta > 0 && (
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-orange-500" />
+                  <span className="text-sm text-foreground">{stats.modalidadIncorrecta} modalidad incorrecta</span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <span className="text-sm text-muted-foreground">
@@ -572,6 +595,12 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
                       <Badge className="bg-red-500/20 text-red-400 border-red-500/30">
                         <XCircle className="w-3 h-3 mr-1" />
                         No existe
+                      </Badge>
+                    )}
+                    {row.status === "modalidad_incorrecta" && (
+                      <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/30">
+                        <AlertTriangle className="w-3 h-3 mr-1" />
+                        Modalidad incorrecta ({row.empleado?.modalidad_pago || "mensual"})
                       </Badge>
                     )}
                   </TableCell>
