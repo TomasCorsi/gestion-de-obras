@@ -331,9 +331,9 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
     const today = new Date().toISOString().split("T")[0];
     
-    // Prepare data for Excel
+    // Prepare data for Excel - account number as text with prefix
     const excelData = readyRows.map(row => ({
-      "Numero de cuenta": row.empleado?.numero_cuenta || "",
+      "Numero de cuenta": row.empleado?.numero_cuenta ? `'${row.empleado.numero_cuenta}` : "",
       "Nombre completo": `${row.empleado?.nombre || ""} ${row.empleado?.apellido || ""}`.trim(),
       "Importe": row.importe,
       "Concepto": 1
@@ -343,6 +343,15 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Pagos");
+
+    // Force account number column to text format
+    const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
+    for (let row = 1; row <= range.e.r; row++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: row, c: 0 });
+      if (worksheet[cellAddress]) {
+        worksheet[cellAddress].t = "s"; // Set type to string
+      }
+    }
 
     // Auto-size columns
     const colWidths = [
