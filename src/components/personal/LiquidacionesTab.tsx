@@ -29,6 +29,7 @@ import {
 import { PersonalDB } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 type BancoDestino = "galicia" | "santander";
 
@@ -84,6 +85,24 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const isExcelFile = (fileName: string): boolean => {
+    const ext = fileName.toLowerCase().split('.').pop();
+    return ext === 'xlsx' || ext === 'xls';
+  };
+
+  const processExcel = (data: ArrayBuffer) => {
+    try {
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const csvText = XLSX.utils.sheet_to_csv(worksheet, { FS: ';' });
+      processCSV(csvText);
+    } catch (error) {
+      toast.error("Error al procesar el archivo Excel");
+      console.error(error);
+    }
+  };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -95,12 +114,22 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     }
 
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      processCSV(text);
-    };
-    reader.readAsText(file, "UTF-8");
+    
+    if (isExcelFile(file.name)) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = event.target?.result as ArrayBuffer;
+        processExcel(data);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        processCSV(text);
+      };
+      reader.readAsText(file, "UTF-8");
+    }
   };
 
   const processCSV = (text: string) => {
@@ -176,12 +205,22 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     }
 
     setFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      processCSV(text);
-    };
-    reader.readAsText(file, "UTF-8");
+    
+    if (isExcelFile(file.name)) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = event.target?.result as ArrayBuffer;
+        processExcel(data);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const text = event.target?.result as string;
+        processCSV(text);
+      };
+      reader.readAsText(file, "UTF-8");
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -293,7 +332,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
             {banco ? "Arrastra tu archivo CSV aquí" : "Selecciona un banco primero"}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {banco ? "o haz clic para seleccionar (planilla de liquidación del estudio contable)" : ""}
+            {banco ? "o haz clic para seleccionar (CSV o Excel)" : ""}
           </p>
           {fileName && (
             <Badge variant="outline" className="mt-3">
@@ -303,7 +342,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,.txt,.tsv"
+            accept=".csv,.txt,.tsv,.xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
             disabled={!banco}
