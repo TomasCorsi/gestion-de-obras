@@ -181,6 +181,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
         if (empleado) {
           // Verificar que la modalidad coincida
           const empleadoModalidad = empleado.modalidad_pago || "mensual";
+          console.log(`Legajo ${legajo}: empleadoModalidad="${empleadoModalidad}", modalidadSeleccionada="${modalidad}", match=${empleadoModalidad === modalidad}`);
           if (empleadoModalidad !== modalidad) {
             status = "modalidad_incorrecta";
           } else if (empleado.numero_cuenta) {
