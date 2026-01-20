@@ -60,13 +60,42 @@ function detectSeparator(line: string): string {
   return ",";
 }
 
-function parseNumber(value: string): number {
-  if (!value) return 0;
-  // Remove thousand separators (.) and replace comma with dot for decimals
-  const cleaned = value
-    .replace(/\s/g, "")
-    .replace(/\./g, "")
-    .replace(",", ".");
+function parseNumber(value: string | number): number {
+  if (value === null || value === undefined || value === "") return 0;
+  
+  // If it's already a number (from Excel), return it directly
+  if (typeof value === "number") {
+    return isNaN(value) ? 0 : value;
+  }
+  
+  const str = String(value).trim();
+  
+  // Check if it's a plain number (Excel often exports as plain numbers)
+  const plainNumber = parseFloat(str);
+  if (!isNaN(plainNumber) && /^-?\d+\.?\d*$/.test(str)) {
+    return plainNumber;
+  }
+  
+  // Handle Argentine format: 1.234.567,89 (dots as thousands, comma as decimal)
+  // First check if it has comma as decimal separator
+  if (str.includes(",")) {
+    const cleaned = str
+      .replace(/\s/g, "")
+      .replace(/\./g, "") // Remove thousand separators
+      .replace(",", "."); // Convert decimal comma to dot
+    return parseFloat(cleaned) || 0;
+  }
+  
+  // Otherwise treat dots as thousand separators only if there are multiple
+  const dotCount = (str.match(/\./g) || []).length;
+  if (dotCount > 1) {
+    // Multiple dots = thousand separators, no decimal
+    const cleaned = str.replace(/\s/g, "").replace(/\./g, "");
+    return parseFloat(cleaned) || 0;
+  }
+  
+  // Single dot could be decimal or thousand separator - treat as decimal
+  const cleaned = str.replace(/\s/g, "");
   return parseFloat(cleaned) || 0;
 }
 
@@ -95,8 +124,73 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
-      const csvText = XLSX.utils.sheet_to_csv(worksheet, { FS: ';' });
-      processCSV(csvText);
+      
+      // Convert to JSON array format with header: 1 to get array of arrays
+      const jsonData = XLSX.utils.sheet_to_json<unknown[]>(worksheet, { header: 1, raw: true });
+      
+      if (jsonData.length < 2) {
+        toast.error("El archivo no tiene datos suficientes");
+        return;
+      }
+      
+      const firstRow = jsonData[0];
+      if (!Array.isArray(firstRow)) {
+        toast.error("Formato de archivo no válido");
+        return;
+      }
+      
+      const headers = firstRow.map(h => String(h || "").trim());
+      
+      // Find column indices
+      const legajoIdx = findColumnIndex(headers, ["legajo", "leg", "nro", "numero"]);
+      const importeIdx = findColumnIndex(headers, ["neto", "cobrar", "importe", "total", "liquido"]);
+      const nombreIdx = findColumnIndex(headers, ["nombre", "apellido", "empleado"]);
+
+      if (legajoIdx === -1) {
+        toast.error("No se encontró la columna de Legajo");
+        return;
+      }
+      if (importeIdx === -1) {
+        toast.error("No se encontró la columna de Importe/Neto a cobrar");
+        return;
+      }
+
+      const processedRows: LiquidacionRow[] = [];
+
+      for (let i = 1; i < jsonData.length; i++) {
+        const cols = jsonData[i];
+        if (!Array.isArray(cols) || cols.length <= Math.max(legajoIdx, importeIdx)) continue;
+
+        const legajo = String(cols[legajoIdx] ?? "").trim();
+        const importe = parseNumber(cols[importeIdx] as string | number);
+        const nombreArchivo = nombreIdx !== -1 ? String(cols[nombreIdx] ?? "").trim() : "";
+
+        if (!legajo || importe === 0) continue;
+
+        // Find employee by legajo
+        const empleado = personal.find(p => p.legajo === legajo);
+
+        let status: LiquidacionRow["status"] = "no_encontrado";
+        if (empleado) {
+          status = empleado.numero_cuenta ? "listo" : "sin_cuenta";
+        }
+
+        processedRows.push({
+          legajo,
+          nombreArchivo,
+          importe,
+          status,
+          empleado,
+        });
+      }
+
+      if (processedRows.length === 0) {
+        toast.error("No se encontraron registros válidos en el archivo");
+        return;
+      }
+
+      setRows(processedRows);
+      toast.success(`Se procesaron ${processedRows.length} registros`);
     } catch (error) {
       toast.error("Error al procesar el archivo Excel");
       console.error(error);
@@ -227,7 +321,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     e.preventDefault();
   };
 
-  const generateCSV = () => {
+  const generateExcel = () => {
     const readyRows = rows.filter(r => r.status === "listo");
     if (readyRows.length === 0) {
       toast.error("No hay registros listos para generar la planilla");
@@ -237,26 +331,31 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
     const today = new Date().toISOString().split("T")[0];
     
-    // CSV with BOM for UTF-8
-    const BOM = "\uFEFF";
-    const header = "Numero de cuenta;Nombre completo;Importe;Concepto";
-    const csvRows = readyRows.map(row => {
-      const nombreCompleto = `${row.empleado?.nombre || ""} ${row.empleado?.apellido || ""}`.trim();
-      const numeroCuenta = row.empleado?.numero_cuenta || "";
-      const importe = row.importe.toFixed(2);
-      return `${numeroCuenta};${nombreCompleto};${importe};1`;
-    });
+    // Prepare data for Excel
+    const excelData = readyRows.map(row => ({
+      "Numero de cuenta": row.empleado?.numero_cuenta || "",
+      "Nombre completo": `${row.empleado?.nombre || ""} ${row.empleado?.apellido || ""}`.trim(),
+      "Importe": row.importe,
+      "Concepto": 1
+    }));
 
-    const csvContent = BOM + header + "\n" + csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Pagos_${bancoLabel.replace(/\s/g, "_")}_${today}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Create workbook and worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Pagos");
+
+    // Auto-size columns
+    const colWidths = [
+      { wch: 25 }, // Numero de cuenta
+      { wch: 35 }, // Nombre completo
+      { wch: 15 }, // Importe
+      { wch: 10 }, // Concepto
+    ];
+    worksheet["!cols"] = colWidths;
+
+    // Generate and download Excel file
+    const fileName = `Pagos_${bancoLabel.replace(/\s/g, "_")}_${today}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
 
     toast.success(`Planilla generada para ${readyRows.length} empleados`);
   };
@@ -377,12 +476,12 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
                 Limpiar
               </Button>
               <Button 
-                onClick={generateCSV}
+                onClick={generateExcel}
                 disabled={stats.listos === 0}
                 className="bg-primary hover:bg-primary/90"
               >
                 <Download className="w-4 h-4 mr-2" />
-                Descargar CSV
+                Descargar Excel
               </Button>
             </div>
           </div>
