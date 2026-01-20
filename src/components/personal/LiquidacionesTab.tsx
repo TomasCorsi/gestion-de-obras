@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 type BancoDestino = "galicia" | "santander";
+type ModalidadPago = "mensual" | "quincenal";
 
 interface LiquidacionRow {
   legajo: string;
@@ -48,6 +49,11 @@ interface LiquidacionesTabProps {
 const bancos: { value: BancoDestino; label: string }[] = [
   { value: "galicia", label: "Banco Galicia" },
   { value: "santander", label: "Banco Santander" },
+];
+
+const modalidades: { value: ModalidadPago; label: string }[] = [
+  { value: "mensual", label: "Mensual" },
+  { value: "quincenal", label: "Quincenal" },
 ];
 
 function detectSeparator(line: string): string {
@@ -110,6 +116,7 @@ function findColumnIndex(headers: string[], possibleNames: string[]): number {
 
 export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
   const [banco, setBanco] = useState<BancoDestino | "">("");
+  const [modalidad, setModalidad] = useState<ModalidadPago | "">("");
   const [rows, setRows] = useState<LiquidacionRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -201,8 +208,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!banco) {
-      toast.error("Selecciona un banco antes de cargar el archivo");
+    if (!banco || !modalidad) {
+      toast.error("Selecciona banco y modalidad antes de cargar el archivo");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -293,8 +300,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const file = e.dataTransfer.files[0];
     if (!file) return;
 
-    if (!banco) {
-      toast.error("Selecciona un banco antes de cargar el archivo");
+    if (!banco || !modalidad) {
+      toast.error("Selecciona banco y modalidad antes de cargar el archivo");
       return;
     }
 
@@ -329,6 +336,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     }
 
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
+    const modalidadLabel = modalidades.find(m => m.value === modalidad)?.label || modalidad;
     const today = new Date().toISOString().split("T")[0];
     
     // Prepare data for Excel - account number without prefix, importe rounded
@@ -366,7 +374,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     worksheet["!cols"] = colWidths;
 
     // Generate and download Excel file
-    const fileName = `Pagos_${bancoLabel.replace(/\s/g, "_")}_${today}.xlsx`;
+    const fileName = `Pagos_${bancoLabel.replace(/\s/g, "_")}_${modalidadLabel}_${today}.xlsx`;
     XLSX.writeFile(workbook, fileName);
 
     toast.success(`Planilla generada para ${readyRows.length} empleados`);
@@ -404,7 +412,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
           </div>
         </div>
 
-        {/* Bank Selector */}
+        {/* Selectors */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
@@ -424,26 +432,44 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Modalidad de pago
+            </Label>
+            <Select value={modalidad} onValueChange={(v) => setModalidad(v as ModalidadPago)}>
+              <SelectTrigger className="bg-muted border-border">
+                <SelectValue placeholder="Seleccionar modalidad..." />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                {modalidades.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* File Upload Zone */}
         <div
           className={cn(
             "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-            banco 
+            banco && modalidad
               ? "border-primary/50 bg-primary/5 hover:border-primary cursor-pointer" 
               : "border-border bg-muted/50 cursor-not-allowed opacity-60"
           )}
-          onDrop={banco ? handleDrop : undefined}
-          onDragOver={banco ? handleDragOver : undefined}
-          onClick={() => banco && fileInputRef.current?.click()}
+          onDrop={banco && modalidad ? handleDrop : undefined}
+          onDragOver={banco && modalidad ? handleDragOver : undefined}
+          onClick={() => banco && modalidad && fileInputRef.current?.click()}
         >
-          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco ? "text-primary" : "text-muted-foreground")} />
+          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco && modalidad ? "text-primary" : "text-muted-foreground")} />
           <p className="text-foreground font-medium">
-            {banco ? "Arrastra tu archivo CSV aquí" : "Selecciona un banco primero"}
+            {banco && modalidad ? "Arrastra tu archivo CSV aquí" : "Selecciona banco y modalidad primero"}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {banco ? "o haz clic para seleccionar (CSV o Excel)" : ""}
+            {banco && modalidad ? "o haz clic para seleccionar (CSV o Excel)" : ""}
           </p>
           {fileName && (
             <Badge variant="outline" className="mt-3">
@@ -456,7 +482,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
             accept=".csv,.txt,.tsv,.xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
-            disabled={!banco}
+            disabled={!banco || !modalidad}
           />
         </div>
       </div>
