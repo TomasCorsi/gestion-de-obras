@@ -331,11 +331,11 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
     const today = new Date().toISOString().split("T")[0];
     
-    // Prepare data for Excel - account number without prefix
+    // Prepare data for Excel - account number without prefix, importe rounded
     const excelData = readyRows.map(row => ({
       "Numero de cuenta": row.empleado?.numero_cuenta ?? "",
       "Nombre completo": `${row.empleado?.nombre || ""} ${row.empleado?.apellido || ""}`.trim(),
-      "Importe": row.importe,
+      "Importe": Math.round(row.importe),
       "Concepto": 1
     }));
 
