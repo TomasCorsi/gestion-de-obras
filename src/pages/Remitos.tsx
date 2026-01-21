@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,8 @@ import {
   User,
   Package,
   Loader2,
+  TableIcon,
+  Grid3X3,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,6 +54,8 @@ import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
 import { useViajes } from "@/hooks/useViajes";
+import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
+import { toast } from "sonner";
 
 export default function Remitos() {
   const { remitos, loading, createRemito, updateRemito, deleteRemito } = useRemitos();
@@ -58,6 +63,7 @@ export default function Remitos() {
   const { viajes } = useViajes();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -179,6 +185,36 @@ export default function Remitos() {
     await updateRemito(remito.id, { firmado: !remito.firmado });
   };
 
+  const handleGridSave = async (changes: {
+    created: RemitoForm[];
+    updated: { id: string; data: Partial<RemitoForm> }[];
+    deleted: string[];
+  }) => {
+    let success = true;
+    
+    // Create new remitos
+    for (const remito of changes.created) {
+      const result = await createRemito(remito);
+      if (!result) success = false;
+    }
+    
+    // Update existing remitos
+    for (const { id, data } of changes.updated) {
+      const result = await updateRemito(id, data);
+      if (!result) success = false;
+    }
+    
+    // Delete remitos
+    for (const id of changes.deleted) {
+      const result = await deleteRemito(id);
+      if (!result) success = false;
+    }
+    
+    if (success && (changes.created.length || changes.updated.length || changes.deleted.length)) {
+      toast.success(`Guardados: ${changes.created.length} nuevos, ${changes.updated.length} actualizados, ${changes.deleted.length} eliminados`);
+    }
+  };
+
   const activeObras = obras.filter(o => o.estado !== "finalizada");
 
   if (loading) {
@@ -207,15 +243,33 @@ export default function Remitos() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
+            disabled={viewMode === "grid"}
           />
         </div>
-        <Button
-          onClick={handleNew}
-          className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+        <ToggleGroup
+          type="single"
+          value={viewMode}
+          onValueChange={(value) => value && setViewMode(value as "table" | "grid")}
+          className="border border-border rounded-md"
         >
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Remito
-        </Button>
+          <ToggleGroupItem value="table" aria-label="Vista tabla" className="px-3">
+            <TableIcon className="w-4 h-4 mr-2" />
+            Tabla
+          </ToggleGroupItem>
+          <ToggleGroupItem value="grid" aria-label="Vista grilla" className="px-3">
+            <Grid3X3 className="w-4 h-4 mr-2" />
+            Grilla
+          </ToggleGroupItem>
+        </ToggleGroup>
+        {viewMode === "table" && (
+          <Button
+            onClick={handleNew}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Remito
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -256,108 +310,117 @@ export default function Remitos() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="card-industrial overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-medium">Número</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Material</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Cantidad</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Recibió</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Firmado</TableHead>
-              <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredRemitos.map((remito, index) => (
-              <TableRow
-                key={remito.id}
-                className="border-border table-row-hover animate-fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <TableCell>
-                  <span className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-primary" />
-                    <span className="font-mono text-primary">{remito.numero}</span>
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="w-3 h-3" />
-                    {remito.fecha}
-                  </span>
-                </TableCell>
-                <TableCell className="text-foreground">{remito.obra?.nombre || "-"}</TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Package className="w-3 h-3" />
-                    {remito.material}
-                  </span>
-                </TableCell>
-                <TableCell className="font-mono text-foreground">
-                  {remito.cantidad} {remito.unidad}
-                </TableCell>
-                <TableCell>
-                  {remito.recibido_por ? (
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <User className="w-3 h-3" />
-                      {remito.recibido_por}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">-</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => toggleFirmado(remito)}
-                    className="p-0 h-auto"
-                  >
-                    {remito.firmado ? (
-                      <Badge className="status-badge status-active cursor-pointer">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Firmado
-                      </Badge>
-                    ) : (
-                      <Badge className="status-badge status-pending cursor-pointer">
-                        <XCircle className="w-3 h-3 mr-1" />
-                        Pendiente
-                      </Badge>
-                    )}
-                  </Button>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem onClick={() => handleView(remito)} className="cursor-pointer">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEdit(remito)} className="cursor-pointer">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(remito)} className="text-destructive cursor-pointer">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+      {/* Content based on view mode */}
+      {viewMode === "grid" ? (
+        <RemitosDataGrid
+          remitos={filteredRemitos}
+          obras={obras}
+          onSave={handleGridSave}
+          generateNumero={generateNumero}
+        />
+      ) : (
+        <div className="card-industrial overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground font-medium">Número</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Material</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Cantidad</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Recibió</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Firmado</TableHead>
+                <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filteredRemitos.map((remito, index) => (
+                <TableRow
+                  key={remito.id}
+                  className="border-border table-row-hover animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <TableCell>
+                    <span className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <span className="font-mono text-primary">{remito.numero}</span>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Calendar className="w-3 h-3" />
+                      {remito.fecha}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-foreground">{remito.obra?.nombre || "-"}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <Package className="w-3 h-3" />
+                      {remito.material}
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono text-foreground">
+                    {remito.cantidad} {remito.unidad}
+                  </TableCell>
+                  <TableCell>
+                    {remito.recibido_por ? (
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <User className="w-3 h-3" />
+                        {remito.recibido_por}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleFirmado(remito)}
+                      className="p-0 h-auto"
+                    >
+                      {remito.firmado ? (
+                        <Badge className="status-badge status-active cursor-pointer">
+                          <CheckCircle className="w-3 h-3 mr-1" />
+                          Firmado
+                        </Badge>
+                      ) : (
+                        <Badge className="status-badge status-pending cursor-pointer">
+                          <XCircle className="w-3 h-3 mr-1" />
+                          Pendiente
+                        </Badge>
+                      )}
+                    </Button>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => handleView(remito)} className="cursor-pointer">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(remito)} className="cursor-pointer">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(remito)} className="text-destructive cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       {/* Form Dialog */}
       <FormDialog
