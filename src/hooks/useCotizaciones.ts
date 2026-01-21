@@ -91,6 +91,7 @@ export interface CotizacionItemForm {
 // Available units
 export const UNIDADES = [
   { value: "m²", label: "M²" },
+  { value: "m³", label: "M³" },
   { value: "tn", label: "TN" },
   { value: "hr", label: "HR" },
   { value: "gl", label: "GL" },
@@ -106,6 +107,11 @@ export function calcularM3(cantidadM2: number, alturaPromedio: number): number {
 
 // Calculate item total based on unit
 export function calcularTotalItem(item: CotizacionItemForm): number {
+  // If unit is M³, use cantidad_m3 directly (manual input)
+  if (item.unidad === "m³") {
+    return (item.cantidad_m3 || 0) * item.precio_unitario;
+  }
+  
   // If there's a height value, calculate using M3 (M2 × Altura = M3)
   if (item.altura_promedio > 0 && item.cantidad_m2 > 0) {
     const m3 = item.cantidad_m2 * item.altura_promedio;
