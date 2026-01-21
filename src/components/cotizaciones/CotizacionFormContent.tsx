@@ -408,8 +408,9 @@ export function CotizacionFormContent({
                               step="0.01"
                               value={item.cantidad_m2 || ""}
                               onChange={(e) => updateItem(item.originalIndex, "cantidad_m2", parseFloat(e.target.value) || 0)}
-                              className="bg-muted border-border text-xs font-mono p-1 h-8 text-right"
+                              className="bg-muted border-border text-xs font-mono p-1 h-8 text-right disabled:opacity-50"
                               placeholder="0.00"
+                              disabled={item.unidad === "m³"}
                             />
                           </div>
                           <div className="col-span-1">
@@ -418,8 +419,9 @@ export function CotizacionFormContent({
                               step="0.01"
                               value={item.altura_promedio || ""}
                               onChange={(e) => updateItem(item.originalIndex, "altura_promedio", parseFloat(e.target.value) || 0)}
-                              className="bg-muted border-border text-xs font-mono p-1 h-8 text-right"
+                              className="bg-muted border-border text-xs font-mono p-1 h-8 text-right disabled:opacity-50"
                               placeholder="0.00"
+                              disabled={item.unidad === "m³"}
                             />
                           </div>
                           <div className="col-span-1">
