@@ -170,14 +170,20 @@ export function CotizacionFormContent({
     const newItems = [...items];
     newItems[itemIndex] = { ...newItems[itemIndex], [field]: value };
     
-    // Recalculate M3 if M2 or height changes
-    if (field === "cantidad_m2" || field === "altura_promedio") {
+    // Recalculate M3 if M2 or height changes, BUT only if unit is NOT M³
+    // (to preserve manual M³ input when unit is M³)
+    if ((field === "cantidad_m2" || field === "altura_promedio") && newItems[itemIndex].unidad !== "m³") {
       newItems[itemIndex].cantidad_m3 = calcularM3(
         newItems[itemIndex].cantidad_m2,
         newItems[itemIndex].altura_promedio
       );
       // Also update cantidad for compatibility
       newItems[itemIndex].cantidad = newItems[itemIndex].cantidad_m3;
+    }
+    
+    // If cantidad_m3 is manually edited, update cantidad as well
+    if (field === "cantidad_m3") {
+      newItems[itemIndex].cantidad = value;
     }
     
     // Recalculate total
