@@ -9,7 +9,7 @@ import {
   Wrench,
   Route,
   Receipt,
-  Fuel,
+  Wallet,
   Settings,
   BarChart3,
   Package,
@@ -65,7 +65,7 @@ const appCategories: AppCategory[] = [
   {
     name: "Gastos",
     apps: [
-      { icon: Fuel, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
+      { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
       { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin', 'capataz', 'maquinista'] },
       { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin', 'capataz', 'maquinista'] },
     ],
