@@ -34,6 +34,8 @@ import {
   Droplets,
   Loader2,
   Upload,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -51,6 +53,8 @@ import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
+import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
+import { toast } from "sonner";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -61,12 +65,13 @@ function formatCurrency(value: number): string {
 }
 
 export default function Combustible() {
-  const { cargas, loading, createCarga, updateCarga, deleteCarga } = useCombustible();
+  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas } = useCombustible();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
   
   const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -103,6 +108,29 @@ export default function Combustible() {
   const handleCSVImport = async (cargasToImport: CargaCombustibleForm[]) => {
     for (const carga of cargasToImport) {
       await createCarga(carga);
+    }
+  };
+
+  const handleGridSave = async (changes: {
+    created: CargaCombustibleForm[];
+    updated: { id: string; data: Partial<CargaCombustibleForm> }[];
+    deleted: string[];
+  }) => {
+    try {
+      for (const carga of changes.created) {
+        await createCarga(carga);
+      }
+      for (const { id, data } of changes.updated) {
+        await updateCarga(id, data);
+      }
+      for (const id of changes.deleted) {
+        await deleteCarga(id);
+      }
+      toast.success(`Cambios guardados: ${changes.created.length} nuevos, ${changes.updated.length} actualizados, ${changes.deleted.length} eliminados`);
+      await fetchCargas();
+    } catch (error) {
+      console.error("Error saving grid changes:", error);
+      toast.error("Error al guardar los cambios");
     }
   };
 
@@ -253,6 +281,24 @@ export default function Combustible() {
           />
         </div>
         <div className="flex gap-2">
+          <div className="flex border border-border rounded-md overflow-hidden">
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("table")}
+              className={viewMode === "table" ? "rounded-none" : "rounded-none"}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "default" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className={viewMode === "grid" ? "rounded-none" : "rounded-none"}
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+          </div>
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
@@ -305,85 +351,95 @@ export default function Combustible() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="card-industrial overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Litros</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Total</TableHead>
-              <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredCargas.map((carga, index) => (
-              <TableRow
-                key={carga.id}
-                className="border-border table-row-hover animate-fade-in"
-                style={{ animationDelay: `${index * 30}ms` }}
-              >
-                <TableCell>
-                  <span className="flex items-center gap-1 text-foreground">
-                    <Calendar className="w-3 h-3 text-muted-foreground" />
-                    {carga.fecha}
-                  </span>
-                </TableCell>
-                <TableCell className="text-foreground font-medium">
-                  {carga.obra?.nombre || "-"}
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-2">
-                    <Truck className="w-4 h-4 text-primary" />
-                    <span className="font-medium text-foreground">{carga.maquinaria?.nombre || "-"}</span>
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <User className="w-3 h-3" />
-                    {carga.operador}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <span className="flex items-center gap-1 font-mono text-foreground">
-                    <Droplets className="w-3 h-3 text-primary" />
-                    {carga.litros} L
-                  </span>
-                </TableCell>
-                <TableCell className="font-mono font-medium text-foreground">
-                  {formatCurrency(carga.costo_total)}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                      <DropdownMenuItem onClick={() => handleView(carga)} className="cursor-pointer">
-                        <Eye className="w-4 h-4 mr-2" />
-                        Ver detalle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleEdit(carga)} className="cursor-pointer">
-                        <Edit className="w-4 h-4 mr-2" />
-                        Editar
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleDelete(carga)} className="text-destructive cursor-pointer">
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Eliminar
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
+      {/* Table or Grid View */}
+      {viewMode === "table" ? (
+        <div className="card-industrial overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-border hover:bg-transparent">
+                <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Litros</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Total</TableHead>
+                <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {filteredCargas.map((carga, index) => (
+                <TableRow
+                  key={carga.id}
+                  className="border-border table-row-hover animate-fade-in"
+                  style={{ animationDelay: `${index * 30}ms` }}
+                >
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-foreground">
+                      <Calendar className="w-3 h-3 text-muted-foreground" />
+                      {carga.fecha}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-foreground font-medium">
+                    {carga.obra?.nombre || "-"}
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-primary" />
+                      <span className="font-medium text-foreground">{carga.maquinaria?.nombre || "-"}</span>
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 text-muted-foreground">
+                      <User className="w-3 h-3" />
+                      {carga.operador}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-1 font-mono text-foreground">
+                      <Droplets className="w-3 h-3 text-primary" />
+                      {carga.litros} L
+                    </span>
+                  </TableCell>
+                  <TableCell className="font-mono font-medium text-foreground">
+                    {formatCurrency(carga.costo_total)}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover border-border">
+                        <DropdownMenuItem onClick={() => handleView(carga)} className="cursor-pointer">
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver detalle
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(carga)} className="cursor-pointer">
+                          <Edit className="w-4 h-4 mr-2" />
+                          Editar
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDelete(carga)} className="text-destructive cursor-pointer">
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Eliminar
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      ) : (
+        <CombustibleDataGrid
+          cargas={filteredCargas}
+          obras={obras}
+          maquinarias={maquinarias}
+          operadores={operadores}
+          onSave={handleGridSave}
+        />
+      )}
 
       {/* Form Dialog */}
       <FormDialog
