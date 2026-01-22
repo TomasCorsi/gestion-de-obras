@@ -12,8 +12,7 @@ import {
   Package, 
   ClipboardCheck, 
   BarChart3, 
-  Settings,
-  Fuel
+  Settings
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -113,15 +112,6 @@ const apps: AppItem[] = [
     bgColor: "bg-rose-500/15",
     description: "Otros gastos",
     roles: ['admin', 'capataz', 'maquinista', 'ayudante']
-  },
-  { 
-    icon: Fuel, 
-    label: "Combustible", 
-    path: "/combustible", 
-    iconColor: "text-yellow-500",
-    bgColor: "bg-yellow-500/15",
-    description: "Cargas de combustible",
-    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Wrench, 
