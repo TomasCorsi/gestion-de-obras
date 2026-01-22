@@ -329,4 +329,33 @@
   .combustible-grid-container input[type="checkbox"] {
     accent-color: hsl(var(--primary));
   }
+
+  /* Grid scrollbar styling */
+  .remitos-grid-container ::-webkit-scrollbar,
+  .combustible-grid-container ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .remitos-grid-container ::-webkit-scrollbar-track,
+  .combustible-grid-container ::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 5px;
+  }
+
+  .remitos-grid-container ::-webkit-scrollbar-thumb,
+  .combustible-grid-container ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.5);
+    border-radius: 5px;
+  }
+
+  .remitos-grid-container ::-webkit-scrollbar-thumb:hover,
+  .combustible-grid-container ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary));
+  }
+
+  .remitos-grid-container ::-webkit-scrollbar-corner,
+  .combustible-grid-container ::-webkit-scrollbar-corner {
+    background: hsl(var(--muted));
+  }
 }
