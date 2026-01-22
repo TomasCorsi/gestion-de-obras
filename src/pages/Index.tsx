@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TopNavbar } from "@/components/layout/TopNavbar";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
 
 interface AppItem {
   icon: React.ElementType;
@@ -39,7 +39,8 @@ const apps: AppItem[] = [
     path: "/dashboard", 
     iconColor: "text-primary",
     bgColor: "bg-primary/15",
-    description: "Panel de control y KPIs"
+    description: "Panel de control y KPIs",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Building2, 
@@ -47,7 +48,8 @@ const apps: AppItem[] = [
     path: "/obras", 
     iconColor: "text-blue-500",
     bgColor: "bg-blue-500/15",
-    description: "Gestión de obras"
+    description: "Gestión de obras",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: FileText, 
@@ -64,7 +66,8 @@ const apps: AppItem[] = [
     path: "/viajes", 
     iconColor: "text-orange-500",
     bgColor: "bg-orange-500/15",
-    description: "Control de viajes"
+    description: "Control de viajes",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Receipt, 
@@ -72,7 +75,8 @@ const apps: AppItem[] = [
     path: "/remitos", 
     iconColor: "text-amber-500",
     bgColor: "bg-amber-500/15",
-    description: "Gestión de remitos"
+    description: "Gestión de remitos",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: HardHat, 
@@ -98,7 +102,8 @@ const apps: AppItem[] = [
     path: "/presentismo", 
     iconColor: "text-teal-500",
     bgColor: "bg-teal-500/15",
-    description: "Control de asistencia"
+    description: "Control de asistencia",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Wallet, 
@@ -106,7 +111,8 @@ const apps: AppItem[] = [
     path: "/gastos", 
     iconColor: "text-rose-500",
     bgColor: "bg-rose-500/15",
-    description: "Otros gastos"
+    description: "Otros gastos",
+    roles: ['admin', 'capataz', 'maquinista', 'ayudante']
   },
   { 
     icon: Fuel, 
@@ -114,7 +120,8 @@ const apps: AppItem[] = [
     path: "/combustible", 
     iconColor: "text-yellow-500",
     bgColor: "bg-yellow-500/15",
-    description: "Cargas de combustible"
+    description: "Cargas de combustible",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Wrench, 
@@ -122,7 +129,8 @@ const apps: AppItem[] = [
     path: "/mantenimiento", 
     iconColor: "text-purple-500",
     bgColor: "bg-purple-500/15",
-    description: "Mantenimiento de equipos"
+    description: "Mantenimiento de equipos",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: Package, 
@@ -130,7 +138,8 @@ const apps: AppItem[] = [
     path: "/stock", 
     iconColor: "text-indigo-500",
     bgColor: "bg-indigo-500/15",
-    description: "Inventario y materiales"
+    description: "Inventario y materiales",
+    roles: ['admin', 'capataz', 'maquinista']
   },
   { 
     icon: BarChart3, 

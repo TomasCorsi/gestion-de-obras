@@ -60,16 +60,49 @@ const App = () => (
               <Route path="/sin-acceso" element={<NoAccess />} />
               <Route path="/install" element={<Install />} />
 
-              {/* Protected routes - All authenticated users */}
+              {/* Protected routes - Main roles (not ayudante) */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/obras" element={<ProtectedRoute><Obras /></ProtectedRoute>} />
-              <Route path="/viajes" element={<ProtectedRoute><Viajes /></ProtectedRoute>} />
-              <Route path="/remitos" element={<ProtectedRoute><Remitos /></ProtectedRoute>} />
-              <Route path="/gastos" element={<ProtectedRoute><Gastos /></ProtectedRoute>} />
-              <Route path="/mantenimiento" element={<ProtectedRoute><Mantenimiento /></ProtectedRoute>} />
-              <Route path="/stock" element={<ProtectedRoute><Stock /></ProtectedRoute>} />
-              <Route path="/presentismo" element={<ProtectedRoute><Presentismo /></ProtectedRoute>} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/obras" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Obras />
+                </ProtectedRoute>
+              } />
+              <Route path="/viajes" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Viajes />
+                </ProtectedRoute>
+              } />
+              <Route path="/remitos" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Remitos />
+                </ProtectedRoute>
+              } />
+              {/* Gastos - accessible to all including ayudante */}
+              <Route path="/gastos" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
+                  <Gastos />
+                </ProtectedRoute>
+              } />
+              <Route path="/mantenimiento" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Mantenimiento />
+                </ProtectedRoute>
+              } />
+              <Route path="/stock" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Stock />
+                </ProtectedRoute>
+              } />
+              <Route path="/presentismo" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                  <Presentismo />
+                </ProtectedRoute>
+              } />
 
               {/* Protected routes - Admin and Capataz only */}
               <Route path="/cotizaciones" element={
