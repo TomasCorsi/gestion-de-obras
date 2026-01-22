@@ -103,11 +103,11 @@ export function GridSelectCell({
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors text-left"
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-left"
                 >
                   <Check
                     className={`w-4 h-4 shrink-0 ${
-                      opt.value === value ? "opacity-100" : "opacity-0"
+                      opt.value === value ? "opacity-100 text-primary" : "opacity-0"
                     }`}
                   />
                   <span className="truncate">{opt.label}</span>
