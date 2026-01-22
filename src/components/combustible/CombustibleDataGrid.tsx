@@ -128,6 +128,7 @@ export function CombustibleDataGrid({
   const columns: any[] = useMemo(
     () => [
       { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 110 },
+      { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
       {
         ...keyColumn("obra_id", {
           component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
@@ -195,7 +196,6 @@ export function CombustibleDataGrid({
       },
       { ...keyColumn("horas_maquina", floatColumn), title: "Hs Máq", minWidth: 90 },
       { ...keyColumn("estacion", textColumn), title: "Estación", minWidth: 140 },
-      { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
     ],
     [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions]
   );
