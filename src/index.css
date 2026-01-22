@@ -277,6 +277,13 @@
     font-size: 0.875rem;
   }
 
+  .remitos-grid-container .dsg-header-cell-active,
+  .combustible-grid-container .dsg-header-cell-active {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--primary)) !important;
+    font-weight: 600;
+  }
+
   .remitos-grid-container .dsg-add-row,
   .combustible-grid-container .dsg-add-row {
     background-color: hsl(var(--muted) / 0.5);
