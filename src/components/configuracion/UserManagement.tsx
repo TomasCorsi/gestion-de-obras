@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
-type AppRole = "admin" | "capataz" | "maquinista";
+type AppRole = "admin" | "capataz" | "maquinista" | "ayudante";
 
 interface UserWithRole {
   user_id: string;
@@ -23,12 +23,14 @@ const roleLabels: Record<AppRole, string> = {
   admin: "Administrador",
   capataz: "Capataz",
   maquinista: "Maquinista",
+  ayudante: "Ayudante",
 };
 
-const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline"> = {
+const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline" | "destructive"> = {
   admin: "default",
   capataz: "secondary",
   maquinista: "outline",
+  ayudante: "destructive",
 };
 
 export function UserManagement() {
@@ -169,6 +171,7 @@ export function UserManagement() {
                           <SelectItem value="admin">Administrador</SelectItem>
                           <SelectItem value="capataz">Capataz</SelectItem>
                           <SelectItem value="maquinista">Maquinista</SelectItem>
+                          <SelectItem value="ayudante">Ayudante</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>

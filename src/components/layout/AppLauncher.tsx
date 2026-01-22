@@ -23,7 +23,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
 
 interface AppItem {
   icon: typeof LayoutDashboard;
@@ -42,16 +42,16 @@ const appCategories: AppCategory[] = [
   {
     name: "Principal",
     apps: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary" },
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
     name: "Operaciones",
     apps: [
-      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600" },
+      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin', 'capataz', 'maquinista'] },
       { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin', 'capataz'] },
-      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600" },
-      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500" },
+      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
@@ -59,15 +59,15 @@ const appCategories: AppCategory[] = [
     apps: [
       { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin', 'capataz'] },
       { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin', 'capataz'] },
-      { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400" },
+      { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
     name: "Gastos",
     apps: [
-      { icon: Fuel, label: "Gastos", path: "/gastos", color: "bg-amber-600" },
-      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500" },
-      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400" },
+      { icon: Fuel, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
+      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
