@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown, Check } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { ChevronDown, Check } from "lucide-react";
 
 interface GridSelectCellProps {
   value: string;
@@ -15,27 +15,44 @@ export function GridSelectCell({
   placeholder = "Seleccionar...",
 }: GridSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const [inputValue, setInputValue] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const selectedOption = options.find((opt) => opt.value === value);
 
   const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(search.toLowerCase())
+    opt.label.toLowerCase().includes(inputValue.toLowerCase())
   );
 
+  // Sync input value with selected option when not editing
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      inputRef.current.focus();
+    if (!isOpen) {
+      setInputValue(selectedOption?.label || "");
     }
-  }, [isOpen]);
+  }, [selectedOption, isOpen]);
+
+  // Reset highlighted index when filtered options change
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [inputValue]);
+
+  // Scroll highlighted option into view
+  useEffect(() => {
+    if (isOpen && listRef.current) {
+      const highlightedEl = listRef.current.children[highlightedIndex] as HTMLElement;
+      if (highlightedEl) {
+        highlightedEl.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [highlightedIndex, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-        setSearch("");
+        handleClose();
       }
     };
 
@@ -48,66 +65,109 @@ export function GridSelectCell({
     };
   }, [isOpen]);
 
-  const handleSelect = (optValue: string) => {
+  const handleClose = useCallback(() => {
+    setIsOpen(false);
+    setInputValue(selectedOption?.label || "");
+    setHighlightedIndex(0);
+  }, [selectedOption]);
+
+  const handleSelect = useCallback((optValue: string) => {
     onChange(optValue);
     setIsOpen(false);
-    setSearch("");
+    setHighlightedIndex(0);
+    const selected = options.find((opt) => opt.value === optValue);
+    setInputValue(selected?.label || "");
+  }, [onChange, options]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setInputValue(newValue);
+    if (!isOpen) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleInputFocus = () => {
+    setIsOpen(true);
+    // Select all text on focus for easy replacement
+    setTimeout(() => {
+      inputRef.current?.select();
+    }, 0);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
-      setIsOpen(false);
-      setSearch("");
-    } else if (e.key === "Enter" && filteredOptions.length === 1) {
-      handleSelect(filteredOptions[0].value);
+      e.preventDefault();
+      handleClose();
+      inputRef.current?.blur();
+    } else if (e.key === "ArrowDown") {
+      e.preventDefault();
+      if (!isOpen) {
+        setIsOpen(true);
+      } else {
+        setHighlightedIndex((prev) =>
+          prev < filteredOptions.length - 1 ? prev + 1 : prev
+        );
+      }
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      if (isOpen) {
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : 0));
+      }
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (isOpen && filteredOptions.length > 0) {
+        handleSelect(filteredOptions[highlightedIndex]?.value || filteredOptions[0].value);
+      }
+    } else if (e.key === "Tab") {
+      // Select highlighted option on Tab
+      if (isOpen && filteredOptions.length > 0) {
+        handleSelect(filteredOptions[highlightedIndex]?.value || filteredOptions[0].value);
+      }
     }
   };
 
   return (
     <div ref={containerRef} className="relative w-full h-full">
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-full flex items-center justify-between px-2 text-sm text-foreground bg-transparent hover:bg-accent/50 transition-colors"
-      >
-        <span className={selectedOption ? "text-foreground" : "text-muted-foreground"}>
-          {selectedOption?.label || placeholder}
-        </span>
-        <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
-      </button>
+      <div className="w-full h-full flex items-center">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onFocus={handleInputFocus}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full h-full px-2 text-sm bg-transparent text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+        <ChevronDown 
+          className="w-3 h-3 text-muted-foreground shrink-0 mr-1 pointer-events-none" 
+        />
+      </div>
 
       {isOpen && (
         <div className="absolute top-full left-0 z-50 w-64 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
-          <div className="p-2 border-b border-border">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                ref={inputRef}
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Buscar..."
-                className="w-full pl-8 pr-3 py-1.5 text-sm bg-input border border-border rounded text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          </div>
-          <div className="max-h-48 overflow-y-auto">
+          <div ref={listRef} className="max-h-48 overflow-y-auto">
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">
                 Sin resultados
               </div>
             ) : (
-              filteredOptions.map((opt) => (
+              filteredOptions.map((opt, index) => (
                 <button
                   key={opt.value}
                   type="button"
                   onClick={() => handleSelect(opt.value)}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-primary hover:text-primary-foreground transition-colors text-left"
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left ${
+                    index === highlightedIndex
+                      ? "bg-primary text-primary-foreground"
+                      : "text-foreground hover:bg-accent"
+                  }`}
                 >
                   <Check
                     className={`w-4 h-4 shrink-0 ${
-                      opt.value === value ? "opacity-100 text-primary" : "opacity-0"
+                      opt.value === value ? "opacity-100" : "opacity-0"
                     }`}
                   />
                   <span className="truncate">{opt.label}</span>
