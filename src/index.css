@@ -305,6 +305,12 @@
     opacity: 0.5;
   }
 
+  .remitos-grid-container .dsg-cell-disabled,
+  .combustible-grid-container .dsg-cell-disabled {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--muted-foreground)) !important;
+  }
+
   .remitos-grid-container input,
   .remitos-grid-container select,
   .combustible-grid-container input,
