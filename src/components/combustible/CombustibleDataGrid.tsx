@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { CargaCombustibleForm, CargaCombustibleWithRelations } from "@/hooks/useCombustible";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
+import { GridSelectCell } from "@/components/shared/GridSelectCell";
 
 interface GridRow {
   id?: string;
@@ -61,6 +62,36 @@ export function CombustibleDataGrid({
     [maquinarias]
   );
 
+  const obraOptions = useMemo(
+    () => [
+      { value: "", label: "Sin asignar" },
+      ...activeObras.map((o) => ({ value: o.id, label: o.nombre })),
+    ],
+    [activeObras]
+  );
+
+  const maquinariaOptions = useMemo(
+    () => [
+      { value: "", label: "Sin asignar" },
+      ...sortedMaquinarias.map((m) => ({
+        value: m.id,
+        label: `${m.codigo || ""} - ${m.tipo}`.trim(),
+      })),
+    ],
+    [sortedMaquinarias]
+  );
+
+  const operadorOptions = useMemo(
+    () => [
+      { value: "", label: "Sin asignar" },
+      ...operadores.map((o) => ({
+        value: `${o.nombre} ${o.apellido}`.trim(),
+        label: `${o.nombre} ${o.apellido}`.trim(),
+      })),
+    ],
+    [operadores]
+  );
+
   const initialData = useMemo(
     () =>
       cargas.map((c) => ({
@@ -100,16 +131,12 @@ export function CombustibleDataGrid({
       {
         ...keyColumn("obra_id", {
           component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
-            <select
-              className="w-full h-full bg-transparent border-none outline-none text-foreground text-sm px-2"
+            <GridSelectCell
               value={rowData}
-              onChange={(e) => setRowData(e.target.value)}
-            >
-              <option value="">Sin asignar</option>
-              {activeObras.map((obra) => (
-                <option key={obra.id} value={obra.id}>{obra.nombre}</option>
-              ))}
-            </select>
+              onChange={setRowData}
+              options={obraOptions}
+              placeholder="Sin asignar"
+            />
           ),
           deleteValue: () => "",
           copyValue: ({ rowData }: { rowData: string }) => activeObras.find((o) => o.id === rowData)?.nombre || "",
@@ -121,16 +148,12 @@ export function CombustibleDataGrid({
       {
         ...keyColumn("maquinaria_id", {
           component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
-            <select
-              className="w-full h-full bg-transparent border-none outline-none text-foreground text-sm px-2"
+            <GridSelectCell
               value={rowData}
-              onChange={(e) => setRowData(e.target.value)}
-            >
-              <option value="">Sin asignar</option>
-              {sortedMaquinarias.map((m) => (
-                <option key={m.id} value={m.id}>{m.codigo} - {m.tipo}</option>
-              ))}
-            </select>
+              onChange={setRowData}
+              options={maquinariaOptions}
+              placeholder="Sin asignar"
+            />
           ),
           deleteValue: () => "",
           copyValue: ({ rowData }: { rowData: string }) => {
@@ -148,18 +171,12 @@ export function CombustibleDataGrid({
       {
         ...keyColumn("operador", {
           component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
-            <select
-              className="w-full h-full bg-transparent border-none outline-none text-foreground text-sm px-2"
+            <GridSelectCell
               value={rowData}
-              onChange={(e) => setRowData(e.target.value)}
-            >
-              <option value="">Sin asignar</option>
-              {operadores.map((o) => (
-                <option key={o.id} value={`${o.nombre} ${o.apellido}`}>
-                  {o.nombre} {o.apellido}
-                </option>
-              ))}
-            </select>
+              onChange={setRowData}
+              options={operadorOptions}
+              placeholder="Sin asignar"
+            />
           ),
           deleteValue: () => "",
           copyValue: ({ rowData }: { rowData: string }) => rowData,
@@ -180,7 +197,7 @@ export function CombustibleDataGrid({
       { ...keyColumn("estacion", textColumn), title: "Estación", minWidth: 140 },
       { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
     ],
-    [activeObras, sortedMaquinarias, maquinarias, operadores]
+    [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions]
   );
 
   const handleChange = useCallback(
