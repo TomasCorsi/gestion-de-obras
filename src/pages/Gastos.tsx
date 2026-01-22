@@ -38,6 +38,8 @@ import {
   Upload,
   HardHat,
   Receipt,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,7 +61,9 @@ import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
 import { AsignacionesMaquinariaObra } from "@/components/maquinarias/AsignacionesMaquinariaObra";
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
+import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
@@ -81,7 +85,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function Gastos() {
-  const { cargas, loading: loadingCombustible, createCarga, updateCarga, deleteCarga } = useCombustible();
+  const { cargas, loading: loadingCombustible, createCarga, updateCarga, deleteCarga, fetchCargas } = useCombustible();
   const { gastos, loading: loadingOtros, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
@@ -91,6 +95,7 @@ export default function Gastos() {
   const [activeTab, setActiveTab] = useState("maquinarias");
   
   // Combustible state
+  const [viewModeComb, setViewModeComb] = useState<"table" | "grid">("table");
   const [searchTermComb, setSearchTermComb] = useState("");
   const [filtersComb, setFiltersComb] = useState<FilterState>({
     fechaDesde: undefined,
@@ -290,6 +295,29 @@ export default function Gastos() {
     }
   };
 
+  const handleGridSaveComb = async (changes: {
+    created: CargaCombustibleForm[];
+    updated: { id: string; data: Partial<CargaCombustibleForm> }[];
+    deleted: string[];
+  }) => {
+    try {
+      for (const carga of changes.created) {
+        await createCarga(carga);
+      }
+      for (const { id, data } of changes.updated) {
+        await updateCarga(id, data);
+      }
+      for (const id of changes.deleted) {
+        await deleteCarga(id);
+      }
+      toast.success(`Cambios guardados: ${changes.created.length} nuevos, ${changes.updated.length} actualizados, ${changes.deleted.length} eliminados`);
+      await fetchCargas();
+    } catch (error) {
+      console.error("Error saving grid changes:", error);
+      toast.error("Error al guardar los cambios");
+    }
+  };
+
   // Otros Gastos handlers
   const handleNewOtros = () => {
     setIsEditingOtros(false);
@@ -448,6 +476,24 @@ export default function Gastos() {
               />
             </div>
             <div className="flex gap-2">
+              <div className="flex border border-border rounded-md overflow-hidden">
+                <Button
+                  variant={viewModeComb === "table" ? "default" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewModeComb("table")}
+                  className="rounded-none"
+                >
+                  <List className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant={viewModeComb === "grid" ? "default" : "ghost"}
+                  size="icon"
+                  onClick={() => setViewModeComb("grid")}
+                  className="rounded-none"
+                >
+                  <LayoutGrid className="w-4 h-4" />
+                </Button>
+              </div>
               <Button
                 variant="outline"
                 onClick={() => setImportOpenComb(true)}
@@ -499,84 +545,94 @@ export default function Gastos() {
             </div>
           </div>
 
-          <div className="card-industrial overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Litros</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Total</TableHead>
-                  <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredCargas.map((carga, index) => (
-                  <TableRow
-                    key={carga.id}
-                    className="border-border table-row-hover animate-fade-in"
-                    style={{ animationDelay: `${index * 30}ms` }}
-                  >
-                    <TableCell>
-                      <span className="flex items-center gap-1 text-foreground">
-                        <Calendar className="w-3 h-3 text-muted-foreground" />
-                        {carga.fecha}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-foreground font-medium">
-                      {carga.obra?.nombre || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-2">
-                        <Truck className="w-4 h-4 text-primary" />
-                        <span className="font-medium text-foreground">{carga.maquinaria?.nombre || "-"}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <User className="w-3 h-3" />
-                        {carga.operador}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center gap-1 font-mono text-foreground">
-                        <Droplets className="w-3 h-3 text-primary" />
-                        {carga.litros} L
-                      </span>
-                    </TableCell>
-                    <TableCell className="font-mono font-medium text-foreground">
-                      {formatCurrency(carga.costo_total)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-popover border-border">
-                          <DropdownMenuItem onClick={() => handleViewComb(carga)} className="cursor-pointer">
-                            <Eye className="w-4 h-4 mr-2" />
-                            Ver detalle
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditComb(carga)} className="cursor-pointer">
-                            <Edit className="w-4 h-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDeleteComb(carga)} className="text-destructive cursor-pointer">
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {viewModeComb === "table" ? (
+            <div className="card-industrial overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border hover:bg-transparent">
+                    <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Litros</TableHead>
+                    <TableHead className="text-muted-foreground font-medium">Total</TableHead>
+                    <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredCargas.map((carga, index) => (
+                    <TableRow
+                      key={carga.id}
+                      className="border-border table-row-hover animate-fade-in"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                    >
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-foreground">
+                          <Calendar className="w-3 h-3 text-muted-foreground" />
+                          {carga.fecha}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-foreground font-medium">
+                        {carga.obra?.nombre || "-"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-2">
+                          <Truck className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-foreground">{carga.maquinaria?.nombre || "-"}</span>
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <User className="w-3 h-3" />
+                          {carga.operador}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1 font-mono text-foreground">
+                          <Droplets className="w-3 h-3 text-primary" />
+                          {carga.litros} L
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-mono font-medium text-foreground">
+                        {formatCurrency(carga.costo_total)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem onClick={() => handleViewComb(carga)} className="cursor-pointer">
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver detalle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEditComb(carga)} className="cursor-pointer">
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDeleteComb(carga)} className="text-destructive cursor-pointer">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <CombustibleDataGrid
+              cargas={filteredCargas}
+              obras={obras}
+              maquinarias={maquinarias}
+              operadores={operadores}
+              onSave={handleGridSaveComb}
+            />
+          )}
         </TabsContent>
 
         {/* Tab: Otros Gastos */}
