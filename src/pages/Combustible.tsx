@@ -118,6 +118,17 @@ export default function Combustible() {
     return map;
   }, [maquinarias]);
 
+  // Mapa de nombres de maquinaria para búsqueda por nombre
+  const nombresMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.nombre) {
+        map[m.nombre.trim().toLowerCase()] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
+
   const handleCSVImport = async (cargasToImport: CargaCombustibleForm[]) => {
     for (const carga of cargasToImport) {
       await createCarga(carga);
@@ -658,6 +669,7 @@ export default function Combustible() {
         obrasMap={obrasMap}
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}
+        nombresMap={nombresMap}
       />
     </MainLayout>
   );

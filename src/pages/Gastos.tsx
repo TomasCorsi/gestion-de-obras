@@ -188,6 +188,17 @@ export default function Gastos() {
     return map;
   }, [maquinarias]);
 
+  // Mapa de nombres de maquinaria para búsqueda por nombre
+  const nombresMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.nombre) {
+        map[m.nombre.trim().toLowerCase()] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
+
   // Filter combustible
   const filteredCargas = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
@@ -972,6 +983,7 @@ export default function Gastos() {
         obrasMap={obrasMap}
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}
+        nombresMap={nombresMap}
       />
 
       {/* ===== OTROS GASTOS DIALOGS ===== */}
