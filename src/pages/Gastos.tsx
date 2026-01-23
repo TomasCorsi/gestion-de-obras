@@ -173,6 +173,21 @@ export default function Gastos() {
     return map;
   }, [maquinarias]);
 
+  // Mapa de patentes normalizadas para búsqueda flexible
+  const patentesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.patente) {
+        // Guardar versión normalizada (sin espacios/guiones, mayúsculas)
+        const normalized = m.patente.trim().toUpperCase().replace(/[-\s]/g, '');
+        map[normalized] = m.id;
+        // También guardar versión original en mayúsculas
+        map[m.patente.trim().toUpperCase()] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
+
   // Filter combustible
   const filteredCargas = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
@@ -956,6 +971,7 @@ export default function Gastos() {
         onImport={handleCSVImport}
         obrasMap={obrasMap}
         maquinariasMap={maquinariasMap}
+        patentesMap={patentesMap}
       />
 
       {/* ===== OTROS GASTOS DIALOGS ===== */}

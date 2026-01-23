@@ -17,6 +17,7 @@ interface CSVImportDialogProps {
   onImport: (cargas: CargaCombustibleForm[]) => Promise<void>;
   obrasMap: Record<string, string>; // nombre -> id
   maquinariasMap: Record<string, string>; // codigo -> id
+  patentesMap: Record<string, string>; // patente normalizada -> id
 }
 
 interface ParseResult {
@@ -60,30 +61,42 @@ function parseDate(dateStr: string): string | null {
 
 function findMaquinariaId(
   value: string,
-  maquinariasMap: Record<string, string>
+  maquinariasMap: Record<string, string>,
+  patentesMap: Record<string, string>
 ): string | undefined {
   if (!value) return undefined;
   
   const trimmed = value.trim();
+  const upperTrimmed = trimmed.toUpperCase();
+  const normalized = upperTrimmed.replace(/[-\s]/g, '');
   
-  // Direct match by codigo
+  // 1. Búsqueda exacta por código
   if (maquinariasMap[trimmed]) {
     return maquinariasMap[trimmed];
   }
   
-  // Extract code from format like "708-TOPADOR-LIUGONG" (first part before dash)
+  // 2. Extraer código de formato "708-TOPADOR-LIUGONG"
   const codePart = trimmed.split('-')[0]?.trim();
   if (codePart && maquinariasMap[codePart]) {
     return maquinariasMap[codePart];
   }
   
-  // Try case-insensitive match on codigo
+  // 3. Búsqueda exacta por patente (mayúsculas)
+  if (patentesMap[upperTrimmed]) {
+    return patentesMap[upperTrimmed];
+  }
+  
+  // 4. Búsqueda normalizada por patente (sin espacios/guiones)
+  if (patentesMap[normalized]) {
+    return patentesMap[normalized];
+  }
+  
+  // 5. Búsqueda case-insensitive en códigos
   const lowerTrimmed = trimmed.toLowerCase();
   for (const [codigo, id] of Object.entries(maquinariasMap)) {
     if (codigo.toLowerCase() === lowerTrimmed) {
       return id;
     }
-    // Also check if the codigo matches the first part
     if (codigo.toLowerCase() === codePart?.toLowerCase()) {
       return id;
     }
@@ -118,7 +131,8 @@ function findObraId(
 function parseCSV(
   text: string,
   obrasMap: Record<string, string>,
-  maquinariasMap: Record<string, string>
+  maquinariasMap: Record<string, string>,
+  patentesMap: Record<string, string>
 ): ParseResult {
   const lines = text.trim().split("\n");
   if (lines.length < 2) {
@@ -133,7 +147,7 @@ function parseCSV(
   // Map possible column names
   const columnAliases: Record<string, string[]> = {
     fecha: ['fecha', 'date'],
-    maquinaria: ['maquinaria', 'maquinaria_id', 'maquina', 'machine', 'equipo'],
+    maquinaria: ['maquinaria', 'maquinaria_id', 'maquina', 'machine', 'equipo', 'patente', 'dominio', 'unidad'],
     obra: ['obra', 'obra_id', 'proyecto', 'project'],
     litros: ['litros', 'liters', 'cantidad'],
     precio_litro: ['precio_litro', 'precio', 'price', 'precio_por_litro'],
@@ -173,9 +187,9 @@ function parseCSV(
     const fechaRaw = getValue('fecha');
     const fecha = fechaRaw ? parseDate(fechaRaw) : null;
 
-    // Buscar maquinaria (optional)
+    // Buscar maquinaria por código o patente (optional)
     const maquinariaValue = getValue('maquinaria');
-    const maquinaria_id = maquinariaValue ? findMaquinariaId(maquinariaValue, maquinariasMap) : undefined;
+    const maquinaria_id = maquinariaValue ? findMaquinariaId(maquinariaValue, maquinariasMap, patentesMap) : undefined;
     
     // Log warning but don't skip if machinery not found
     if (maquinariaValue && !maquinaria_id) {
@@ -225,7 +239,7 @@ function parseCSV(
   return { valid, errors };
 }
 
-export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obrasMap, maquinariasMap }: CSVImportDialogProps) {
+export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obrasMap, maquinariasMap, patentesMap }: CSVImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -244,7 +258,7 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
 
     setFile(selectedFile);
     const text = await selectedFile.text();
-    const result = parseCSV(text, obrasMap, maquinariasMap);
+    const result = parseCSV(text, obrasMap, maquinariasMap, patentesMap);
     setParseResult(result);
   };
 
@@ -273,8 +287,8 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
   };
 
   const downloadTemplate = () => {
-    const headers = ["fecha", "obra", "maquinaria", "operador", "estacion", "litros", "precio_litro", "horas_maquina", "comprobante"].join(";");
-    const example = ["2026-01-13", "Obra Centro", "102", "Juan Pérez", "YPF Trelew", "150", "950", "1500", "FC-001"].join(";");
+    const headers = ["fecha", "obra", "maquinaria_o_patente", "operador", "estacion", "litros", "precio_litro", "horas_maquina", "comprobante"].join(";");
+    const example = ["2026-01-13", "Obra Centro", "102 o ABC123", "Juan Pérez", "YPF Trelew", "150", "950", "1500", "FC-001"].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });
@@ -292,7 +306,7 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
         <DialogHeader>
           <DialogTitle>Importar Cargas de Combustible</DialogTitle>
           <DialogDescription>
-            Sube un archivo CSV/TSV con las cargas a importar. La columna "maquinaria" debe contener el código de la máquina.
+            Sube un archivo CSV/TSV con las cargas. La columna "maquinaria" puede contener el código o la patente (se normalizan espacios y guiones).
           </DialogDescription>
         </DialogHeader>
 

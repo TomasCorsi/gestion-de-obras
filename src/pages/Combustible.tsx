@@ -105,6 +105,19 @@ export default function Combustible() {
     return map;
   }, [maquinarias]);
 
+  // Mapa de patentes normalizadas para búsqueda flexible
+  const patentesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.patente) {
+        const normalized = m.patente.trim().toUpperCase().replace(/[-\s]/g, '');
+        map[normalized] = m.id;
+        map[m.patente.trim().toUpperCase()] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
+
   const handleCSVImport = async (cargasToImport: CargaCombustibleForm[]) => {
     for (const carga of cargasToImport) {
       await createCarga(carga);
@@ -644,6 +657,7 @@ export default function Combustible() {
         onImport={handleCSVImport}
         obrasMap={obrasMap}
         maquinariasMap={maquinariasMap}
+        patentesMap={patentesMap}
       />
     </MainLayout>
   );
