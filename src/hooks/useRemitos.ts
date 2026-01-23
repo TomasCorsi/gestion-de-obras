@@ -114,6 +114,70 @@ export function useRemitos() {
     return true;
   };
 
+  const batchSave = async (changes: {
+    created: RemitoForm[];
+    updated: { id: string; data: Partial<RemitoForm> }[];
+    deleted: string[];
+  }) => {
+    const results = { created: 0, updated: 0, deleted: 0, errors: 0 };
+    const promises: Promise<void>[] = [];
+
+    // Batch insert (single call)
+    if (changes.created.length > 0) {
+      const insertPromise = (async () => {
+        const { error } = await supabase
+          .from("remitos")
+          .insert(changes.created);
+        if (error) {
+          console.error("Error batch insert:", error);
+          results.errors++;
+        } else {
+          results.created = changes.created.length;
+        }
+      })();
+      promises.push(insertPromise);
+    }
+
+    // Parallel updates
+    for (const { id, data } of changes.updated) {
+      const updatePromise = (async () => {
+        const { error } = await supabase
+          .from("remitos")
+          .update(data)
+          .eq("id", id);
+        if (error) {
+          console.error("Error updating:", error);
+          results.errors++;
+        } else {
+          results.updated++;
+        }
+      })();
+      promises.push(updatePromise);
+    }
+
+    // Batch delete (single call with array of IDs)
+    if (changes.deleted.length > 0) {
+      const deletePromise = (async () => {
+        const { error } = await supabase
+          .from("remitos")
+          .delete()
+          .in("id", changes.deleted);
+        if (error) {
+          console.error("Error batch delete:", error);
+          results.errors++;
+        } else {
+          results.deleted = changes.deleted.length;
+        }
+      })();
+      promises.push(deletePromise);
+    }
+
+    await Promise.all(promises);
+    await fetchRemitos();
+
+    return results;
+  };
+
   useEffect(() => {
     fetchRemitos();
   }, []);
@@ -125,5 +189,6 @@ export function useRemitos() {
     createRemito,
     updateRemito,
     deleteRemito,
+    batchSave,
   };
 }

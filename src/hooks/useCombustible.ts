@@ -112,6 +112,70 @@ export function useCombustible() {
     return true;
   };
 
+  const batchSave = async (changes: {
+    created: CargaCombustibleForm[];
+    updated: { id: string; data: Partial<CargaCombustibleForm> }[];
+    deleted: string[];
+  }) => {
+    const results = { created: 0, updated: 0, deleted: 0, errors: 0 };
+    const promises: Promise<void>[] = [];
+
+    // Batch insert (single call)
+    if (changes.created.length > 0) {
+      const insertPromise = (async () => {
+        const { error } = await supabase
+          .from("cargas_combustible")
+          .insert(changes.created);
+        if (error) {
+          console.error("Error batch insert:", error);
+          results.errors++;
+        } else {
+          results.created = changes.created.length;
+        }
+      })();
+      promises.push(insertPromise);
+    }
+
+    // Parallel updates
+    for (const { id, data } of changes.updated) {
+      const updatePromise = (async () => {
+        const { error } = await supabase
+          .from("cargas_combustible")
+          .update(data)
+          .eq("id", id);
+        if (error) {
+          console.error("Error updating:", error);
+          results.errors++;
+        } else {
+          results.updated++;
+        }
+      })();
+      promises.push(updatePromise);
+    }
+
+    // Batch delete (single call with array of IDs)
+    if (changes.deleted.length > 0) {
+      const deletePromise = (async () => {
+        const { error } = await supabase
+          .from("cargas_combustible")
+          .delete()
+          .in("id", changes.deleted);
+        if (error) {
+          console.error("Error batch delete:", error);
+          results.errors++;
+        } else {
+          results.deleted = changes.deleted.length;
+        }
+      })();
+      promises.push(deletePromise);
+    }
+
+    await Promise.all(promises);
+    await fetchCargas();
+
+    return results;
+  };
+
   useEffect(() => {
     fetchCargas();
   }, []);
@@ -123,5 +187,6 @@ export function useCombustible() {
     createCarga,
     updateCarga,
     deleteCarga,
+    batchSave,
   };
 }
