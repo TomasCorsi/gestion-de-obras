@@ -65,7 +65,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function Combustible() {
-  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas } = useCombustible();
+  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave } = useCombustible();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
@@ -141,17 +141,13 @@ export default function Combustible() {
     deleted: string[];
   }) => {
     try {
-      for (const carga of changes.created) {
-        await createCarga(carga);
+      const results = await batchSave(changes);
+      
+      if (results.errors === 0) {
+        toast.success(`Guardados: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
+      } else {
+        toast.warning(`Guardados con ${results.errors} errores: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
       }
-      for (const { id, data } of changes.updated) {
-        await updateCarga(id, data);
-      }
-      for (const id of changes.deleted) {
-        await deleteCarga(id);
-      }
-      toast.success(`Cambios guardados: ${changes.created.length} nuevos, ${changes.updated.length} actualizados, ${changes.deleted.length} eliminados`);
-      await fetchCargas();
     } catch (error) {
       console.error("Error saving grid changes:", error);
       toast.error("Error al guardar los cambios");

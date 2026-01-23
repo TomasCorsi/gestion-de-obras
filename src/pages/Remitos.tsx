@@ -58,7 +58,7 @@ import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
 import { toast } from "sonner";
 
 export default function Remitos() {
-  const { remitos, loading, createRemito, updateRemito, deleteRemito } = useRemitos();
+  const { remitos, loading, createRemito, updateRemito, deleteRemito, batchSave } = useRemitos();
   const { obras } = useObras();
   const { viajes } = useViajes();
   
@@ -190,28 +190,17 @@ export default function Remitos() {
     updated: { id: string; data: Partial<RemitoForm> }[];
     deleted: string[];
   }) => {
-    let success = true;
-    
-    // Create new remitos
-    for (const remito of changes.created) {
-      const result = await createRemito(remito);
-      if (!result) success = false;
-    }
-    
-    // Update existing remitos
-    for (const { id, data } of changes.updated) {
-      const result = await updateRemito(id, data);
-      if (!result) success = false;
-    }
-    
-    // Delete remitos
-    for (const id of changes.deleted) {
-      const result = await deleteRemito(id);
-      if (!result) success = false;
-    }
-    
-    if (success && (changes.created.length || changes.updated.length || changes.deleted.length)) {
-      toast.success(`Guardados: ${changes.created.length} nuevos, ${changes.updated.length} actualizados, ${changes.deleted.length} eliminados`);
+    try {
+      const results = await batchSave(changes);
+      
+      if (results.errors === 0) {
+        toast.success(`Guardados: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
+      } else {
+        toast.warning(`Guardados con ${results.errors} errores: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
+      }
+    } catch (error) {
+      console.error("Error saving grid changes:", error);
+      toast.error("Error al guardar los cambios");
     }
   };
 
