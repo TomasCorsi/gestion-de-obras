@@ -525,7 +525,7 @@ export default function Maquinarias() {
             </DetailSection>
             <DetailSection title="Detalles">
               <DetailRow label="Marca" value={selectedMaquinaria.marca} />
-              <DetailRow label="Año" value={selectedMaquinaria.anio.toString()} />
+              <DetailRow label="Año" value={selectedMaquinaria.anio?.toString() || "-"} />
               <DetailRow label="Patente" value={selectedMaquinaria.patente || "-"} />
             </DetailSection>
             <DetailSection title="Asignación">
