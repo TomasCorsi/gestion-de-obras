@@ -364,9 +364,9 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle>Importar Cargas de Combustible</DialogTitle>
+          <DialogTitle className="text-xl">Importar Cargas de Combustible</DialogTitle>
           <DialogDescription>
             Sube un archivo CSV/TSV. La columna "maquinaria" puede contener código, patente o nombre.
           </DialogDescription>
@@ -413,32 +413,36 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
 
           {/* Parse Results */}
           {parseResult && (
-            <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
+            <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
               {/* Summary Stats */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-4 p-3 rounded-lg bg-muted/50">
                 {parseResult.valid.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-base font-medium text-primary">
+                    <CheckCircle className="w-5 h-5" />
                     {parseResult.valid.length} registros válidos
                   </div>
                 )}
                 {parseResult.errors.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <AlertCircle className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-base font-medium text-muted-foreground">
+                    <AlertCircle className="w-5 h-5" />
                     {parseResult.errors.length} advertencias
                   </div>
                 )}
               </div>
 
-              {/* Match Method Stats */}
+              {/* Match Method Stats - Larger badges */}
               {parseResult.valid.length > 0 && (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-3">
                   {Object.entries(matchStats).map(([method, count]) => {
                     const config = matchMethodConfig[method as MatchMethod];
                     const Icon = config.icon;
                     return (
-                      <Badge key={method} variant="outline" className={config.className}>
-                        <Icon className="w-3 h-3 mr-1" />
+                      <Badge 
+                        key={method} 
+                        variant="outline" 
+                        className={`px-3 py-1.5 text-sm font-medium ${config.className}`}
+                      >
+                        <Icon className="w-4 h-4 mr-2" />
                         {count as number} por {config.label.toLowerCase()}
                       </Badge>
                     );
@@ -446,38 +450,38 @@ export function CombustibleCSVImportDialog({ open, onOpenChange, onImport, obras
                 </div>
               )}
 
-              {/* Preview Table */}
+              {/* Preview Table - Much larger */}
               {parseResult.valid.length > 0 && (
-                <div className="flex-1 overflow-hidden border rounded-md">
-                  <ScrollArea className="h-48">
-                    <table className="w-full text-xs">
-                      <thead className="bg-muted sticky top-0">
+                <div className="flex-1 overflow-hidden border rounded-lg bg-background">
+                  <ScrollArea className="h-[320px]">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted sticky top-0 z-10">
                         <tr>
-                          <th className="p-2 text-left font-medium">Fila</th>
-                          <th className="p-2 text-left font-medium">Fecha</th>
-                          <th className="p-2 text-left font-medium">Maquinaria</th>
-                          <th className="p-2 text-left font-medium">Coincidencia</th>
-                          <th className="p-2 text-right font-medium">Litros</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground w-16">Fila</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground w-28">Fecha</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground">Maquinaria</th>
+                          <th className="px-4 py-3 text-left font-semibold text-foreground w-36">Coincidencia</th>
+                          <th className="px-4 py-3 text-right font-semibold text-foreground w-24">Litros</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {parseResult.valid.slice(0, 50).map((row, idx) => {
+                        {parseResult.valid.slice(0, 100).map((row, idx) => {
                           const config = matchMethodConfig[row.matchMethod];
                           const Icon = config.icon;
                           return (
-                            <tr key={idx} className="hover:bg-muted/50">
-                              <td className="p-2 text-muted-foreground">{row.row}</td>
-                              <td className="p-2">{row.data.fecha || '-'}</td>
-                              <td className="p-2 max-w-[120px] truncate" title={row.maquinariaInput}>
+                            <tr key={idx} className="hover:bg-muted/50 transition-colors">
+                              <td className="px-4 py-3 text-muted-foreground font-mono">{row.row}</td>
+                              <td className="px-4 py-3 font-medium">{row.data.fecha || '-'}</td>
+                              <td className="px-4 py-3 max-w-[200px] truncate font-medium" title={row.maquinariaInput}>
                                 {row.maquinariaInput || '-'}
                               </td>
-                              <td className="p-2">
-                                <Badge variant="outline" className={`text-[10px] ${config.className}`}>
-                                  <Icon className="w-2.5 h-2.5 mr-1" />
+                              <td className="px-4 py-3">
+                                <Badge variant="outline" className={`text-xs px-2 py-1 ${config.className}`}>
+                                  <Icon className="w-3.5 h-3.5 mr-1.5" />
                                   {config.label}
                                 </Badge>
                               </td>
-                              <td className="p-2 text-right">{row.data.litros}</td>
+                              <td className="px-4 py-3 text-right font-mono font-medium">{row.data.litros}</td>
                             </tr>
                           );
                         })}
