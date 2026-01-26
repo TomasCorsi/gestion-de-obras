@@ -885,53 +885,87 @@ export type Database = {
       remitos: {
         Row: {
           cantidad: number
+          cantidad_viajes: number | null
           created_at: string
+          desde: string | null
           evidencia_url: string | null
           fecha: string
           firmado: boolean
+          hasta: string | null
           id: string
+          maquinaria_id: string | null
           material: string
           numero: string
           obra_id: string
           observaciones: string | null
+          precio_total: number | null
           recibido_por: string
+          remito_local: string | null
+          remito_tercero: string | null
+          tipo_material: string | null
+          tipo_transporte: string | null
           unidad: string
           updated_at: string
           viaje_id: string | null
         }
         Insert: {
           cantidad: number
+          cantidad_viajes?: number | null
           created_at?: string
+          desde?: string | null
           evidencia_url?: string | null
           fecha: string
           firmado?: boolean
+          hasta?: string | null
           id?: string
+          maquinaria_id?: string | null
           material: string
           numero: string
           obra_id: string
           observaciones?: string | null
+          precio_total?: number | null
           recibido_por: string
+          remito_local?: string | null
+          remito_tercero?: string | null
+          tipo_material?: string | null
+          tipo_transporte?: string | null
           unidad: string
           updated_at?: string
           viaje_id?: string | null
         }
         Update: {
           cantidad?: number
+          cantidad_viajes?: number | null
           created_at?: string
+          desde?: string | null
           evidencia_url?: string | null
           fecha?: string
           firmado?: boolean
+          hasta?: string | null
           id?: string
+          maquinaria_id?: string | null
           material?: string
           numero?: string
           obra_id?: string
           observaciones?: string | null
+          precio_total?: number | null
           recibido_por?: string
+          remito_local?: string | null
+          remito_tercero?: string | null
+          tipo_material?: string | null
+          tipo_transporte?: string | null
           unidad?: string
           updated_at?: string
           viaje_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "remitos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "remitos_obra_id_fkey"
             columns: ["obra_id"]

@@ -4,28 +4,32 @@ import {
   textColumn,
   floatColumn,
   keyColumn,
-  checkboxColumn,
+  intColumn,
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
-import { ObraWithRelations } from "@/hooks/useObras";
+import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 
 interface GridRow {
   id?: string;
-  numero: string;
+  remito_tercero: string;
+  remito_local: string;
   fecha: string;
-  obra_id: string;
-  material: string;
-  cantidad: number | null;
+  desde: string;
+  hasta: string;
+  cantidad_viajes: number | null;
   unidad: string;
-  recibido_por: string;
-  firmado: boolean;
+  cantidad: number | null;
+  tipo_material: string;
+  precio_total: number | null;
+  tipo_transporte: string;
+  maquinaria_id: string;
   _isNew?: boolean;
   _isModified?: boolean;
   _isDeleted?: boolean;
@@ -33,7 +37,7 @@ interface GridRow {
 
 interface RemitosDataGridProps {
   remitos: RemitoWithRelations[];
-  obras: ObraWithRelations[];
+  maquinarias: MaquinariaWithRelations[];
   onSave: (changes: {
     created: RemitoForm[];
     updated: { id: string; data: Partial<RemitoForm> }[];
@@ -44,46 +48,77 @@ interface RemitosDataGridProps {
 
 const STORAGE_KEY = "remitos-grid-draft";
 
+// Static options
+const unidadOptions = [
+  { value: "TN", label: "TN" },
+  { value: "KG", label: "KG" },
+  { value: "M3", label: "M3" },
+  { value: "M2", label: "M2" },
+  { value: "U", label: "U" },
+];
+
+const tipoMaterialOptions = [
+  { value: "", label: "Seleccionar..." },
+  { value: "Residuos", label: "Residuos" },
+  { value: "Desmonte", label: "Desmonte" },
+  { value: "Cascote", label: "Cascote" },
+  { value: "Escombro", label: "Escombro" },
+  { value: "Tierra", label: "Tierra" },
+  { value: "Piedra", label: "Piedra" },
+  { value: "Movimiento interno", label: "Mov. interno" },
+  { value: "Tosca", label: "Tosca" },
+  { value: "Cemento", label: "Cemento" },
+  { value: "Hormigon", label: "Hormigon" },
+  { value: "Traslado", label: "Traslado" },
+  { value: "Cubiertas", label: "Cubiertas" },
+  { value: "Frezado", label: "Frezado" },
+];
+
+const tipoTransporteOptions = [
+  { value: "", label: "Seleccionar..." },
+  { value: "Calamina Sur", label: "Calamina Sur" },
+  { value: "Geo hermanos", label: "Geo hermanos" },
+  { value: "Diaz Neiva", label: "Diaz Neiva" },
+  { value: "japones", label: "Japonés" },
+  { value: "Cato", label: "Cato" },
+  { value: "Tatu", label: "Tatu" },
+  { value: "Patan", label: "Patan" },
+];
+
 export function RemitosDataGrid({
   remitos,
-  obras,
+  maquinarias,
   onSave,
   generateNumero,
 }: RemitosDataGridProps) {
-  const activeObras = useMemo(
-    () => obras.filter((o) => o.estado !== "finalizada"),
-    [obras]
-  );
-
-  const obraOptions = useMemo(
-    () => [
-      { value: "", label: "Seleccionar..." },
-      ...activeObras.map((o) => ({ value: o.id, label: o.nombre })),
-    ],
-    [activeObras]
-  );
-
-  const unidadOptions = useMemo(
-    () => [
-      { value: "m³", label: "m³" },
-      { value: "tn", label: "tn" },
-      { value: "kg", label: "kg" },
-    ],
-    []
-  );
+  // Maquinaria options with searchable values
+  const maquinariaOptions = useMemo(() => {
+    const options = maquinarias
+      .filter((m) => m.patente)
+      .map((m) => {
+        const label = `${m.codigo || ""} - ${m.patente || ""}`.trim();
+        const searchValue = `${m.codigo || ""} ${m.patente || ""} ${m.tipo || ""}`.toLowerCase();
+        return { value: m.id, label, searchValue };
+      });
+    return [{ value: "", label: "Seleccionar...", searchValue: "" }, ...options];
+  }, [maquinarias]);
 
   const initialData = useMemo(
     () =>
       remitos.map((r) => ({
         id: r.id,
-        numero: r.numero,
+        remito_tercero: r.remito_tercero || "",
+        remito_local: r.remito_local || r.numero || "",
         fecha: r.fecha,
-        obra_id: r.obra_id,
-        material: r.material,
+        desde: r.desde || "",
+        hasta: r.hasta || "",
+        cantidad_viajes: r.cantidad_viajes || 1,
+        unidad: r.unidad || "M3",
         cantidad: r.cantidad,
-        unidad: r.unidad,
-        recibido_por: r.recibido_por,
-        firmado: r.firmado,
+        tipo_material: r.tipo_material || r.material || "",
+        precio_total: r.precio_total || 0,
+        tipo_transporte: r.tipo_transporte || "",
+        maquinaria_id: r.maquinaria_id || "",
         _isNew: false,
         _isModified: false,
         _isDeleted: false,
@@ -121,27 +156,12 @@ export function RemitosDataGrid({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
     () => [
-      { ...keyColumn("numero", textColumn), title: "Número", minWidth: 140 },
-      { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 120 },
-      {
-        ...keyColumn("obra_id", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
-            <GridSelectCell
-              value={rowData}
-              onChange={setRowData}
-              options={obraOptions}
-              placeholder="Seleccionar..."
-            />
-          ),
-          deleteValue: () => "",
-          copyValue: ({ rowData }: { rowData: string }) => activeObras.find((o) => o.id === rowData)?.nombre || "",
-          pasteValue: ({ value }: { value: string }) => activeObras.find((o) => o.nombre.toLowerCase() === value.toLowerCase())?.id || "",
-        }),
-        title: "Obra",
-        minWidth: 200,
-      },
-      { ...keyColumn("material", textColumn), title: "Material", minWidth: 150 },
-      { ...keyColumn("cantidad", floatColumn), title: "Cantidad", minWidth: 100 },
+      { ...keyColumn("remito_tercero", textColumn), title: "Rem. Tercero", minWidth: 110 },
+      { ...keyColumn("remito_local", textColumn), title: "Rem. Local", minWidth: 110 },
+      { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 100 },
+      { ...keyColumn("desde", textColumn), title: "Desde", minWidth: 100 },
+      { ...keyColumn("hasta", textColumn), title: "Hasta", minWidth: 100 },
+      { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
       {
         ...keyColumn("unidad", {
           component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
@@ -149,20 +169,95 @@ export function RemitosDataGrid({
               value={rowData}
               onChange={setRowData}
               options={unidadOptions}
-              placeholder="m³"
+              placeholder="M3"
             />
           ),
-          deleteValue: () => "m³",
+          deleteValue: () => "M3",
           copyValue: ({ rowData }: { rowData: string }) => rowData,
-          pasteValue: ({ value }: { value: string }) => (["m³", "tn", "kg"].includes(value) ? value : "m³"),
+          pasteValue: ({ value }: { value: string }) => {
+            const upper = value.toUpperCase();
+            return ["TN", "KG", "M3", "M2", "U"].includes(upper) ? upper : "M3";
+          },
         }),
         title: "Unidad",
-        minWidth: 80,
+        minWidth: 70,
       },
-      { ...keyColumn("recibido_por", textColumn), title: "Recibido por", minWidth: 150 },
-      { ...keyColumn("firmado", checkboxColumn), title: "Firmado", minWidth: 80 },
+      { ...keyColumn("cantidad", floatColumn), title: "Cantidad", minWidth: 80 },
+      {
+        ...keyColumn("tipo_material", {
+          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={tipoMaterialOptions}
+              placeholder="Tipo..."
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => {
+            const found = tipoMaterialOptions.find(
+              (o) => o.value.toLowerCase() === value.toLowerCase() || o.label.toLowerCase() === value.toLowerCase()
+            );
+            return found?.value || value;
+          },
+        }),
+        title: "Tipo",
+        minWidth: 110,
+      },
+      { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100 },
+      {
+        ...keyColumn("tipo_transporte", {
+          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={tipoTransporteOptions}
+              placeholder="Transporte..."
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => {
+            const found = tipoTransporteOptions.find(
+              (o) => o.value.toLowerCase() === value.toLowerCase() || o.label.toLowerCase() === value.toLowerCase()
+            );
+            return found?.value || value;
+          },
+        }),
+        title: "Transporte",
+        minWidth: 110,
+      },
+      {
+        ...keyColumn("maquinaria_id", {
+          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={maquinariaOptions}
+              placeholder="Patente..."
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => {
+            const maq = maquinarias.find((m) => m.id === rowData);
+            return maq?.patente || "";
+          },
+          pasteValue: ({ value }: { value: string }) => {
+            const normalized = value.replace(/[-\s]/g, "").toLowerCase();
+            const found = maquinarias.find(
+              (m) =>
+                m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
+                m.codigo?.toLowerCase() === value.toLowerCase()
+            );
+            return found?.id || "";
+          },
+        }),
+        title: "Patente",
+        minWidth: 120,
+      },
     ],
-    [activeObras, obraOptions, unidadOptions]
+    [maquinariaOptions, maquinarias]
   );
 
   const handleChange = useCallback(
@@ -172,14 +267,18 @@ export function RemitosDataGrid({
         const orig = initialData.find((r) => r.id === row.id);
         if (orig) {
           const isModified =
-            row.numero !== orig.numero ||
+            row.remito_tercero !== orig.remito_tercero ||
+            row.remito_local !== orig.remito_local ||
             row.fecha !== orig.fecha ||
-            row.obra_id !== orig.obra_id ||
-            row.material !== orig.material ||
-            row.cantidad !== orig.cantidad ||
+            row.desde !== orig.desde ||
+            row.hasta !== orig.hasta ||
+            row.cantidad_viajes !== orig.cantidad_viajes ||
             row.unidad !== orig.unidad ||
-            row.recibido_por !== orig.recibido_por ||
-            row.firmado !== orig.firmado;
+            row.cantidad !== orig.cantidad ||
+            row.tipo_material !== orig.tipo_material ||
+            row.precio_total !== orig.precio_total ||
+            row.tipo_transporte !== orig.tipo_transporte ||
+            row.maquinaria_id !== orig.maquinaria_id;
           return { ...row, _isModified: isModified };
         }
         return row;
@@ -193,14 +292,18 @@ export function RemitosDataGrid({
     setData((prev) => [
       ...prev,
       {
-        numero: generateNumero(),
+        remito_tercero: "",
+        remito_local: generateNumero(),
         fecha: new Date().toISOString().split("T")[0],
-        obra_id: "",
-        material: "Tosca",
+        desde: "",
+        hasta: "",
+        cantidad_viajes: 1,
+        unidad: "M3",
         cantidad: 18,
-        unidad: "m³",
-        recibido_por: "",
-        firmado: false,
+        tipo_material: "Tosca",
+        precio_total: 0,
+        tipo_transporte: "",
+        maquinaria_id: "",
         _isNew: true,
         _isModified: false,
         _isDeleted: false,
@@ -219,14 +322,23 @@ export function RemitosDataGrid({
       const created = data
         .filter((row) => row._isNew && !row._isDeleted)
         .map((row) => ({
-          numero: row.numero,
+          numero: row.remito_local || generateNumero(),
           fecha: row.fecha,
-          obra_id: row.obra_id,
-          material: row.material,
+          obra_id: "", // Required field - will need to be handled
+          material: row.tipo_material || "",
           cantidad: row.cantidad || 0,
           unidad: row.unidad,
-          recibido_por: row.recibido_por,
-          firmado: row.firmado,
+          recibido_por: "",
+          firmado: false,
+          remito_tercero: row.remito_tercero || null,
+          remito_local: row.remito_local || null,
+          desde: row.desde || null,
+          hasta: row.hasta || null,
+          cantidad_viajes: row.cantidad_viajes || 1,
+          tipo_material: row.tipo_material || null,
+          precio_total: row.precio_total || 0,
+          tipo_transporte: row.tipo_transporte || null,
+          maquinaria_id: row.maquinaria_id || null,
         }));
 
       const updated = data
@@ -234,14 +346,19 @@ export function RemitosDataGrid({
         .map((row) => ({
           id: row.id!,
           data: {
-            numero: row.numero,
+            remito_tercero: row.remito_tercero || null,
+            remito_local: row.remito_local || null,
             fecha: row.fecha,
-            obra_id: row.obra_id,
-            material: row.material,
-            cantidad: row.cantidad,
+            desde: row.desde || null,
+            hasta: row.hasta || null,
+            cantidad_viajes: row.cantidad_viajes || 1,
             unidad: row.unidad,
-            recibido_por: row.recibido_por,
-            firmado: row.firmado,
+            cantidad: row.cantidad || 0,
+            tipo_material: row.tipo_material || null,
+            precio_total: row.precio_total || 0,
+            tipo_transporte: row.tipo_transporte || null,
+            maquinaria_id: row.maquinaria_id || null,
+            material: row.tipo_material || "",
           },
         }));
 
@@ -257,18 +374,22 @@ export function RemitosDataGrid({
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave, clearDraft]);
+  }, [data, onSave, clearDraft, generateNumero]);
 
   const createRow = useCallback(
     (): GridRow => ({
-      numero: generateNumero(),
+      remito_tercero: "",
+      remito_local: generateNumero(),
       fecha: new Date().toISOString().split("T")[0],
-      obra_id: "",
-      material: "Tosca",
+      desde: "",
+      hasta: "",
+      cantidad_viajes: 1,
+      unidad: "M3",
       cantidad: 18,
-      unidad: "m³",
-      recibido_por: "",
-      firmado: false,
+      tipo_material: "Tosca",
+      precio_total: 0,
+      tipo_transporte: "",
+      maquinaria_id: "",
       _isNew: true,
       _isModified: false,
       _isDeleted: false,

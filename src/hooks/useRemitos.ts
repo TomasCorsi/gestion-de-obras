@@ -17,11 +17,22 @@ export interface RemitoDB {
   observaciones: string | null;
   created_at: string;
   updated_at: string;
+  // New columns
+  remito_tercero: string | null;
+  remito_local: string | null;
+  desde: string | null;
+  hasta: string | null;
+  cantidad_viajes: number;
+  tipo_material: string | null;
+  precio_total: number;
+  tipo_transporte: string | null;
+  maquinaria_id: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
   obra?: { nombre: string };
   viaje?: { origen: string; destino: string };
+  maquinaria?: { codigo: string; patente: string | null };
 }
 
 export interface RemitoForm {
@@ -36,6 +47,16 @@ export interface RemitoForm {
   firmado: boolean;
   evidencia_url?: string;
   observaciones?: string;
+  // New fields
+  remito_tercero?: string;
+  remito_local?: string;
+  desde?: string;
+  hasta?: string;
+  cantidad_viajes?: number;
+  tipo_material?: string;
+  precio_total?: number;
+  tipo_transporte?: string;
+  maquinaria_id?: string;
 }
 
 export function useRemitos() {
@@ -49,7 +70,8 @@ export function useRemitos() {
       .select(`
         *,
         obra:obras(nombre),
-        viaje:viajes(origen, destino)
+        viaje:viajes(origen, destino),
+        maquinaria:maquinarias(codigo, patente)
       `)
       .order("fecha", { ascending: false });
 
