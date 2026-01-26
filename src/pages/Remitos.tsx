@@ -2,18 +2,29 @@ import { useState, useMemo } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Plus,
+  Search,
+  Receipt,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
+  FileText,
+  Package,
+  Loader2,
+  TableIcon,
+  Grid3X3,
+  Truck,
+  DollarSign,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -22,30 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Plus,
-  Search,
-  Receipt,
-  Calendar,
-  MoreVertical,
-  Eye,
-  Edit,
-  Trash2,
-  CheckCircle,
-  XCircle,
-  FileText,
-  User,
-  Package,
-  Loader2,
-  TableIcon,
-  Grid3X3,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -53,17 +40,35 @@ import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
-import { useViajes } from "@/hooks/useViajes";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
 import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+// Options for selectors
+const unidadOptions = ["TN", "KG", "M3", "M2", "U"];
+const tipoMaterialOptions = [
+  "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
+  "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado", "Cubiertas", "Frezado"
+];
+const tipoTransporteOptions = [
+  "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu", "Patan"
+];
 
 export default function Remitos() {
   const { remitos, loading, createRemito, updateRemito, deleteRemito, batchSave } = useRemitos();
   const { obras } = useObras();
-  const { viajes } = useViajes();
+  const { maquinarias } = useMaquinarias();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -79,28 +84,36 @@ export default function Remitos() {
 
   const [formData, setFormData] = useState<RemitoForm>({
     numero: "",
-    viaje_id: "",
     fecha: new Date().toISOString().split("T")[0],
     obra_id: "",
     material: "",
     cantidad: 0,
-    unidad: "m³",
+    unidad: "M3",
     recibido_por: "",
     firmado: false,
-    observaciones: "",
+    remito_tercero: "",
+    remito_local: "",
+    desde: "",
+    hasta: "",
+    cantidad_viajes: 1,
+    tipo_material: "",
+    precio_total: 0,
+    tipo_transporte: "",
+    maquinaria_id: "",
   });
 
   const filteredRemitos = useMemo(() => {
-    // Apply date and obra filters first
     const dateFiltered = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       filters
     );
     
-    // Then apply search filter
     return dateFiltered.filter((r) =>
+      (r.remito_tercero?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (r.remito_local?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
+      (r.tipo_material?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (r.tipo_transporte?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     );
   }, [remitos, filters, searchTerm]);
 
@@ -114,15 +127,22 @@ export default function Remitos() {
     setIsEditing(false);
     setFormData({
       numero: generateNumero(),
-      viaje_id: "",
       fecha: new Date().toISOString().split("T")[0],
       obra_id: "",
       material: "Tosca",
       cantidad: 18,
-      unidad: "m³",
+      unidad: "M3",
       recibido_por: "",
       firmado: false,
-      observaciones: "",
+      remito_tercero: "",
+      remito_local: generateNumero(),
+      desde: "",
+      hasta: "",
+      cantidad_viajes: 1,
+      tipo_material: "Tosca",
+      precio_total: 0,
+      tipo_transporte: "",
+      maquinaria_id: "",
     });
     setFormOpen(true);
   };
@@ -132,7 +152,6 @@ export default function Remitos() {
     setSelectedRemito(remito);
     setFormData({
       numero: remito.numero,
-      viaje_id: remito.viaje_id || "",
       fecha: remito.fecha,
       obra_id: remito.obra_id,
       material: remito.material,
@@ -140,7 +159,15 @@ export default function Remitos() {
       unidad: remito.unidad,
       recibido_por: remito.recibido_por,
       firmado: remito.firmado,
-      observaciones: remito.observaciones || "",
+      remito_tercero: remito.remito_tercero || "",
+      remito_local: remito.remito_local || remito.numero,
+      desde: remito.desde || "",
+      hasta: remito.hasta || "",
+      cantidad_viajes: remito.cantidad_viajes || 1,
+      tipo_material: remito.tipo_material || remito.material,
+      precio_total: remito.precio_total || 0,
+      tipo_transporte: remito.tipo_transporte || "",
+      maquinaria_id: remito.maquinaria_id || "",
     });
     setFormOpen(true);
   };
@@ -168,7 +195,8 @@ export default function Remitos() {
     
     const dataToSend = {
       ...formData,
-      viaje_id: formData.viaje_id || undefined,
+      material: formData.tipo_material || formData.material,
+      maquinaria_id: formData.maquinaria_id || undefined,
     };
     
     if (isEditing && selectedRemito) {
@@ -179,10 +207,6 @@ export default function Remitos() {
     
     setIsSubmitting(false);
     setFormOpen(false);
-  };
-
-  const toggleFirmado = async (remito: RemitoWithRelations) => {
-    await updateRemito(remito.id, { firmado: !remito.firmado });
   };
 
   const handleGridSave = async (changes: {
@@ -204,7 +228,14 @@ export default function Remitos() {
     }
   };
 
-  const activeObras = obras.filter(o => o.estado !== "finalizada");
+  // Stats calculations
+  const totalRemitos = remitos.length;
+  const totalViajes = remitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
+  const totalCantidad = remitos.reduce((sum, r) => sum + r.cantidad, 0);
+  const totalPrecio = remitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
+
+  // Maquinarias with patente for selectors
+  const maquinariasConPatente = maquinarias.filter((m) => m.patente);
 
   if (loading) {
     return (
@@ -228,7 +259,7 @@ export default function Remitos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por número u obra..."
+            placeholder="Buscar por remito, tipo o transporte..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -265,37 +296,35 @@ export default function Remitos() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
-            <p className="text-2xl font-bold text-foreground">{remitos.length}</p>
+            <p className="text-2xl font-bold text-foreground">{totalRemitos}</p>
             <p className="text-sm text-muted-foreground">Total Remitos</p>
           </div>
           <Receipt className="w-8 h-8 text-primary" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
-            <p className="text-2xl font-bold text-foreground">
-              {remitos.filter((r) => r.firmado).length}
-            </p>
-            <p className="text-sm text-muted-foreground">Firmados</p>
+            <p className="text-2xl font-bold text-foreground">{totalViajes}</p>
+            <p className="text-sm text-muted-foreground">Total Viajes</p>
           </div>
-          <CheckCircle className="w-8 h-8 text-success" />
+          <Truck className="w-8 h-8 text-success" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {remitos.filter((r) => !r.firmado).length}
+              {totalCantidad.toLocaleString("es-AR")}
             </p>
-            <p className="text-sm text-muted-foreground">Pendientes</p>
+            <p className="text-sm text-muted-foreground">Cantidad Total</p>
           </div>
-          <XCircle className="w-8 h-8 text-warning" />
+          <Package className="w-8 h-8 text-warning" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {remitos.reduce((sum, r) => sum + r.cantidad, 0)} m³
+              ${totalPrecio.toLocaleString("es-AR")}
             </p>
-            <p className="text-sm text-muted-foreground">Volumen Total</p>
+            <p className="text-sm text-muted-foreground">Precio Total</p>
           </div>
-          <Package className="w-8 h-8 text-muted-foreground" />
+          <DollarSign className="w-8 h-8 text-muted-foreground" />
         </div>
       </div>
 
@@ -303,22 +332,26 @@ export default function Remitos() {
       {viewMode === "grid" ? (
         <RemitosDataGrid
           remitos={filteredRemitos}
-          obras={obras}
+          maquinarias={maquinarias}
           onSave={handleGridSave}
           generateNumero={generateNumero}
         />
       ) : (
-        <div className="card-industrial overflow-hidden">
+        <div className="card-industrial overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
-                <TableHead className="text-muted-foreground font-medium">Número</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Rem. Tercero</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Rem. Local</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Material</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Cantidad</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Recibió</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Firmado</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Desde</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Hasta</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Viajes</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Cant.</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Tipo</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Precio</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Transporte</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Patente</TableHead>
                 <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -329,57 +362,29 @@ export default function Remitos() {
                   className="border-border table-row-hover animate-fade-in"
                   style={{ animationDelay: `${index * 30}ms` }}
                 >
+                  <TableCell className="font-mono text-muted-foreground">
+                    {remito.remito_tercero || "-"}
+                  </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-2">
                       <FileText className="w-4 h-4 text-primary" />
-                      <span className="font-mono text-primary">{remito.numero}</span>
+                      <span className="font-mono text-primary">{remito.remito_local || remito.numero}</span>
                     </span>
                   </TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Calendar className="w-3 h-3" />
-                      {remito.fecha}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-foreground">{remito.obra?.nombre || "-"}</TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-1 text-muted-foreground">
-                      <Package className="w-3 h-3" />
-                      {remito.material}
-                    </span>
-                  </TableCell>
+                  <TableCell className="text-muted-foreground">{remito.fecha}</TableCell>
+                  <TableCell className="text-foreground">{remito.desde || "-"}</TableCell>
+                  <TableCell className="text-foreground">{remito.hasta || "-"}</TableCell>
+                  <TableCell className="font-mono text-foreground">{remito.cantidad_viajes || 1}</TableCell>
                   <TableCell className="font-mono text-foreground">
                     {remito.cantidad} {remito.unidad}
                   </TableCell>
-                  <TableCell>
-                    {remito.recibido_por ? (
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <User className="w-3 h-3" />
-                        {remito.recibido_por}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">-</span>
-                    )}
+                  <TableCell className="text-foreground">{remito.tipo_material || remito.material}</TableCell>
+                  <TableCell className="font-mono text-foreground">
+                    ${(remito.precio_total || 0).toLocaleString("es-AR")}
                   </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleFirmado(remito)}
-                      className="p-0 h-auto"
-                    >
-                      {remito.firmado ? (
-                        <Badge className="status-badge status-active cursor-pointer">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Firmado
-                        </Badge>
-                      ) : (
-                        <Badge className="status-badge status-pending cursor-pointer">
-                          <XCircle className="w-3 h-3 mr-1" />
-                          Pendiente
-                        </Badge>
-                      )}
-                    </Button>
+                  <TableCell className="text-foreground">{remito.tipo_transporte || "-"}</TableCell>
+                  <TableCell className="font-mono text-foreground">
+                    {remito.maquinaria?.patente || "-"}
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
@@ -419,13 +424,23 @@ export default function Remitos() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="numero">Número *</Label>
+              <Label htmlFor="remito_tercero">Remito Tercero</Label>
               <Input
-                id="numero"
-                value={formData.numero}
-                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                id="remito_tercero"
+                value={formData.remito_tercero}
+                onChange={(e) => setFormData({ ...formData, remito_tercero: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Número externo"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="remito_local">Remito Local *</Label>
+              <Input
+                id="remito_local"
+                value={formData.remito_local}
+                onChange={(e) => setFormData({ ...formData, remito_local: e.target.value, numero: e.target.value })}
                 className="bg-muted border-border font-mono"
                 required
               />
@@ -442,105 +457,124 @@ export default function Remitos() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="obra_id">Obra *</Label>
+              <Label htmlFor="desde">Desde</Label>
+              <Input
+                id="desde"
+                value={formData.desde}
+                onChange={(e) => setFormData({ ...formData, desde: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Origen"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="hasta">Hasta</Label>
+              <Input
+                id="hasta"
+                value={formData.hasta}
+                onChange={(e) => setFormData({ ...formData, hasta: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Destino"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cantidad_viajes">Cantidad de Viajes</Label>
+              <Input
+                id="cantidad_viajes"
+                type="number"
+                value={formData.cantidad_viajes}
+                onChange={(e) => setFormData({ ...formData, cantidad_viajes: parseInt(e.target.value) || 1 })}
+                className="bg-muted border-border"
+                min={1}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="unidad">Unidad *</Label>
               <Select
-                value={formData.obra_id}
-                onValueChange={(value) => setFormData({ ...formData, obra_id: value })}
+                value={formData.unidad}
+                onValueChange={(value) => setFormData({ ...formData, unidad: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar obra" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  {activeObras.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
+                  {unidadOptions.map((u) => (
+                    <SelectItem key={u} value={u}>{u}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="viaje_id">Viaje (opcional)</Label>
+              <Label htmlFor="cantidad">Cantidad *</Label>
+              <Input
+                id="cantidad"
+                type="number"
+                value={formData.cantidad}
+                onChange={(e) => setFormData({ ...formData, cantidad: parseFloat(e.target.value) || 0 })}
+                className="bg-muted border-border"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tipo_material">Tipo (Material) *</Label>
               <Select
-                value={formData.viaje_id || "none"}
-                onValueChange={(value) => setFormData({ ...formData, viaje_id: value === "none" ? "" : value })}
+                value={formData.tipo_material}
+                onValueChange={(value) => setFormData({ ...formData, tipo_material: value, material: value })}
               >
                 <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Vincular a viaje" />
+                  <SelectValue placeholder="Seleccionar..." />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
-                  <SelectItem value="none">Sin vincular</SelectItem>
-                  {viajes.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.fecha} - {v.origen} → {v.destino}
+                  {tipoMaterialOptions.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="precio_total">Precio Total</Label>
+              <Input
+                id="precio_total"
+                type="number"
+                value={formData.precio_total}
+                onChange={(e) => setFormData({ ...formData, precio_total: parseFloat(e.target.value) || 0 })}
+                className="bg-muted border-border"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tipo_transporte">Tipo Transporte</Label>
+              <Select
+                value={formData.tipo_transporte || "none"}
+                onValueChange={(value) => setFormData({ ...formData, tipo_transporte: value === "none" ? "" : value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Seleccionar...</SelectItem>
+                  {tipoTransporteOptions.map((t) => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="maquinaria_id">Patente</Label>
+              <Select
+                value={formData.maquinaria_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, maquinaria_id: value === "none" ? "" : value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar..." />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin asignar</SelectItem>
+                  {maquinariasConPatente.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.codigo} - {m.patente}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="material">Material *</Label>
-              <Input
-                id="material"
-                value={formData.material}
-                onChange={(e) => setFormData({ ...formData, material: e.target.value })}
-                className="bg-muted border-border"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cantidad">Cantidad *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="cantidad"
-                  type="number"
-                  value={formData.cantidad}
-                  onChange={(e) => setFormData({ ...formData, cantidad: parseFloat(e.target.value) || 0 })}
-                  className="bg-muted border-border"
-                  required
-                />
-                <Select
-                  value={formData.unidad}
-                  onValueChange={(value) => setFormData({ ...formData, unidad: value })}
-                >
-                  <SelectTrigger className="w-24 bg-muted border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
-                    <SelectItem value="m³">m³</SelectItem>
-                    <SelectItem value="tn">tn</SelectItem>
-                    <SelectItem value="kg">kg</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="recibido_por">Recibido por *</Label>
-              <Input
-                id="recibido_por"
-                value={formData.recibido_por}
-                onChange={(e) => setFormData({ ...formData, recibido_por: e.target.value })}
-                className="bg-muted border-border"
-                required
-              />
-            </div>
-            <div className="space-y-2 flex items-center pt-6">
-              <div className="flex items-center space-x-2">
-                <Switch
-                  id="firmado"
-                  checked={formData.firmado}
-                  onCheckedChange={(checked) => setFormData({ ...formData, firmado: checked })}
-                />
-                <Label htmlFor="firmado">Firmado</Label>
-              </div>
-            </div>
-            <div className="md:col-span-2 space-y-2">
-              <Label htmlFor="observaciones">Observaciones</Label>
-              <Textarea
-                id="observaciones"
-                value={formData.observaciones}
-                onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
-                className="bg-muted border-border"
-                rows={2}
-              />
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4">
@@ -563,26 +597,25 @@ export default function Remitos() {
         {selectedRemito && (
           <div className="space-y-4">
             <DetailSection title="Información General">
-              <DetailRow label="Número" value={selectedRemito.numero} />
+              <DetailRow label="Remito Tercero" value={selectedRemito.remito_tercero || "-"} />
+              <DetailRow label="Remito Local" value={selectedRemito.remito_local || selectedRemito.numero} />
               <DetailRow label="Fecha" value={selectedRemito.fecha} />
-              <DetailRow label="Obra" value={selectedRemito.obra?.nombre || "-"} />
             </DetailSection>
-            <DetailSection title="Entrega">
-              <DetailRow label="Material" value={selectedRemito.material} />
+            <DetailSection title="Ruta">
+              <DetailRow label="Desde" value={selectedRemito.desde || "-"} />
+              <DetailRow label="Hasta" value={selectedRemito.hasta || "-"} />
+              <DetailRow label="Cantidad de Viajes" value={String(selectedRemito.cantidad_viajes || 1)} />
+            </DetailSection>
+            <DetailSection title="Carga">
+              <DetailRow label="Tipo Material" value={selectedRemito.tipo_material || selectedRemito.material} />
               <DetailRow label="Cantidad" value={`${selectedRemito.cantidad} ${selectedRemito.unidad}`} />
-              <DetailRow label="Recibido por" value={selectedRemito.recibido_por} />
-              <DetailRow label="Firmado" value={selectedRemito.firmado ? "Sí" : "No"} />
+              <DetailRow label="Precio Total" value={`$${(selectedRemito.precio_total || 0).toLocaleString("es-AR")}`} />
             </DetailSection>
-            {selectedRemito.viaje && (
-              <DetailSection title="Viaje Vinculado">
-                <DetailRow label="Ruta" value={`${selectedRemito.viaje.origen} → ${selectedRemito.viaje.destino}`} />
-              </DetailSection>
-            )}
-            {selectedRemito.observaciones && (
-              <DetailSection title="Observaciones">
-                <p className="text-sm text-muted-foreground">{selectedRemito.observaciones}</p>
-              </DetailSection>
-            )}
+            <DetailSection title="Transporte">
+              <DetailRow label="Tipo Transporte" value={selectedRemito.tipo_transporte || "-"} />
+              <DetailRow label="Patente" value={selectedRemito.maquinaria?.patente || "-"} />
+              <DetailRow label="Código Maquinaria" value={selectedRemito.maquinaria?.codigo || "-"} />
+            </DetailSection>
           </div>
         )}
       </DetailDialog>
@@ -593,7 +626,7 @@ export default function Remitos() {
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         title="Eliminar Remito"
-        description={`¿Estás seguro de que deseas eliminar el remito "${selectedRemito?.numero}"? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro de que deseas eliminar el remito "${selectedRemito?.remito_local || selectedRemito?.numero}"? Esta acción no se puede deshacer.`}
       />
     </MainLayout>
   );
