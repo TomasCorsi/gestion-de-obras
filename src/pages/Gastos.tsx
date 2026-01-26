@@ -152,7 +152,7 @@ export default function Gastos() {
   });
 
   const activeObras = obras.filter(o => o.estado !== "finalizada");
-  const operadores = personal.filter(p => (p.rol === "maquinista" || p.rol === "chofer") && p.activo);
+  const operadores = personal.filter(p => p.activo);
 
   // CSV Import maps
   const obrasMap = useMemo(() => {

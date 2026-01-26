@@ -79,7 +79,7 @@ export function CombustibleDataGrid({
       { value: "", label: "Sin asignar" },
       ...sortedMaquinarias.map((m) => ({
         value: m.id,
-        label: `${m.codigo || ""} - ${m.tipo}`.trim(),
+        label: [m.codigo || "", m.tipo, m.patente || ""].filter(Boolean).join(" - "),
       })),
     ],
     [sortedMaquinarias]
