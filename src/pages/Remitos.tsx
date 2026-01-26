@@ -365,6 +365,7 @@ export default function Remitos() {
         <RemitosDataGrid
           remitos={filteredRemitos}
           maquinarias={maquinarias}
+          obras={obras}
           onSave={handleGridSave}
           generateNumero={generateNumero}
         />
