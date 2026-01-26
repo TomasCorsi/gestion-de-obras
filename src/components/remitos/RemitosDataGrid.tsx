@@ -12,6 +12,7 @@ import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
+import { ObraWithRelations } from "@/hooks/useObras";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
@@ -38,6 +39,7 @@ interface GridRow {
 interface RemitosDataGridProps {
   remitos: RemitoWithRelations[];
   maquinarias: MaquinariaWithRelations[];
+  obras: ObraWithRelations[];
   onSave: (changes: {
     created: RemitoForm[];
     updated: { id: string; data: Partial<RemitoForm> }[];
@@ -88,9 +90,19 @@ const tipoTransporteOptions = [
 export function RemitosDataGrid({
   remitos,
   maquinarias,
+  obras,
   onSave,
   generateNumero,
 }: RemitosDataGridProps) {
+  // Obras options with searchable values
+  const obrasOptions = useMemo(() => {
+    const options = obras.map((o) => ({
+      value: o.nombre,
+      label: o.nombre,
+    }));
+    return [{ value: "", label: "Seleccionar..." }, ...options];
+  }, [obras]);
+
   // Maquinaria options with searchable values
   const maquinariaOptions = useMemo(() => {
     const options = maquinarias
@@ -159,8 +171,40 @@ export function RemitosDataGrid({
       { ...keyColumn("remito_tercero", textColumn), title: "Rem. Tercero", minWidth: 110 },
       { ...keyColumn("remito_local", textColumn), title: "Rem. Local", minWidth: 110 },
       { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 100 },
-      { ...keyColumn("desde", textColumn), title: "Desde", minWidth: 100 },
-      { ...keyColumn("hasta", textColumn), title: "Hasta", minWidth: 100 },
+      {
+        ...keyColumn("desde", {
+          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={obrasOptions}
+              placeholder="Desde..."
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => value,
+        }),
+        title: "Desde",
+        minWidth: 130,
+      },
+      {
+        ...keyColumn("hasta", {
+          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={obrasOptions}
+              placeholder="Hasta..."
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => value,
+        }),
+        title: "Hasta",
+        minWidth: 130,
+      },
       { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
       {
         ...keyColumn("unidad", {
@@ -257,7 +301,7 @@ export function RemitosDataGrid({
         minWidth: 120,
       },
     ],
-    [maquinariaOptions, maquinarias]
+    [maquinariaOptions, maquinarias, obrasOptions]
   );
 
   const handleChange = useCallback(
