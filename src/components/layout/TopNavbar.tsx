@@ -1,4 +1,5 @@
 import { Bell, User, LogOut, Shield, Truck } from "lucide-react";
+import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -80,6 +81,9 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-1 md:gap-2">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* App Launcher */}
         <AppLauncher />
 
