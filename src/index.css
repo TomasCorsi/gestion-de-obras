@@ -69,6 +69,51 @@
     --status-error: 0 84% 60%;
   }
 
+  /* Light mode - when dark class is removed */
+  :root:not(.dark) {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 348 100% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 92%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 0 0% 94%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 90%;
+    --accent-foreground: 0 0% 15%;
+    --destructive: 0 84% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 0%;
+    --border: 0 0% 85%;
+    --input: 0 0% 90%;
+    --ring: 348 100% 40%;
+    --sidebar-background: 0 0% 96%;
+    --sidebar-foreground: 0 0% 30%;
+    --sidebar-primary: 348 100% 40%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 92%;
+    --sidebar-accent-foreground: 0 0% 15%;
+    --sidebar-border: 0 0% 88%;
+    --sidebar-ring: 348 100% 40%;
+    --surface-elevated: 0 0% 100%;
+    --surface-overlay: 0 0% 98%;
+    --text-primary: 0 0% 10%;
+    --text-secondary: 0 0% 35%;
+    --text-muted: 0 0% 50%;
+    --divider: 0 0% 88%;
+    --status-active: 142 76% 36%;
+    --status-pending: 38 92% 50%;
+    --status-inactive: 0 0% 55%;
+    --status-error: 0 84% 50%;
+  }
+
   .dark {
     --background: 0 0% 6%;
     --foreground: 0 0% 98%;
@@ -106,7 +151,15 @@
   }
 
   html {
-    @apply dark;
+    /* Default to dark, but allow override via class */
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html:not(.dark) {
+    color-scheme: light;
   }
 
   body {
