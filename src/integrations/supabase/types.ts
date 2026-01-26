@@ -1217,6 +1217,7 @@ export type Database = {
         | "rastra_grosspal"
         | "auto"
         | "camioneta"
+        | "grupo_electrogeno"
       tipo_movimiento_stock: "entrada" | "salida" | "ajuste"
     }
     CompositeTypes: {
@@ -1398,6 +1399,7 @@ export const Constants = {
         "rastra_grosspal",
         "auto",
         "camioneta",
+        "grupo_electrogeno",
       ],
       tipo_movimiento_stock: ["entrada", "salida", "ajuste"],
     },
