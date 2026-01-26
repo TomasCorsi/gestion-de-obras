@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -19,6 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -32,6 +38,7 @@ import { useMantenimientos } from "@/hooks/useMantenimientos";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { generateGastosMaquinariaPDF } from "@/utils/generateGastosMaquinariaPDF";
 
 interface GastoUnificado {
   id: string;
@@ -303,6 +310,45 @@ export function GastosMaquinaria() {
     toast.success("Excel exportado correctamente");
   };
 
+  const exportarPDF = async () => {
+    const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
+    if (!maquinaria) {
+      toast.error("Selecciona una maquinaria primero");
+      return;
+    }
+
+    const gastosParaPDF = gastosUnificados.map((g) => ({
+      fecha: g.fecha,
+      tipo: tipoGastoConfig[g.tipo].label,
+      descripcion: g.descripcion,
+      obra: g.obra || "-",
+      costo: g.costo,
+    }));
+
+    try {
+      await generateGastosMaquinariaPDF(
+        {
+          codigo: maquinaria.codigo,
+          nombre: maquinaria.nombre,
+          tipo: tiposConfig[maquinaria.tipo],
+          marca: maquinaria.marca,
+          patente: maquinaria.patente,
+          anio: maquinaria.anio,
+          estado: maquinaria.estado,
+          horas_acumuladas: maquinaria.horas_acumuladas,
+        },
+        totales,
+        gastosParaPDF,
+        fechaDesde,
+        fechaHasta
+      );
+      toast.success("PDF exportado correctamente");
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Error al generar el PDF");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Filtros */}
@@ -334,10 +380,25 @@ export function GastosMaquinaria() {
             />
           </div>
           {selectedMaquinariaId && (
-            <Button onClick={exportarExcel} variant="outline" className="gap-2">
-              <Download className="w-4 h-4" />
-              Exportar Excel
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Download className="w-4 h-4" />
+                  Exportar
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-background z-50">
+                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
         <div className="flex gap-2">
