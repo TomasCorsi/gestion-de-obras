@@ -1,110 +1,225 @@
 
-# Plan: Sección de Gastos por Maquinaria
+# Plan: Mejoras a la Seccion de Gastos por Maquinaria
 
 ## Objetivo
-Agregar una nueva sección en la página de Maquinarias que muestre un desglose de gastos asociados a cada máquina, incluyendo combustible, viajes realizados y mantenimientos.
-
-## Analisis de Datos
-
-Las relaciones existentes en la base de datos son:
-- **Combustible** (`cargas_combustible`): tiene `maquinaria_id` que vincula directamente a la máquina
-- **Viajes** (`viajes`): tiene `camion_id` que referencia a maquinarias (camiones)
-- **Mantenimientos** (`mantenimientos`): tiene `maquinaria_id` con costos de repuestos y mano de obra
-- **Remitos**: no tiene relación directa con maquinarias (solo con viajes y obras)
-
-## Diseño de la Solucion
-
-### 1. Crear un nuevo componente `GastosMaquinaria.tsx`
-
-Este componente mostrara:
-- Selector de maquinaria (dropdown o combobox)
-- Filtro por rango de fechas
-- Tarjetas de resumen con totales por categoria
-- Tabla detallada con todos los gastos
-
-### 2. Estructura de la nueva seccion
-
-```text
-+--------------------------------------------------+
-|  GASTOS POR MAQUINARIA                           |
-+--------------------------------------------------+
-|  [Seleccionar Maquinaria v]  [Fecha desde] [hasta]|
-+--------------------------------------------------+
-|  +------------+  +------------+  +------------+   |
-|  | COMBUSTIBLE|  | VIAJES     |  | MANTENIM.  |   |
-|  | $123,456   |  | 45 viajes  |  | $56,789    |   |
-|  | 1,200 L    |  | 2,300 km   |  | 12 serv.   |   |
-|  +------------+  +------------+  +------------+   |
-+--------------------------------------------------+
-|  Tabla detallada de gastos                        |
-|  Fecha | Tipo | Descripcion | Costo | Obra       |
-+--------------------------------------------------+
-```
-
-### 3. Integracion en la pagina Maquinarias
-
-Agregar tabs a la pagina de Maquinarias:
-- **Inventario** (tab actual con las tarjetas de maquinarias)
-- **Gastos** (nueva tab con el componente de gastos)
+Agregar tres nuevas funcionalidades a la seccion de Gastos de Maquinarias:
+1. Exportacion a Excel del detalle de gastos
+2. Grafico de evolucion de gastos mensuales
+3. Filtro por tipo de maquinaria
 
 ## Cambios Tecnicos
 
-### Archivo nuevo: `src/components/maquinarias/GastosMaquinaria.tsx`
+### Archivo modificado: `src/components/maquinarias/GastosMaquinaria.tsx`
 
-Componente que:
-- Utiliza los hooks existentes: `useMaquinarias`, `useCombustible`, `useViajes`, `useMantenimientos`
-- Filtra datos por la maquinaria seleccionada
-- Calcula totales de gastos
-- Muestra tabla combinada ordenada por fecha
+#### 1. Exportacion a Excel
 
-### Archivo modificado: `src/pages/Maquinarias.tsx`
+Se agregara un boton "Exportar" que generara un archivo Excel (.xlsx) con:
+- Hoja con el resumen de totales
+- Hoja con el detalle de todos los gastos
 
-Cambios:
-- Importar componentes de Tabs de la UI
-- Importar el nuevo componente `GastosMaquinaria`
-- Envolver el contenido actual en un TabsContent "inventario"
-- Agregar nuevo TabsContent "gastos" con el componente
+Se utilizara la libreria `xlsx` ya instalada en el proyecto (usada en LiquidacionesTab).
 
-## Datos a Mostrar
+```text
+Estructura del Excel:
++------------------------------------------+
+| Hoja 1: Resumen                          |
+| - Maquinaria seleccionada                |
+| - Periodo de fechas                      |
+| - Total Combustible ($X - Y litros)      |
+| - Total Viajes (N viajes - Z km)         |
+| - Total Mantenimientos ($M)              |
+| - GASTO TOTAL                            |
++------------------------------------------+
+| Hoja 2: Detalle                          |
+| Fecha | Tipo | Descripcion | Obra | Costo|
++------------------------------------------+
+```
 
-### Tarjeta Combustible
-- Total litros cargados
-- Costo total de combustible
-- Promedio de consumo (si hay datos de horas)
+#### 2. Grafico de Evolucion Mensual
 
-### Tarjeta Viajes
-- Cantidad de viajes realizados
-- Kilometros totales recorridos
-- Volumen total transportado
+Se agregara un grafico de barras apiladas mostrando la evolucion de gastos por mes:
+- Eje X: Meses
+- Eje Y: Costo total
+- Barras apiladas: Combustible (amber), Mantenimiento (purple)
 
-### Tarjeta Mantenimientos
-- Cantidad de servicios realizados
-- Costo total (repuestos + mano de obra)
-- Ultimo mantenimiento
+Se utilizara `recharts` (ya instalado) igual que en Reportes.tsx.
 
-### Tabla Detallada
-Columnas:
-- Fecha
-- Tipo (Combustible / Viaje / Mantenimiento)
-- Descripcion
-- Costo
-- Obra asociada
+```text
++------------------------------------------+
+|  Evolucion de Gastos Mensuales           |
+|                                          |
+|  |||     |||                             |
+|  |||     |||  |||                        |
+|  |||     |||  |||  |||                   |
+|  ___________________________________     |
+|  Ene   Feb   Mar   Abr                   |
+|                                          |
+|  [===] Combustible  [===] Mantenimiento  |
++------------------------------------------+
+```
 
-## Flujo de Usuario
+#### 3. Filtro por Tipo de Maquinaria
 
-1. El usuario navega a Maquinarias
-2. Ve las tabs "Inventario" y "Gastos"
-3. Hace click en "Gastos"
-4. Selecciona una maquinaria del dropdown
-5. Opcionalmente filtra por fechas
-6. Ve el resumen de gastos y la tabla detallada
-7. Puede exportar o analizar los costos operativos de esa maquina
+Se agregara un dropdown para filtrar las maquinarias del selector por tipo:
+- Posicion: Antes del selector de maquinaria
+- Opciones: Todos los tipos (cargadora, camion, compactador, etc.)
+- Al cambiar el tipo, se filtra la lista de maquinarias disponibles
+
+```text
++--------------------------------------------------+
+|  [Tipo: Camion v]  [Maquinaria: 501-Camion v]    |
+|  [Fecha desde]     [Fecha hasta]     [Limpiar]   |
++--------------------------------------------------+
+```
+
+## Estructura del Componente Actualizado
+
+```text
+GastosMaquinaria.tsx
+|
++-- Estado nuevo: tipoFilter (string)
+|
++-- Nuevo useMemo: maquinariasFiltradas (filtro por tipo)
+|
++-- Nuevo useMemo: datosGraficoMensual (agrupacion por mes)
+|
++-- Nueva funcion: exportarExcel()
+|
++-- UI:
+    +-- Fila de filtros
+    |   +-- Select tipo maquinaria
+    |   +-- Combobox maquinaria (filtrado)
+    |   +-- Calendarios fecha
+    |   +-- Boton Exportar Excel
+    |
+    +-- Tarjetas de resumen (existentes)
+    |
+    +-- NUEVO: Grafico de evolucion mensual
+    |
+    +-- Tarjeta gasto total (existente)
+    |
+    +-- Tabla detallada (existente)
+```
+
+## Logica de Agrupacion Mensual
+
+```typescript
+const datosGraficoMensual = useMemo(() => {
+  const mesesMap = new Map<string, { combustible: number; mantenimiento: number }>();
+  
+  datosFiltrados.combustible.forEach((c) => {
+    const mes = format(new Date(c.fecha), "yyyy-MM");
+    const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
+    actual.combustible += c.costo_total || 0;
+    mesesMap.set(mes, actual);
+  });
+  
+  datosFiltrados.mantenimientos.forEach((m) => {
+    const mes = format(new Date(m.fecha), "yyyy-MM");
+    const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
+    actual.mantenimiento += m.costo_total || 0;
+    mesesMap.set(mes, actual);
+  });
+  
+  // Ordenar por mes y retornar array para recharts
+  return Array.from(mesesMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([mes, data]) => ({
+      mes: format(parseISO(mes + "-01"), "MMM yyyy", { locale: es }),
+      combustible: data.combustible,
+      mantenimiento: data.mantenimiento,
+    }));
+}, [datosFiltrados]);
+```
+
+## Logica de Exportacion Excel
+
+```typescript
+import * as XLSX from "xlsx";
+
+const exportarExcel = () => {
+  const maquinaria = maquinarias.find(m => m.id === selectedMaquinariaId);
+  const workbook = XLSX.utils.book_new();
+  
+  // Hoja resumen
+  const resumenData = [
+    ["Gastos por Maquinaria"],
+    [""],
+    ["Maquinaria:", maquinaria?.nombre || ""],
+    ["Codigo:", maquinaria?.codigo || ""],
+    ["Periodo:", `${fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio"} - ${fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual"}`],
+    [""],
+    ["Combustible", `$${totales.totalCombustible.toLocaleString()}`, `${totales.totalLitros.toLocaleString()} L`],
+    ["Viajes", `${totales.totalViajes}`, `${totales.totalKm.toLocaleString()} km`],
+    ["Mantenimientos", `$${totales.costoMantenimientos.toLocaleString()}`, `${totales.totalMantenimientos} servicios`],
+    [""],
+    ["GASTO TOTAL", `$${totales.gastoTotal.toLocaleString()}`],
+  ];
+  const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+  XLSX.utils.book_append_sheet(workbook, wsResumen, "Resumen");
+  
+  // Hoja detalle
+  const detalleData = [
+    ["Fecha", "Tipo", "Descripcion", "Obra", "Costo"],
+    ...gastosUnificados.map(g => [
+      g.fecha ? format(new Date(g.fecha), "dd/MM/yyyy") : "",
+      tipoConfig[g.tipo].label,
+      g.descripcion,
+      g.obra || "-",
+      g.costo,
+    ])
+  ];
+  const wsDetalle = XLSX.utils.aoa_to_sheet(detalleData);
+  XLSX.utils.book_append_sheet(workbook, wsDetalle, "Detalle");
+  
+  const fileName = `Gastos_${maquinaria?.codigo || "Maquinaria"}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+};
+```
+
+## Tipos de Maquinaria para el Filtro
+
+Se reutiliza el objeto `tiposConfig` existente en el archivo:
+
+```typescript
+const tiposConfig: Record<TipoMaquinaria, string> = {
+  cargadora: "Cargadora",
+  compactador: "Compactador",
+  camion: "Camion",
+  camioneta: "Camioneta",
+  // ... etc
+};
+```
+
+## Resultado Visual
+
+```text
++------------------------------------------------------------------+
+|  GASTOS POR MAQUINARIA                              [Exportar v] |
++------------------------------------------------------------------+
+|  [Tipo: Todos v]  [Maquinaria: 501-Camion v]                     |
+|  [Desde]          [Hasta]           [Limpiar]                    |
++------------------------------------------------------------------+
+|  +------------+  +------------+  +------------+                  |
+|  | COMBUSTIBLE|  | VIAJES     |  | MANTENIM.  |                  |
+|  | $123,456   |  | 45 viajes  |  | $56,789    |                  |
+|  +------------+  +------------+  +------------+                  |
++------------------------------------------------------------------+
+|  Evolucion de Gastos Mensuales                                   |
+|  [Grafico de barras apiladas con Combustible y Mantenimiento]    |
++------------------------------------------------------------------+
+|  GASTO TOTAL: $180,245                                           |
++------------------------------------------------------------------+
+|  Detalle de Gastos (tabla existente)                             |
++------------------------------------------------------------------+
+```
 
 ## Dependencias
 
-Se reutilizan componentes y hooks existentes:
-- `useMaquinarias` - lista de maquinarias
-- `useCombustible` - cargas de combustible
-- `useViajes` - viajes realizados
-- `useMantenimientos` - registros de mantenimiento
-- Componentes UI: Tabs, Card, Table, Select, Badge
+- `xlsx` - Ya instalado (usado en LiquidacionesTab)
+- `recharts` - Ya instalado (usado en Reportes y Dashboard)
+- `date-fns` - Ya instalado
+
+## Archivos a Modificar
+
+- `src/components/maquinarias/GastosMaquinaria.tsx` - Agregar las 3 funcionalidades
