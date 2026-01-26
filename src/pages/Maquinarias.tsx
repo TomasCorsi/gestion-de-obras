@@ -32,6 +32,7 @@ import {
   CheckCircle,
   Building2,
   User,
+  DollarSign,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -39,10 +40,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
+import { GastosMaquinaria } from "@/components/maquinarias/GastosMaquinaria";
 import { useMaquinarias, MaquinariaWithRelations, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useObras } from "@/hooks/useObras";
@@ -206,160 +209,177 @@ export default function Maquinarias() {
 
   return (
     <MainLayout title="Maquinarias" subtitle="Control de equipos y flota">
-      {/* Actions Bar */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nombre o código..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-        <div className="flex gap-2">
-          <Select value={estadoFilter} onValueChange={setEstadoFilter}>
-            <SelectTrigger className="w-44 bg-card border-border">
-              <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
-              <SelectItem value="todos">Todos</SelectItem>
-              {Object.entries(estadoConfig).map(([key, config]) => (
-                <SelectItem key={key} value={key}>{config.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            variant="outline"
-            onClick={() => setCsvImportOpen(true)}
-            className="border-border"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Importar CSV
-          </Button>
-          <Button
-            onClick={handleNew}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Maquinaria
-          </Button>
-        </div>
-      </div>
+      <Tabs defaultValue="inventario" className="space-y-6">
+        <TabsList className="bg-muted">
+          <TabsTrigger value="inventario" className="flex items-center gap-2">
+            <Truck className="w-4 h-4" />
+            Inventario
+          </TabsTrigger>
+          <TabsTrigger value="gastos" className="flex items-center gap-2">
+            <DollarSign className="w-4 h-4" />
+            Gastos
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {Object.entries(estadoConfig).map(([key, config]) => {
-          const count = maquinarias.filter((m) => m.estado === key).length;
-          const Icon = config.icon;
-          return (
-            <div key={key} className="card-industrial p-4 flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-bold text-foreground">{count}</p>
-                <p className="text-sm text-muted-foreground">{config.label}</p>
-              </div>
-              <Icon className={cn("w-8 h-8", config.className.includes("primary") ? "text-primary" : "")} />
+        <TabsContent value="inventario" className="space-y-6">
+          {/* Actions Bar */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre o código..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 bg-card border-border"
+              />
             </div>
-          );
-        })}
-      </div>
-
-
-      {/* Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredMaquinarias.length === 0 ? (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
-            {searchTerm || estadoFilter !== "todos" ? "No se encontraron maquinarias" : "No hay maquinarias registradas"}
-          </div>
-        ) : (
-          filteredMaquinarias.map((maq, index) => {
-            const config = estadoConfig[maq.estado];
-            const Icon = config.icon;
-            return (
-              <Card
-                key={maq.id}
-                className="card-industrial animate-fade-in hover:border-primary/30 transition-all"
-                style={{ animationDelay: `${index * 50}ms` }}
+            <div className="flex gap-2">
+              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+                <SelectTrigger className="w-44 bg-card border-border">
+                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="todos">Todos</SelectItem>
+                  {Object.entries(estadoConfig).map(([key, config]) => (
+                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="outline"
+                onClick={() => setCsvImportOpen(true)}
+                className="border-border"
               >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
-                        <Truck className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-mono text-primary">{maq.codigo}</span>
-                        <h3 className="font-semibold text-foreground">{maq.nombre}</h3>
-                        <p className="text-xs text-muted-foreground">{tiposConfig[maq.tipo]}</p>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="bg-popover border-border">
-                        <DropdownMenuItem onClick={() => handleView(maq)} className="cursor-pointer">
-                          <Eye className="w-4 h-4 mr-2" />
-                          Ver detalle
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(maq)} className="cursor-pointer">
-                          <Edit className="w-4 h-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleDelete(maq)} className="text-destructive cursor-pointer">
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Badge className={cn("status-badge", config.className)}>
-                      <Icon className="w-3 h-3 mr-1" />
-                      {config.label}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      {maq.marca} • {maq.anio}
-                    </span>
-                  </div>
+                <Upload className="w-4 h-4 mr-2" />
+                Importar CSV
+              </Button>
+              <Button
+                onClick={handleNew}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Nueva Maquinaria
+              </Button>
+            </div>
+          </div>
 
-                  <div className="space-y-2 text-sm">
-                    {maq.obra && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Building2 className="w-4 h-4" />
-                        {maq.obra.nombre}
-                      </div>
-                    )}
-                    {maq.operador && (
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <User className="w-4 h-4" />
-                        {maq.operador.nombre} {maq.operador.apellido}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Clock className="w-4 h-4" />
-                      {maq.horas_acumuladas.toLocaleString()} horas
-                    </div>
+          {/* Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(estadoConfig).map(([key, config]) => {
+              const count = maquinarias.filter((m) => m.estado === key).length;
+              const Icon = config.icon;
+              return (
+                <div key={key} className="card-industrial p-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-foreground">{count}</p>
+                    <p className="text-sm text-muted-foreground">{config.label}</p>
                   </div>
+                  <Icon className={cn("w-8 h-8", config.className.includes("primary") ? "text-primary" : "")} />
+                </div>
+              );
+            })}
+          </div>
 
-                  {maq.patente && (
-                    <div className="text-xs text-muted-foreground">
-                      Patente: <span className="font-mono">{maq.patente}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+          {/* Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredMaquinarias.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-muted-foreground">
+                {searchTerm || estadoFilter !== "todos" ? "No se encontraron maquinarias" : "No hay maquinarias registradas"}
+              </div>
+            ) : (
+              filteredMaquinarias.map((maq, index) => {
+                const config = estadoConfig[maq.estado];
+                const Icon = config.icon;
+                return (
+                  <Card
+                    key={maq.id}
+                    className="card-industrial animate-fade-in hover:border-primary/30 transition-all"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <Truck className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <span className="text-xs font-mono text-primary">{maq.codigo}</span>
+                            <h3 className="font-semibold text-foreground">{maq.nombre}</h3>
+                            <p className="text-xs text-muted-foreground">{tiposConfig[maq.tipo]}</p>
+                          </div>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="bg-popover border-border">
+                            <DropdownMenuItem onClick={() => handleView(maq)} className="cursor-pointer">
+                              <Eye className="w-4 h-4 mr-2" />
+                              Ver detalle
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleEdit(maq)} className="cursor-pointer">
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDelete(maq)} className="text-destructive cursor-pointer">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Eliminar
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Badge className={cn("status-badge", config.className)}>
+                          <Icon className="w-3 h-3 mr-1" />
+                          {config.label}
+                        </Badge>
+                        <span className="text-sm text-muted-foreground">
+                          {maq.marca} • {maq.anio}
+                        </span>
+                      </div>
 
-      {/* Form Dialog */}
+                      <div className="space-y-2 text-sm">
+                        {maq.obra && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Building2 className="w-4 h-4" />
+                            {maq.obra.nombre}
+                          </div>
+                        )}
+                        {maq.operador && (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <User className="w-4 h-4" />
+                            {maq.operador.nombre} {maq.operador.apellido}
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="w-4 h-4" />
+                          {maq.horas_acumuladas.toLocaleString()} horas
+                        </div>
+                      </div>
+
+                      {maq.patente && (
+                        <div className="text-xs text-muted-foreground">
+                          Patente: <span className="font-mono">{maq.patente}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="gastos">
+          <GastosMaquinaria />
+        </TabsContent>
+      </Tabs>
+
       <FormDialog
         open={formOpen}
         onOpenChange={setFormOpen}
