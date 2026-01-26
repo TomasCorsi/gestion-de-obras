@@ -1,51 +1,187 @@
 
-# Plan: Mejoras en Selector de Operador y Maquinaria en Combustible
+# Plan: Renovación de Sesión Silenciosa y Automática
 
-## Problema Actual
-1. **Operador**: El selector solo muestra maquinistas y choferes, excluyendo otros roles como capataces, ayudantes, etc.
-2. **Maquinaria**: El selector muestra todas las maquinarias pero no permite buscar por patente, dificultando la identificación de vehículos.
+## Objetivo
+Hacer que la sesión se mantenga activa indefinidamente mientras el usuario esté usando la aplicación, sin mostrar ningún banner, advertencia ni interrupción. La renovación debe ocurrir 100% en segundo plano, como cualquier aplicación moderna.
 
-## Cambios Propuestos
+## Estrategia
 
-### 1. Mostrar TODO el personal en el selector de Operador
-- Eliminar el filtro que restringe a solo maquinistas y choferes
-- Incluir todo el personal activo independientemente del rol
-- Mantener el formato actual: "Nombre Apellido"
-
-### 2. Agregar patente al selector de Maquinaria
-- Modificar el formato de las opciones para incluir la patente cuando exista
-- Nuevo formato: "102 - cargadora - ABC123" o "102 - cargadora" si no tiene patente
-- Esto permite buscar por código, tipo o patente directamente
+El problema actual es que aunque `autoRefreshToken: true` está configurado, cuando falla silenciosamente no hay recuperación. Implementaremos un sistema de renovación proactiva invisible.
 
 ## Cambios Técnicos
 
-### Archivo: `src/pages/Gastos.tsx`
+### 1. Hook de Renovación Silenciosa en Segundo Plano
 
-| Linea | Cambio |
-|-------|--------|
-| 155 | Cambiar de `personal.filter(p => (p.rol === "maquinista" \|\| p.rol === "chofer") && p.activo)` a `personal.filter(p => p.activo)` |
+**Archivo nuevo: `src/hooks/useSessionKeepAlive.ts`**
 
-### Archivo: `src/components/combustible/CombustibleDataGrid.tsx`
+Este hook se ejecutará silenciosamente y:
+- Renovará la sesión automáticamente cada 45 minutos (antes de que expire el token de 1 hora)
+- Detectará cualquier fallo de renovación y reintentará automáticamente
+- Detectará actividad del usuario (clicks, teclas, scroll) para saber si está activo
+- Solo renovará si el usuario está activo (evita renovaciones innecesarias)
 
-| Sección | Cambio |
-|---------|--------|
-| maquinariaOptions (77-86) | Agregar patente al label cuando exista |
-
-Nuevo formato de label:
-```typescript
-label: [
-  m.codigo || "",
-  m.tipo,
-  m.patente || ""
-].filter(Boolean).join(" - ")
+```text
+Lógica del hook:
+┌──────────────────────────────────────┐
+│  Usuario usa la app normalmente      │
+│  (sin saber que existe este hook)    │
+└──────────────┬───────────────────────┘
+               │
+               ▼
+┌──────────────────────────────────────┐
+│  Cada 45 min: ¿Usuario activo?       │
+│  (detecta clicks/teclas recientes)   │
+└──────────────┬───────────────────────┘
+               │
+      ┌────────┴────────┐
+      │ Sí              │ No
+      ▼                 ▼
+┌─────────────┐   ┌─────────────────┐
+│ Renovar     │   │ No hacer nada   │
+│ sesión      │   │ (ahorra recursos│
+└─────────────┘   └─────────────────┘
 ```
 
-Ejemplos de resultado:
-- "102 - cargadora - ABC123" (con patente)
-- "103 - camioneta" (sin patente)
-- "cargadora" (sin código ni patente, solo tipo)
+### 2. Manejo Mejorado de Eventos de Auth
 
-## Resultado Esperado
-- El usuario podrá seleccionar cualquier empleado activo como operador de una carga de combustible
-- El usuario podrá buscar maquinarias por código, tipo O patente en el mismo campo de búsqueda
-- La identificación de vehículos en campo será más rápida y precisa
+**Archivo modificado: `src/hooks/useAuth.tsx`**
+
+Agregar manejo de eventos silencioso:
+- `TOKEN_REFRESHED`: Log interno (sin mostrar nada al usuario)
+- `SIGNED_OUT` inesperado: Intentar recuperar sesión automáticamente antes de redirigir
+- Agregar función `refreshSession()` para uso interno
+
+### 3. Integración en la App
+
+**Archivo modificado: `src/App.tsx`**
+
+- Agregar el hook `useSessionKeepAlive` dentro del `AuthProvider`
+- No se agrega ningún componente visual
+
+## Código del Hook Principal
+
+```typescript
+// src/hooks/useSessionKeepAlive.ts
+import { useEffect, useRef, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+const REFRESH_INTERVAL = 45 * 60 * 1000; // 45 minutos
+const ACTIVITY_TIMEOUT = 5 * 60 * 1000;  // 5 minutos sin actividad = inactivo
+
+export function useSessionKeepAlive() {
+  const lastActivity = useRef(Date.now());
+  const refreshIntervalRef = useRef<NodeJS.Timeout>();
+
+  // Registrar actividad del usuario silenciosamente
+  const updateActivity = useCallback(() => {
+    lastActivity.current = Date.now();
+  }, []);
+
+  // Renovar sesión silenciosamente
+  const silentRefresh = useCallback(async () => {
+    const isActive = Date.now() - lastActivity.current < ACTIVITY_TIMEOUT;
+    
+    if (!isActive) return; // Usuario inactivo, no renovar
+
+    try {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.warn('[Session] Refresh failed, retrying...', error);
+        // Reintentar una vez
+        setTimeout(async () => {
+          await supabase.auth.refreshSession();
+        }, 5000);
+      }
+    } catch (e) {
+      console.warn('[Session] Silent refresh error:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Escuchar actividad del usuario
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+    events.forEach(event => 
+      window.addEventListener(event, updateActivity, { passive: true })
+    );
+
+    // Renovar periódicamente
+    refreshIntervalRef.current = setInterval(silentRefresh, REFRESH_INTERVAL);
+
+    // Renovar también cuando la pestaña vuelve a estar visible
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        updateActivity();
+        silentRefresh();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      events.forEach(event => 
+        window.removeEventListener(event, updateActivity)
+      );
+      document.removeEventListener('visibilitychange', handleVisibility);
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [updateActivity, silentRefresh]);
+}
+```
+
+## Modificaciones a useAuth.tsx
+
+Agregar manejo de eventos y recuperación automática:
+
+```typescript
+// Dentro del onAuthStateChange
+(event, session) => {
+  // Log silencioso para debugging (solo en consola de desarrollo)
+  if (event === 'TOKEN_REFRESHED') {
+    console.debug('[Auth] Token refreshed silently');
+  }
+  
+  // Si se cierra sesión inesperadamente, intentar recuperar
+  if (event === 'SIGNED_OUT' && session === null) {
+    // Verificar si hay sesión guardada que podamos recuperar
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        // Había sesión, restaurarla
+        setSession(data.session);
+        setUser(data.session.user);
+      }
+    });
+  }
+  
+  // ... resto del código existente
+}
+```
+
+## Componente de Integración
+
+**Archivo nuevo: `src/components/auth/SessionKeepAlive.tsx`**
+
+```typescript
+import { useSessionKeepAlive } from '@/hooks/useSessionKeepAlive';
+import { useAuth } from '@/hooks/useAuth';
+
+export function SessionKeepAlive() {
+  const { user } = useAuth();
+  
+  // Solo activar si hay usuario logueado
+  useSessionKeepAlive(!!user);
+  
+  return null; // No renderiza nada
+}
+```
+
+## Resultado Final
+
+| Antes | Después |
+|-------|---------|
+| Sesión expira y cierra sin aviso | Sesión se renueva automáticamente cada 45 min |
+| Sin manejo de errores de refresh | Reintento automático si falla la renovación |
+| Sin detección de actividad | Solo renueva si el usuario está activo |
+| Sin recuperación al volver a la pestaña | Renueva inmediatamente al volver a la pestaña |
+
+El usuario nunca verá ningún mensaje ni interrupción. La aplicación funcionará exactamente como cualquier otra aplicación moderna donde simplemente "no te cierra la sesión".
