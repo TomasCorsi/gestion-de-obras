@@ -23,7 +23,8 @@ export type TipoMaquinaria =
   | "tractor"
   | "rastra_grosspal"
   | "auto"
-  | "camioneta";
+  | "camioneta"
+  | "grupo_electrogeno";
 export type EstadoMaquinaria = "operativa" | "mantenimiento" | "inactiva" | "en_uso";
 
 export interface MaquinariaDB {

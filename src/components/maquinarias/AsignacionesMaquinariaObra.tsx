@@ -71,6 +71,7 @@ const tiposConfig: Record<TipoMaquinaria, { label: string; color: string }> = {
   rastra_grosspal: { label: "Rastra Grosspal", color: "bg-violet-500/20 text-violet-400 border-violet-500/30" },
   auto: { label: "Auto", color: "bg-neutral-500/20 text-neutral-400 border-neutral-500/30" },
   camioneta: { label: "Camioneta", color: "bg-zinc-500/20 text-zinc-400 border-zinc-500/30" },
+  grupo_electrogeno: { label: "Grupo Electrógeno", color: "bg-stone-500/20 text-stone-400 border-stone-500/30" },
 };
 
 const tiposArray = Object.entries(tiposConfig).map(([key, value]) => ({

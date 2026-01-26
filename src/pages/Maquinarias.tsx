@@ -72,6 +72,7 @@ const tiposConfig: Record<TipoMaquinaria, string> = {
   rastra_grosspal: "Rastra Grosspal",
   auto: "Auto",
   camioneta: "Camioneta",
+  grupo_electrogeno: "Grupo Electrógeno",
 };
 
 const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
