@@ -18,6 +18,7 @@ import {
   Grid3X3,
   Truck,
   DollarSign,
+  Upload,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -42,6 +43,7 @@ import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos"
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
+import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
 import {
@@ -78,9 +80,31 @@ export default function Remitos() {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [selectedRemito, setSelectedRemito] = useState<RemitoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Maps for import dialog
+  const maquinariasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.codigo) map[m.codigo] = m.id;
+    });
+    return map;
+  }, [maquinarias]);
+
+  const patentesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    maquinarias.forEach(m => {
+      if (m.patente) {
+        const normalized = m.patente.toUpperCase().replace(/[-\s]/g, '');
+        map[m.patente.toUpperCase()] = m.id;
+        map[normalized] = m.id;
+      }
+    });
+    return map;
+  }, [maquinarias]);
 
   const [formData, setFormData] = useState<RemitoForm>({
     numero: "",
@@ -281,6 +305,14 @@ export default function Remitos() {
             Grilla
           </ToggleGroupItem>
         </ToggleGroup>
+        <Button
+          variant="outline"
+          onClick={() => setImportOpen(true)}
+          className="gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          Importar
+        </Button>
         {viewMode === "table" && (
           <Button
             onClick={handleNew}
@@ -627,6 +659,20 @@ export default function Remitos() {
         onConfirm={confirmDelete}
         title="Eliminar Remito"
         description={`¿Estás seguro de que deseas eliminar el remito "${selectedRemito?.remito_local || selectedRemito?.numero}"? Esta acción no se puede deshacer.`}
+      />
+
+      {/* CSV Import Dialog */}
+      <RemitosCSVImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onImport={async (remitosToImport) => {
+          const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+          if (results.errors > 0) {
+            throw new Error(`${results.errors} errores durante la importación`);
+          }
+        }}
+        maquinariasMap={maquinariasMap}
+        patentesMap={patentesMap}
       />
     </MainLayout>
   );
