@@ -1,190 +1,228 @@
 
-# Plan: Exportacion a PDF del Detalle de Gastos por Maquinaria
+# Plan: Reestructuracion del Modulo de Remitos
 
 ## Objetivo
-Agregar un boton de exportacion a PDF que genere un documento profesional con todos los detalles de la maquinaria y sus gastos, optimizado para caber en una sola hoja A4.
+Modificar completamente la seccion de Remitos para incluir las siguientes columnas:
+- REMITO TERCERO (numero de remito del proveedor externo)
+- REMITO LOCAL (numero de remito interno)
+- FECHA
+- DESDE (origen)
+- HASTA (destino)
+- CANTIDAD DE VIAJES
+- UNIDAD (TN, KG, M3, M2, U)
+- CANTIDAD
+- TIPO (material: Residuos, Desmonte, Cascote, Escombro, Tierra, Piedra, Movimiento interno, Tosca, Cemento, Hormigon, Traslado, Cubiertas, Frezado)
+- PRECIO TOTAL
+- TIPO TRANSPORTE (empresa: Calamina Sur, Geo hermanos, Diaz Neiva, japones, Cato, Tatu, Patan)
+- PATENTE (conectado con maquinarias)
 
-## Analisis
+## Cambios en Base de Datos
 
-Se reutilizaran los patrones existentes del generador de PDF de cotizaciones:
-- Libreria `jsPDF` con `jspdf-autotable` (ya instaladas)
-- Logo de la empresa (`logo-calamina-sur.png`)
-- Funcion `loadImageAsBase64` para cargar imagenes
-- Estilos compactos (fuentes 6-7pt, margenes 10mm)
+### Migracion SQL
+Se agregaran las siguientes columnas a la tabla `remitos`:
 
-## Estructura del PDF
+```sql
+ALTER TABLE remitos
+  ADD COLUMN IF NOT EXISTS remito_tercero text,
+  ADD COLUMN IF NOT EXISTS remito_local text,
+  ADD COLUMN IF NOT EXISTS desde text,
+  ADD COLUMN IF NOT EXISTS hasta text,
+  ADD COLUMN IF NOT EXISTS cantidad_viajes integer DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS tipo_material text,
+  ADD COLUMN IF NOT EXISTS precio_total numeric DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS tipo_transporte text,
+  ADD COLUMN IF NOT EXISTS maquinaria_id uuid REFERENCES maquinarias(id);
+```
+
+### Mapeo de Columnas Existentes vs Nuevas
+
+| Actual | Nueva Estructura |
+|--------|------------------|
+| numero | remito_local (renombrado conceptualmente) |
+| - | remito_tercero (NUEVO) |
+| fecha | fecha (sin cambios) |
+| - | desde (NUEVO) |
+| - | hasta (NUEVO) |
+| - | cantidad_viajes (NUEVO) |
+| unidad | unidad (ampliado con TN, KG, M3, M2, U) |
+| cantidad | cantidad (sin cambios) |
+| material | tipo_material (renombrado, con opciones fijas) |
+| - | precio_total (NUEVO) |
+| - | tipo_transporte (NUEVO) |
+| - | maquinaria_id (NUEVO, FK a maquinarias) |
+| obra_id | Se mantiene para filtros |
+| recibido_por | Se puede mantener u omitir |
+| firmado | Se puede mantener u omitir |
+
+## Cambios en Codigo
+
+### 1. Hook `useRemitos.ts`
+
+Actualizar interfaces y queries:
+
+```typescript
+export interface RemitoDB {
+  id: string;
+  remito_tercero: string | null;
+  remito_local: string | null;
+  fecha: string;
+  desde: string | null;
+  hasta: string | null;
+  cantidad_viajes: number;
+  unidad: string;
+  cantidad: number;
+  tipo_material: string | null;
+  precio_total: number;
+  tipo_transporte: string | null;
+  maquinaria_id: string | null;
+  obra_id: string;
+  // campos legacy
+  numero: string;
+  firmado: boolean;
+  observaciones: string | null;
+  // ...
+}
+
+export interface RemitoWithRelations extends RemitoDB {
+  maquinaria?: { codigo: string; patente: string | null };
+  obra?: { nombre: string };
+}
+```
+
+Actualizar el query para incluir la relacion con maquinarias:
+```typescript
+.select(`
+  *,
+  obra:obras(nombre),
+  maquinaria:maquinarias(codigo, patente)
+`)
+```
+
+### 2. Componente `RemitosDataGrid.tsx`
+
+Redefinir columnas del grid:
+
+```typescript
+interface GridRow {
+  id?: string;
+  remito_tercero: string;
+  remito_local: string;
+  fecha: string;
+  desde: string;
+  hasta: string;
+  cantidad_viajes: number | null;
+  unidad: string;
+  cantidad: number | null;
+  tipo_material: string;
+  precio_total: number | null;
+  tipo_transporte: string;
+  maquinaria_id: string;
+  _isNew?: boolean;
+  _isModified?: boolean;
+  _isDeleted?: boolean;
+}
+```
+
+Nuevas columnas:
+```typescript
+const columns = [
+  { ...keyColumn("remito_tercero", textColumn), title: "Remito Tercero", minWidth: 130 },
+  { ...keyColumn("remito_local", textColumn), title: "Remito Local", minWidth: 130 },
+  { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 100 },
+  { ...keyColumn("desde", textColumn), title: "Desde", minWidth: 120 },
+  { ...keyColumn("hasta", textColumn), title: "Hasta", minWidth: 120 },
+  { ...keyColumn("cantidad_viajes", floatColumn), title: "Cant. Viajes", minWidth: 90 },
+  { /* unidad con GridSelectCell */ },
+  { ...keyColumn("cantidad", floatColumn), title: "Cantidad", minWidth: 90 },
+  { /* tipo_material con GridSelectCell */ },
+  { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 110 },
+  { /* tipo_transporte con GridSelectCell */ },
+  { /* maquinaria_id con GridSelectCell - busqueda por codigo/patente */ },
+];
+```
+
+### 3. Opciones para Selectores
+
+**Unidades:**
+```typescript
+const unidadOptions = [
+  { value: "TN", label: "TN" },
+  { value: "KG", label: "KG" },
+  { value: "M3", label: "M3" },
+  { value: "M2", label: "M2" },
+  { value: "U", label: "U" },
+];
+```
+
+**Tipos de Material:**
+```typescript
+const tipoMaterialOptions = [
+  { value: "Residuos", label: "Residuos" },
+  { value: "Desmonte", label: "Desmonte" },
+  { value: "Cascote", label: "Cascote" },
+  { value: "Escombro", label: "Escombro" },
+  { value: "Tierra", label: "Tierra" },
+  { value: "Piedra", label: "Piedra" },
+  { value: "Movimiento interno", label: "Mov. interno" },
+  { value: "Tosca", label: "Tosca" },
+  { value: "Cemento", label: "Cemento" },
+  { value: "Hormigon", label: "Hormigon" },
+  { value: "Traslado", label: "Traslado" },
+  { value: "Cubiertas", label: "Cubiertas" },
+  { value: "Frezado", label: "Frezado" },
+];
+```
+
+**Tipos de Transporte:**
+```typescript
+const tipoTransporteOptions = [
+  { value: "Calamina Sur", label: "Calamina Sur" },
+  { value: "Geo hermanos", label: "Geo hermanos" },
+  { value: "Diaz Neiva", label: "Diaz Neiva" },
+  { value: "japones", label: "Japonés" },
+  { value: "Cato", label: "Cato" },
+  { value: "Tatu", label: "Tatu" },
+  { value: "Patan", label: "Patan" },
+];
+```
+
+**Patentes (Maquinarias):**
+Se usara el hook `useMaquinarias` y se filtraran las que tienen patente. El selector mostrara `codigo - patente` y permitira buscar por ambos campos.
+
+### 4. Pagina `Remitos.tsx`
+
+- Actualizar imports para incluir `useMaquinarias`
+- Actualizar el formulario modal con los nuevos campos
+- Actualizar la tabla de vista normal con las nuevas columnas
+- Actualizar las tarjetas de estadisticas
+
+### 5. Estructura Visual del Grid
 
 ```text
-+----------------------------------------------------------+
-|  [LOGO]                        CALAMINA SUR S.A.         |
-|                                CUIT: 30-71457642-5       |
-|                                Direccion, Tel, Email     |
-+----------------------------------------------------------+
-|  REPORTE DE GASTOS POR MAQUINARIA                        |
-|  Fecha del reporte: 26/01/2026                           |
-+----------------------------------------------------------+
-|  DATOS DE LA MAQUINARIA                                  |
-|  Codigo: 501          Nombre: Camion Volvo               |
-|  Tipo: Camion         Marca: Volvo                       |
-|  Patente: ABC-123     Anio: 2020                         |
-|  Estado: Operativa    Horas acum.: 12,500                |
-+----------------------------------------------------------+
-|  Periodo: 01/01/2025 - 26/01/2026                        |
-+----------------------------------------------------------+
-|  RESUMEN DE GASTOS                                       |
-|  Combustible:    $1,234,567  (5,432 L)                   |
-|  Viajes:         45 viajes   (2,300 km - 1,500 m3)       |
-|  Mantenimiento:  $456,789    (12 servicios)              |
-|  -------------------------------------------------       |
-|  GASTO TOTAL:    $1,691,356                              |
-+----------------------------------------------------------+
-|  DETALLE DE GASTOS                                       |
-|  Fecha    | Tipo         | Descripcion      | Obra |Costo|
-|  26/01/26 | Combustible  | 150L @ $1500/L   | Ob1  |225k |
-|  25/01/26 | Mantenimiento| Cambio aceite    | -    |45k  |
-|  ...                                                      |
-+----------------------------------------------------------+
-|                    CALAMINA SUR S.A.                     |
-|              Generado el 26/01/2026 10:30                |
-+----------------------------------------------------------+
++-------------+-------------+--------+--------+--------+-------+-----+------+--------+--------+-----------+---------+
+|Rem. Tercero |Rem. Local   | Fecha  | Desde  | Hasta  |Viajes |Unid |Cant  |  Tipo  | Precio |Transporte |Patente  |
++-------------+-------------+--------+--------+--------+-------+-----+------+--------+--------+-----------+---------+
+| 00123       | REM-2026-01 |26/01/26| Cantera| Obra X |   3   | TN  |  45  | Tosca  | 150000 |Calamina   |ABC-123  |
+| 00124       | REM-2026-02 |26/01/26| Deposito| Obra Y|   1   | M3  |  18  |Hormigon| 85000  |Geo herm.  |XYZ-456  |
++-------------+-------------+--------+--------+--------+-------+-----+------+--------+--------+-----------+---------+
 ```
 
-## Cambios Tecnicos
+## Archivos a Modificar
 
-### 1. Nuevo archivo: `src/utils/generateGastosMaquinariaPDF.ts`
+1. **Migracion SQL** - Agregar nuevas columnas a tabla `remitos`
+2. `src/hooks/useRemitos.ts` - Actualizar interfaces y queries
+3. `src/components/remitos/RemitosDataGrid.tsx` - Redefinir columnas del grid
+4. `src/pages/Remitos.tsx` - Actualizar formularios, tabla y estadisticas
 
-Crear una utilidad dedicada para generar el PDF de gastos:
+## Consideraciones de Compatibilidad
 
-```typescript
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
-import logoCalamina from "@/assets/logo-calamina-sur.png";
-
-interface MaquinariaData {
-  codigo: string;
-  nombre: string;
-  tipo: string;
-  marca: string;
-  patente: string | null;
-  anio: number;
-  estado: string;
-  horas_acumuladas: number;
-}
-
-interface TotalesData {
-  totalCombustible: number;
-  totalLitros: number;
-  totalViajes: number;
-  totalKm: number;
-  totalVolumen: number;
-  totalMantenimientos: number;
-  costoMantenimientos: number;
-  gastoTotal: number;
-}
-
-interface GastoDetalle {
-  fecha: string;
-  tipo: string;
-  descripcion: string;
-  obra: string;
-  costo: number;
-}
-
-export async function generateGastosMaquinariaPDF(
-  maquinaria: MaquinariaData,
-  totales: TotalesData,
-  gastos: GastoDetalle[],
-  fechaDesde?: Date,
-  fechaHasta?: Date
-): Promise<void> {
-  // Implementacion similar a generateCotizacionPDF
-  // Con header, datos de maquinaria, resumen, y tabla de detalle
-}
-```
-
-### 2. Modificar: `src/components/maquinarias/GastosMaquinaria.tsx`
-
-Agregar boton de exportacion a PDF junto al de Excel:
-
-```typescript
-// Importar la nueva funcion
-import { generateGastosMaquinariaPDF } from "@/utils/generateGastosMaquinariaPDF";
-import { FileText } from "lucide-react"; // Icono para PDF
-
-// Nueva funcion de exportacion
-const exportarPDF = async () => {
-  const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
-  if (!maquinaria) {
-    toast.error("Selecciona una maquinaria primero");
-    return;
-  }
-
-  const gastosParaPDF = gastosUnificados.map((g) => ({
-    fecha: g.fecha,
-    tipo: tipoGastoConfig[g.tipo].label,
-    descripcion: g.descripcion,
-    obra: g.obra || "-",
-    costo: g.costo,
-  }));
-
-  await generateGastosMaquinariaPDF(
-    {
-      codigo: maquinaria.codigo,
-      nombre: maquinaria.nombre,
-      tipo: tiposConfig[maquinaria.tipo],
-      marca: maquinaria.marca,
-      patente: maquinaria.patente,
-      anio: maquinaria.anio,
-      estado: maquinaria.estado,
-      horas_acumuladas: maquinaria.horas_acumuladas,
-    },
-    totales,
-    gastosParaPDF,
-    fechaDesde,
-    fechaHasta
-  );
-  toast.success("PDF exportado correctamente");
-};
-
-// UI - Agregar dropdown con opciones de exportacion
-<DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="outline" className="gap-2">
-      <Download className="w-4 h-4" />
-      Exportar
-    </Button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent>
-    <DropdownMenuItem onClick={exportarExcel}>
-      <Download className="w-4 h-4 mr-2" />
-      Excel (.xlsx)
-    </DropdownMenuItem>
-    <DropdownMenuItem onClick={exportarPDF}>
-      <FileText className="w-4 h-4 mr-2" />
-      PDF
-    </DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
-```
-
-## Optimizaciones para Una Sola Hoja
-
-El PDF usara las mismas tecnicas que cotizaciones:
-- Margenes reducidos (10mm)
-- Fuentes compactas (header 10pt, body 6-7pt)
-- Tabla con cellPadding minimo (1)
-- Si hay muchos registros, la tabla se ajustara con fuente mas pequena
+- La columna `numero` existente se puede mapear a `remito_local` 
+- Los datos existentes se preservaran (campos nuevos seran null/default)
+- El campo `obra_id` se mantiene para los filtros de FilterBar
+- Los campos `firmado` y `recibido_por` se pueden mantener como opcionales o eliminar segun preferencia
 
 ## Dependencias
 
-No se requieren nuevas dependencias:
-- `jspdf` - Ya instalado
-- `jspdf-autotable` - Ya instalado
-- `date-fns` - Ya instalado
-
-## Archivos a Crear/Modificar
-
-1. **Crear**: `src/utils/generateGastosMaquinariaPDF.ts` - Funcion generadora del PDF
-2. **Modificar**: `src/components/maquinarias/GastosMaquinaria.tsx` - Agregar boton y dropdown de exportacion
+- `useMaquinarias` hook (ya existe)
+- `GridSelectCell` componente (ya existe)
+- `react-datasheet-grid` (ya instalado)
