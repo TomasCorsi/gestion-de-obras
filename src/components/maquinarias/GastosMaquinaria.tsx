@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,15 +12,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
+import { useMaquinarias, TipoMaquinaria } from "@/hooks/useMaquinarias";
 import { useCombustible } from "@/hooks/useCombustible";
 import { useViajes } from "@/hooks/useViajes";
 import { useMantenimientos } from "@/hooks/useMantenimientos";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 interface GastoUnificado {
   id: string;
@@ -31,6 +42,42 @@ interface GastoUnificado {
   obra?: string;
 }
 
+const tiposConfig: Record<TipoMaquinaria, string> = {
+  cargadora: "Cargadora",
+  compactador: "Compactador",
+  retroexcavadora: "Retroexcavadora",
+  minicargadora: "Minicargadora",
+  motoniveladora: "Motoniveladora",
+  topador: "Topador",
+  pala_retro: "Pala Retro",
+  batea: "Batea",
+  acoplado: "Acoplado",
+  camion: "Camión",
+  carreton: "Carretón",
+  cisterna: "Cisterna",
+  tanque_cisterna: "Tanque Cisterna",
+  tanque_regador_tractor: "Tanque Regador Tractor",
+  soplador: "Soplador",
+  zanjeadora: "Zanjeadora",
+  rastra: "Rastra",
+  tractor: "Tractor",
+  rastra_grosspal: "Rastra Grosspal",
+  auto: "Auto",
+  camioneta: "Camioneta",
+  grupo_electrogeno: "Grupo Electrógeno",
+};
+
+const chartConfig = {
+  combustible: {
+    label: "Combustible",
+    color: "hsl(38, 92%, 50%)", // amber
+  },
+  mantenimiento: {
+    label: "Mantenimiento",
+    color: "hsl(270, 70%, 60%)", // purple
+  },
+};
+
 export function GastosMaquinaria() {
   const { maquinarias } = useMaquinarias();
   const { cargas } = useCombustible();
@@ -40,16 +87,30 @@ export function GastosMaquinaria() {
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
+  const [tipoFilter, setTipoFilter] = useState<string>("todos");
+
+  // Filtrar maquinarias por tipo
+  const maquinariasFiltradas = useMemo(() => {
+    if (tipoFilter === "todos") return maquinarias;
+    return maquinarias.filter((m) => m.tipo === tipoFilter);
+  }, [maquinarias, tipoFilter]);
 
   // Opciones para el combobox de maquinarias
   const maquinariaOptions = useMemo(() => {
-    return maquinarias
+    return maquinariasFiltradas
       .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
       .map((m) => ({
         value: m.id,
         label: `${m.codigo || "S/C"} - ${m.nombre || "Sin nombre"}`,
       }));
-  }, [maquinarias]);
+  }, [maquinariasFiltradas]);
+
+  // Reset maquinaria selection when type filter changes and current selection is not in filtered list
+  useMemo(() => {
+    if (selectedMaquinariaId && !maquinariasFiltradas.find(m => m.id === selectedMaquinariaId)) {
+      setSelectedMaquinariaId("");
+    }
+  }, [maquinariasFiltradas, selectedMaquinariaId]);
 
   // Filtrar datos por maquinaria y fechas
   const datosFiltrados = useMemo(() => {
@@ -114,6 +175,34 @@ export function GastosMaquinaria() {
     };
   }, [datosFiltrados]);
 
+  // Datos para el gráfico mensual
+  const datosGraficoMensual = useMemo(() => {
+    const mesesMap = new Map<string, { combustible: number; mantenimiento: number }>();
+
+    datosFiltrados.combustible.forEach((c) => {
+      if (!c.fecha) return;
+      const mes = format(new Date(c.fecha), "yyyy-MM");
+      const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
+      actual.combustible += c.costo_total || 0;
+      mesesMap.set(mes, actual);
+    });
+
+    datosFiltrados.mantenimientos.forEach((m) => {
+      const mes = format(new Date(m.fecha), "yyyy-MM");
+      const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
+      actual.mantenimiento += m.costo_total || 0;
+      mesesMap.set(mes, actual);
+    });
+
+    return Array.from(mesesMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([mes, data]) => ({
+        mes: format(parseISO(mes + "-01"), "MMM yyyy", { locale: es }),
+        combustible: data.combustible,
+        mantenimiento: data.mantenimiento,
+      }));
+  }, [datosFiltrados]);
+
   // Unificar gastos en una tabla
   const gastosUnificados = useMemo(() => {
     const gastos: GastoUnificado[] = [];
@@ -154,7 +243,7 @@ export function GastosMaquinaria() {
     return gastos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
   }, [datosFiltrados]);
 
-  const tipoConfig = {
+  const tipoGastoConfig = {
     combustible: { label: "Combustible", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
     viaje: { label: "Viaje", className: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
     mantenimiento: { label: "Mantenimiento", className: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
@@ -165,19 +254,91 @@ export function GastosMaquinaria() {
     setFechaHasta(undefined);
   };
 
+  const exportarExcel = () => {
+    const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
+    if (!maquinaria) {
+      toast.error("Selecciona una maquinaria primero");
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+
+    // Hoja resumen
+    const resumenData = [
+      ["Gastos por Maquinaria"],
+      [""],
+      ["Maquinaria:", maquinaria?.nombre || ""],
+      ["Código:", maquinaria?.codigo || ""],
+      ["Tipo:", tiposConfig[maquinaria.tipo] || maquinaria.tipo],
+      [
+        "Período:",
+        `${fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio"} - ${fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual"}`,
+      ],
+      [""],
+      ["Combustible", `$${totales.totalCombustible.toLocaleString()}`, `${totales.totalLitros.toLocaleString()} L`],
+      ["Viajes", `${totales.totalViajes}`, `${totales.totalKm.toLocaleString()} km`],
+      ["Mantenimientos", `$${totales.costoMantenimientos.toLocaleString()}`, `${totales.totalMantenimientos} servicios`],
+      [""],
+      ["GASTO TOTAL", `$${totales.gastoTotal.toLocaleString()}`],
+    ];
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+    XLSX.utils.book_append_sheet(workbook, wsResumen, "Resumen");
+
+    // Hoja detalle
+    const detalleData = [
+      ["Fecha", "Tipo", "Descripción", "Obra", "Costo"],
+      ...gastosUnificados.map((g) => [
+        g.fecha ? format(new Date(g.fecha), "dd/MM/yyyy") : "",
+        tipoGastoConfig[g.tipo].label,
+        g.descripcion,
+        g.obra || "-",
+        g.costo,
+      ]),
+    ];
+    const wsDetalle = XLSX.utils.aoa_to_sheet(detalleData);
+    XLSX.utils.book_append_sheet(workbook, wsDetalle, "Detalle");
+
+    const fileName = `Gastos_${maquinaria?.codigo || "Maquinaria"}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast.success("Excel exportado correctamente");
+  };
+
   return (
     <div className="space-y-6">
       {/* Filtros */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="flex-1 max-w-md">
-          <Combobox
-            options={maquinariaOptions}
-            value={selectedMaquinariaId}
-            onValueChange={setSelectedMaquinariaId}
-            placeholder="Seleccionar maquinaria..."
-            searchPlaceholder="Buscar por código o nombre..."
-            emptyText="No se encontraron maquinarias"
-          />
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="w-full md:w-48">
+            <Select value={tipoFilter} onValueChange={setTipoFilter}>
+              <SelectTrigger className="bg-background">
+                <SelectValue placeholder="Tipo de maquinaria" />
+              </SelectTrigger>
+              <SelectContent className="bg-background z-50">
+                <SelectItem value="todos">Todos los tipos</SelectItem>
+                {Object.entries(tiposConfig).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1 max-w-md">
+            <Combobox
+              options={maquinariaOptions}
+              value={selectedMaquinariaId}
+              onValueChange={setSelectedMaquinariaId}
+              placeholder="Seleccionar maquinaria..."
+              searchPlaceholder="Buscar por código o nombre..."
+              emptyText="No se encontraron maquinarias"
+            />
+          </div>
+          {selectedMaquinariaId && (
+            <Button onClick={exportarExcel} variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar Excel
+            </Button>
+          )}
         </div>
         <div className="flex gap-2">
           <Popover>
@@ -282,6 +443,56 @@ export function GastosMaquinaria() {
             </Card>
           </div>
 
+          {/* Gráfico de evolución mensual */}
+          {datosGraficoMensual.length > 0 && (
+            <Card className="card-industrial">
+              <CardHeader>
+                <CardTitle className="text-lg">Evolución de Gastos Mensuales</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                  <BarChart data={datosGraficoMensual}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis 
+                      dataKey="mes" 
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      tickLine={{ stroke: 'hsl(var(--border))' }}
+                    />
+                    <YAxis 
+                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
+                      tickLine={{ stroke: 'hsl(var(--border))' }}
+                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                    />
+                    <ChartTooltip 
+                      content={
+                        <ChartTooltipContent 
+                          formatter={(value, name) => (
+                            <span>${Number(value).toLocaleString()}</span>
+                          )}
+                        />
+                      } 
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="combustible" 
+                      name="Combustible" 
+                      stackId="a" 
+                      fill="hsl(38, 92%, 50%)" 
+                      radius={[0, 0, 0, 0]}
+                    />
+                    <Bar 
+                      dataKey="mantenimiento" 
+                      name="Mantenimiento" 
+                      stackId="a" 
+                      fill="hsl(270, 70%, 60%)" 
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Total general */}
           <Card className="card-industrial bg-primary/5 border-primary/20">
             <CardContent className="py-4">
@@ -325,8 +536,8 @@ export function GastosMaquinaria() {
                           {gasto.fecha ? format(new Date(gasto.fecha), "dd/MM/yyyy") : "-"}
                         </TableCell>
                         <TableCell>
-                          <Badge className={cn("status-badge", tipoConfig[gasto.tipo].className)}>
-                            {tipoConfig[gasto.tipo].label}
+                          <Badge className={cn("status-badge", tipoGastoConfig[gasto.tipo].className)}>
+                            {tipoGastoConfig[gasto.tipo].label}
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{gasto.descripcion}</TableCell>
