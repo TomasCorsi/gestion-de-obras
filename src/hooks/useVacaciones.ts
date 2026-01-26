@@ -21,6 +21,7 @@ export interface VacacionDB {
   personal?: {
     nombre: string | null;
     apellido: string | null;
+    legajo: string | null;
   };
 }
 
@@ -87,7 +88,8 @@ export function useVacaciones() {
         *,
         personal:personal_id (
           nombre,
-          apellido
+          apellido,
+          legajo
         )
       `)
       .order("created_at", { ascending: false });
