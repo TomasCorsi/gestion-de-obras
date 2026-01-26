@@ -94,8 +94,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set up auth state listener for subsequent changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (!isMounted) return;
+        
+        // Log silencioso para debugging
+        if (event === 'TOKEN_REFRESHED') {
+          console.debug('[Auth] Token refreshed silently');
+        }
+        
+        // Si se cierra sesión inesperadamente, intentar recuperar
+        if (event === 'SIGNED_OUT' && session === null) {
+          console.debug('[Auth] Unexpected sign out, attempting recovery...');
+          try {
+            const { data } = await supabase.auth.getSession();
+            if (data.session && isMounted) {
+              console.debug('[Auth] Session recovered successfully');
+              setSession(data.session);
+              setUser(data.session.user);
+              fetchUserData(data.session.user.id);
+              return;
+            }
+          } catch (e) {
+            console.warn('[Auth] Session recovery failed:', e);
+          }
+        }
         
         setSession(session);
         setUser(session?.user ?? null);

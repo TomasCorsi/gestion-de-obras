@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 import { UpdatePrompt } from "@/components/pwa/UpdatePrompt";
 
 // Eagerly loaded pages (critical path)
@@ -50,6 +51,7 @@ const App = () => (
       <UpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
+          <SessionKeepAlive />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
