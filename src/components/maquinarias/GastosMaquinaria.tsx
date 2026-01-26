@@ -102,14 +102,26 @@ export function GastosMaquinaria() {
     return maquinarias.filter((m) => m.tipo === tipoFilter);
   }, [maquinarias, tipoFilter]);
 
-  // Opciones para el combobox de maquinarias
+  // Opciones para el combobox de maquinarias (búsqueda por código, tipo, patente)
   const maquinariaOptions = useMemo(() => {
     return maquinariasFiltradas
       .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
-      .map((m) => ({
-        value: m.id,
-        label: `${m.codigo || "S/C"} - ${m.nombre || "Sin nombre"}`,
-      }));
+      .map((m) => {
+        const codigo = m.codigo || "S/C";
+        const tipo = tiposConfig[m.tipo] || m.tipo;
+        const patente = m.patente || "";
+        // Label visible: código - tipo - patente (si tiene)
+        const label = patente 
+          ? `${codigo} - ${tipo} - ${patente}`
+          : `${codigo} - ${tipo}`;
+        // searchValue incluye todos los campos para búsqueda
+        const searchValue = `${codigo} ${tipo} ${patente} ${m.nombre || ""} ${m.marca || ""}`.toLowerCase();
+        return {
+          value: m.id,
+          label,
+          searchValue,
+        };
+      });
   }, [maquinariasFiltradas]);
 
   // Reset maquinaria selection when type filter changes and current selection is not in filtered list
