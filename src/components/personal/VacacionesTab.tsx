@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -103,6 +104,16 @@ export function VacacionesTab() {
   });
 
   const personalActivo = personal.filter((p) => p.activo);
+
+  // Opciones para el combobox con búsqueda por legajo y nombre
+  const personalOptions = useMemo(() => {
+    return personalActivo
+      .map((p) => ({
+        value: p.id,
+        label: `${p.legajo ? `${p.legajo} - ` : ""}${p.apellido || ""}, ${p.nombre || ""}`.trim(),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [personalActivo]);
 
   const filteredVacaciones = vacaciones.filter((v) => {
     const nombreEmpleado = `${v.personal?.nombre || ""} ${v.personal?.apellido || ""}`.toLowerCase();
@@ -433,21 +444,14 @@ export function VacacionesTab() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="personal_id">Empleado *</Label>
-            <Select
+            <Combobox
+              options={personalOptions}
               value={formData.personal_id}
               onValueChange={(value) => setFormData({ ...formData, personal_id: value })}
-            >
-              <SelectTrigger className="bg-muted border-border">
-                <SelectValue placeholder="Seleccionar empleado" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                {personalActivo.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.nombre} {p.apellido}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              placeholder="Seleccionar empleado"
+              searchPlaceholder="Buscar por legajo o nombre..."
+              emptyText="No se encontró el empleado"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
