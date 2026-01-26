@@ -151,10 +151,7 @@
   }
 
   html {
-    /* Default to dark, but allow override via class */
-  }
-
-  html.dark {
+    @apply dark;
     color-scheme: dark;
   }
 
