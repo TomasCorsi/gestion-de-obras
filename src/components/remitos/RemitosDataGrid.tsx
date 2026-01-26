@@ -13,6 +13,8 @@ import { toast } from "sonner";
 import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
+import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
+import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 
 interface GridRow {
   id?: string;
@@ -39,6 +41,8 @@ interface RemitosDataGridProps {
   }) => Promise<void>;
   generateNumero: () => string;
 }
+
+const STORAGE_KEY = "remitos-grid-draft";
 
 export function RemitosDataGrid({
   remitos,
@@ -97,6 +101,22 @@ export function RemitosDataGrid({
   const hasChanges = useMemo(() => {
     return data.some((row) => row._isNew || row._isModified || row._isDeleted);
   }, [data]);
+
+  // Draft persistence
+  const {
+    showRestorePrompt,
+    draftTimestamp,
+    restoreDraft,
+    discardDraft,
+    clearDraft,
+  } = useGridDraftPersistence({
+    storageKey: STORAGE_KEY,
+    data,
+    setData,
+    hasChanges,
+    isNewRow: (row) => !!row._isNew,
+    isModifiedRow: (row) => !!row._isModified,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
@@ -188,7 +208,10 @@ export function RemitosDataGrid({
     ]);
   }, [generateNumero]);
 
-  const handleReset = useCallback(() => setData(initialData), [initialData]);
+  const handleReset = useCallback(() => {
+    setData(initialData);
+    clearDraft();
+  }, [initialData, clearDraft]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -227,13 +250,14 @@ export function RemitosDataGrid({
         .map((row) => row.id!);
 
       await onSave({ created, updated, deleted });
+      clearDraft();
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Error al guardar");
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave]);
+  }, [data, onSave, clearDraft]);
 
   const createRow = useCallback(
     (): GridRow => ({
@@ -254,6 +278,13 @@ export function RemitosDataGrid({
 
   return (
     <div className="space-y-4">
+      {showRestorePrompt && (
+        <DraftRestorePrompt
+          timestamp={draftTimestamp}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">

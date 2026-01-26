@@ -13,6 +13,8 @@ import { CargaCombustibleForm, CargaCombustibleWithRelations } from "@/hooks/use
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
+import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
+import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 
 interface GridRow {
   id?: string;
@@ -42,6 +44,8 @@ interface CombustibleDataGridProps {
     deleted: string[];
   }) => Promise<void>;
 }
+
+const STORAGE_KEY = "combustible-grid-draft";
 
 export function CombustibleDataGrid({
   cargas,
@@ -123,6 +127,22 @@ export function CombustibleDataGrid({
   const hasChanges = useMemo(() => {
     return data.some((row) => row._isNew || row._isModified || row._isDeleted);
   }, [data]);
+
+  // Draft persistence
+  const {
+    showRestorePrompt,
+    draftTimestamp,
+    restoreDraft,
+    discardDraft,
+    clearDraft,
+  } = useGridDraftPersistence({
+    storageKey: STORAGE_KEY,
+    data,
+    setData,
+    hasChanges,
+    isNewRow: (row) => !!row._isNew,
+    isModifiedRow: (row) => !!row._isModified,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
@@ -253,7 +273,10 @@ export function CombustibleDataGrid({
     setData((prev) => [...prev, createRow()]);
   }, [createRow]);
 
-  const handleReset = useCallback(() => setData(initialData), [initialData]);
+  const handleReset = useCallback(() => {
+    setData(initialData);
+    clearDraft();
+  }, [initialData, clearDraft]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -296,16 +319,24 @@ export function CombustibleDataGrid({
         .map((row) => row.id!);
       
       await onSave({ created, updated, deleted });
+      clearDraft();
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Error al guardar");
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave]);
+  }, [data, onSave, clearDraft]);
 
   return (
     <div className="space-y-4">
+      {showRestorePrompt && (
+        <DraftRestorePrompt
+          timestamp={draftTimestamp}
+          onRestore={restoreDraft}
+          onDiscard={discardDraft}
+        />
+      )}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">
