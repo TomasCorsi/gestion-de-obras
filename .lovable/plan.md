@@ -1,187 +1,110 @@
 
-# Plan: Renovación de Sesión Silenciosa y Automática
+# Plan: Sección de Gastos por Maquinaria
 
 ## Objetivo
-Hacer que la sesión se mantenga activa indefinidamente mientras el usuario esté usando la aplicación, sin mostrar ningún banner, advertencia ni interrupción. La renovación debe ocurrir 100% en segundo plano, como cualquier aplicación moderna.
+Agregar una nueva sección en la página de Maquinarias que muestre un desglose de gastos asociados a cada máquina, incluyendo combustible, viajes realizados y mantenimientos.
 
-## Estrategia
+## Analisis de Datos
 
-El problema actual es que aunque `autoRefreshToken: true` está configurado, cuando falla silenciosamente no hay recuperación. Implementaremos un sistema de renovación proactiva invisible.
+Las relaciones existentes en la base de datos son:
+- **Combustible** (`cargas_combustible`): tiene `maquinaria_id` que vincula directamente a la máquina
+- **Viajes** (`viajes`): tiene `camion_id` que referencia a maquinarias (camiones)
+- **Mantenimientos** (`mantenimientos`): tiene `maquinaria_id` con costos de repuestos y mano de obra
+- **Remitos**: no tiene relación directa con maquinarias (solo con viajes y obras)
 
-## Cambios Técnicos
+## Diseño de la Solucion
 
-### 1. Hook de Renovación Silenciosa en Segundo Plano
+### 1. Crear un nuevo componente `GastosMaquinaria.tsx`
 
-**Archivo nuevo: `src/hooks/useSessionKeepAlive.ts`**
+Este componente mostrara:
+- Selector de maquinaria (dropdown o combobox)
+- Filtro por rango de fechas
+- Tarjetas de resumen con totales por categoria
+- Tabla detallada con todos los gastos
 
-Este hook se ejecutará silenciosamente y:
-- Renovará la sesión automáticamente cada 45 minutos (antes de que expire el token de 1 hora)
-- Detectará cualquier fallo de renovación y reintentará automáticamente
-- Detectará actividad del usuario (clicks, teclas, scroll) para saber si está activo
-- Solo renovará si el usuario está activo (evita renovaciones innecesarias)
+### 2. Estructura de la nueva seccion
 
 ```text
-Lógica del hook:
-┌──────────────────────────────────────┐
-│  Usuario usa la app normalmente      │
-│  (sin saber que existe este hook)    │
-└──────────────┬───────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────┐
-│  Cada 45 min: ¿Usuario activo?       │
-│  (detecta clicks/teclas recientes)   │
-└──────────────┬───────────────────────┘
-               │
-      ┌────────┴────────┐
-      │ Sí              │ No
-      ▼                 ▼
-┌─────────────┐   ┌─────────────────┐
-│ Renovar     │   │ No hacer nada   │
-│ sesión      │   │ (ahorra recursos│
-└─────────────┘   └─────────────────┘
++--------------------------------------------------+
+|  GASTOS POR MAQUINARIA                           |
++--------------------------------------------------+
+|  [Seleccionar Maquinaria v]  [Fecha desde] [hasta]|
++--------------------------------------------------+
+|  +------------+  +------------+  +------------+   |
+|  | COMBUSTIBLE|  | VIAJES     |  | MANTENIM.  |   |
+|  | $123,456   |  | 45 viajes  |  | $56,789    |   |
+|  | 1,200 L    |  | 2,300 km   |  | 12 serv.   |   |
+|  +------------+  +------------+  +------------+   |
++--------------------------------------------------+
+|  Tabla detallada de gastos                        |
+|  Fecha | Tipo | Descripcion | Costo | Obra       |
++--------------------------------------------------+
 ```
 
-### 2. Manejo Mejorado de Eventos de Auth
+### 3. Integracion en la pagina Maquinarias
 
-**Archivo modificado: `src/hooks/useAuth.tsx`**
+Agregar tabs a la pagina de Maquinarias:
+- **Inventario** (tab actual con las tarjetas de maquinarias)
+- **Gastos** (nueva tab con el componente de gastos)
 
-Agregar manejo de eventos silencioso:
-- `TOKEN_REFRESHED`: Log interno (sin mostrar nada al usuario)
-- `SIGNED_OUT` inesperado: Intentar recuperar sesión automáticamente antes de redirigir
-- Agregar función `refreshSession()` para uso interno
+## Cambios Tecnicos
 
-### 3. Integración en la App
+### Archivo nuevo: `src/components/maquinarias/GastosMaquinaria.tsx`
 
-**Archivo modificado: `src/App.tsx`**
+Componente que:
+- Utiliza los hooks existentes: `useMaquinarias`, `useCombustible`, `useViajes`, `useMantenimientos`
+- Filtra datos por la maquinaria seleccionada
+- Calcula totales de gastos
+- Muestra tabla combinada ordenada por fecha
 
-- Agregar el hook `useSessionKeepAlive` dentro del `AuthProvider`
-- No se agrega ningún componente visual
+### Archivo modificado: `src/pages/Maquinarias.tsx`
 
-## Código del Hook Principal
+Cambios:
+- Importar componentes de Tabs de la UI
+- Importar el nuevo componente `GastosMaquinaria`
+- Envolver el contenido actual en un TabsContent "inventario"
+- Agregar nuevo TabsContent "gastos" con el componente
 
-```typescript
-// src/hooks/useSessionKeepAlive.ts
-import { useEffect, useRef, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+## Datos a Mostrar
 
-const REFRESH_INTERVAL = 45 * 60 * 1000; // 45 minutos
-const ACTIVITY_TIMEOUT = 5 * 60 * 1000;  // 5 minutos sin actividad = inactivo
+### Tarjeta Combustible
+- Total litros cargados
+- Costo total de combustible
+- Promedio de consumo (si hay datos de horas)
 
-export function useSessionKeepAlive() {
-  const lastActivity = useRef(Date.now());
-  const refreshIntervalRef = useRef<NodeJS.Timeout>();
+### Tarjeta Viajes
+- Cantidad de viajes realizados
+- Kilometros totales recorridos
+- Volumen total transportado
 
-  // Registrar actividad del usuario silenciosamente
-  const updateActivity = useCallback(() => {
-    lastActivity.current = Date.now();
-  }, []);
+### Tarjeta Mantenimientos
+- Cantidad de servicios realizados
+- Costo total (repuestos + mano de obra)
+- Ultimo mantenimiento
 
-  // Renovar sesión silenciosamente
-  const silentRefresh = useCallback(async () => {
-    const isActive = Date.now() - lastActivity.current < ACTIVITY_TIMEOUT;
-    
-    if (!isActive) return; // Usuario inactivo, no renovar
+### Tabla Detallada
+Columnas:
+- Fecha
+- Tipo (Combustible / Viaje / Mantenimiento)
+- Descripcion
+- Costo
+- Obra asociada
 
-    try {
-      const { error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.warn('[Session] Refresh failed, retrying...', error);
-        // Reintentar una vez
-        setTimeout(async () => {
-          await supabase.auth.refreshSession();
-        }, 5000);
-      }
-    } catch (e) {
-      console.warn('[Session] Silent refresh error:', e);
-    }
-  }, []);
+## Flujo de Usuario
 
-  useEffect(() => {
-    // Escuchar actividad del usuario
-    const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
-    events.forEach(event => 
-      window.addEventListener(event, updateActivity, { passive: true })
-    );
+1. El usuario navega a Maquinarias
+2. Ve las tabs "Inventario" y "Gastos"
+3. Hace click en "Gastos"
+4. Selecciona una maquinaria del dropdown
+5. Opcionalmente filtra por fechas
+6. Ve el resumen de gastos y la tabla detallada
+7. Puede exportar o analizar los costos operativos de esa maquina
 
-    // Renovar periódicamente
-    refreshIntervalRef.current = setInterval(silentRefresh, REFRESH_INTERVAL);
+## Dependencias
 
-    // Renovar también cuando la pestaña vuelve a estar visible
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        updateActivity();
-        silentRefresh();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-
-    return () => {
-      events.forEach(event => 
-        window.removeEventListener(event, updateActivity)
-      );
-      document.removeEventListener('visibilitychange', handleVisibility);
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-    };
-  }, [updateActivity, silentRefresh]);
-}
-```
-
-## Modificaciones a useAuth.tsx
-
-Agregar manejo de eventos y recuperación automática:
-
-```typescript
-// Dentro del onAuthStateChange
-(event, session) => {
-  // Log silencioso para debugging (solo en consola de desarrollo)
-  if (event === 'TOKEN_REFRESHED') {
-    console.debug('[Auth] Token refreshed silently');
-  }
-  
-  // Si se cierra sesión inesperadamente, intentar recuperar
-  if (event === 'SIGNED_OUT' && session === null) {
-    // Verificar si hay sesión guardada que podamos recuperar
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        // Había sesión, restaurarla
-        setSession(data.session);
-        setUser(data.session.user);
-      }
-    });
-  }
-  
-  // ... resto del código existente
-}
-```
-
-## Componente de Integración
-
-**Archivo nuevo: `src/components/auth/SessionKeepAlive.tsx`**
-
-```typescript
-import { useSessionKeepAlive } from '@/hooks/useSessionKeepAlive';
-import { useAuth } from '@/hooks/useAuth';
-
-export function SessionKeepAlive() {
-  const { user } = useAuth();
-  
-  // Solo activar si hay usuario logueado
-  useSessionKeepAlive(!!user);
-  
-  return null; // No renderiza nada
-}
-```
-
-## Resultado Final
-
-| Antes | Después |
-|-------|---------|
-| Sesión expira y cierra sin aviso | Sesión se renueva automáticamente cada 45 min |
-| Sin manejo de errores de refresh | Reintento automático si falla la renovación |
-| Sin detección de actividad | Solo renueva si el usuario está activo |
-| Sin recuperación al volver a la pestaña | Renueva inmediatamente al volver a la pestaña |
-
-El usuario nunca verá ningún mensaje ni interrupción. La aplicación funcionará exactamente como cualquier otra aplicación moderna donde simplemente "no te cierra la sesión".
+Se reutilizan componentes y hooks existentes:
+- `useMaquinarias` - lista de maquinarias
+- `useCombustible` - cargas de combustible
+- `useViajes` - viajes realizados
+- `useMantenimientos` - registros de mantenimiento
+- Componentes UI: Tabs, Card, Table, Select, Badge
