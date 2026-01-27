@@ -4,10 +4,10 @@ import {
   textColumn,
   floatColumn,
   keyColumn,
+  isoDateColumn,
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { dateColumn } from "@/components/shared/dateColumn";
 import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { CargaCombustibleForm, CargaCombustibleWithRelations } from "@/hooks/useCombustible";
@@ -26,7 +26,7 @@ interface Operation {
 
 interface GridRow {
   id?: string;
-  fecha: string;
+  fecha: string | null;
   obra_id: string;
   maquinaria_id: string;
   operador: string;
@@ -174,7 +174,7 @@ export function CombustibleDataGrid({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
     () => [
-      { ...keyColumn("fecha", dateColumn), title: "Fecha", minWidth: 110 },
+      { ...keyColumn("fecha", isoDateColumn), title: "Fecha", minWidth: 140 },
       { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
       {
         ...keyColumn("obra_id", {
@@ -335,7 +335,7 @@ export function CombustibleDataGrid({
     forceUpdate(n => n + 1);
     return {
       id: tempId,
-      fecha: "",
+      fecha: null,
       obra_id: "",
       maquinaria_id: "",
       operador: "",
