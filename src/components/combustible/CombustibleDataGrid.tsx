@@ -7,6 +7,7 @@ import {
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
+import { dateColumn } from "@/components/shared/dateColumn";
 import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { CargaCombustibleForm, CargaCombustibleWithRelations } from "@/hooks/useCombustible";
@@ -152,7 +153,7 @@ export function CombustibleDataGrid({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
     () => [
-      { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 110 },
+      { ...keyColumn("fecha", dateColumn), title: "Fecha", minWidth: 110 },
       { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
       {
         ...keyColumn("obra_id", {
