@@ -19,6 +19,7 @@ import {
   Truck,
   DollarSign,
   Upload,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -272,6 +273,81 @@ export default function Remitos() {
     );
   }
 
+  // Full screen grid mode
+  if (viewMode === "grid") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        {/* Compact header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-foreground">Remitos</h1>
+            <ToggleGroup
+              type="single"
+              value={viewMode}
+              onValueChange={(value) => value && setViewMode(value as "table" | "grid")}
+              className="border border-border rounded-md"
+            >
+              <ToggleGroupItem value="table" aria-label="Vista tabla" className="px-3">
+                <TableIcon className="w-4 h-4 mr-2" />
+                Tabla
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Vista grilla" className="px-3">
+                <Grid3X3 className="w-4 h-4 mr-2" />
+                Grilla
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewMode("table")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Full screen grid */}
+        <div className="flex-1 overflow-hidden p-4">
+          <RemitosDataGrid
+            remitos={filteredRemitos}
+            maquinarias={maquinarias}
+            obras={obras}
+            onSave={handleGridSave}
+            generateNumero={generateNumero}
+            fullScreen
+          />
+        </div>
+
+        {/* Import Dialog */}
+        <RemitosCSVImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImport={async (remitosToImport) => {
+            const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+            if (results.errors === 0) {
+              toast.success(`${results.created} remitos importados correctamente`);
+            } else {
+              toast.warning(`Importados con ${results.errors} errores`);
+            }
+          }}
+          maquinariasMap={maquinariasMap}
+          patentesMap={patentesMap}
+        />
+      </div>
+    );
+  }
+
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
       {/* Filter Bar */}
@@ -288,7 +364,6 @@ export default function Remitos() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
-            disabled={viewMode === "grid"}
           />
         </div>
         <ToggleGroup
@@ -361,17 +436,8 @@ export default function Remitos() {
         </div>
       </div>
 
-      {/* Content based on view mode */}
-      {viewMode === "grid" ? (
-        <RemitosDataGrid
-          remitos={filteredRemitos}
-          maquinarias={maquinarias}
-          obras={obras}
-          onSave={handleGridSave}
-          generateNumero={generateNumero}
-        />
-      ) : (
-        <div className="card-industrial overflow-hidden overflow-x-auto">
+      {/* Content - Table view (grid is handled above in fullscreen mode) */}
+      <div className="card-industrial overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="border-border hover:bg-transparent">
@@ -448,7 +514,6 @@ export default function Remitos() {
             </TableBody>
           </Table>
         </div>
-      )}
 
       {/* Form Dialog */}
       <FormDialog

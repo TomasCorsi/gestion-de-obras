@@ -46,6 +46,7 @@ interface RemitosDataGridProps {
     deleted: string[];
   }) => Promise<void>;
   generateNumero: () => string;
+  fullScreen?: boolean;
 }
 
 const STORAGE_KEY = "remitos-grid-draft";
@@ -93,6 +94,7 @@ export function RemitosDataGrid({
   obras,
   onSave,
   generateNumero,
+  fullScreen = false,
 }: RemitosDataGridProps) {
   // Obras options with searchable values
   const obrasOptions = useMemo(() => {
@@ -447,8 +449,11 @@ export function RemitosDataGrid({
     []
   );
 
+  // Calculate dynamic height for fullscreen mode
+  const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
+
   return (
-    <div className="space-y-4">
+    <div className={fullScreen ? "flex flex-col h-full" : "space-y-4"}>
       {showRestorePrompt && (
         <DraftRestorePrompt
           timestamp={draftTimestamp}
@@ -456,7 +461,7 @@ export function RemitosDataGrid({
           onDiscard={discardDraft}
         />
       )}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">
             <Plus className="w-4 h-4 mr-2" />
@@ -474,17 +479,17 @@ export function RemitosDataGrid({
           Guardar Cambios
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-muted-foreground mb-2">
         💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. Escribí para buscar en los selectores.
       </p>
-      <div className="remitos-grid-container rounded-lg overflow-hidden border border-border">
+      <div className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}>
         <DataSheetGrid
           key={`remitos-grid-${obrasOptions.length}-${maquinariaOptions.length}`}
           value={data}
           onChange={handleChange}
           columns={columns}
           createRow={createRow}
-          height={500}
+          height={gridHeight}
           rowClassName={({ rowData }) =>
             rowData._isDeleted
               ? "row-deleted"
