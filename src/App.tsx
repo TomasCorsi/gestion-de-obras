@@ -36,12 +36,10 @@ const Configuracion = lazy(() => import("./pages/Configuracion"));
 
 const queryClient = new QueryClient();
 
+import { LoadingScreen } from "@/components/shared/LoadingScreen";
+
 // Loading fallback component
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
-    <div className="animate-pulse text-muted-foreground">Cargando...</div>
-  </div>
-);
+const PageLoader = () => <LoadingScreen />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
