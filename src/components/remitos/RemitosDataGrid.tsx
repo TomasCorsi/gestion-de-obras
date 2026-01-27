@@ -281,32 +281,58 @@ export function RemitosDataGrid({
       },
       {
         ...keyColumn("maquinaria_id", {
-          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
-            <GridSelectCell
-              value={rowData}
-              onChange={setRowData}
-              options={maquinariaOptions}
-              placeholder="Patente..."
-              focus={focus}
-            />
-          ),
-          deleteValue: () => "",
-          copyValue: ({ rowData }: { rowData: string }) => {
-            const maq = maquinarias.find((m) => m.id === rowData);
-            return maq?.patente || "";
-          },
-          pasteValue: ({ value }: { value: string }) => {
-            const normalized = value.replace(/[-\s]/g, "").toLowerCase();
-            const found = maquinarias.find(
-              (m) =>
-                m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
-                m.codigo?.toLowerCase() === value.toLowerCase()
+          component: ({ rowData, setRowData, focus }: { rowData: GridRow; setRowData: (v: GridRow) => void; focus: boolean }) => {
+            const isCalaminaSur = rowData.tipo_transporte === "Calamina Sur";
+            
+            if (isCalaminaSur) {
+              return (
+                <GridSelectCell
+                  value={rowData.maquinaria_id}
+                  onChange={(v) => setRowData({ ...rowData, maquinaria_id: v })}
+                  options={maquinariaOptions}
+                  placeholder="Patente..."
+                  focus={focus}
+                />
+              );
+            }
+            
+            // Free text input for other transport types
+            return (
+              <input
+                type="text"
+                value={rowData.maquinaria_id || ""}
+                onChange={(e) => setRowData({ ...rowData, maquinaria_id: e.target.value })}
+                placeholder="Patente..."
+                autoFocus={focus}
+                className="w-full h-full px-2 py-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+              />
             );
-            return found?.id || "";
+          },
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: GridRow }) => {
+            if (rowData.tipo_transporte === "Calamina Sur") {
+              const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
+              return maq?.patente || "";
+            }
+            return rowData.maquinaria_id || "";
+          },
+          pasteValue: ({ value, rowData }: { value: string; rowData: GridRow }) => {
+            if (rowData.tipo_transporte === "Calamina Sur") {
+              const normalized = value.replace(/[-\s]/g, "").toLowerCase();
+              const found = maquinarias.find(
+                (m) =>
+                  m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
+                  m.codigo?.toLowerCase() === value.toLowerCase()
+              );
+              return found?.id || "";
+            }
+            return value;
           },
         }),
         title: "Patente",
         minWidth: 120,
+        cellClassName: ({ rowData }: { rowData: GridRow }) => 
+          rowData.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
       },
     ],
     [maquinariaOptions, maquinarias, obrasOptions]
