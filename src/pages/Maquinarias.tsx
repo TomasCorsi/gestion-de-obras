@@ -117,7 +117,8 @@ export default function Maquinarias() {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
       (m.nombre?.toLowerCase() || "").includes(searchLower) ||
-      (m.codigo?.toLowerCase() || "").includes(searchLower);
+      (m.codigo?.toLowerCase() || "").includes(searchLower) ||
+      (m.patente?.toLowerCase() || "").includes(searchLower);
     const matchesEstado = estadoFilter === "todos" || m.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
@@ -227,7 +228,7 @@ export default function Maquinarias() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o código..."
+                placeholder="Buscar por nombre, código o patente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-9 bg-card border-border"
