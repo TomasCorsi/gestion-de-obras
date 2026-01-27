@@ -1,124 +1,148 @@
 
-# Plan: Arreglar Visibilidad de Dropdowns en las Grillas
 
-## Problema Identificado
-El dropdown del `GridSelectCell` se renderiza como hijo del contenedor de la celda de la grilla. Esto causa que sea cortado por el `overflow: hidden` del contenedor `dsg-container` de react-datasheet-grid.
+# Plan: Lógica Condicional para Patente y Remover ESC
 
-Como se ve en la imagen, el menú de "Ceamse" aparece cortado porque el área visible de la grilla no tiene suficiente altura para mostrarlo completo.
+## Resumen
+Este plan implementa dos cambios:
+1. **Lógica condicional para la columna "Patente"**: Cuando el tipo de transporte sea "Calamina Sur", mostrar el selector de maquinarias. Para otros transportes, permitir entrada de texto libre.
+2. **Remover atajo ESC**: Eliminar el listener de teclado que sale del modo pantalla completa con ESC, ya que el usuario necesita ESC para salir de celdas (comportamiento tipo Excel).
 
-## Solución: Usar React Portal
+---
 
-El dropdown debe renderizarse **fuera** del contenedor de la grilla, directamente en el `document.body`, usando `ReactDOM.createPortal`. Esto permite que el dropdown "flote" sobre cualquier contenedor sin ser afectado por overflow.
+## Cambio 1: Columna Patente Condicional
 
-### Cambios Técnicos
+### Comportamiento Deseado
 
 ```text
-Archivo: src/components/shared/GridSelectCell.tsx
-
-1. Importar createPortal:
-   import { createPortal } from "react-dom";
-
-2. Calcular posición absoluta del dropdown:
-   - Usar useRef para obtener el contenedor
-   - Usar getBoundingClientRect() para obtener coordenadas de la celda
-   - Posicionar el dropdown en coordenadas fijas de la ventana
-
-3. Renderizar dropdown con portal:
-   - Envolver el dropdown en createPortal(..., document.body)
-   - Usar position: fixed en lugar de absolute
-   - Calcular left/top basado en la posición de la celda
+┌──────────────────────────────────────────────────────────────┐
+│ Si Transporte = "Calamina Sur"                               │
+│   → Patente: Selector de maquinarias (código - patente)      │
+│   → Valor almacenado: maquinaria_id (UUID)                   │
+├──────────────────────────────────────────────────────────────┤
+│ Si Transporte = Otro (Geo hermanos, Diaz Neiva, etc.)        │
+│   → Patente: Input de texto libre                            │
+│   → Valor almacenado: texto directo (ej: "ABC-123")          │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### Flujo de Posicionamiento
+### Implementación
+
+**Archivo:** `src/components/remitos/RemitosDataGrid.tsx`
+
+1. Modificar la columna `maquinaria_id` para que reciba el `rowData` completo en lugar de solo el valor de la celda
+2. Dentro del componente de la celda, verificar `rowData.tipo_transporte`:
+   - Si es `"Calamina Sur"` → usar `GridSelectCell` con opciones de maquinarias
+   - Si es otro valor → usar `textColumn` (input de texto libre)
+
+### Cambios en GridRow
+
+- El campo `maquinaria_id` almacenará:
+  - UUID de maquinaria si transporte = "Calamina Sur"
+  - Texto libre de patente si es otro transporte
+
+### Columna Patente Modificada
 
 ```text
-┌─────────────────────────────────────────┐
-│ Grilla (overflow: hidden)               │
-│  ┌───────────────────────┐              │
-│  │ Celda "Desde"         │ ← getBoundingClientRect()
-│  └───────────────────────┘              │
-│                                         │
-└─────────────────────────────────────────┘
+Pseudocódigo:
 
-┌─────────────────────────────────────────┐
-│ document.body                           │
-│                                         │
-│  ┌───────────────────────┐              │
-│  │ Dropdown (via portal) │ ← position: fixed
-│  │ • Ceamse             │   con top/left calculados
-│  │ • Obra A             │              
-│  │ • Obra B             │              
-│  └───────────────────────┘              │
-└─────────────────────────────────────────┘
+{
+  ...keyColumn("maquinaria_id", {
+    component: ({ rowData, setRowData, focus }) => {
+      // Verificar si es Calamina Sur
+      const isCalamina = rowData.tipo_transporte === "Calamina Sur";
+      
+      if (isCalamina) {
+        // Mostrar selector de maquinarias
+        return <GridSelectCell 
+          value={rowData.maquinaria_id}
+          onChange={(v) => setRowData({ ...rowData, maquinaria_id: v })}
+          options={maquinariaOptions}
+        />;
+      } else {
+        // Mostrar input de texto libre
+        return <input 
+          value={rowData.maquinaria_id}
+          onChange={(e) => setRowData({ ...rowData, maquinaria_id: e.target.value })}
+        />;
+      }
+    },
+    // ... rest of column config
+  }),
+}
 ```
 
-## Implementación Detallada
+### Consideraciones
 
-### 1. Nuevo estado para posición
+- Al cambiar de "Calamina Sur" a otro transporte, el valor de `maquinaria_id` se mantiene (puede ser limpiado si se desea)
+- Al cambiar de otro transporte a "Calamina Sur", el texto libre se pierde y debe seleccionar una maquinaria
 
+---
+
+## Cambio 2: Remover Atajo ESC
+
+### Archivos Afectados
+
+1. **`src/pages/Remitos.tsx`** - Líneas 266-276: Eliminar `handleEscapeKey` y el `useEffect` asociado
+2. **`src/pages/Gastos.tsx`** - Líneas 420-430: Eliminar `handleEscapeKey` y el `useEffect` asociado
+
+### Código a Eliminar
+
+En **Remitos.tsx**:
 ```text
-const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-```
-
-### 2. Calcular posición cuando se abre
-
-```text
-useEffect(() => {
-  if (isOpen && containerRef.current) {
-    const rect = containerRef.current.getBoundingClientRect();
-    setDropdownPosition({
-      top: rect.bottom + window.scrollY,
-      left: rect.left + window.scrollX,
-      width: Math.max(rect.width, 256) // Mínimo 256px (w-64)
-    });
+// Eliminar estas líneas (266-276):
+const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+  if (event.key === "Escape" && viewMode === "grid") {
+    setViewMode("table");
   }
-}, [isOpen]);
+}, [viewMode]);
+
+useEffect(() => {
+  document.addEventListener("keydown", handleEscapeKey);
+  return () => document.removeEventListener("keydown", handleEscapeKey);
+}, [handleEscapeKey]);
 ```
 
-### 3. Detectar si abrir hacia arriba o abajo
-
+En **Gastos.tsx**:
 ```text
-// Si no hay espacio abajo, abrir hacia arriba
-const spaceBelow = window.innerHeight - rect.bottom;
-const spaceAbove = rect.top;
-const dropdownHeight = 200; // altura aproximada
+// Eliminar estas líneas (420-430):
+const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+  if (event.key === "Escape" && viewModeComb === "grid" && activeTab === "combustible") {
+    setViewModeComb("table");
+  }
+}, [viewModeComb, activeTab]);
 
-const shouldOpenUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+useEffect(() => {
+  document.addEventListener("keydown", handleEscapeKey);
+  return () => document.removeEventListener("keydown", handleEscapeKey);
+}, [handleEscapeKey]);
 ```
 
-### 4. Renderizar con Portal
+### Resultado
 
-```text
-{isOpen && createPortal(
-  <div 
-    className="fixed z-[9999] w-64 bg-popover border border-border rounded-md shadow-lg"
-    style={{ 
-      top: dropdownPosition.top,
-      left: dropdownPosition.left,
-      minWidth: dropdownPosition.width
-    }}
-  >
-    {/* opciones */}
-  </div>,
-  document.body
-)}
-```
+- ESC funcionará normalmente dentro de las celdas del grid para cancelar edición (comportamiento Excel)
+- Para salir del modo pantalla completa, el usuario usa el botón X o el toggle de vista
+
+---
 
 ## Archivos a Modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/shared/GridSelectCell.tsx` | Implementar portal y posicionamiento dinámico |
+| `src/components/remitos/RemitosDataGrid.tsx` | Lógica condicional para columna Patente |
+| `src/pages/Remitos.tsx` | Eliminar listener ESC |
+| `src/pages/Gastos.tsx` | Eliminar listener ESC |
 
-## Beneficios
+---
 
-- El dropdown **siempre** será visible, sin importar la altura de la grilla
-- Funciona tanto en modo normal como en pantalla completa
-- El dropdown se posiciona inteligentemente (arriba o abajo según espacio)
-- Compatible con scroll de la página y de la grilla
+## Flujo de Usuario Final
 
-## Consideraciones Adicionales
+1. **En la grilla de Remitos:**
+   - Usuario selecciona "Calamina Sur" como transporte
+   - En la columna Patente, aparece un selector con las maquinarias disponibles (código - patente)
+   - Usuario selecciona "Geo hermanos" como transporte
+   - En la columna Patente, aparece un input donde puede escribir cualquier patente
 
-- El dropdown se cierra al hacer scroll en la grilla (comportamiento esperado)
-- El z-index 9999 asegura que esté sobre cualquier otro elemento
-- El ancho del dropdown se ajusta al ancho de la celda (mínimo 256px)
+2. **Tecla ESC:**
+   - Presionar ESC dentro de una celda cancela la edición (como en Excel)
+   - Para salir de pantalla completa, usar el botón X o cambiar a modo Tabla
+
