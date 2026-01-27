@@ -53,7 +53,7 @@ import {
   EstadoCotizacion 
 } from "@/hooks/useCotizaciones";
 import { useObras } from "@/hooks/useObras";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { CotizacionFormContent } from "@/components/cotizaciones/CotizacionFormContent";
 import { CotizacionTable } from "@/components/cotizaciones/CotizacionTable";
 import { generateCotizacionPDF } from "@/utils/generateCotizacionPDF";
@@ -386,11 +386,11 @@ export default function Cotizaciones() {
                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Creación: {cot.fecha_creacion}
+                    Creación: {formatDate(cot.fecha_creacion)}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    Vence: {cot.fecha_vencimiento}
+                    Vence: {formatDate(cot.fecha_vencimiento)}
                   </span>
                 </div>
               </CardContent>

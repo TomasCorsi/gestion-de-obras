@@ -44,7 +44,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useObras, ObraWithRelations, ObraForm, EstadoObra } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const estadoConfig: Record<EstadoObra, { label: string; className: string }> = {
   activa: { label: "Activa", className: "status-active" },
@@ -410,8 +410,8 @@ export default function Obras() {
               <DetailRow label="Descripción" value={selectedObra.descripcion || "-"} />
             </DetailSection>
             <DetailSection title="Fechas">
-              <DetailRow label="Fecha Inicio" value={selectedObra.fecha_inicio || "-"} />
-              <DetailRow label="Fecha Fin Estimada" value={selectedObra.fecha_fin_estimada || "-"} />
+              <DetailRow label="Fecha Inicio" value={formatDate(selectedObra.fecha_inicio)} />
+              <DetailRow label="Fecha Fin Estimada" value={formatDate(selectedObra.fecha_fin_estimada)} />
             </DetailSection>
           </div>
         )}

@@ -55,6 +55,7 @@ import { usePersonal } from "@/hooks/usePersonal";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
 import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -396,7 +397,7 @@ export default function Combustible() {
                   <TableCell>
                     <span className="flex items-center gap-1 text-foreground">
                       <Calendar className="w-3 h-3 text-muted-foreground" />
-                      {carga.fecha}
+                      {formatDate(carga.fecha)}
                     </span>
                   </TableCell>
                   <TableCell className="text-foreground font-medium">
@@ -629,7 +630,7 @@ export default function Combustible() {
         {selectedCarga && (
           <div className="space-y-4">
             <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={selectedCarga.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedCarga.fecha)} />
               <DetailRow label="Obra" value={selectedCarga.obra?.nombre || "-"} />
               <DetailRow label="Maquinaria" value={selectedCarga.maquinaria?.nombre || "-"} />
               <DetailRow label="Operador" value={selectedCarga.operador} />
@@ -654,7 +655,7 @@ export default function Combustible() {
         onOpenChange={setDeleteOpen}
         onConfirm={confirmDelete}
         title="Eliminar Carga"
-        description={`¿Estás seguro de que deseas eliminar esta carga de combustible del ${selectedCarga?.fecha}? Esta acción no se puede deshacer.`}
+        description={`¿Estás seguro de que deseas eliminar esta carga de combustible del ${formatDate(selectedCarga?.fecha)}? Esta acción no se puede deshacer.`}
       />
 
       {/* CSV Import Dialog */}

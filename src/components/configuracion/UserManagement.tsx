@@ -146,7 +146,7 @@ export function UserManagement() {
                       {user.telefono || "-"}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {format(new Date(user.created_at), "dd MMM yyyy", { locale: es })}
+                      {format(new Date(user.created_at), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell>
                       <Badge variant={roleBadgeVariants[user.role]}>

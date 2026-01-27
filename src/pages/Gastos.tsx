@@ -62,7 +62,7 @@ import { AsignacionesMaquinariaObra } from "@/components/maquinarias/Asignacione
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
 import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
@@ -591,7 +591,7 @@ export default function Gastos() {
                       <TableCell>
                         <span className="flex items-center gap-1 text-foreground">
                           <Calendar className="w-3 h-3 text-muted-foreground" />
-                          {carga.fecha}
+                          {formatDate(carga.fecha)}
                         </span>
                       </TableCell>
                       <TableCell className="text-foreground font-medium">
@@ -739,7 +739,7 @@ export default function Gastos() {
                       <TableCell>
                         <span className="flex items-center gap-1 text-foreground">
                           <Calendar className="w-3 h-3 text-muted-foreground" />
-                          {gasto.fecha}
+                          {formatDate(gasto.fecha)}
                         </span>
                       </TableCell>
                       <TableCell className="text-foreground font-medium">
@@ -947,7 +947,7 @@ export default function Gastos() {
         {selectedCarga && (
           <div className="space-y-4">
             <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={selectedCarga.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedCarga.fecha)} />
               <DetailRow label="Obra" value={selectedCarga.obra?.nombre || "-"} />
               <DetailRow label="Maquinaria" value={selectedCarga.maquinaria?.nombre || "-"} />
               <DetailRow label="Operador" value={selectedCarga.operador || "-"} />
@@ -1106,7 +1106,7 @@ export default function Gastos() {
         {selectedGasto && (
           <div className="space-y-4">
             <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={selectedGasto.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedGasto.fecha)} />
               <DetailRow label="Obra" value={selectedGasto.obra?.nombre || "-"} />
               <DetailRow label="Categoría" value={categoriasGasto[selectedGasto.categoria as CategoriaGasto]?.label || selectedGasto.categoria} />
               <DetailRow label="Descripción" value={selectedGasto.descripcion} />

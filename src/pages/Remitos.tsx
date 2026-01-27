@@ -45,6 +45,7 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -404,7 +405,7 @@ export default function Remitos() {
                       <span className="font-mono text-primary">{remito.remito_local || remito.numero}</span>
                     </span>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{remito.fecha}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(remito.fecha)}</TableCell>
                   <TableCell className="text-foreground">{remito.desde || "-"}</TableCell>
                   <TableCell className="text-foreground">{remito.hasta || "-"}</TableCell>
                   <TableCell className="font-mono text-foreground">{remito.cantidad_viajes || 1}</TableCell>
@@ -632,7 +633,7 @@ export default function Remitos() {
             <DetailSection title="Información General">
               <DetailRow label="Remito Tercero" value={selectedRemito.remito_tercero || "-"} />
               <DetailRow label="Remito Local" value={selectedRemito.remito_local || selectedRemito.numero} />
-              <DetailRow label="Fecha" value={selectedRemito.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedRemito.fecha)} />
             </DetailSection>
             <DetailSection title="Ruta">
               <DetailRow label="Desde" value={selectedRemito.desde || "-"} />

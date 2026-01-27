@@ -173,7 +173,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {fechaDesde ? format(fechaDesde, "dd/MM/yy", { locale: es }) : "Desde"}
+            {fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Desde"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -198,7 +198,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {fechaHasta ? format(fechaHasta, "dd/MM/yy", { locale: es }) : "Hasta"}
+            {fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Hasta"}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">

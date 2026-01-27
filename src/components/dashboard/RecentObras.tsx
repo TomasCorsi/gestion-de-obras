@@ -91,7 +91,7 @@ export function RecentObras({ obras, loading }: RecentObrasProps) {
                 {obra.fecha_inicio && (
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {format(new Date(obra.fecha_inicio), "dd/MM/yyyy", { locale: es })}
+                    {format(new Date(obra.fecha_inicio), "dd/MM/yyyy")}
                   </span>
                 )}
               </div>

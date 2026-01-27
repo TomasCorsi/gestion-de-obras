@@ -48,7 +48,7 @@ import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared
 import { useMantenimientos, MantenimientoWithRelations, MantenimientoForm, TipoMantenimiento, EstadoMantenimiento } from "@/hooks/useMantenimientos";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useObras } from "@/hooks/useObras";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const tipoConfig: Record<string, { label: string; className: string }> = {
   preventivo: { label: "Preventivo", className: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
@@ -306,7 +306,7 @@ export default function MantenimientoPage() {
                       <h3 className="font-semibold text-foreground">{mant.maquinaria?.nombre || "-"}</h3>
                       <p className="text-xs text-muted-foreground flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {mant.fecha}
+                        {formatDate(mant.fecha)}
                       </p>
                     </div>
                   </div>
@@ -565,7 +565,7 @@ export default function MantenimientoPage() {
         {selectedMant && (
           <>
             <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={selectedMant.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedMant.fecha)} />
               <DetailRow label="Maquinaria" value={selectedMant.maquinaria?.nombre} />
               <DetailRow
                 label="Tipo"
