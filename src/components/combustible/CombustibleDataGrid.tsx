@@ -335,7 +335,7 @@ export function CombustibleDataGrid({
   }, [data, onSave, clearDraft]);
 
   return (
-    <div className="space-y-4">
+    <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
       {showRestorePrompt && (
         <DraftRestorePrompt
           timestamp={draftTimestamp}
@@ -343,7 +343,7 @@ export function CombustibleDataGrid({
           onDiscard={discardDraft}
         />
       )}
-      <div className="flex items-center justify-between">
+      <div className={`flex items-center justify-between ${fullScreen ? 'px-0 pb-2' : ''}`}>
         <div className="flex items-center gap-2">
           <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">
             <Plus className="w-4 h-4 mr-2" />
@@ -365,9 +365,11 @@ export function CombustibleDataGrid({
           Guardar Cambios
         </Button>
       </div>
-      <p className="text-xs text-muted-foreground">
-        💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. El total se calcula automáticamente.
-      </p>
+      {!fullScreen && (
+        <p className="text-xs text-muted-foreground">
+          💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. El total se calcula automáticamente.
+        </p>
+      )}
       <div className={`combustible-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? 'flex-1' : ''}`}>
         <DataSheetGrid
           value={data}
