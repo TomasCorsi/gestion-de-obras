@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 type BancoDestino = "galicia" | "santander";
-type ModalidadPago = "mensual" | "quincenal";
+type ModalidadPago = "mensual" | "quincenal" | "vacaciones";
 
 interface LiquidacionRow {
   legajo: string;
@@ -54,6 +54,7 @@ const bancos: { value: BancoDestino; label: string }[] = [
 const modalidades: { value: ModalidadPago; label: string }[] = [
   { value: "mensual", label: "Mensual" },
   { value: "quincenal", label: "Quincenal" },
+  { value: "vacaciones", label: "Vacaciones" },
 ];
 
 function detectSeparator(line: string): string {
@@ -179,10 +180,10 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
 
         let status: LiquidacionRow["status"] = "no_encontrado";
         if (empleado) {
-          // Verificar que la modalidad coincida
+          // Verificar que la modalidad coincida (excepto para vacaciones que acepta cualquiera)
           const empleadoModalidad = empleado.modalidad_pago || "mensual";
-          console.log(`Legajo ${legajo}: empleadoModalidad="${empleadoModalidad}", modalidadSeleccionada="${modalidad}", match=${empleadoModalidad === modalidad}`);
-          if (empleadoModalidad !== modalidad) {
+          const skipModalidadCheck = modalidad === "vacaciones";
+          if (!skipModalidadCheck && empleadoModalidad !== modalidad) {
             status = "modalidad_incorrecta";
           } else if (empleado.numero_cuenta) {
             status = "listo";
@@ -283,9 +284,10 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
 
       let status: LiquidacionRow["status"] = "no_encontrado";
       if (empleado) {
-        // Verificar que la modalidad coincida
+        // Verificar que la modalidad coincida (excepto para vacaciones que acepta cualquiera)
         const empleadoModalidad = empleado.modalidad_pago || "mensual";
-        if (empleadoModalidad !== modalidad) {
+        const skipModalidadCheck = modalidad === "vacaciones";
+        if (!skipModalidadCheck && empleadoModalidad !== modalidad) {
           status = "modalidad_incorrecta";
         } else if (empleado.numero_cuenta) {
           status = "listo";
