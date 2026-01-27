@@ -1,4 +1,5 @@
-import { Bell, User, LogOut, Shield, Truck } from "lucide-react";
+import { Bell, User, LogOut, Shield } from "lucide-react";
+import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,12 +52,17 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
       <div className="flex items-center gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center transition-transform group-hover:scale-105">
-            <Truck className="w-5 h-5 text-primary-foreground" />
-          </div>
+          <img 
+            src={logoIcon} 
+            alt="Calamina Sur" 
+            className="w-9 h-9 transition-transform group-hover:scale-105"
+          />
           <div className="hidden sm:flex flex-col">
             <span className="font-bold text-foreground tracking-tight text-sm">
               Calamina Sur
+            </span>
+            <span className="text-[10px] text-muted-foreground -mt-0.5">
+              Movimientos de Suelo
             </span>
           </div>
         </Link>
