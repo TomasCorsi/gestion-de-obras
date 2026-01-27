@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   DataSheetGrid,
   textColumn,
@@ -16,6 +16,13 @@ import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
+
+// Type for react-datasheet-grid operations
+interface Operation {
+  type: 'CREATE' | 'UPDATE' | 'DELETE';
+  fromRowIndex: number;
+  toRowIndex: number;
+}
 
 interface GridRow {
   id?: string;
@@ -60,6 +67,15 @@ export function CombustibleDataGrid({
   // In fullscreen mode: header (56px) + toolbar (52px) + padding (32px) + extra buffer (60px) = 200px
   // Adding extra 50px to ensure "+ Add" row is visible
   const gridHeight = fullScreen ? window.innerHeight - 250 : 500;
+  
+  // useRef Sets for tracking row changes (persists across renders)
+  const createdRowIds = useRef(new Set<string>()).current;
+  const deletedRowIds = useRef(new Set<string>()).current;
+  const updatedRowIds = useRef(new Set<string>()).current;
+  
+  // Force re-render counter for hasChanges
+  const [, forceUpdate] = useState(0);
+  
   const activeObras = useMemo(
     () => obras.filter((o) => o.estado !== "finalizada"),
     [obras]
@@ -128,17 +144,16 @@ export function CombustibleDataGrid({
 
   useEffect(() => {
     setData(initialData);
-  }, [initialData]);
-
-  // Detect deleted rows by comparing with initialData
-  const deletedIds = useMemo(() => {
-    const currentIds = new Set(data.filter(r => r.id).map(r => r.id));
-    return initialData.filter(r => r.id && !currentIds.has(r.id)).map(r => r.id!);
-  }, [data, initialData]);
+    // Clear tracking sets when initial data changes
+    createdRowIds.clear();
+    deletedRowIds.clear();
+    updatedRowIds.clear();
+  }, [initialData, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const hasChanges = useMemo(() => {
-    return data.some((row) => row._isNew || row._isModified) || deletedIds.length > 0;
-  }, [data, deletedIds]);
+    return createdRowIds.size > 0 || deletedRowIds.size > 0 || updatedRowIds.size > 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, createdRowIds.size, deletedRowIds.size, updatedRowIds.size]);
 
   // Draft persistence
   const {
@@ -236,53 +251,105 @@ export function CombustibleDataGrid({
   );
 
   const handleChange = useCallback(
-    (newData: GridRow[]) => {
-      const updatedData = newData.map((row) => {
-        // Auto-calculate costo_total
+    (newData: GridRow[], operations: Operation[]) => {
+      let processedData = [...newData];
+      
+      for (const operation of operations) {
+        if (operation.type === 'DELETE') {
+          // Get the rows that were deleted from the original data
+          const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
+          
+          for (const row of deletedRows) {
+            if (row.id && !row.id.startsWith('temp_')) {
+              // Existing row from database - track for deletion
+              deletedRowIds.add(row.id);
+              updatedRowIds.delete(row.id);
+              
+              // Re-insert the row marked as deleted for visual feedback
+              const deletedRow = { ...row, _isDeleted: true };
+              processedData.splice(operation.fromRowIndex, 0, deletedRow);
+            } else if (row.id && row.id.startsWith('temp_')) {
+              // New row that was never saved - just remove from created
+              createdRowIds.delete(row.id);
+            }
+          }
+        }
+        
+        if (operation.type === 'CREATE') {
+          // Mark new rows with temp IDs
+          for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+            if (processedData[i] && !processedData[i].id) {
+              const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              processedData[i] = { ...processedData[i], id: tempId, _isNew: true };
+              createdRowIds.add(tempId);
+            }
+          }
+        }
+        
+        if (operation.type === 'UPDATE') {
+          for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+            const row = processedData[i];
+            if (row && row.id && !row.id.startsWith('temp_') && !deletedRowIds.has(row.id)) {
+              const orig = initialData.find((r) => r.id === row.id);
+              if (orig) {
+                const isModified = 
+                  row.fecha !== orig.fecha || 
+                  row.obra_id !== orig.obra_id || 
+                  row.maquinaria_id !== orig.maquinaria_id || 
+                  row.operador !== orig.operador ||
+                  row.litros !== orig.litros || 
+                  row.precio_litro !== orig.precio_litro || 
+                  row.horas_maquina !== orig.horas_maquina ||
+                  row.estacion !== orig.estacion ||
+                  row.comprobante !== orig.comprobante;
+                
+                if (isModified) {
+                  updatedRowIds.add(row.id);
+                } else {
+                  updatedRowIds.delete(row.id);
+                }
+                processedData[i] = { ...row, _isModified: isModified };
+              }
+            }
+          }
+        }
+      }
+      
+      // Auto-calculate costo_total for all rows
+      processedData = processedData.map((row) => {
         const litros = row.litros || 0;
         const precio = row.precio_litro || 0;
         const calculatedTotal = litros * precio;
-        
-        if (row._isNew) {
-          return { ...row, costo_total: calculatedTotal };
-        }
-        
-        const orig = initialData.find((r) => r.id === row.id);
-        if (orig) {
-          const isModified = 
-            row.fecha !== orig.fecha || 
-            row.obra_id !== orig.obra_id || 
-            row.maquinaria_id !== orig.maquinaria_id || 
-            row.operador !== orig.operador ||
-            row.litros !== orig.litros || 
-            row.precio_litro !== orig.precio_litro || 
-            row.horas_maquina !== orig.horas_maquina ||
-            row.estacion !== orig.estacion ||
-            row.comprobante !== orig.comprobante;
-          return { ...row, costo_total: calculatedTotal, _isModified: isModified };
-        }
         return { ...row, costo_total: calculatedTotal };
       });
-      setData(updatedData);
+      
+      setData(processedData);
+      forceUpdate(n => n + 1);
     },
-    [initialData]
+    [data, initialData, createdRowIds, deletedRowIds, updatedRowIds]
   );
 
-  const createRow = useCallback((): GridRow => ({
-    fecha: new Date().toISOString().split("T")[0],
-    obra_id: "",
-    maquinaria_id: "",
-    operador: "",
-    litros: null,
-    precio_litro: 950,
-    costo_total: null,
-    horas_maquina: null,
-    estacion: "",
-    comprobante: "",
-    _isNew: true,
-    _isModified: false,
-    _isDeleted: false,
-  }), []);
+  const createRow = useCallback((): GridRow => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    createdRowIds.add(tempId);
+    forceUpdate(n => n + 1);
+    return {
+      id: tempId,
+      fecha: new Date().toISOString().split("T")[0],
+      obra_id: "",
+      maquinaria_id: "",
+      operador: "",
+      litros: null,
+      precio_litro: 950,
+      costo_total: null,
+      horas_maquina: null,
+      estacion: "",
+      comprobante: "",
+      _isNew: true,
+      _isModified: false,
+      _isDeleted: false,
+    };
+  }, [createdRowIds]);
 
   const handleAddRow = useCallback(() => {
     setData((prev) => [...prev, createRow()]);
@@ -290,14 +357,18 @@ export function CombustibleDataGrid({
 
   const handleReset = useCallback(() => {
     setData(initialData);
+    createdRowIds.clear();
+    deletedRowIds.clear();
+    updatedRowIds.clear();
     clearDraft();
-  }, [initialData, clearDraft]);
+    forceUpdate(n => n + 1);
+  }, [initialData, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const created = data
-        .filter((row) => row._isNew && !row._isDeleted)
+        .filter((row) => row.id && createdRowIds.has(row.id) && !row._isDeleted)
         .map((row) => ({
           fecha: row.fecha || undefined,
           obra_id: row.obra_id || undefined,
@@ -312,7 +383,7 @@ export function CombustibleDataGrid({
         }));
       
       const updated = data
-        .filter((row) => row._isModified && !row._isNew && row.id)
+        .filter((row) => row.id && updatedRowIds.has(row.id) && !row._isDeleted)
         .map((row) => ({
           id: row.id!,
           data: {
@@ -329,18 +400,25 @@ export function CombustibleDataGrid({
           },
         }));
       
-      // Use deletedIds from useMemo comparison
-      const deleted = deletedIds;
+      const deleted = Array.from(deletedRowIds);
       
       await onSave({ created, updated, deleted });
+      
+      // Remove deleted rows from data and clear tracking
+      const newData = data.filter(row => !row._isDeleted);
+      setData(newData);
+      createdRowIds.clear();
+      deletedRowIds.clear();
+      updatedRowIds.clear();
       clearDraft();
+      forceUpdate(n => n + 1);
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Error al guardar");
     } finally {
       setIsSaving(false);
     }
-  }, [data, deletedIds, onSave, clearDraft]);
+  }, [data, onSave, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
@@ -385,15 +463,12 @@ export function CombustibleDataGrid({
           columns={columns}
           createRow={createRow}
           height={gridHeight}
-          rowClassName={({ rowData }) =>
-            rowData._isDeleted
-              ? "row-deleted"
-              : rowData._isNew
-              ? "row-new"
-              : rowData._isModified
-              ? "row-modified"
-              : ""
-          }
+          rowClassName={({ rowData }) => {
+            if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
+            if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
+            if (rowData._isModified || (rowData.id && updatedRowIds.has(rowData.id))) return "row-modified";
+            return "";
+          }}
         />
       </div>
     </div>
