@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Check } from "lucide-react";
 
 interface GridSelectCellProps {
@@ -19,6 +20,7 @@ export function GridSelectCell({
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0, openUpward: false });
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -58,6 +60,24 @@ export function GridSelectCell({
     setHighlightedIndex(0);
   }, [inputValue]);
 
+  // Calculate dropdown position when opening
+  useEffect(() => {
+    if (isOpen && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const dropdownHeight = 200; // approximate height
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+      
+      setDropdownPosition({
+        top: openUpward ? rect.top - dropdownHeight : rect.bottom,
+        left: rect.left,
+        width: Math.max(rect.width, 256),
+        openUpward,
+      });
+    }
+  }, [isOpen]);
+
   // Scroll highlighted option into view
   useEffect(() => {
     if (isOpen && listRef.current) {
@@ -68,9 +88,16 @@ export function GridSelectCell({
     }
   }, [highlightedIndex, isOpen]);
 
+  // Handle click outside - check both container and portal dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const dropdownEl = document.getElementById("grid-select-dropdown");
+      
+      const isOutsideContainer = containerRef.current && !containerRef.current.contains(target);
+      const isOutsideDropdown = !dropdownEl || !dropdownEl.contains(target);
+      
+      if (isOutsideContainer && isOutsideDropdown) {
         handleClose();
       }
     };
@@ -164,9 +191,16 @@ export function GridSelectCell({
         />
       </div>
 
-      {isOpen && (
-        <div className="absolute top-full left-0 z-[9999] w-64 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
-          style={{ pointerEvents: 'auto' }}
+      {isOpen && createPortal(
+        <div 
+          id="grid-select-dropdown"
+          className="fixed z-[9999] bg-popover border border-border rounded-md shadow-lg overflow-hidden"
+          style={{ 
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            minWidth: dropdownPosition.width,
+            maxWidth: 320,
+          }}
         >
           <div ref={listRef} className="max-h-48 overflow-y-auto">
             {filteredOptions.length === 0 ? (
@@ -196,7 +230,8 @@ export function GridSelectCell({
               ))
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
