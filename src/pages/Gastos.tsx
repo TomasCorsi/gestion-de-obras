@@ -417,18 +417,6 @@ export default function Gastos() {
 
   const loading = loadingCombustible || loadingOtros;
 
-  // Handle Escape key to exit fullscreen mode
-  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
-    if (event.key === "Escape" && viewModeComb === "grid" && activeTab === "combustible") {
-      setViewModeComb("table");
-    }
-  }, [viewModeComb, activeTab]);
-
-  useEffect(() => {
-    document.addEventListener("keydown", handleEscapeKey);
-    return () => document.removeEventListener("keydown", handleEscapeKey);
-  }, [handleEscapeKey]);
-
   if (loading) {
     return (
       <MainLayout title="Gastos" subtitle="Control de gastos operativos">
