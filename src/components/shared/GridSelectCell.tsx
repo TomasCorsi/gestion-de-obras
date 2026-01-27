@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { ChevronDown, Check } from "lucide-react";
 
 interface GridSelectCellProps {
@@ -23,9 +23,17 @@ export function GridSelectCell({
 
   const selectedOption = options.find((opt) => opt.value === value);
 
-  const filteredOptions = options.filter((opt) =>
-    opt.label.toLowerCase().includes(inputValue.toLowerCase())
-  );
+  // Filter options - show all when input is empty or matches selected label
+  const filteredOptions = useMemo(() => {
+    const searchTerm = inputValue.toLowerCase().trim();
+    // If input is empty or matches selected option, show all options
+    if (!searchTerm || searchTerm === selectedOption?.label.toLowerCase()) {
+      return options;
+    }
+    return options.filter((opt) =>
+      opt.label.toLowerCase().includes(searchTerm)
+    );
+  }, [options, inputValue, selectedOption]);
 
   // Sync input value with selected option when not editing
   useEffect(() => {
