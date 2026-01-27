@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   DataSheetGrid,
   textColumn,
@@ -17,6 +17,13 @@ import { ObraWithRelations } from "@/hooks/useObras";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
+
+// Type for react-datasheet-grid operations
+interface Operation {
+  type: 'CREATE' | 'UPDATE' | 'DELETE';
+  fromRowIndex: number;
+  toRowIndex: number;
+}
 
 interface GridRow {
   id?: string;
@@ -97,6 +104,14 @@ export function RemitosDataGrid({
   generateNumero,
   fullScreen = false,
 }: RemitosDataGridProps) {
+  // useRef Sets for tracking row changes (persists across renders)
+  const createdRowIds = useRef(new Set<string>()).current;
+  const deletedRowIds = useRef(new Set<string>()).current;
+  const updatedRowIds = useRef(new Set<string>()).current;
+  
+  // Force re-render counter for hasChanges
+  const [, forceUpdate] = useState(0);
+
   // Obras options with searchable values
   const obrasOptions = useMemo(() => {
     const options = obras.map((o) => ({
@@ -146,17 +161,16 @@ export function RemitosDataGrid({
 
   useEffect(() => {
     setData(initialData);
-  }, [initialData]);
-
-  // Detect deleted rows by comparing with initialData
-  const deletedIds = useMemo(() => {
-    const currentIds = new Set(data.filter(r => r.id).map(r => r.id));
-    return initialData.filter(r => r.id && !currentIds.has(r.id)).map(r => r.id!);
-  }, [data, initialData]);
+    // Clear tracking sets when initial data changes
+    createdRowIds.clear();
+    deletedRowIds.clear();
+    updatedRowIds.clear();
+  }, [initialData, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const hasChanges = useMemo(() => {
-    return data.some((row) => row._isNew || row._isModified) || deletedIds.length > 0;
-  }, [data, deletedIds]);
+    return createdRowIds.size > 0 || deletedRowIds.size > 0 || updatedRowIds.size > 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, createdRowIds.size, deletedRowIds.size, updatedRowIds.size]);
 
   // Draft persistence
   const {
@@ -346,37 +360,87 @@ export function RemitosDataGrid({
   );
 
   const handleChange = useCallback(
-    (newData: GridRow[]) => {
-      const updatedData = newData.map((row) => {
-        if (row._isNew) return row;
-        const orig = initialData.find((r) => r.id === row.id);
-        if (orig) {
-          const isModified =
-            row.remito_tercero !== orig.remito_tercero ||
-            row.remito_local !== orig.remito_local ||
-            row.fecha !== orig.fecha ||
-            row.desde !== orig.desde ||
-            row.hasta !== orig.hasta ||
-            row.cantidad_viajes !== orig.cantidad_viajes ||
-            row.unidad !== orig.unidad ||
-            row.cantidad !== orig.cantidad ||
-            row.tipo_material !== orig.tipo_material ||
-            row.precio_total !== orig.precio_total ||
-            row.tipo_transporte !== orig.tipo_transporte ||
-            row.maquinaria_id !== orig.maquinaria_id;
-          return { ...row, _isModified: isModified };
+    (newData: GridRow[], operations: Operation[]) => {
+      let processedData = [...newData];
+      
+      for (const operation of operations) {
+        if (operation.type === 'DELETE') {
+          // Get the rows that were deleted from the original data
+          const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
+          
+          for (const row of deletedRows) {
+            if (row.id && !row.id.startsWith('temp_')) {
+              // Existing row from database - track for deletion
+              deletedRowIds.add(row.id);
+              updatedRowIds.delete(row.id);
+              
+              // Re-insert the row marked as deleted for visual feedback
+              const deletedRow = { ...row, _isDeleted: true };
+              processedData.splice(operation.fromRowIndex, 0, deletedRow);
+            } else if (row.id && row.id.startsWith('temp_')) {
+              // New row that was never saved - just remove from created
+              createdRowIds.delete(row.id);
+            }
+          }
         }
-        return row;
-      });
-      setData(updatedData);
+        
+        if (operation.type === 'CREATE') {
+          // Mark new rows with temp IDs
+          for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+            if (processedData[i] && !processedData[i].id) {
+              const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+              processedData[i] = { ...processedData[i], id: tempId, _isNew: true };
+              createdRowIds.add(tempId);
+            }
+          }
+        }
+        
+        if (operation.type === 'UPDATE') {
+          for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+            const row = processedData[i];
+            if (row && row.id && !row.id.startsWith('temp_') && !deletedRowIds.has(row.id)) {
+              const orig = initialData.find((r) => r.id === row.id);
+              if (orig) {
+                const isModified =
+                  row.remito_tercero !== orig.remito_tercero ||
+                  row.remito_local !== orig.remito_local ||
+                  row.fecha !== orig.fecha ||
+                  row.desde !== orig.desde ||
+                  row.hasta !== orig.hasta ||
+                  row.cantidad_viajes !== orig.cantidad_viajes ||
+                  row.unidad !== orig.unidad ||
+                  row.cantidad !== orig.cantidad ||
+                  row.tipo_material !== orig.tipo_material ||
+                  row.precio_total !== orig.precio_total ||
+                  row.tipo_transporte !== orig.tipo_transporte ||
+                  row.maquinaria_id !== orig.maquinaria_id;
+                
+                if (isModified) {
+                  updatedRowIds.add(row.id);
+                } else {
+                  updatedRowIds.delete(row.id);
+                }
+                processedData[i] = { ...row, _isModified: isModified };
+              }
+            }
+          }
+        }
+      }
+      
+      setData(processedData);
+      forceUpdate(n => n + 1);
     },
-    [initialData]
+    [data, initialData, createdRowIds, deletedRowIds, updatedRowIds]
   );
 
   const handleAddRow = useCallback(() => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    createdRowIds.add(tempId);
+    forceUpdate(n => n + 1);
     setData((prev) => [
       ...prev,
       {
+        id: tempId,
         remito_tercero: "",
         remito_local: "",
         fecha: new Date().toISOString().split("T")[0],
@@ -394,18 +458,22 @@ export function RemitosDataGrid({
         _isDeleted: false,
       },
     ]);
-  }, []);
+  }, [createdRowIds]);
 
   const handleReset = useCallback(() => {
     setData(initialData);
+    createdRowIds.clear();
+    deletedRowIds.clear();
+    updatedRowIds.clear();
     clearDraft();
-  }, [initialData, clearDraft]);
+    forceUpdate(n => n + 1);
+  }, [initialData, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
       const created = data
-        .filter((row) => row._isNew && !row._isDeleted)
+        .filter((row) => row.id && createdRowIds.has(row.id) && !row._isDeleted)
         .map((row) => ({
           numero: row.remito_local || generateNumero(),
           fecha: row.fecha,
@@ -427,7 +495,7 @@ export function RemitosDataGrid({
         }));
 
       const updated = data
-        .filter((row) => row._isModified && !row._isNew && row.id)
+        .filter((row) => row.id && updatedRowIds.has(row.id) && !row._isDeleted)
         .map((row) => ({
           id: row.id!,
           data: {
@@ -447,21 +515,32 @@ export function RemitosDataGrid({
           },
         }));
 
-      // Use deletedIds from useMemo comparison
-      const deleted = deletedIds;
+      const deleted = Array.from(deletedRowIds);
 
       await onSave({ created, updated, deleted });
+      
+      // Remove deleted rows from data and clear tracking
+      const newData = data.filter(row => !row._isDeleted);
+      setData(newData);
+      createdRowIds.clear();
+      deletedRowIds.clear();
+      updatedRowIds.clear();
       clearDraft();
+      forceUpdate(n => n + 1);
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Error al guardar");
     } finally {
       setIsSaving(false);
     }
-  }, [data, deletedIds, onSave, clearDraft, generateNumero]);
+  }, [data, onSave, clearDraft, generateNumero, createdRowIds, deletedRowIds, updatedRowIds]);
 
-  const createRow = useCallback(
-    (): GridRow => ({
+  const createRow = useCallback((): GridRow => {
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    createdRowIds.add(tempId);
+    forceUpdate(n => n + 1);
+    return {
+      id: tempId,
       remito_tercero: "",
       remito_local: "",
       fecha: new Date().toISOString().split("T")[0],
@@ -477,9 +556,8 @@ export function RemitosDataGrid({
       _isNew: true,
       _isModified: false,
       _isDeleted: false,
-    }),
-    []
-  );
+    };
+  }, [createdRowIds]);
 
   // Calculate dynamic height for fullscreen mode
   const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
@@ -522,15 +600,12 @@ export function RemitosDataGrid({
           columns={columns}
           createRow={createRow}
           height={gridHeight}
-          rowClassName={({ rowData }) =>
-            rowData._isDeleted
-              ? "row-deleted"
-              : rowData._isNew
-              ? "row-new"
-              : rowData._isModified
-              ? "row-modified"
-              : ""
-          }
+          rowClassName={({ rowData }) => {
+            if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
+            if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
+            if (rowData._isModified || (rowData.id && updatedRowIds.has(rowData.id))) return "row-modified";
+            return "";
+          }}
         />
       </div>
     </div>
