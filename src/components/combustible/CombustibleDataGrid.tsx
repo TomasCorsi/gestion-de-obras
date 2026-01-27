@@ -43,6 +43,7 @@ interface CombustibleDataGridProps {
     updated: { id: string; data: Partial<CargaCombustibleForm> }[];
     deleted: string[];
   }) => Promise<void>;
+  fullScreen?: boolean;
 }
 
 const STORAGE_KEY = "combustible-grid-draft";
@@ -53,7 +54,9 @@ export function CombustibleDataGrid({
   maquinarias,
   operadores,
   onSave,
+  fullScreen = false,
 }: CombustibleDataGridProps) {
+  const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
   const activeObras = useMemo(
     () => obras.filter((o) => o.estado !== "finalizada"),
     [obras]
@@ -365,13 +368,13 @@ export function CombustibleDataGrid({
       <p className="text-xs text-muted-foreground">
         💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. El total se calcula automáticamente.
       </p>
-      <div className="combustible-grid-container rounded-lg overflow-hidden border border-border">
+      <div className={`combustible-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? 'flex-1' : ''}`}>
         <DataSheetGrid
           value={data}
           onChange={handleChange}
           columns={columns}
           createRow={createRow}
-          height={500}
+          height={gridHeight}
           rowClassName={({ rowData }) =>
             rowData._isDeleted
               ? "row-deleted"
