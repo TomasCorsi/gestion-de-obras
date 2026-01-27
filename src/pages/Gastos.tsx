@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,7 @@ import {
   Receipt,
   LayoutGrid,
   List,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -416,6 +417,18 @@ export default function Gastos() {
 
   const loading = loadingCombustible || loadingOtros;
 
+  // Handle Escape key to exit fullscreen mode
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === "Escape" && viewModeComb === "grid" && activeTab === "combustible") {
+      setViewModeComb("table");
+    }
+  }, [viewModeComb, activeTab]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, [handleEscapeKey]);
+
   if (loading) {
     return (
       <MainLayout title="Gastos" subtitle="Control de gastos operativos">
@@ -424,6 +437,78 @@ export default function Gastos() {
           <Skeleton className="h-64 w-full" />
         </div>
       </MainLayout>
+    );
+  }
+
+  // Full screen grid mode for Combustible
+  if (viewModeComb === "grid" && activeTab === "combustible") {
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-background">
+        {/* Compact header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold text-foreground">Combustible</h1>
+            <div className="flex border border-border rounded-md overflow-hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setViewModeComb("table")}
+                className="rounded-none"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="default"
+                size="icon"
+                className="rounded-none"
+              >
+                <LayoutGrid className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setImportOpenComb(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setViewModeComb("table")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Full screen grid */}
+        <div className="flex-1 overflow-hidden p-4">
+          <CombustibleDataGrid
+            cargas={filteredCargas}
+            obras={obras}
+            maquinarias={maquinarias}
+            operadores={operadores}
+            onSave={handleGridSaveComb}
+            fullScreen
+          />
+        </div>
+
+        {/* Import Dialog */}
+        <CombustibleCSVImportDialog
+          open={importOpenComb}
+          onOpenChange={setImportOpenComb}
+          onImport={handleCSVImport}
+          obrasMap={obrasMap}
+          maquinariasMap={maquinariasMap}
+          patentesMap={patentesMap}
+          nombresMap={nombresMap}
+        />
+      </div>
     );
   }
 

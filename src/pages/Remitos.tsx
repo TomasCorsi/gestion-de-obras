@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -262,6 +262,18 @@ export default function Remitos() {
 
   // Maquinarias with patente for selectors
   const maquinariasConPatente = maquinarias.filter((m) => m.patente);
+
+  // Handle Escape key to exit fullscreen mode
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === "Escape" && viewMode === "grid") {
+      setViewMode("table");
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    document.addEventListener("keydown", handleEscapeKey);
+    return () => document.removeEventListener("keydown", handleEscapeKey);
+  }, [handleEscapeKey]);
 
   if (loading) {
     return (
