@@ -146,7 +146,9 @@ export function GridSelectCell({
       </div>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-50 w-64 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden">
+        <div className="absolute top-full left-0 z-[9999] w-64 mt-1 bg-popover border border-border rounded-md shadow-lg overflow-hidden"
+          style={{ pointerEvents: 'auto' }}
+        >
           <div ref={listRef} className="max-h-48 overflow-y-auto">
             {filteredOptions.length === 0 ? (
               <div className="px-3 py-2 text-sm text-muted-foreground">
