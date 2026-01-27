@@ -1,100 +1,118 @@
 
+# Plan: Rediseño Simplificado del Calendario de Vacaciones
 
-# Plan: Mejoras al Calendario de Vacaciones
+## Problema Identificado
+El calendario actual está sobrecargado con:
+- 3 tarjetas de estadísticas en el header
+- Filtros por empleado, toggle de modo de vista, checkbox
+- Badges con contador en cada día
+- Iconos de alerta en días críticos
+- Panel lateral de detalles
+- Timeline Gantt debajo del calendario
+- Múltiples leyendas de colores
+- Tooltips en cada elemento
 
-## Objetivo
-Hacer el calendario más intuitivo y fácil de interpretar, mejorando la visualización y agregando funcionalidades que ayuden a entender rápidamente la disponibilidad del personal.
+Todo esto hace que sea difícil de entender a primera vista.
 
-## Mejoras Propuestas
+## Propuesta: Vista de Lista Mensual
 
-### 1. Resumen mensual en el header
-Agregar indicadores visuales en la parte superior mostrando:
-- Total de personas de licencia este mes
-- Días con mayor cantidad de ausencias
-- Rango de fechas visible
+Cambiar a un formato de **lista cronológica** en lugar de calendario tradicional, mucho más fácil de leer:
 
-### 2. Diferenciación por tipo de licencia (colores adicionales)
-Actualmente solo se diferencia entre Aprobada (verde) y Pendiente (amarillo). Podemos agregar:
-- Vacaciones: Verde/Amarillo (como ahora)
-- Licencia Médica: Azul
-- Permiso Personal: Violeta
-- Otro: Gris
+```text
++--------------------------------------------------+
+|  < Enero 2026 >                    [+ Nueva]     |
++--------------------------------------------------+
+|  ENERO                                           |
+|  ──────────────────────────────────────────      |
+|  15-22  ● García, Juan         Vacaciones        |
+|  18-25  ● López, María         Licencia Médica   |
+|  20-28  ○ Pérez, Carlos        Vacaciones (pend) |
++--------------------------------------------------+
+```
 
-Con un toggle para elegir entre "Ver por Estado" o "Ver por Motivo".
+### Características de la Nueva Vista
 
-### 3. Contador de personas ausentes por día
-Mostrar un pequeño badge en la esquina de cada día indicando cuántas personas están de licencia (ej: "3 ausentes"), visible incluso sin hacer hover.
+1. **Header Simple**
+   - Solo navegación de mes (flechas + nombre del mes)
+   - Botón para agregar nueva solicitud
 
-### 4. Barra de timeline horizontal
-Agregar una vista alternativa de timeline/Gantt debajo del calendario que muestre las licencias como barras horizontales continuas, facilitando ver la duración completa de cada licencia.
+2. **Lista Cronológica**
+   - Una fila por cada licencia
+   - Formato: `Fechas | Indicador | Empleado | Motivo`
+   - Verde (●) = Aprobada, Amarillo (○) = Pendiente
+   - Ordenado por fecha de inicio
 
-### 5. Filtros rápidos
-- Por empleado específico (resaltar solo sus licencias)
-- Por motivo de licencia
-- Mostrar/ocultar rechazadas
+3. **Agrupación Opcional**
+   - Por defecto: lista simple ordenada por fecha
+   - Toggle para agrupar por empleado o por motivo
 
-### 6. Indicador de días críticos
-Resaltar días donde hay muchas ausencias simultáneas (ej: más de 3 personas) con un borde rojo para alertar sobre posibles problemas de cobertura.
+4. **Detalles al Click**
+   - Al hacer click en una fila, expandir para mostrar más info
+   - Sin panel lateral ni diálogos adicionales
+
+5. **Mini-Calendario Opcional**
+   - Un pequeño calendario visual al costado (como el de react-day-picker)
+   - Los días con licencias se marcan con un punto
+   - Click en un día filtra la lista
 
 ## Cambios Técnicos
 
 ### Archivo: `src/components/personal/CalendarioVacaciones.tsx`
 
-**Nuevas funcionalidades:**
+**Reemplazo completo del componente** con estructura simplificada:
 
-1. **Estado para modo de visualización**
+1. **Estados mínimos**
+   - `mesActual`: navegación de meses
+   - `expandedId`: para expandir detalles de una fila
+   - `groupBy`: "fecha" | "empleado" | "motivo" (opcional)
+
+2. **Estructura del componente**
 ```text
-- viewMode: "estado" | "motivo" (toggle para cambiar colores)
-- empleadoFilter: string | null (filtrar por empleado)
-- showRejected: boolean (mostrar/ocultar rechazadas)
+- Header con navegación del mes
+- Mini-calendario visual (opcional, pequeño al costado)
+- Lista de licencias del mes seleccionado
+  - Cada fila muestra: rango de fechas, indicador visual, nombre, motivo
+  - Click expande para ver observaciones y fechas exactas
 ```
 
-2. **Colores por motivo**
-```text
-- vacaciones: bg-emerald-500 (verde esmeralda)
-- licencia_medica: bg-blue-500 (azul)
-- permiso_personal: bg-violet-500 (violeta)  
-- otro: bg-slate-500 (gris)
-```
+3. **Colores simplificados**
+   - Solo 2 colores: verde (aprobada) y amarillo (pendiente)
+   - Sin diferenciación por motivo (se muestra como texto)
 
-3. **Estadísticas del mes**
-   - Calcular total de personas ausentes en el mes visible
-   - Identificar el día con más ausencias
-   - Mostrar estos datos en un resumen arriba del calendario
+4. **Sin elementos distractores**
+   - Sin badges de contador
+   - Sin alertas de días críticos
+   - Sin timeline
+   - Sin estadísticas del mes
+   - Sin múltiples filtros
 
-4. **Badge de contador por día**
-   - Mostrar número de ausencias en la esquina superior derecha de cada celda
-   - Usar color rojo si supera umbral crítico (configurable, default 3)
+## Alternativa: Vista Híbrida
 
-5. **Sección de Timeline (opcional, debajo del calendario)**
-   - Vista de barras horizontales mostrando cada licencia
-   - Scroll horizontal si hay muchas licencias
-   - Click para ver detalles
+Si preferís mantener algo del calendario tradicional, podemos hacer una versión "lite":
 
-6. **Controles de filtro en el header**
-   - Dropdown para filtrar por empleado
-   - Toggle para ver por estado vs motivo
-   - Checkbox para incluir rechazadas
+1. **Calendario compacto** (solo muestra puntos de colores, sin nombres)
+2. **Lista debajo** mostrando las licencias del mes
+3. Click en un día del calendario filtra la lista
 
-## Flujo de Usuario Mejorado
+## Beneficios del Rediseño
+
+- **Escaneo rápido**: Ves todas las licencias del mes de un vistazo
+- **Menos clicks**: La info está visible directamente, sin hover ni tooltips
+- **Mobile-friendly**: Una lista se adapta mejor a pantallas pequeñas
+- **Fácil de entender**: Formato familiar tipo agenda/timeline
+
+## Flujo de Usuario
 
 ```text
 Antes:
-- Solo diferencia estado (aprobada/pendiente)
-- Sin estadísticas generales
-- Hay que hacer click para ver detalles
+- Calendario lleno de badges, colores, iconos
+- Hay que hacer hover para ver nombres
+- Muchos controles y filtros
+- Confuso determinar quién está de licencia
 
 Después:
-- Vista rápida de cuántas personas faltan cada día
-- Colores distintos por tipo de licencia
-- Resumen mensual visible
-- Alertas en días críticos
-- Filtros para encontrar información específica
+- Lista clara con todas las licencias
+- Nombre y fechas visibles directamente
+- Un solo indicador de estado (color)
+- Navegación simple por mes
 ```
-
-## Beneficios
-- Identificación inmediata de días con problemas de cobertura
-- Mejor planificación al ver tipos de licencia diferenciados
-- Estadísticas útiles para gestión de recursos humanos
-- Navegación más eficiente con filtros
-
