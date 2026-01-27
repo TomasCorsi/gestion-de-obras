@@ -337,7 +337,7 @@ export function RemitosDataGrid({
       ...prev,
       {
         remito_tercero: "",
-        remito_local: generateNumero(),
+        remito_local: "",
         fecha: new Date().toISOString().split("T")[0],
         desde: "",
         hasta: "",
@@ -353,7 +353,7 @@ export function RemitosDataGrid({
         _isDeleted: false,
       },
     ]);
-  }, [generateNumero]);
+  }, []);
 
   const handleReset = useCallback(() => {
     setData(initialData);
@@ -423,7 +423,7 @@ export function RemitosDataGrid({
   const createRow = useCallback(
     (): GridRow => ({
       remito_tercero: "",
-      remito_local: generateNumero(),
+      remito_local: "",
       fecha: new Date().toISOString().split("T")[0],
       desde: "",
       hasta: "",
@@ -438,7 +438,7 @@ export function RemitosDataGrid({
       _isModified: false,
       _isDeleted: false,
     }),
-    [generateNumero]
+    []
   );
 
   return (
