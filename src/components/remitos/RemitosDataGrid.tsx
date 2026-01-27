@@ -473,6 +473,7 @@ export function RemitosDataGrid({
       </p>
       <div className="remitos-grid-container rounded-lg overflow-hidden border border-border">
         <DataSheetGrid
+          key={`remitos-grid-${obrasOptions.length}-${maquinariaOptions.length}`}
           value={data}
           onChange={handleChange}
           columns={columns}
