@@ -130,9 +130,15 @@ export function CombustibleDataGrid({
     setData(initialData);
   }, [initialData]);
 
+  // Detect deleted rows by comparing with initialData
+  const deletedIds = useMemo(() => {
+    const currentIds = new Set(data.filter(r => r.id).map(r => r.id));
+    return initialData.filter(r => r.id && !currentIds.has(r.id)).map(r => r.id!);
+  }, [data, initialData]);
+
   const hasChanges = useMemo(() => {
-    return data.some((row) => row._isNew || row._isModified || row._isDeleted);
-  }, [data]);
+    return data.some((row) => row._isNew || row._isModified) || deletedIds.length > 0;
+  }, [data, deletedIds]);
 
   // Draft persistence
   const {
@@ -323,9 +329,8 @@ export function CombustibleDataGrid({
           },
         }));
       
-      const deleted = data
-        .filter((row) => row._isDeleted && row.id)
-        .map((row) => row.id!);
+      // Use deletedIds from useMemo comparison
+      const deleted = deletedIds;
       
       await onSave({ created, updated, deleted });
       clearDraft();
@@ -335,7 +340,7 @@ export function CombustibleDataGrid({
     } finally {
       setIsSaving(false);
     }
-  }, [data, onSave, clearDraft]);
+  }, [data, deletedIds, onSave, clearDraft]);
 
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
