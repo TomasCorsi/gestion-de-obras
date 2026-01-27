@@ -51,7 +51,7 @@ import {
 } from "lucide-react";
 import { useVacaciones, VacacionDB, VacacionForm, EstadoVacacion } from "@/hooks/useVacaciones";
 import { usePersonal } from "@/hooks/usePersonal";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { differenceInDays, parseISO } from "date-fns";
 import { CalendarioVacaciones } from "./CalendarioVacaciones";
 import { SaldoVacacionesTable } from "./SaldoVacacionesTable";
@@ -342,13 +342,13 @@ export function VacacionesTab() {
                       <TableCell>
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          {vacacion.fecha_inicio}
+                          {formatDate(vacacion.fecha_inicio)}
                         </span>
                       </TableCell>
                       <TableCell>
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          {vacacion.fecha_fin}
+                          {formatDate(vacacion.fecha_fin)}
                         </span>
                       </TableCell>
                       <TableCell>
@@ -543,8 +543,8 @@ export function VacacionesTab() {
               />
             </DetailSection>
             <DetailSection title="Período">
-              <DetailRow label="Fecha Inicio" value={selectedVacacion.fecha_inicio} />
-              <DetailRow label="Fecha Fin" value={selectedVacacion.fecha_fin} />
+              <DetailRow label="Fecha Inicio" value={formatDate(selectedVacacion.fecha_inicio)} />
+              <DetailRow label="Fecha Fin" value={formatDate(selectedVacacion.fecha_fin)} />
               <DetailRow label="Días Totales" value={selectedVacacion.dias_totales.toString()} />
             </DetailSection>
             <DetailSection title="Solicitud">
@@ -559,7 +559,7 @@ export function VacacionesTab() {
                 }
               />
               {selectedVacacion.fecha_aprobacion && (
-                <DetailRow label="Fecha Aprobación" value={selectedVacacion.fecha_aprobacion} />
+                <DetailRow label="Fecha Aprobación" value={formatDate(selectedVacacion.fecha_aprobacion)} />
               )}
               <DetailRow label="Observaciones" value={selectedVacacion.observaciones || "-"} />
             </DetailSection>
