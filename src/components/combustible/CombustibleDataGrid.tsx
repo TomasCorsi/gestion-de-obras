@@ -335,7 +335,7 @@ export function CombustibleDataGrid({
     forceUpdate(n => n + 1);
     return {
       id: tempId,
-      fecha: new Date().toISOString().split("T")[0],
+      fecha: "",
       obra_id: "",
       maquinaria_id: "",
       operador: "",

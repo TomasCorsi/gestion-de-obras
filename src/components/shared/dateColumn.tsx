@@ -49,11 +49,15 @@ export const dateColumn = {
   component: ({ 
     rowData, 
     setRowData, 
-    focus 
+    focus,
+    active,
+    stopEditing,
   }: { 
     rowData: string; 
     setRowData: (v: string) => void; 
-    focus: boolean 
+    focus: boolean;
+    active: boolean;
+    stopEditing: (opts?: { nextRow?: boolean }) => void;
   }) => {
     const displayValue = formatDateForDisplay(rowData);
     
@@ -72,13 +76,36 @@ export const dateColumn = {
             setRowData(isoValue);
           }
         }}
+        onKeyDown={(e) => {
+          // Allow Tab and Enter to move to next cell
+          if (e.key === 'Tab' || e.key === 'Enter') {
+            e.preventDefault();
+            stopEditing({ nextRow: e.key === 'Enter' });
+          }
+          // Escape to cancel
+          if (e.key === 'Escape') {
+            stopEditing();
+          }
+        }}
         placeholder="dd/mm/aaaa"
         autoFocus={focus}
-        className="w-full h-full px-2 py-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+        style={{ 
+          width: '100%', 
+          height: '100%', 
+          padding: '4px 8px',
+          background: 'transparent',
+          border: 'none',
+          outline: 'none',
+          color: 'inherit',
+          fontSize: 'inherit',
+          fontFamily: 'inherit',
+        }}
       />
     );
   },
   deleteValue: () => "",
   copyValue: ({ rowData }: { rowData: string }) => formatDateForDisplay(rowData),
   pasteValue: ({ value }: { value: string }) => parseDateToISO(value),
+  disableKeys: true,
+  keepFocus: true,
 };
