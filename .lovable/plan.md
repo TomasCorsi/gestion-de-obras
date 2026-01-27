@@ -1,134 +1,124 @@
 
-# Plan: Modo Pantalla Completa para Grilla de Remitos
+# Plan: Arreglar Visibilidad de Dropdowns en las Grillas
 
-## Objetivo
-Cuando el usuario selecciona el modo "Grilla", la interfaz cambia a un modo pantalla completa que maximiza el espacio disponible para la grilla de datos, ocultando elementos secundarios.
+## Problema Identificado
+El dropdown del `GridSelectCell` se renderiza como hijo del contenedor de la celda de la grilla. Esto causa que sea cortado por el `overflow: hidden` del contenedor `dsg-container` de react-datasheet-grid.
 
-## Diseño Propuesto
+Como se ve en la imagen, el menú de "Ceamse" aparece cortado porque el área visible de la grilla no tiene suficiente altura para mostrarlo completo.
 
-### Vista Normal (Tabla)
-```text
-┌─────────────────────────────────────────────┐
-│ Header (Remitos - Gestión de remitos...)    │
-├─────────────────────────────────────────────┤
-│ FilterBar (fechas, obra)                    │
-├─────────────────────────────────────────────┤
-│ Búsqueda  │ [Tabla] [Grilla]  │ Importar   │
-├─────────────────────────────────────────────┤
-│ Stats: Remitos │ Viajes │ Cantidad │ Precio │
-├─────────────────────────────────────────────┤
-│                                             │
-│              TABLA DE DATOS                 │
-│                                             │
-└─────────────────────────────────────────────┘
-```
+## Solución: Usar React Portal
 
-### Vista Grilla (Pantalla Completa)
-```text
-┌─────────────────────────────────────────────┐
-│ Remitos   [Tabla] [Grilla]   [✕ Salir]      │
-├─────────────────────────────────────────────┤
-│ [+ Fila] [Descartar]              [Guardar] │
-├─────────────────────────────────────────────┤
-│                                             │
-│                                             │
-│           GRILLA PANTALLA COMPLETA          │
-│        (altura calculada dinámicamente)     │
-│                                             │
-│                                             │
-│                                             │
-└─────────────────────────────────────────────┘
-```
+El dropdown debe renderizarse **fuera** del contenedor de la grilla, directamente en el `document.body`, usando `ReactDOM.createPortal`. Esto permite que el dropdown "flote" sobre cualquier contenedor sin ser afectado por overflow.
 
-## Cambios a Implementar
-
-### 1. Modificar `src/pages/Remitos.tsx`
-
-Cuando `viewMode === "grid"`:
-- Ocultar el FilterBar
-- Ocultar la barra de búsqueda (ya está deshabilitada en modo grilla)
-- Ocultar las tarjetas de estadísticas
-- Agregar botón para "Salir de pantalla completa" (volver a modo tabla)
-- Usar un layout diferente que maximice el espacio
-
-### 2. Modificar `src/components/remitos/RemitosDataGrid.tsx`
-
-- Cambiar `height={500}` a un cálculo dinámico basado en el viewport
-- Usar `height={window.innerHeight - headerHeight}` o CSS `calc(100vh - Xpx)`
-- Agregar prop `fullScreen` para indicar que debe ocupar todo el espacio
-
-### 3. Estructura del Modo Pantalla Completa
+### Cambios Técnicos
 
 ```text
-Archivo: src/pages/Remitos.tsx
+Archivo: src/components/shared/GridSelectCell.tsx
 
-Cuando viewMode === "grid":
-- No usar MainLayout (para evitar padding extra)
-- Usar un layout custom con:
-  - Header mínimo: título + toggle de modo + botón salir
-  - Grilla ocupando el resto de la pantalla
+1. Importar createPortal:
+   import { createPortal } from "react-dom";
+
+2. Calcular posición absoluta del dropdown:
+   - Usar useRef para obtener el contenedor
+   - Usar getBoundingClientRect() para obtener coordenadas de la celda
+   - Posicionar el dropdown en coordenadas fijas de la ventana
+
+3. Renderizar dropdown con portal:
+   - Envolver el dropdown en createPortal(..., document.body)
+   - Usar position: fixed en lugar de absolute
+   - Calcular left/top basado en la posición de la celda
 ```
 
-## Detalles Técnicos
+### Flujo de Posicionamiento
 
-### Cambios en Remitos.tsx
-
-1. **Renderizado condicional del layout**
-   - Si `viewMode === "table"`: usar MainLayout normal con todos los elementos
-   - Si `viewMode === "grid"`: usar layout simplificado de pantalla completa
-
-2. **Layout de pantalla completa**
 ```text
-- Container: fixed inset-0, flex flex-col
-- Header: altura fija (~60px), con título y controles
-- Grid: flex-1, ocupa todo el espacio restante
+┌─────────────────────────────────────────┐
+│ Grilla (overflow: hidden)               │
+│  ┌───────────────────────┐              │
+│  │ Celda "Desde"         │ ← getBoundingClientRect()
+│  └───────────────────────┘              │
+│                                         │
+└─────────────────────────────────────────┘
+
+┌─────────────────────────────────────────┐
+│ document.body                           │
+│                                         │
+│  ┌───────────────────────┐              │
+│  │ Dropdown (via portal) │ ← position: fixed
+│  │ • Ceamse             │   con top/left calculados
+│  │ • Obra A             │              
+│  │ • Obra B             │              
+│  └───────────────────────┘              │
+└─────────────────────────────────────────┘
 ```
 
-3. **Controles visibles en modo grilla**
-   - Toggle para cambiar a modo tabla
-   - Botón de importar CSV
-   - Los controles de la grilla (Agregar Fila, Guardar, etc.)
+## Implementación Detallada
 
-### Cambios en RemitosDataGrid.tsx
+### 1. Nuevo estado para posición
 
-1. **Nueva prop**
 ```text
-interface RemitosDataGridProps {
-  // ... props existentes
-  fullScreen?: boolean;
-}
+const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
 ```
 
-2. **Altura dinámica**
-   - Si `fullScreen`: calcular altura disponible con `calc(100vh - headerHeight)`
-   - Usar un ref y ResizeObserver para manejar cambios de tamaño
-   - Altura mínima de 400px como fallback
+### 2. Calcular posición cuando se abre
 
-### CSS Adicional
+```text
+useEffect(() => {
+  if (isOpen && containerRef.current) {
+    const rect = containerRef.current.getBoundingClientRect();
+    setDropdownPosition({
+      top: rect.bottom + window.scrollY,
+      left: rect.left + window.scrollX,
+      width: Math.max(rect.width, 256) // Mínimo 256px (w-64)
+    });
+  }
+}, [isOpen]);
+```
 
-Agregar estilos para el modo pantalla completa:
-- Fondo sólido (sin transparencia del grid-pattern)
-- Z-index alto para overlay
-- Transición suave al entrar/salir
+### 3. Detectar si abrir hacia arriba o abajo
 
-## Flujo de Usuario
+```text
+// Si no hay espacio abajo, abrir hacia arriba
+const spaceBelow = window.innerHeight - rect.bottom;
+const spaceAbove = rect.top;
+const dropdownHeight = 200; // altura aproximada
 
-1. Usuario entra a Remitos → ve modo Grilla por defecto
-2. La grilla ocupa toda la pantalla, máxima visibilidad
-3. Puede cambiar a modo Tabla para ver filtros y estadísticas
-4. En modo Tabla, tiene todas las opciones (filtros, búsqueda, stats)
-5. Puede volver a modo Grilla con un click
+const shouldOpenUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow;
+```
+
+### 4. Renderizar con Portal
+
+```text
+{isOpen && createPortal(
+  <div 
+    className="fixed z-[9999] w-64 bg-popover border border-border rounded-md shadow-lg"
+    style={{ 
+      top: dropdownPosition.top,
+      left: dropdownPosition.left,
+      minWidth: dropdownPosition.width
+    }}
+  >
+    {/* opciones */}
+  </div>,
+  document.body
+)}
+```
 
 ## Archivos a Modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/pages/Remitos.tsx` | Layout condicional según viewMode, ocultar elementos en modo grilla |
-| `src/components/remitos/RemitosDataGrid.tsx` | Prop fullScreen, altura dinámica |
+| `src/components/shared/GridSelectCell.tsx` | Implementar portal y posicionamiento dinámico |
 
 ## Beneficios
 
-- Máxima área de trabajo para entrada de datos
-- Sin distracciones visuales
-- Ideal para carga masiva de remitos
-- Fácil alternar entre modos según la tarea
+- El dropdown **siempre** será visible, sin importar la altura de la grilla
+- Funciona tanto en modo normal como en pantalla completa
+- El dropdown se posiciona inteligentemente (arriba o abajo según espacio)
+- Compatible con scroll de la página y de la grilla
+
+## Consideraciones Adicionales
+
+- El dropdown se cierra al hacer scroll en la grilla (comportamiento esperado)
+- El z-index 9999 asegura que esté sobre cualquier otro elemento
+- El ancho del dropdown se ajusta al ancho de la celda (mínimo 256px)
