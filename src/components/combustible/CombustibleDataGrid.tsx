@@ -56,7 +56,9 @@ export function CombustibleDataGrid({
   onSave,
   fullScreen = false,
 }: CombustibleDataGridProps) {
-  const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
+  // In fullscreen mode: header (56px) + toolbar (52px) + padding (32px) + extra buffer (60px) = 200px
+  // Adding extra 50px to ensure "+ Add" row is visible
+  const gridHeight = fullScreen ? window.innerHeight - 250 : 500;
   const activeObras = useMemo(
     () => obras.filter((o) => o.estado !== "finalizada"),
     [obras]
