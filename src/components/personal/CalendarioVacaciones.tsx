@@ -47,7 +47,7 @@ function formatNombreCompleto(nombre: string | null, apellido: string | null): s
 function formatRangoFechas(fechaInicio: string, fechaFin: string): string {
   const inicio = parseISO(fechaInicio);
   const fin = parseISO(fechaFin);
-  return `${format(inicio, "dd")} - ${format(fin, "dd MMM", { locale: es })}`;
+  return `${format(inicio, "dd/MM")} - ${format(fin, "dd/MM")}`;
 }
 
 export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) {
@@ -278,13 +278,13 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
                           <div>
                             <span className="text-muted-foreground">Desde:</span>
                             <span className="ml-2 font-medium">
-                              {format(parseISO(vacacion.fecha_inicio), "EEEE d 'de' MMMM yyyy", { locale: es })}
+                              {format(parseISO(vacacion.fecha_inicio), "dd/MM/yyyy")}
                             </span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Hasta:</span>
                             <span className="ml-2 font-medium">
-                              {format(parseISO(vacacion.fecha_fin), "EEEE d 'de' MMMM yyyy", { locale: es })}
+                              {format(parseISO(vacacion.fecha_fin), "dd/MM/yyyy")}
                             </span>
                           </div>
                           {vacacion.observaciones && (

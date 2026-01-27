@@ -26,6 +26,7 @@ import { DetailRow } from "@/components/shared/DetailRow";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Plus, Search, Eye, Pencil, Trash2, ArrowUpCircle, ArrowDownCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { useStock, StockItemDB, StockItemForm, MovimientoStockForm, CategoriaStock, TipoMovimientoStock } from "@/hooks/useStock";
+import { formatDate } from "@/lib/utils";
 import { useObras } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
 
@@ -393,7 +394,7 @@ export default function Stock() {
                 <TableBody>
                   {filteredMovimientos.map((mov) => (
                     <TableRow key={mov.id} className="border-border">
-                      <TableCell>{mov.fecha}</TableCell>
+                      <TableCell>{formatDate(mov.fecha)}</TableCell>
                       <TableCell className="font-medium">{mov.item?.nombre || "-"}</TableCell>
                       <TableCell>
                         <Badge

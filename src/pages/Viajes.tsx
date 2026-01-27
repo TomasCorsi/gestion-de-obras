@@ -51,7 +51,7 @@ import { useViajes, ViajeWithRelations, ViajeForm, EstadoViaje } from "@/hooks/u
 import { useObras } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const estadoConfig: Record<string, { label: string; icon: any; className: string }> = {
   programado: { label: "Programado", icon: Calendar, className: "status-pending" },
@@ -290,7 +290,7 @@ export default function Viajes() {
                   <TableCell>
                     <span className="flex items-center gap-1 text-foreground">
                       <Calendar className="w-3 h-3 text-muted-foreground" />
-                      {viaje.fecha}
+                      {formatDate(viaje.fecha)}
                     </span>
                   </TableCell>
                   <TableCell className="font-medium text-foreground">
@@ -547,7 +547,7 @@ export default function Viajes() {
         {selectedViaje && (
           <>
             <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={selectedViaje.fecha} />
+              <DetailRow label="Fecha" value={formatDate(selectedViaje.fecha)} />
               <DetailRow label="Obra" value={selectedViaje.obra?.nombre} />
               <DetailRow
                 label="Estado"

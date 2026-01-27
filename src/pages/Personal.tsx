@@ -56,7 +56,7 @@ import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
@@ -333,7 +333,7 @@ export default function Personal() {
                       <TableCell>
                         <span className="flex items-center gap-1 text-muted-foreground">
                           <Calendar className="w-3 h-3" />
-                          {persona.fecha_ingreso || "-"}
+                          {formatDate(persona.fecha_ingreso)}
                         </span>
                       </TableCell>
                       <TableCell>
