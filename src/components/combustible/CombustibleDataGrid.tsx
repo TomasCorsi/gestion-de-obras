@@ -151,12 +151,13 @@ export function CombustibleDataGrid({
       { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
       {
         ...keyColumn("obra_id", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={obraOptions}
               placeholder="Sin asignar"
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -168,12 +169,13 @@ export function CombustibleDataGrid({
       },
       {
         ...keyColumn("maquinaria_id", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={maquinariaOptions}
               placeholder="Sin asignar"
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -191,12 +193,13 @@ export function CombustibleDataGrid({
       },
       {
         ...keyColumn("operador", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={operadorOptions}
               placeholder="Sin asignar"
+              focus={focus}
             />
           ),
           deleteValue: () => "",

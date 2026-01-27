@@ -173,12 +173,13 @@ export function RemitosDataGrid({
       { ...keyColumn("fecha", textColumn), title: "Fecha", minWidth: 100 },
       {
         ...keyColumn("desde", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={obrasOptions}
               placeholder="Desde..."
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -190,12 +191,13 @@ export function RemitosDataGrid({
       },
       {
         ...keyColumn("hasta", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={obrasOptions}
               placeholder="Hasta..."
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -208,12 +210,13 @@ export function RemitosDataGrid({
       { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
       {
         ...keyColumn("unidad", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={unidadOptions}
               placeholder="M3"
+              focus={focus}
             />
           ),
           deleteValue: () => "M3",
@@ -229,12 +232,13 @@ export function RemitosDataGrid({
       { ...keyColumn("cantidad", floatColumn), title: "Cantidad", minWidth: 80 },
       {
         ...keyColumn("tipo_material", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={tipoMaterialOptions}
               placeholder="Tipo..."
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -252,12 +256,13 @@ export function RemitosDataGrid({
       { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100 },
       {
         ...keyColumn("tipo_transporte", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={tipoTransporteOptions}
               placeholder="Transporte..."
+              focus={focus}
             />
           ),
           deleteValue: () => "",
@@ -274,12 +279,13 @@ export function RemitosDataGrid({
       },
       {
         ...keyColumn("maquinaria_id", {
-          component: ({ rowData, setRowData }: { rowData: string; setRowData: (v: string) => void }) => (
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
               value={rowData}
               onChange={setRowData}
               options={maquinariaOptions}
               placeholder="Patente..."
+              focus={focus}
             />
           ),
           deleteValue: () => "",

@@ -6,6 +6,7 @@ interface GridSelectCellProps {
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
   placeholder?: string;
+  focus?: boolean;
 }
 
 export function GridSelectCell({
@@ -13,6 +14,7 @@ export function GridSelectCell({
   onChange,
   options,
   placeholder = "Seleccionar...",
+  focus,
 }: GridSelectCellProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
@@ -34,6 +36,15 @@ export function GridSelectCell({
       opt.label.toLowerCase().includes(searchTerm)
     );
   }, [options, inputValue, selectedOption]);
+
+  // Auto-focus when cell enters edit mode
+  useEffect(() => {
+    if (focus) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+      setIsOpen(true);
+    }
+  }, [focus]);
 
   // Sync input value with selected option when not editing
   useEffect(() => {
