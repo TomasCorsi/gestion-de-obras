@@ -5,9 +5,9 @@ import {
   floatColumn,
   keyColumn,
   intColumn,
+  isoDateColumn,
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
-import { dateColumn } from "@/components/shared/dateColumn";
 import { Button } from "@/components/ui/button";
 import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
@@ -29,7 +29,7 @@ interface GridRow {
   id?: string;
   remito_tercero: string;
   remito_local: string;
-  fecha: string;
+  fecha: string | null;
   desde: string;
   hasta: string;
   cantidad_viajes: number | null;
@@ -193,7 +193,7 @@ export function RemitosDataGrid({
     () => [
       { ...keyColumn("remito_tercero", textColumn), title: "Rem. Tercero", minWidth: 110 },
       { ...keyColumn("remito_local", textColumn), title: "Rem. Local", minWidth: 110 },
-      { ...keyColumn("fecha", dateColumn), title: "Fecha", minWidth: 110 },
+      { ...keyColumn("fecha", isoDateColumn), title: "Fecha", minWidth: 140 },
       {
         ...keyColumn("desde", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -543,7 +543,7 @@ export function RemitosDataGrid({
       id: tempId,
       remito_tercero: "",
       remito_local: "",
-      fecha: new Date().toISOString().split("T")[0],
+      fecha: null,
       desde: "",
       hasta: "",
       cantidad_viajes: 1,
