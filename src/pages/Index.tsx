@@ -1,4 +1,5 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Building2, 
@@ -18,6 +19,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TopNavbar } from "@/components/layout/TopNavbar";
+import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
+import { LoadingScreen } from "@/components/shared/LoadingScreen";
 
 type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
 
@@ -153,6 +156,20 @@ const apps: AppItem[] = [
 
 const Index = () => {
   const { hasRole } = useAuth();
+  const { isFieldEmployee, loading: empleadoLoading } = useEmpleadoProfile();
+  const navigate = useNavigate();
+
+  // Redirigir empleados de campo a /parte-diario
+  useEffect(() => {
+    if (!empleadoLoading && isFieldEmployee) {
+      navigate('/parte-diario', { replace: true });
+    }
+  }, [isFieldEmployee, empleadoLoading, navigate]);
+
+  // Mostrar loading mientras se verifica el tipo de usuario
+  if (empleadoLoading || isFieldEmployee) {
+    return <LoadingScreen />;
+  }
 
   const filteredApps = apps.filter(app => {
     if (!app.roles) return true;

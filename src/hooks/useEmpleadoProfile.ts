@@ -57,11 +57,19 @@ export function useEmpleadoProfile() {
 
   const rolPersonal: RolPersonal | null = empleado?.rol || null;
 
+  // Un empleado de campo es aquel que:
+  // 1. Tiene registro en la tabla personal (empleado !== null)
+  // 2. Su rol NO es "administrativo" (los administrativos tienen acceso completo)
+  // Nota: Los capataces se manejan via user_roles, no son empleados de campo
+  const isFieldEmployee = empleado !== null && 
+    !['administrativo'].includes(empleado.rol);
+
   return {
     empleado,
     loading,
     error,
     rolPersonal,
+    isFieldEmployee, // true si solo debe ver Parte Diario
     isMaquinista: rolPersonal === 'maquinista',
     isChofer: rolPersonal === 'chofer',
     isCapataz: rolPersonal === 'capataz',
