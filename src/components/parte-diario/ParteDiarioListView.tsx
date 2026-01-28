@@ -1,8 +1,8 @@
-import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar } from "lucide-react";
+import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar, Lock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ParteDiario } from "@/hooks/useParteDiario";
@@ -35,15 +35,19 @@ export const ParteDiarioListView = ({
       <div className="space-y-3">
         {partes.map((parte) => {
           const isBorrador = (parte as any).estado === 'borrador';
+          const parteDate = parseISO(parte.fecha);
+          const canEdit = isToday(parteDate);
           
           return (
             <Card 
               key={parte.id} 
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md",
-                isBorrador && "border-amber-500/50 bg-amber-500/5"
+                "transition-all",
+                canEdit && "cursor-pointer hover:shadow-md",
+                isBorrador && "border-amber-500/50 bg-amber-500/5",
+                !canEdit && "opacity-80"
               )}
-              onClick={() => onEdit(parte)}
+              onClick={() => canEdit && onEdit(parte)}
             >
               <CardContent className="py-4 px-4">
                 <div className="flex justify-between items-start gap-3">
@@ -105,6 +109,19 @@ export const ParteDiarioListView = ({
                           : "bg-amber-500/10 text-amber-600"
                       )}>
                         {parte.estado_maquina}
+                      </span>
+                    )}
+                    
+                    {/* Indicador de editable/bloqueado */}
+                    {canEdit ? (
+                      <span className="flex items-center gap-1 text-xs text-primary">
+                        <Pencil className="w-3 h-3" />
+                        Editar
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Lock className="w-3 h-3" />
+                        Solo lectura
                       </span>
                     )}
                   </div>
