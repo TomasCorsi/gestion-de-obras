@@ -16,6 +16,7 @@ import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
+import { GridFilterToolbar, ColumnFilterHeader, useGridFilters, ColumnFilterConfig } from "@/components/shared/GridFilterToolbar";
 
 // Type for react-datasheet-grid operations
 interface Operation {
@@ -64,16 +65,12 @@ export function CombustibleDataGrid({
   onSave,
   fullScreen = false,
 }: CombustibleDataGridProps) {
-  // In fullscreen mode: header (56px) + toolbar (52px) + padding (32px) + extra buffer (60px) = 200px
-  // Adding extra 50px to ensure "+ Add" row is visible
   const gridHeight = fullScreen ? window.innerHeight - 250 : 500;
   
-  // useRef Sets for tracking row changes (persists across renders)
   const createdRowIds = useRef(new Set<string>()).current;
   const deletedRowIds = useRef(new Set<string>()).current;
   const updatedRowIds = useRef(new Set<string>()).current;
   
-  // Force re-render counter for hasChanges
   const [, forceUpdate] = useState(0);
   
   const activeObras = useMemo(
@@ -142,9 +139,75 @@ export function CombustibleDataGrid({
   const [data, setData] = useState<GridRow[]>(initialData);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Filter configurations
+  const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
+    { 
+      column: "obra_id", 
+      title: "Obra",
+      getValue: (row: GridRow) => {
+        const obra = activeObras.find(o => o.id === row.obra_id);
+        return obra?.nombre || "";
+      }
+    },
+    { 
+      column: "maquinaria_id", 
+      title: "Maquinaria",
+      getValue: (row: GridRow) => {
+        const maq = maquinarias.find(m => m.id === row.maquinaria_id);
+        return maq ? `${maq.codigo || ""} - ${maq.tipo}` : "";
+      }
+    },
+    { column: "operador", title: "Operador" },
+    { column: "estacion", title: "Estación" },
+  ], [activeObras, maquinarias]);
+
+  // Use grid filters hook
+  const {
+    globalSearch,
+    setGlobalSearch,
+    columnFilters,
+    setColumnFilters,
+    filteredData,
+    activeFilterCount,
+    getUniqueValues,
+    toggleColumnFilter,
+    clearColumnFilter,
+    clearAllFilters,
+  } = useGridFilters(
+    data,
+    filterConfigs,
+    ["comprobante", "operador", "estacion"] as (keyof GridRow)[]
+  );
+
+  // Extend search to include obra and maquinaria names
+  const searchFilteredData = useMemo(() => {
+    if (!globalSearch) return filteredData;
+    
+    const searchLower = globalSearch.toLowerCase();
+    return filteredData.filter((row) => {
+      // Check direct fields
+      if (row.comprobante?.toLowerCase().includes(searchLower)) return true;
+      if (row.operador?.toLowerCase().includes(searchLower)) return true;
+      if (row.estacion?.toLowerCase().includes(searchLower)) return true;
+      
+      // Check obra name
+      const obra = activeObras.find(o => o.id === row.obra_id);
+      if (obra?.nombre.toLowerCase().includes(searchLower)) return true;
+      
+      // Check maquinaria
+      const maq = maquinarias.find(m => m.id === row.maquinaria_id);
+      if (maq) {
+        if (maq.codigo?.toLowerCase().includes(searchLower)) return true;
+        if (maq.tipo?.toLowerCase().includes(searchLower)) return true;
+        if (maq.patente?.toLowerCase().includes(searchLower)) return true;
+      }
+      
+      return false;
+    });
+  }, [filteredData, globalSearch, activeObras, maquinarias]);
+
   useEffect(() => {
     setData(initialData);
-    // Clear tracking sets when initial data changes
     createdRowIds.clear();
     deletedRowIds.clear();
     updatedRowIds.clear();
@@ -191,7 +254,16 @@ export function CombustibleDataGrid({
           copyValue: ({ rowData }: { rowData: string }) => activeObras.find((o) => o.id === rowData)?.nombre || "",
           pasteValue: ({ value }: { value: string }) => activeObras.find((o) => o.nombre.toLowerCase() === value.toLowerCase())?.id || "",
         }),
-        title: "Obra",
+        title: (
+          <ColumnFilterHeader
+            column="obra_id"
+            title="Obra"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 180,
       },
       {
@@ -215,7 +287,16 @@ export function CombustibleDataGrid({
             return maquinarias.find((m) => m.codigo === code)?.id || "";
           },
         }),
-        title: "Maquinaria",
+        title: (
+          <ColumnFilterHeader
+            column="maquinaria_id"
+            title="Maquinaria"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 180,
       },
       {
@@ -233,7 +314,16 @@ export function CombustibleDataGrid({
           copyValue: ({ rowData }: { rowData: string }) => rowData,
           pasteValue: ({ value }: { value: string }) => value,
         }),
-        title: "Operador",
+        title: (
+          <ColumnFilterHeader
+            column="operador"
+            title="Operador"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 160,
       },
       { ...keyColumn("litros", floatColumn), title: "Litros", minWidth: 90 },
@@ -245,9 +335,22 @@ export function CombustibleDataGrid({
         disabled: true,
       },
       { ...keyColumn("horas_maquina", floatColumn), title: "Hs Máq", minWidth: 90 },
-      { ...keyColumn("estacion", textColumn), title: "Estación", minWidth: 140 },
+      { 
+        ...keyColumn("estacion", textColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="estacion"
+            title="Estación"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 140 
+      },
     ],
-    [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions]
+    [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter]
   );
 
   const handleChange = useCallback(
@@ -256,27 +359,22 @@ export function CombustibleDataGrid({
       
       for (const operation of operations) {
         if (operation.type === 'DELETE') {
-          // Get the rows that were deleted from the original data
           const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
           
           for (const row of deletedRows) {
             if (row.id && !row.id.startsWith('temp_')) {
-              // Existing row from database - track for deletion
               deletedRowIds.add(row.id);
               updatedRowIds.delete(row.id);
               
-              // Re-insert the row marked as deleted for visual feedback
               const deletedRow = { ...row, _isDeleted: true };
               processedData.splice(operation.fromRowIndex, 0, deletedRow);
             } else if (row.id && row.id.startsWith('temp_')) {
-              // New row that was never saved - just remove from created
               createdRowIds.delete(row.id);
             }
           }
         }
         
         if (operation.type === 'CREATE') {
-          // Mark new rows with temp IDs
           for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
             if (processedData[i] && !processedData[i].id) {
               const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -361,8 +459,9 @@ export function CombustibleDataGrid({
     deletedRowIds.clear();
     updatedRowIds.clear();
     clearDraft();
+    clearAllFilters();
     forceUpdate(n => n + 1);
-  }, [initialData, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
+  }, [initialData, clearDraft, clearAllFilters, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -404,7 +503,6 @@ export function CombustibleDataGrid({
       
       await onSave({ created, updated, deleted });
       
-      // Remove deleted rows from data and clear tracking
       const newData = data.filter(row => !row._isDeleted);
       setData(newData);
       createdRowIds.clear();
@@ -420,6 +518,9 @@ export function CombustibleDataGrid({
     }
   }, [data, onSave, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
+  // Get the data to display (filtered if there are filters/search)
+  const displayData = globalSearch || activeFilterCount > 0 ? searchFilteredData : data;
+
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
       {showRestorePrompt && (
@@ -429,37 +530,64 @@ export function CombustibleDataGrid({
           onDiscard={discardDraft}
         />
       )}
-      <div className={`flex items-center justify-between ${fullScreen ? 'px-0 pb-2' : ''}`}>
-        <div className="flex items-center gap-2">
-          <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Fila
+      <div className={`flex items-center justify-between gap-2 ${fullScreen ? 'px-0 pb-2' : ''}`}>
+        <GridFilterToolbar
+          globalSearch={globalSearch}
+          setGlobalSearch={setGlobalSearch}
+          columnFilters={columnFilters}
+          setColumnFilters={setColumnFilters}
+          data={data}
+          filterConfigs={filterConfigs}
+        >
+          <Button onClick={handleAddRow} variant="outline" size="sm" className="h-8 border-border">
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Agregar
           </Button>
           {hasChanges && (
-            <Button onClick={handleReset} variant="ghost" size="sm" className="text-muted-foreground">
-              <RotateCcw className="w-4 h-4 mr-2" />
+            <Button onClick={handleReset} variant="ghost" size="sm" className="h-8 text-muted-foreground">
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />
               Descartar
             </Button>
           )}
-        </div>
+        </GridFilterToolbar>
         <Button 
           onClick={handleSave} 
           disabled={!hasChanges || isSaving} 
-          className="bg-primary hover:bg-primary/90"
+          size="sm"
+          className="h-8 bg-primary hover:bg-primary/90"
         >
-          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Guardar Cambios
+          {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+          Guardar
         </Button>
       </div>
       {!fullScreen && (
         <p className="text-xs text-muted-foreground">
-          💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. El total se calcula automáticamente.
+          💡 Usá los iconos de filtro en cada columna para filtrar. Tab para navegar. El total se calcula automáticamente.
         </p>
       )}
       <div className={`combustible-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? 'flex-1' : ''}`}>
         <DataSheetGrid
-          value={data}
-          onChange={handleChange}
+          value={displayData}
+          onChange={(newData, ops) => {
+            // Map changes back to full data array when filtering is active
+            if (globalSearch || activeFilterCount > 0) {
+              const fullData = [...data];
+              for (const op of ops) {
+                if (op.type === 'UPDATE') {
+                  for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+                    const filteredRow = newData[i];
+                    const originalIndex = data.findIndex(r => r.id === filteredRow.id);
+                    if (originalIndex !== -1) {
+                      fullData[originalIndex] = filteredRow;
+                    }
+                  }
+                }
+              }
+              handleChange(fullData, ops);
+            } else {
+              handleChange(newData, ops);
+            }
+          }}
           columns={columns}
           createRow={createRow}
           height={gridHeight}
