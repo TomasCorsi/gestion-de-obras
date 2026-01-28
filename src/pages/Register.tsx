@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, UserPlus, Truck } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
+import logoFull from '@/assets/logo-full.png';
+import authBackground from '@/assets/auth-background.jpg';
 
 export default function Register() {
   const { signUp, user, loading } = useAuth();
@@ -55,11 +57,19 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4">
-      <Card className="w-full max-w-md shadow-xl border-border/50">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 p-4 relative overflow-hidden">
+      {/* Mobile-only blurred background */}
+      <div 
+        className="absolute inset-0 md:hidden bg-cover bg-center"
+        style={{ backgroundImage: `url(${authBackground})` }}
+      >
+        <div className="absolute inset-0 backdrop-blur-sm bg-background/70" />
+      </div>
+      
+      <Card className="w-full max-w-md shadow-xl border-border/50 relative z-10">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
-            <Truck className="w-8 h-8 text-primary" />
+          <div className="mx-auto">
+            <img src={logoFull} alt="Calamina Sur" className="h-20 w-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl font-bold">Crear Cuenta</CardTitle>
@@ -142,6 +152,6 @@ export default function Register() {
           </CardFooter>
         </form>
       </Card>
-    </div>
+    </main>
   );
 }
