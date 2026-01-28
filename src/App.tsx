@@ -17,9 +17,10 @@ import ResetPassword from "./pages/ResetPassword";
 import NoAccess from "./pages/NoAccess";
 import Install from "./pages/Install";
 import NotFound from "./pages/NotFound";
+import Index from "./pages/Index";
+import ParteDiario from "./pages/ParteDiario";
 
 // Lazy loaded pages (code splitting)
-const Index = lazy(() => import("./pages/Index"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Obras = lazy(() => import("./pages/Obras"));
 const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
@@ -30,7 +31,6 @@ const Remitos = lazy(() => import("./pages/Remitos"));
 const Gastos = lazy(() => import("./pages/Gastos"));
 const Mantenimiento = lazy(() => import("./pages/MantenimientoPage"));
 const Stock = lazy(() => import("./pages/Stock"));
-const ParteDiario = lazy(() => import("./pages/ParteDiario"));
 const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
