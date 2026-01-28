@@ -332,17 +332,23 @@ export function ColumnFilterHeader({
             {filteredValues.length > 0 && setColumnFilters && (
               <div 
                 className="flex items-center space-x-2 py-1.5 px-2 rounded-md bg-muted/50 border border-border cursor-pointer hover:bg-muted transition-colors"
-                onClick={handleToggleAll}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleAll();
+                }}
               >
                 <Checkbox
                   id={`${column}-select-all`}
                   checked={allFilteredSelected}
-                  className={someFilteredSelected ? "data-[state=unchecked]:bg-primary/30" : ""}
-                  onCheckedChange={handleToggleAll}
+                  className={someFilteredSelected ? "data-[state=unchecked]:bg-red-600/30" : ""}
+                  onCheckedChange={(e) => {
+                    // Solo manejamos el toggle desde el onClick del div padre
+                  }}
                 />
                 <label
                   htmlFor={`${column}-select-all`}
                   className="text-sm font-medium cursor-pointer flex-1"
+                  onClick={(e) => e.stopPropagation()}
                 >
                   {searchTerm ? `Seleccionar todos (${filteredValues.length})` : "Seleccionar todos"}
                 </label>
@@ -361,28 +367,34 @@ export function ColumnFilterHeader({
                   {searchTerm ? "Sin resultados" : "Sin valores"}
                 </p>
               ) : (
-                filteredValues.map((value) => {
+              filteredValues.map((value) => {
                   const isSelected = activeFilter?.has(value) || false;
                   return (
                     <div 
                       key={value} 
                       className={`flex items-center space-x-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors ${
                         isSelected 
-                          ? 'bg-primary/10 border border-primary/30' 
+                          ? 'bg-red-600/10 border border-red-600/30' 
                           : 'hover:bg-muted border border-transparent'
                       }`}
-                      onClick={() => toggleColumnFilter(column, value)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleColumnFilter(column, value);
+                      }}
                     >
                       <Checkbox
                         id={`${column}-${value}`}
                         checked={isSelected}
-                        onCheckedChange={() => toggleColumnFilter(column, value)}
+                        onCheckedChange={() => {
+                          // Solo manejamos el toggle desde el onClick del div padre
+                        }}
                       />
                       <label
                         htmlFor={`${column}-${value}`}
                         className={`text-sm cursor-pointer flex-1 truncate ${
                           isSelected ? 'font-medium text-foreground' : 'text-muted-foreground'
                         }`}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {value || "(vacío)"}
                       </label>
