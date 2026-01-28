@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Truck, Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import logoFull from '@/assets/logo-full.png';
+import authBackground from '@/assets/auth-background.jpg';
 
 const RegistroEmpleado = () => {
   const navigate = useNavigate();
@@ -164,11 +166,19 @@ const RegistroEmpleado = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
+    <main className="min-h-screen flex items-center justify-center bg-background p-4 relative overflow-hidden">
+      {/* Mobile-only blurred background */}
+      <div 
+        className="absolute inset-0 md:hidden bg-cover bg-center"
+        style={{ backgroundImage: `url(${authBackground})` }}
+      >
+        <div className="absolute inset-0 backdrop-blur-sm bg-background/70" />
+      </div>
+      
+      <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center space-y-4">
-          <div className="mx-auto w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-            <Truck className="w-10 h-10 text-primary-foreground" />
+          <div className="mx-auto">
+            <img src={logoFull} alt="Calamina Sur" className="h-20 w-auto" />
           </div>
           <div>
             <CardTitle className="text-2xl">Registro de Empleado</CardTitle>
@@ -297,7 +307,7 @@ const RegistroEmpleado = () => {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </main>
   );
 };
 
