@@ -35,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
+  const [isIntentionalSignOut, setIsIntentionalSignOut] = useState(false);
 
   const fetchUserData = async (userId: string) => {
     setRoleLoading(true);
@@ -102,8 +103,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.debug('[Auth] Token refreshed silently');
         }
         
-        // Si se cierra sesión inesperadamente, intentar recuperar
-        if (event === 'SIGNED_OUT' && session === null) {
+        // Si se cierra sesión inesperadamente (no intencional), intentar recuperar
+        if (event === 'SIGNED_OUT' && session === null && !isIntentionalSignOut) {
           console.debug('[Auth] Unexpected sign out, attempting recovery...');
           try {
             const { data } = await supabase.auth.getSession();
@@ -117,6 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (e) {
             console.warn('[Auth] Session recovery failed:', e);
           }
+        }
+        
+        // Reset the flag after handling
+        if (event === 'SIGNED_OUT') {
+          setIsIntentionalSignOut(false);
         }
         
         setSession(session);
@@ -177,13 +183,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Mark as intentional sign out to prevent session recovery
+    setIsIntentionalSignOut(true);
+    
+    // Clear state immediately for instant UI feedback
+    setUser(null);
+    setSession(null);
+    setProfile(null);
+    setRole(null);
+    
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast.error(error.message);
       throw error;
     }
-    setProfile(null);
-    setRole(null);
     toast.success('Sesión cerrada');
   };
 
