@@ -18,6 +18,7 @@ import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 import { GridFilterToolbar, ColumnFilterHeader, useGridFilters, ColumnFilterConfig } from "@/components/shared/GridFilterToolbar";
+import { formatDate } from "@/lib/utils";
 
 // Type for react-datasheet-grid operations
 interface Operation {
@@ -158,6 +159,11 @@ export function RemitosDataGrid({
 
   // Filter configurations
   const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
+    { 
+      column: "fecha", 
+      title: "Fecha",
+      getValue: (row: GridRow) => row.fecha ? formatDate(row.fecha) : ""
+    },
     { column: "desde", title: "Desde" },
     { column: "hasta", title: "Hasta" },
     { column: "tipo_material", title: "Tipo Material" },
@@ -237,7 +243,20 @@ export function RemitosDataGrid({
     () => [
       { ...keyColumn("remito_tercero", textColumn), title: "Rem. Tercero", minWidth: 110 },
       { ...keyColumn("remito_local", textColumn), title: "Rem. Local", minWidth: 110 },
-      { ...keyColumn("fecha", isoDateColumn), title: "Fecha", minWidth: 140 },
+      { 
+        ...keyColumn("fecha", isoDateColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="fecha"
+            title="Fecha"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 140 
+      },
       {
         ...keyColumn("desde", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (

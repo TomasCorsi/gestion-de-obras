@@ -213,14 +213,34 @@ export function ColumnFilterHeader({
   toggleColumnFilter, 
   clearColumnFilter 
 }: ColumnFilterHeaderProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  
   const uniqueValues = getUniqueValues(column);
   const activeFilter = columnFilters[column];
   const hasFilter = activeFilter && activeFilter.size > 0;
   
+  // Filter values based on search term
+  const filteredValues = useMemo(() => {
+    if (!searchTerm) return uniqueValues;
+    const searchLower = searchTerm.toLowerCase();
+    return uniqueValues.filter(value => 
+      value.toLowerCase().includes(searchLower)
+    );
+  }, [uniqueValues, searchTerm]);
+
+  // Clear search when popover closes
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (!open) {
+      setSearchTerm("");
+    }
+  };
+  
   return (
     <div className="flex items-center gap-1">
       <span>{title}</span>
-      <Popover>
+      <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button 
             variant="ghost" 
@@ -245,11 +265,23 @@ export function ColumnFilterHeader({
                 </Button>
               )}
             </div>
+            {/* Search input */}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-7 pl-7 text-xs bg-background border-border"
+              />
+            </div>
             <div className="max-h-48 overflow-y-auto space-y-1">
-              {uniqueValues.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">Sin valores</p>
+              {filteredValues.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2">
+                  {searchTerm ? "Sin resultados" : "Sin valores"}
+                </p>
               ) : (
-                uniqueValues.map((value) => (
+                filteredValues.map((value) => (
                   <div key={value} className="flex items-center space-x-2">
                     <Checkbox
                       id={`${column}-${value}`}

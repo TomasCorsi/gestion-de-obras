@@ -17,6 +17,7 @@ import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 import { GridFilterToolbar, ColumnFilterHeader, useGridFilters, ColumnFilterConfig } from "@/components/shared/GridFilterToolbar";
+import { formatDate } from "@/lib/utils";
 
 // Type for react-datasheet-grid operations
 interface Operation {
@@ -141,7 +142,11 @@ export function CombustibleDataGrid({
 
   // Filter configurations for ALL columns
   const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
-    { column: "fecha", title: "Fecha" },
+    { 
+      column: "fecha", 
+      title: "Fecha",
+      getValue: (row: GridRow) => row.fecha ? formatDate(row.fecha) : ""
+    },
     { column: "comprobante", title: "Comprobante" },
     { 
       column: "obra_id", 
