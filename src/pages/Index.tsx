@@ -155,7 +155,7 @@ const apps: AppItem[] = [
 ];
 
 const Index = () => {
-  const { hasRole, loading: authLoading } = useAuth();
+  const { hasRole, loading: authLoading, role } = useAuth();
   const { isFieldEmployee, loading: empleadoLoading } = useEmpleadoProfile();
   const navigate = useNavigate();
 
@@ -165,6 +165,27 @@ const Index = () => {
       navigate('/parte-diario', { replace: true });
     }
   }, [isFieldEmployee, empleadoLoading, authLoading, navigate]);
+
+  // Fallback: si la verificación de empleado tarda demasiado en dispositivos/PWA,
+  // redirigir a Parte Diario para evitar quedarse infinito en "Cargando...".
+  useEffect(() => {
+    if (authLoading) return;
+
+    const isPrivileged = hasRole('admin') || hasRole('capataz');
+    if (isPrivileged) return;
+
+    // Solo aplica a roles que podrían ser "empleado de campo".
+    const couldBeFieldEmployee = role === 'maquinista' || role === 'ayudante' || role === null;
+    if (!couldBeFieldEmployee) return;
+
+    if (!empleadoLoading) return;
+
+    const t = window.setTimeout(() => {
+      navigate('/parte-diario', { replace: true });
+    }, 8000);
+
+    return () => window.clearTimeout(t);
+  }, [authLoading, empleadoLoading, hasRole, navigate, role]);
 
   // Mostrar loading solo mientras se verifica el tipo de usuario
   // Una vez que loading termine, si es empleado de campo el useEffect redirige
