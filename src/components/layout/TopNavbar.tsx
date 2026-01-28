@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import { AppLauncher } from "./AppLauncher";
+import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 
 interface TopNavbarProps {
   title?: string;
@@ -29,6 +30,7 @@ const roleLabels: Record<string, string> = {
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
   const { profile, role, signOut } = useAuth();
+  const { isFieldEmployee, empleado } = useEmpleadoProfile();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -90,16 +92,18 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* App Launcher */}
-        <AppLauncher />
+        {/* App Launcher - Solo para usuarios NO de campo */}
+        {!isFieldEmployee && <AppLauncher />}
 
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="w-5 h-5 text-muted-foreground" />
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
-            3
-          </Badge>
-        </Button>
+        {/* Notifications - Solo para usuarios NO de campo */}
+        {!isFieldEmployee && (
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="w-5 h-5 text-muted-foreground" />
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
+              3
+            </Badge>
+          </Button>
+        )}
 
         {/* User Menu */}
         <DropdownMenu>
