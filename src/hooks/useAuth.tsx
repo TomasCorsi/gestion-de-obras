@@ -34,11 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [roleLoading, setRoleLoading] = useState(false);
   const [isIntentionalSignOut, setIsIntentionalSignOut] = useState(false);
 
-  const fetchUserData = async (userId: string) => {
-    setRoleLoading(true);
+  const fetchUserData = async (userId: string): Promise<void> => {
     try {
       // Fetch profile and role in parallel
       const [profileResult, roleResult] = await Promise.all([
@@ -58,11 +56,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(profileResult.data);
 
       if (roleResult.error) throw roleResult.error;
-      setRole(roleResult.data?.role as AppRole || null);
+      setRole(roleResult.data?.role as AppRole || 'maquinista');
     } catch (error) {
       console.error('Error fetching user data:', error);
-    } finally {
-      setRoleLoading(false);
+      // Set default role to prevent infinite loading
+      setRole('maquinista');
     }
   };
 
@@ -95,7 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Set up auth state listener for subsequent changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event, newSession) => {
         if (!isMounted) return;
         
         // Log silencioso para debugging
@@ -103,8 +101,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.debug('[Auth] Token refreshed silently');
         }
         
+        // Handle sign in - fetch user data immediately
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          setSession(newSession);
+          setUser(newSession.user);
+          await fetchUserData(newSession.user.id);
+          return;
+        }
+        
         // Si se cierra sesión inesperadamente (no intencional), intentar recuperar
-        if (event === 'SIGNED_OUT' && session === null && !isIntentionalSignOut) {
+        if (event === 'SIGNED_OUT' && newSession === null && !isIntentionalSignOut) {
           console.debug('[Auth] Unexpected sign out, attempting recovery...');
           try {
             const { data } = await supabase.auth.getSession();
@@ -112,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               console.debug('[Auth] Session recovered successfully');
               setSession(data.session);
               setUser(data.session.user);
-              fetchUserData(data.session.user.id);
+              await fetchUserData(data.session.user.id);
               return;
             }
           } catch (e) {
@@ -125,16 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setIsIntentionalSignOut(false);
         }
         
-        setSession(session);
-        setUser(session?.user ?? null);
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
 
-        if (session?.user) {
-          // Use setTimeout to avoid blocking the callback
-          setTimeout(() => {
-            if (isMounted) {
-              fetchUserData(session.user.id);
-            }
-          }, 0);
+        if (newSession?.user) {
+          await fetchUserData(newSession.user.id);
         } else {
           setProfile(null);
           setRole(null);
