@@ -470,6 +470,7 @@ export function CombustibleDataGrid({
       
       for (const operation of operations) {
         if (operation.type === 'DELETE') {
+          // For delete, we need to find the actual rows by ID since indices may not match
           const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
           
           for (const row of deletedRows) {
@@ -683,6 +684,8 @@ export function CombustibleDataGrid({
             // Map changes back to full data array when filtering is active
             if (globalSearch || activeFilterCount > 0) {
               const fullData = [...data];
+              const transformedOps: Operation[] = [];
+              
               for (const op of ops) {
                 if (op.type === 'UPDATE') {
                   for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
@@ -690,11 +693,20 @@ export function CombustibleDataGrid({
                     const originalIndex = data.findIndex(r => r.id === filteredRow.id);
                     if (originalIndex !== -1) {
                       fullData[originalIndex] = filteredRow;
+                      // Create transformed operation with correct index in full array
+                      transformedOps.push({
+                        type: 'UPDATE',
+                        fromRowIndex: originalIndex,
+                        toRowIndex: originalIndex + 1,
+                      });
                     }
                   }
+                } else {
+                  // For CREATE/DELETE, just pass through (these shouldn't happen while filtering)
+                  transformedOps.push(op);
                 }
               }
-              handleChange(fullData, ops);
+              handleChange(fullData, transformedOps);
             } else {
               handleChange(newData, ops);
             }
