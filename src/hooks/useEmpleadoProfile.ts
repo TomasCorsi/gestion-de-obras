@@ -23,11 +23,12 @@ export function useEmpleadoProfile() {
       return;
     }
 
-    const fetchEmpleado = async () => {
+    const fetchAndLinkEmpleado = async () => {
       setLoading(true);
       setError(null);
       
-      const { data, error: fetchError } = await supabase
+      // First try to find by user_id (already linked)
+      let { data, error: fetchError } = await supabase
         .from('personal')
         .select('*')
         .eq('user_id', user.id)
@@ -38,6 +39,36 @@ export function useEmpleadoProfile() {
         setError('Error al cargar perfil de empleado');
         setLoading(false);
         return;
+      }
+
+      // If not found by user_id, try to auto-link using legajo from user metadata
+      if (!data) {
+        const legajo = user.user_metadata?.legajo;
+        
+        if (legajo) {
+          // Find unlinked personal record with matching legajo
+          const { data: unlinkedPersonal } = await supabase
+            .from('personal')
+            .select('*')
+            .eq('legajo', legajo)
+            .is('user_id', null)
+            .maybeSingle();
+
+          if (unlinkedPersonal) {
+            // Try to link it (RLS policy allows this now)
+            const { error: linkError } = await supabase
+              .from('personal')
+              .update({ user_id: user.id })
+              .eq('id', unlinkedPersonal.id);
+
+            if (!linkError) {
+              console.log('Successfully auto-linked personal record');
+              data = { ...unlinkedPersonal, user_id: user.id };
+            } else {
+              console.error('Failed to auto-link personal record:', linkError);
+            }
+          }
+        }
       }
 
       if (data) {
@@ -52,7 +83,7 @@ export function useEmpleadoProfile() {
       setLoading(false);
     };
 
-    fetchEmpleado();
+    fetchAndLinkEmpleado();
   }, [user]);
 
   const rolPersonal: RolPersonal | null = empleado?.rol || null;
