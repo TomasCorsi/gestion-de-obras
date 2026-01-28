@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -48,102 +48,130 @@ export interface PersonalForm {
   numero_cuenta?: string;
 }
 
+const fetchPersonalFromDB = async (): Promise<PersonalDB[]> => {
+  const { data, error } = await supabase
+    .from("personal")
+    .select("*")
+    .order("apellido");
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function usePersonal() {
-  const [personal, setPersonal] = useState<PersonalDB[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchPersonal = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("personal")
-      .select("*")
-      .order("apellido");
+  const { 
+    data: personal = [], 
+    isLoading: loading,
+    refetch: fetchPersonal 
+  } = useQuery({
+    queryKey: ['personal'],
+    queryFn: fetchPersonalFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching personal:", error);
-      toast.error("Error al cargar personal");
-    } else {
-      setPersonal(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (persona: PersonalForm) => {
+      const { data, error } = await supabase
+        .from("personal")
+        .insert([persona])
+        .select()
+        .single();
 
-  const createPersonal = async (persona: PersonalForm) => {
-    const { data, error } = await supabase
-      .from("personal")
-      .insert([persona])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Personal creado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['personal'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating personal:", error);
       toast.error("Error al crear personal");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Personal creado correctamente");
-    await fetchPersonal();
-    return data;
-  };
-
-  const updatePersonal = async (id: string, persona: Partial<PersonalForm>) => {
-    // Clean up the data - remove undefined values and ensure proper types
-    const cleanedData: Record<string, unknown> = {};
-    
-    Object.entries(persona).forEach(([key, value]) => {
-      if (value !== undefined) {
-        // Convert empty strings to null for optional fields
-        if (value === "" && key !== "nombre" && key !== "apellido") {
-          cleanedData[key] = null;
-        } else {
-          cleanedData[key] = value;
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, persona }: { id: string; persona: Partial<PersonalForm> }) => {
+      // Clean up the data - remove undefined values and ensure proper types
+      const cleanedData: Record<string, unknown> = {};
+      
+      Object.entries(persona).forEach(([key, value]) => {
+        if (value !== undefined) {
+          // Convert empty strings to null for optional fields
+          if (value === "" && key !== "nombre" && key !== "apellido") {
+            cleanedData[key] = null;
+          } else {
+            cleanedData[key] = value;
+          }
         }
-      }
-    });
+      });
 
-    const { error } = await supabase
-      .from("personal")
-      .update(cleanedData)
-      .eq("id", id);
+      const { error } = await supabase
+        .from("personal")
+        .update(cleanedData)
+        .eq("id", id);
 
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Personal actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['personal'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error: any) => {
       console.error("Error updating personal:", error);
       toast.error("Error al actualizar personal: " + error.message);
-      return false;
-    }
+    },
+  });
 
-    toast.success("Personal actualizado correctamente");
-    await fetchPersonal();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("personal")
+        .delete()
+        .eq("id", id);
 
-  const deletePersonal = async (id: string) => {
-    const { error } = await supabase
-      .from("personal")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Personal eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['personal'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting personal:", error);
       toast.error("Error al eliminar personal");
-      return false;
-    }
-
-    toast.success("Personal eliminado correctamente");
-    await fetchPersonal();
-    return true;
-  };
-
-  useEffect(() => {
-    fetchPersonal();
-  }, []);
+    },
+  });
 
   return {
     personal,
     loading,
     fetchPersonal,
-    createPersonal,
-    updatePersonal,
-    deletePersonal,
+    createPersonal: async (persona: PersonalForm) => {
+      try {
+        return await createMutation.mutateAsync(persona);
+      } catch {
+        return null;
+      }
+    },
+    updatePersonal: async (id: string, persona: Partial<PersonalForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, persona });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deletePersonal: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }

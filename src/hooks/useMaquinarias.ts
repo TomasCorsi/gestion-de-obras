@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -61,108 +61,35 @@ export interface MaquinariaForm {
   obra_id?: string;
 }
 
+const fetchMaquinariasFromDB = async (): Promise<MaquinariaWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("maquinarias")
+    .select(`
+      *,
+      operador:personal!operador_asignado_id(nombre, apellido),
+      obra:obras(nombre)
+    `)
+    .order("nombre");
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useMaquinarias() {
-  const [maquinarias, setMaquinarias] = useState<MaquinariaWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchMaquinarias = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("maquinarias")
-      .select(`
-        *,
-        operador:personal!operador_asignado_id(nombre, apellido),
-        obra:obras(nombre)
-      `)
-      .order("nombre");
+  const { 
+    data: maquinarias = [], 
+    isLoading: loading,
+    refetch: fetchMaquinarias 
+  } = useQuery({
+    queryKey: ['maquinarias'],
+    queryFn: fetchMaquinariasFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching maquinarias:", error);
-      toast.error("Error al cargar maquinarias");
-    } else {
-      setMaquinarias(data || []);
-    }
-    setLoading(false);
-  };
-
-  const createMaquinaria = async (maq: MaquinariaForm) => {
-    const insertData = {
-      codigo: maq.codigo || null,
-      nombre: maq.nombre || null,
-      tipo: maq.tipo || "cargadora",
-      marca: maq.marca || null,
-      anio: maq.anio || null,
-      patente: maq.patente || null,
-      estado: maq.estado || "operativa",
-      horas_acumuladas: maq.horas_acumuladas || 0,
-      operador_asignado_id: maq.operador_asignado_id || null,
-      obra_id: maq.obra_id || null,
-    };
-
-    const { data, error } = await supabase
-      .from("maquinarias")
-      .insert([insertData])
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error creating maquinaria:", error);
-      toast.error("Error al crear maquinaria");
-      return null;
-    }
-
-    toast.success("Maquinaria creada correctamente");
-    await fetchMaquinarias();
-    return data;
-  };
-
-  const updateMaquinaria = async (id: string, maq: Partial<MaquinariaForm>) => {
-    const updateData: any = { ...maq };
-    if (maq.patente === "") updateData.patente = null;
-    if (maq.operador_asignado_id === undefined) updateData.operador_asignado_id = null;
-    if (maq.obra_id === undefined) updateData.obra_id = null;
-
-    const { error } = await supabase
-      .from("maquinarias")
-      .update(updateData)
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error updating maquinaria:", error);
-      toast.error("Error al actualizar maquinaria");
-      return false;
-    }
-
-    toast.success("Maquinaria actualizada correctamente");
-    await fetchMaquinarias();
-    return true;
-  };
-
-  const deleteMaquinaria = async (id: string) => {
-    const { error } = await supabase
-      .from("maquinarias")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error deleting maquinaria:", error);
-      toast.error("Error al eliminar maquinaria");
-      return false;
-    }
-
-    toast.success("Maquinaria eliminada correctamente");
-    await fetchMaquinarias();
-    return true;
-  };
-
-  const batchSave = async (changes: {
-    created: MaquinariaForm[];
-    updated: { id: string; data: Partial<MaquinariaForm> }[];
-    deleted: string[];
-  }) => {
-    // Handle creations
-    if (changes.created.length > 0) {
-      const insertData = changes.created.map(maq => ({
+  const createMutation = useMutation({
+    mutationFn: async (maq: MaquinariaForm) => {
+      const insertData = {
         codigo: maq.codigo || null,
         nombre: maq.nombre || null,
         tipo: maq.tipo || "cargadora",
@@ -173,43 +100,159 @@ export function useMaquinarias() {
         horas_acumuladas: maq.horas_acumuladas || 0,
         operador_asignado_id: maq.operador_asignado_id || null,
         obra_id: maq.obra_id || null,
-      }));
-      
-      const { error } = await supabase.from("maquinarias").insert(insertData);
-      if (error) throw new Error(`Error creating: ${error.message}`);
-    }
-    
-    // Handle updates
-    for (const item of changes.updated) {
-      const updateData: any = { ...item.data };
-      if (item.data.patente === "") updateData.patente = null;
-      
-      const { error } = await supabase.from("maquinarias").update(updateData).eq("id", item.id);
-      if (error) throw new Error(`Error updating: ${error.message}`);
-    }
-    
-    // Handle deletions
-    if (changes.deleted.length > 0) {
-      const { error } = await supabase.from("maquinarias").delete().in("id", changes.deleted);
-      if (error) throw new Error(`Error deleting: ${error.message}`);
-    }
-    
-    const totalChanges = changes.created.length + changes.updated.length + changes.deleted.length;
-    toast.success(`${totalChanges} cambio${totalChanges > 1 ? 's' : ''} guardado${totalChanges > 1 ? 's' : ''}`);
-    await fetchMaquinarias();
-  };
+      };
 
-  useEffect(() => {
-    fetchMaquinarias();
-  }, []);
+      const { data, error } = await supabase
+        .from("maquinarias")
+        .insert([insertData])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Maquinaria creada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['maquinarias'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
+      console.error("Error creating maquinaria:", error);
+      toast.error("Error al crear maquinaria");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, maq }: { id: string; maq: Partial<MaquinariaForm> }) => {
+      const updateData: any = { ...maq };
+      if (maq.patente === "") updateData.patente = null;
+      if (maq.operador_asignado_id === undefined) updateData.operador_asignado_id = null;
+      if (maq.obra_id === undefined) updateData.obra_id = null;
+
+      const { error } = await supabase
+        .from("maquinarias")
+        .update(updateData)
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Maquinaria actualizada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['maquinarias'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
+      console.error("Error updating maquinaria:", error);
+      toast.error("Error al actualizar maquinaria");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("maquinarias")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Maquinaria eliminada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['maquinarias'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
+      console.error("Error deleting maquinaria:", error);
+      toast.error("Error al eliminar maquinaria");
+    },
+  });
+
+  const batchSaveMutation = useMutation({
+    mutationFn: async (changes: {
+      created: MaquinariaForm[];
+      updated: { id: string; data: Partial<MaquinariaForm> }[];
+      deleted: string[];
+    }) => {
+      // Handle creations
+      if (changes.created.length > 0) {
+        const insertData = changes.created.map(maq => ({
+          codigo: maq.codigo || null,
+          nombre: maq.nombre || null,
+          tipo: maq.tipo || "cargadora",
+          marca: maq.marca || null,
+          anio: maq.anio || null,
+          patente: maq.patente || null,
+          estado: maq.estado || "operativa",
+          horas_acumuladas: maq.horas_acumuladas || 0,
+          operador_asignado_id: maq.operador_asignado_id || null,
+          obra_id: maq.obra_id || null,
+        }));
+        
+        const { error } = await supabase.from("maquinarias").insert(insertData);
+        if (error) throw new Error(`Error creating: ${error.message}`);
+      }
+      
+      // Handle updates
+      for (const item of changes.updated) {
+        const updateData: any = { ...item.data };
+        if (item.data.patente === "") updateData.patente = null;
+        
+        const { error } = await supabase.from("maquinarias").update(updateData).eq("id", item.id);
+        if (error) throw new Error(`Error updating: ${error.message}`);
+      }
+      
+      // Handle deletions
+      if (changes.deleted.length > 0) {
+        const { error } = await supabase.from("maquinarias").delete().in("id", changes.deleted);
+        if (error) throw new Error(`Error deleting: ${error.message}`);
+      }
+      
+      return changes.created.length + changes.updated.length + changes.deleted.length;
+    },
+    onSuccess: (totalChanges) => {
+      toast.success(`${totalChanges} cambio${totalChanges > 1 ? 's' : ''} guardado${totalChanges > 1 ? 's' : ''}`);
+      queryClient.invalidateQueries({ queryKey: ['maquinarias'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
+      console.error("Error in batch save:", error);
+      toast.error("Error al guardar cambios");
+    },
+  });
 
   return {
     maquinarias,
     loading,
     fetchMaquinarias,
-    createMaquinaria,
-    updateMaquinaria,
-    deleteMaquinaria,
-    batchSave,
+    createMaquinaria: async (maq: MaquinariaForm) => {
+      try {
+        return await createMutation.mutateAsync(maq);
+      } catch {
+        return null;
+      }
+    },
+    updateMaquinaria: async (id: string, maq: Partial<MaquinariaForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, maq });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteMaquinaria: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    batchSave: async (changes: {
+      created: MaquinariaForm[];
+      updated: { id: string; data: Partial<MaquinariaForm> }[];
+      deleted: string[];
+    }) => {
+      await batchSaveMutation.mutateAsync(changes);
+    },
   };
 }

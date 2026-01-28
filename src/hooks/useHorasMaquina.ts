@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -16,25 +16,25 @@ export interface HoraMaquina {
   updated_at: string;
 }
 
+const fetchHorasMaquinaFromDB = async (): Promise<HoraMaquina[]> => {
+  const { data, error } = await supabase
+    .from("horas_maquina")
+    .select("*")
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useHorasMaquina() {
-  const [horasMaquina, setHorasMaquina] = useState<HoraMaquina[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchHorasMaquina = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("horas_maquina")
-      .select("*")
-      .order("fecha", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching horas maquina:", error);
-      toast.error("Error al cargar horas de maquinaria");
-    } else {
-      setHorasMaquina(data || []);
-    }
-    setLoading(false);
-  };
+  const { 
+    data: horasMaquina = [], 
+    isLoading: loading,
+    refetch: fetchHorasMaquina 
+  } = useQuery({
+    queryKey: ['horas-maquina'],
+    queryFn: fetchHorasMaquinaFromDB,
+  });
 
   // Get total hours by obra and maquinaria
   const getHorasPorObraYMaquinaria = (obraId: string, maquinariaId: string, fechaInicio?: string, fechaFin?: string) => {
@@ -74,10 +74,6 @@ export function useHorasMaquina() {
       })
       .reduce((sum, h) => sum + (h.horas_trabajadas || 0), 0);
   };
-
-  useEffect(() => {
-    fetchHorasMaquina();
-  }, []);
 
   return {
     horasMaquina,
