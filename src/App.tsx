@@ -35,7 +35,16 @@ const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,
+      staleTime: 30 * 1000, // 30 seconds
+      retry: 1,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 

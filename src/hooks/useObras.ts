@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -31,101 +31,129 @@ export interface ObraForm {
   responsable_id?: string;
 }
 
+const fetchObrasFromDB = async (): Promise<ObraWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("obras")
+    .select(`
+      *,
+      responsable:personal(nombre, apellido)
+    `)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useObras() {
-  const [obras, setObras] = useState<ObraWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchObras = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("obras")
-      .select(`
-        *,
-        responsable:personal(nombre, apellido)
-      `)
-      .order("created_at", { ascending: false });
+  const { 
+    data: obras = [], 
+    isLoading: loading,
+    refetch: fetchObras 
+  } = useQuery({
+    queryKey: ['obras'],
+    queryFn: fetchObrasFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching obras:", error);
-      toast.error("Error al cargar obras");
-    } else {
-      setObras(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (obra: ObraForm) => {
+      const insertData = {
+        nombre: obra.nombre,
+        estado: obra.estado,
+        ubicacion: obra.ubicacion || null,
+        descripcion: obra.descripcion || null,
+        fecha_inicio: obra.fecha_inicio || null,
+        fecha_fin_estimada: obra.fecha_fin_estimada || null,
+        responsable_id: obra.responsable_id || null,
+      };
 
-  const createObra = async (obra: ObraForm) => {
-    const insertData = {
-      nombre: obra.nombre,
-      estado: obra.estado,
-      ubicacion: obra.ubicacion || null,
-      descripcion: obra.descripcion || null,
-      fecha_inicio: obra.fecha_inicio || null,
-      fecha_fin_estimada: obra.fecha_fin_estimada || null,
-      responsable_id: obra.responsable_id || null,
-    };
+      const { data, error } = await supabase
+        .from("obras")
+        .insert([insertData])
+        .select()
+        .single();
 
-    const { data, error } = await supabase
-      .from("obras")
-      .insert([insertData])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Obra creada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating obra:", error);
       toast.error("Error al crear obra");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Obra creada correctamente");
-    await fetchObras();
-    return data;
-  };
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, obra }: { id: string; obra: Partial<ObraForm> }) => {
+      const { error } = await supabase
+        .from("obras")
+        .update(obra)
+        .eq("id", id);
 
-  const updateObra = async (id: string, obra: Partial<ObraForm>) => {
-    const { error } = await supabase
-      .from("obras")
-      .update(obra)
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Obra actualizada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error updating obra:", error);
       toast.error("Error al actualizar obra");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Obra actualizada correctamente");
-    await fetchObras();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("obras")
+        .delete()
+        .eq("id", id);
 
-  const deleteObra = async (id: string) => {
-    const { error } = await supabase
-      .from("obras")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Obra eliminada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting obra:", error);
       toast.error("Error al eliminar obra");
-      return false;
-    }
-
-    toast.success("Obra eliminada correctamente");
-    await fetchObras();
-    return true;
-  };
-
-  useEffect(() => {
-    fetchObras();
-  }, []);
+    },
+  });
 
   return {
     obras,
     loading,
     fetchObras,
-    createObra,
-    updateObra,
-    deleteObra,
+    createObra: async (obra: ObraForm) => {
+      try {
+        return await createMutation.mutateAsync(obra);
+      } catch {
+        return null;
+      }
+    },
+    updateObra: async (id: string, obra: Partial<ObraForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, obra });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteObra: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }

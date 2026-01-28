@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -59,158 +59,199 @@ export interface RemitoForm {
   maquinaria_id?: string;
 }
 
+const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("remitos")
+    .select(`
+      *,
+      obra:obras(nombre),
+      viaje:viajes(origen, destino),
+      maquinaria:maquinarias(codigo, patente)
+    `)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useRemitos() {
-  const [remitos, setRemitos] = useState<RemitoWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchRemitos = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("remitos")
-      .select(`
-        *,
-        obra:obras(nombre),
-        viaje:viajes(origen, destino),
-        maquinaria:maquinarias(codigo, patente)
-      `)
-      .order("fecha", { ascending: false });
+  const { 
+    data: remitos = [], 
+    isLoading: loading,
+    refetch: fetchRemitos 
+  } = useQuery({
+    queryKey: ['remitos'],
+    queryFn: fetchRemitosFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching remitos:", error);
-      toast.error("Error al cargar remitos");
-    } else {
-      setRemitos(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (remito: RemitoForm) => {
+      const { data, error } = await supabase
+        .from("remitos")
+        .insert([remito])
+        .select()
+        .single();
 
-  const createRemito = async (remito: RemitoForm) => {
-    const { data, error } = await supabase
-      .from("remitos")
-      .insert([remito])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Remito creado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating remito:", error);
       toast.error("Error al crear remito");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Remito creado correctamente");
-    await fetchRemitos();
-    return data;
-  };
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, remito }: { id: string; remito: Partial<RemitoForm> }) => {
+      const { error } = await supabase
+        .from("remitos")
+        .update(remito)
+        .eq("id", id);
 
-  const updateRemito = async (id: string, remito: Partial<RemitoForm>) => {
-    const { error } = await supabase
-      .from("remitos")
-      .update(remito)
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Remito actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error updating remito:", error);
       toast.error("Error al actualizar remito");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Remito actualizado correctamente");
-    await fetchRemitos();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("remitos")
+        .delete()
+        .eq("id", id);
 
-  const deleteRemito = async (id: string) => {
-    const { error } = await supabase
-      .from("remitos")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Remito eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting remito:", error);
       toast.error("Error al eliminar remito");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Remito eliminado correctamente");
-    await fetchRemitos();
-    return true;
-  };
+  const batchSaveMutation = useMutation({
+    mutationFn: async (changes: {
+      created: RemitoForm[];
+      updated: { id: string; data: Partial<RemitoForm> }[];
+      deleted: string[];
+    }) => {
+      const results = { created: 0, updated: 0, deleted: 0, errors: 0 };
+      const promises: Promise<void>[] = [];
 
-  const batchSave = async (changes: {
-    created: RemitoForm[];
-    updated: { id: string; data: Partial<RemitoForm> }[];
-    deleted: string[];
-  }) => {
-    const results = { created: 0, updated: 0, deleted: 0, errors: 0 };
-    const promises: Promise<void>[] = [];
+      // Batch insert (single call)
+      if (changes.created.length > 0) {
+        const insertPromise = (async () => {
+          const { error } = await supabase
+            .from("remitos")
+            .insert(changes.created);
+          if (error) {
+            console.error("Error batch insert:", error);
+            results.errors++;
+          } else {
+            results.created = changes.created.length;
+          }
+        })();
+        promises.push(insertPromise);
+      }
 
-    // Batch insert (single call)
-    if (changes.created.length > 0) {
-      const insertPromise = (async () => {
-        const { error } = await supabase
-          .from("remitos")
-          .insert(changes.created);
-        if (error) {
-          console.error("Error batch insert:", error);
-          results.errors++;
-        } else {
-          results.created = changes.created.length;
-        }
-      })();
-      promises.push(insertPromise);
-    }
+      // Parallel updates
+      for (const { id, data } of changes.updated) {
+        const updatePromise = (async () => {
+          const { error } = await supabase
+            .from("remitos")
+            .update(data)
+            .eq("id", id);
+          if (error) {
+            console.error("Error updating:", error);
+            results.errors++;
+          } else {
+            results.updated++;
+          }
+        })();
+        promises.push(updatePromise);
+      }
 
-    // Parallel updates
-    for (const { id, data } of changes.updated) {
-      const updatePromise = (async () => {
-        const { error } = await supabase
-          .from("remitos")
-          .update(data)
-          .eq("id", id);
-        if (error) {
-          console.error("Error updating:", error);
-          results.errors++;
-        } else {
-          results.updated++;
-        }
-      })();
-      promises.push(updatePromise);
-    }
+      // Batch delete (single call with array of IDs)
+      if (changes.deleted.length > 0) {
+        const deletePromise = (async () => {
+          const { error } = await supabase
+            .from("remitos")
+            .delete()
+            .in("id", changes.deleted);
+          if (error) {
+            console.error("Error batch delete:", error);
+            results.errors++;
+          } else {
+            results.deleted = changes.deleted.length;
+          }
+        })();
+        promises.push(deletePromise);
+      }
 
-    // Batch delete (single call with array of IDs)
-    if (changes.deleted.length > 0) {
-      const deletePromise = (async () => {
-        const { error } = await supabase
-          .from("remitos")
-          .delete()
-          .in("id", changes.deleted);
-        if (error) {
-          console.error("Error batch delete:", error);
-          results.errors++;
-        } else {
-          results.deleted = changes.deleted.length;
-        }
-      })();
-      promises.push(deletePromise);
-    }
-
-    await Promise.all(promises);
-    await fetchRemitos();
-
-    return results;
-  };
-
-  useEffect(() => {
-    fetchRemitos();
-  }, []);
+      await Promise.all(promises);
+      return results;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
+      console.error("Error in batch save:", error);
+    },
+  });
 
   return {
     remitos,
     loading,
     fetchRemitos,
-    createRemito,
-    updateRemito,
-    deleteRemito,
-    batchSave,
+    createRemito: async (remito: RemitoForm) => {
+      try {
+        return await createMutation.mutateAsync(remito);
+      } catch {
+        return null;
+      }
+    },
+    updateRemito: async (id: string, remito: Partial<RemitoForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, remito });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteRemito: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    batchSave: async (changes: {
+      created: RemitoForm[];
+      updated: { id: string; data: Partial<RemitoForm> }[];
+      deleted: string[];
+    }) => {
+      return await batchSaveMutation.mutateAsync(changes);
+    },
   };
 }

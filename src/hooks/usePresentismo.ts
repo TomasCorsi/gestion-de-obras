@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -43,93 +43,121 @@ export interface RegistroHHForm {
   observaciones?: string;
 }
 
+const fetchRegistrosFromDB = async (): Promise<RegistroHHWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("registros_hh")
+    .select(`
+      *,
+      persona:personal!registros_hh_persona_id_fkey(nombre, apellido),
+      obra:obras(nombre),
+      capataz:personal!registros_hh_capataz_id_fkey(nombre, apellido)
+    `)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function usePresentismo() {
-  const [registros, setRegistros] = useState<RegistroHHWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchRegistros = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("registros_hh")
-      .select(`
-        *,
-        persona:personal!registros_hh_persona_id_fkey(nombre, apellido),
-        obra:obras(nombre),
-        capataz:personal!registros_hh_capataz_id_fkey(nombre, apellido)
-      `)
-      .order("fecha", { ascending: false });
+  const { 
+    data: registros = [], 
+    isLoading: loading,
+    refetch: fetchRegistros 
+  } = useQuery({
+    queryKey: ['presentismo'],
+    queryFn: fetchRegistrosFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching registros:", error);
-      toast.error("Error al cargar registros");
-    } else {
-      setRegistros(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (registro: RegistroHHForm) => {
+      const { data, error } = await supabase
+        .from("registros_hh")
+        .insert([registro])
+        .select()
+        .single();
 
-  const createRegistro = async (registro: RegistroHHForm) => {
-    const { data, error } = await supabase
-      .from("registros_hh")
-      .insert([registro])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Registro creado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['presentismo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating registro:", error);
       toast.error("Error al crear registro");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Registro creado correctamente");
-    await fetchRegistros();
-    return data;
-  };
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, registro }: { id: string; registro: Partial<RegistroHHForm> }) => {
+      const { error } = await supabase
+        .from("registros_hh")
+        .update(registro)
+        .eq("id", id);
 
-  const updateRegistro = async (id: string, registro: Partial<RegistroHHForm>) => {
-    const { error } = await supabase
-      .from("registros_hh")
-      .update(registro)
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Registro actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['presentismo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error updating registro:", error);
       toast.error("Error al actualizar registro");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Registro actualizado correctamente");
-    await fetchRegistros();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("registros_hh")
+        .delete()
+        .eq("id", id);
 
-  const deleteRegistro = async (id: string) => {
-    const { error } = await supabase
-      .from("registros_hh")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Registro eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['presentismo'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting registro:", error);
       toast.error("Error al eliminar registro");
-      return false;
-    }
-
-    toast.success("Registro eliminado correctamente");
-    await fetchRegistros();
-    return true;
-  };
-
-  useEffect(() => {
-    fetchRegistros();
-  }, []);
+    },
+  });
 
   return {
     registros,
     loading,
     fetchRegistros,
-    createRegistro,
-    updateRegistro,
-    deleteRegistro,
+    createRegistro: async (registro: RegistroHHForm) => {
+      try {
+        return await createMutation.mutateAsync(registro);
+      } catch {
+        return null;
+      }
+    },
+    updateRegistro: async (id: string, registro: Partial<RegistroHHForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, registro });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteRegistro: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }

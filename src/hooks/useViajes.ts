@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -45,93 +45,121 @@ export interface ViajeForm {
   observaciones?: string;
 }
 
+const fetchViajesFromDB = async (): Promise<ViajeWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("viajes")
+    .select(`
+      *,
+      obra:obras(nombre),
+      chofer:personal!viajes_chofer_id_fkey(nombre, apellido),
+      camion:maquinarias!viajes_camion_id_fkey(nombre, codigo)
+    `)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useViajes() {
-  const [viajes, setViajes] = useState<ViajeWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchViajes = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("viajes")
-      .select(`
-        *,
-        obra:obras(nombre),
-        chofer:personal!viajes_chofer_id_fkey(nombre, apellido),
-        camion:maquinarias!viajes_camion_id_fkey(nombre, codigo)
-      `)
-      .order("fecha", { ascending: false });
+  const { 
+    data: viajes = [], 
+    isLoading: loading,
+    refetch: fetchViajes 
+  } = useQuery({
+    queryKey: ['viajes'],
+    queryFn: fetchViajesFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching viajes:", error);
-      toast.error("Error al cargar viajes");
-    } else {
-      setViajes(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (viaje: ViajeForm) => {
+      const { data, error } = await supabase
+        .from("viajes")
+        .insert([viaje])
+        .select()
+        .single();
 
-  const createViaje = async (viaje: ViajeForm) => {
-    const { data, error } = await supabase
-      .from("viajes")
-      .insert([viaje])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Viaje creado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['viajes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating viaje:", error);
       toast.error("Error al crear viaje");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Viaje creado correctamente");
-    await fetchViajes();
-    return data;
-  };
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, viaje }: { id: string; viaje: Partial<ViajeForm> }) => {
+      const { error } = await supabase
+        .from("viajes")
+        .update(viaje)
+        .eq("id", id);
 
-  const updateViaje = async (id: string, viaje: Partial<ViajeForm>) => {
-    const { error } = await supabase
-      .from("viajes")
-      .update(viaje)
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Viaje actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['viajes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error updating viaje:", error);
       toast.error("Error al actualizar viaje");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Viaje actualizado correctamente");
-    await fetchViajes();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("viajes")
+        .delete()
+        .eq("id", id);
 
-  const deleteViaje = async (id: string) => {
-    const { error } = await supabase
-      .from("viajes")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Viaje eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['viajes'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting viaje:", error);
       toast.error("Error al eliminar viaje");
-      return false;
-    }
-
-    toast.success("Viaje eliminado correctamente");
-    await fetchViajes();
-    return true;
-  };
-
-  useEffect(() => {
-    fetchViajes();
-  }, []);
+    },
+  });
 
   return {
     viajes,
     loading,
     fetchViajes,
-    createViaje,
-    updateViaje,
-    deleteViaje,
+    createViaje: async (viaje: ViajeForm) => {
+      try {
+        return await createMutation.mutateAsync(viaje);
+      } catch {
+        return null;
+      }
+    },
+    updateViaje: async (id: string, viaje: Partial<ViajeForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, viaje });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteViaje: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }

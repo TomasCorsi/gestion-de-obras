@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -48,91 +48,119 @@ export const categoriasGasto: Record<CategoriaGasto, { label: string; color: str
   varios: { label: "Varios", color: "bg-gray-500/20 text-gray-400 border-gray-500/30" },
 };
 
+const fetchGastosFromDB = async (): Promise<OtroGastoWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("otros_gastos")
+    .select(`
+      *,
+      obra:obras(nombre)
+    `)
+    .order("fecha", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export function useOtrosGastos() {
-  const [gastos, setGastos] = useState<OtroGastoWithRelations[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchGastos = async () => {
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("otros_gastos")
-      .select(`
-        *,
-        obra:obras(nombre)
-      `)
-      .order("fecha", { ascending: false });
+  const { 
+    data: gastos = [], 
+    isLoading: loading,
+    refetch: fetchGastos 
+  } = useQuery({
+    queryKey: ['otros-gastos'],
+    queryFn: fetchGastosFromDB,
+  });
 
-    if (error) {
-      console.error("Error fetching otros gastos:", error);
-      toast.error("Error al cargar otros gastos");
-    } else {
-      setGastos(data || []);
-    }
-    setLoading(false);
-  };
+  const createMutation = useMutation({
+    mutationFn: async (gasto: OtroGastoForm) => {
+      const { data, error } = await supabase
+        .from("otros_gastos")
+        .insert([gasto])
+        .select()
+        .single();
 
-  const createGasto = async (gasto: OtroGastoForm) => {
-    const { data, error } = await supabase
-      .from("otros_gastos")
-      .insert([gasto])
-      .select()
-      .single();
-
-    if (error) {
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Gasto registrado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['otros-gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error creating gasto:", error);
       toast.error("Error al registrar gasto");
-      return null;
-    }
+    },
+  });
 
-    toast.success("Gasto registrado correctamente");
-    await fetchGastos();
-    return data;
-  };
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, gasto }: { id: string; gasto: Partial<OtroGastoForm> }) => {
+      const { error } = await supabase
+        .from("otros_gastos")
+        .update(gasto)
+        .eq("id", id);
 
-  const updateGasto = async (id: string, gasto: Partial<OtroGastoForm>) => {
-    const { error } = await supabase
-      .from("otros_gastos")
-      .update(gasto)
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Gasto actualizado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['otros-gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error updating gasto:", error);
       toast.error("Error al actualizar gasto");
-      return false;
-    }
+    },
+  });
 
-    toast.success("Gasto actualizado correctamente");
-    await fetchGastos();
-    return true;
-  };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("otros_gastos")
+        .delete()
+        .eq("id", id);
 
-  const deleteGasto = async (id: string) => {
-    const { error } = await supabase
-      .from("otros_gastos")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Gasto eliminado correctamente");
+      queryClient.invalidateQueries({ queryKey: ['otros-gastos'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error) => {
       console.error("Error deleting gasto:", error);
       toast.error("Error al eliminar gasto");
-      return false;
-    }
-
-    toast.success("Gasto eliminado correctamente");
-    await fetchGastos();
-    return true;
-  };
-
-  useEffect(() => {
-    fetchGastos();
-  }, []);
+    },
+  });
 
   return {
     gastos,
     loading,
     fetchGastos,
-    createGasto,
-    updateGasto,
-    deleteGasto,
+    createGasto: async (gasto: OtroGastoForm) => {
+      try {
+        return await createMutation.mutateAsync(gasto);
+      } catch {
+        return null;
+      }
+    },
+    updateGasto: async (id: string, gasto: Partial<OtroGastoForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, gasto });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteGasto: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }
