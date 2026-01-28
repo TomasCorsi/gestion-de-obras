@@ -1,8 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export function useServiceWorker() {
   const [needRefresh, setNeedRefresh] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
   
   const {
     offlineReady: [offlineReady, setOfflineReady],
@@ -11,11 +13,13 @@ export function useServiceWorker() {
   } = useRegisterSW({
     onRegistered(r) {
       console.log('SW registrado:', r);
-      // Verificar actualizaciones cada hora
+      registrationRef.current = r ?? null;
+      
+      // Verificar actualizaciones cada 5 MINUTOS (antes era 1 hora)
       if (r) {
         setInterval(() => {
           r.update();
-        }, 60 * 60 * 1000);
+        }, 5 * 60 * 1000);
       }
     },
     onRegisterError(error) {
@@ -40,9 +44,30 @@ export function useServiceWorker() {
     setOfflineReady(false);
   }, [setOfflineReady]);
 
+  // Nueva función: verificación manual
+  const checkForUpdates = useCallback(async (): Promise<{ found: boolean; error?: string }> => {
+    if (!registrationRef.current) {
+      return { found: false, error: 'Service Worker no registrado' };
+    }
+    
+    setIsChecking(true);
+    try {
+      await registrationRef.current.update();
+      // Dar tiempo a que se detecte la actualización
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setIsChecking(false);
+      return { found: swNeedRefresh };
+    } catch (error) {
+      setIsChecking(false);
+      return { found: false, error: String(error) };
+    }
+  }, [swNeedRefresh]);
+
   return {
     needRefresh,
     offlineReady,
+    isChecking,
+    checkForUpdates,
     updateServiceWorker: handleUpdate,
     dismissUpdate: handleDismiss,
     dismissOfflineReady: handleOfflineReady,

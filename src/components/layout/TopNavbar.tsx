@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Shield } from "lucide-react";
+import { Bell, User, LogOut, Shield, RefreshCw, Loader2 } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import { AppLauncher } from "./AppLauncher";
 import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
+import { useServiceWorker } from "@/hooks/useServiceWorker";
+import { toast } from "@/components/ui/sonner";
 
 interface TopNavbarProps {
   title?: string;
@@ -31,7 +33,22 @@ const roleLabels: Record<string, string> = {
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
   const { profile, role, signOut } = useAuth();
   const { isFieldEmployee, empleado } = useEmpleadoProfile();
+  const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
   const navigate = useNavigate();
+
+  const handleCheckUpdates = async () => {
+    const result = await checkForUpdates();
+    
+    if (result.found || needRefresh) {
+      toast.success('Nueva versión encontrada', {
+        description: 'Actualiza para obtener las últimas mejoras'
+      });
+    } else {
+      toast.info('Ya tienes la última versión', {
+        description: 'No hay actualizaciones disponibles'
+      });
+    }
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -142,6 +159,18 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
             <DropdownMenuItem className="text-foreground focus:bg-accent cursor-pointer">
               <User className="w-4 h-4 mr-2" />
               Perfil
+            </DropdownMenuItem>
+            <DropdownMenuItem 
+              onClick={handleCheckUpdates}
+              disabled={isChecking}
+              className="text-foreground focus:bg-accent cursor-pointer"
+            >
+              {isChecking ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4 mr-2" />
+              )}
+              Buscar actualizaciones
             </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-border" />
             <DropdownMenuItem 
