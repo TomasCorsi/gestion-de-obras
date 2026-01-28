@@ -97,11 +97,11 @@ const apps: AppItem[] = [
   },
   { 
     icon: ClipboardCheck, 
-    label: "Presentismo", 
-    path: "/presentismo", 
+    label: "Parte Diario", 
+    path: "/parte-diario", 
     iconColor: "text-teal-500",
     bgColor: "bg-teal-500/15",
-    description: "Control de asistencia",
+    description: "Registro diario de trabajo",
     roles: ['admin', 'capataz', 'maquinista']
   },
   { 

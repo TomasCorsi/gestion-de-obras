@@ -45,7 +45,7 @@ const menuItems: MenuItem[] = [
   { icon: Wallet, label: "Gastos", path: "/gastos", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
   { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: Package, label: "Stock", path: "/stock", roles: ['admin', 'capataz', 'maquinista'] },
-  { icon: ClipboardList, label: "Presentismo", path: "/presentismo", roles: ['admin', 'capataz', 'maquinista'] },
+  { icon: ClipboardList, label: "Parte Diario", path: "/parte-diario", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: BarChart3, label: "Reportes", path: "/reportes", roles: ['admin', 'capataz'] },
   { icon: Settings, label: "Configuración", path: "/configuracion", roles: ['admin'] },
 ];

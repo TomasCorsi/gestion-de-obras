@@ -707,6 +707,100 @@ export type Database = {
           },
         ]
       }
+      partes_diarios: {
+        Row: {
+          cantidad_movimiento_interno: number | null
+          cantidad_viajes: number | null
+          check_aceite_hidraulico: boolean | null
+          check_aceite_motor: boolean | null
+          check_filtro_aire: boolean | null
+          check_liquido_refrigerante: boolean | null
+          check_uria: boolean | null
+          combustible: number | null
+          created_at: string | null
+          estado_maquina: string | null
+          fecha: string
+          hora_entrada: string | null
+          hora_salida: string | null
+          horometro_fin: number | null
+          horometro_inicio: number | null
+          id: string
+          maquinaria_id: string | null
+          obra_id: string | null
+          observacion_maquina: string | null
+          personal_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          cantidad_movimiento_interno?: number | null
+          cantidad_viajes?: number | null
+          check_aceite_hidraulico?: boolean | null
+          check_aceite_motor?: boolean | null
+          check_filtro_aire?: boolean | null
+          check_liquido_refrigerante?: boolean | null
+          check_uria?: boolean | null
+          combustible?: number | null
+          created_at?: string | null
+          estado_maquina?: string | null
+          fecha?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          horometro_fin?: number | null
+          horometro_inicio?: number | null
+          id?: string
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          observacion_maquina?: string | null
+          personal_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          cantidad_movimiento_interno?: number | null
+          cantidad_viajes?: number | null
+          check_aceite_hidraulico?: boolean | null
+          check_aceite_motor?: boolean | null
+          check_filtro_aire?: boolean | null
+          check_liquido_refrigerante?: boolean | null
+          check_uria?: boolean | null
+          combustible?: number | null
+          created_at?: string | null
+          estado_maquina?: string | null
+          fecha?: string
+          hora_entrada?: string | null
+          hora_salida?: string | null
+          horometro_fin?: number | null
+          horometro_inicio?: number | null
+          id?: string
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          observacion_maquina?: string | null
+          personal_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partes_diarios_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partes_diarios_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partes_diarios_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal: {
         Row: {
           activo: boolean
@@ -728,6 +822,7 @@ export type Database = {
           sueldo_negro: number | null
           telefono: string | null
           updated_at: string
+          user_id: string | null
           vencimiento_licencia: string | null
         }
         Insert: {
@@ -750,6 +845,7 @@ export type Database = {
           sueldo_negro?: number | null
           telefono?: string | null
           updated_at?: string
+          user_id?: string | null
           vencimiento_licencia?: string | null
         }
         Update: {
@@ -772,6 +868,7 @@ export type Database = {
           sueldo_negro?: number | null
           telefono?: string | null
           updated_at?: string
+          user_id?: string | null
           vencimiento_licencia?: string | null
         }
         Relationships: []

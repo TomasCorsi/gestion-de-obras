@@ -30,7 +30,8 @@ const Remitos = lazy(() => import("./pages/Remitos"));
 const Gastos = lazy(() => import("./pages/Gastos"));
 const Mantenimiento = lazy(() => import("./pages/MantenimientoPage"));
 const Stock = lazy(() => import("./pages/Stock"));
-const Presentismo = lazy(() => import("./pages/Presentismo"));
+const ParteDiario = lazy(() => import("./pages/ParteDiario"));
+const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 
@@ -55,6 +56,7 @@ const App = () => (
               {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/registro" element={<Register />} />
+              <Route path="/registro-empleado" element={<RegistroEmpleado />} />
               <Route path="/olvide-contrasena" element={<ForgotPassword />} />
               <Route path="/restablecer-contrasena" element={<ResetPassword />} />
               <Route path="/sin-acceso" element={<NoAccess />} />
@@ -98,9 +100,9 @@ const App = () => (
                   <Stock />
                 </ProtectedRoute>
               } />
-              <Route path="/presentismo" element={
+              <Route path="/parte-diario" element={
                 <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
-                  <Presentismo />
+                  <ParteDiario />
                 </ProtectedRoute>
               } />
 
