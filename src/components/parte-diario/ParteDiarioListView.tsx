@@ -2,7 +2,7 @@ import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ParteDiario } from "@/hooks/useParteDiario";
@@ -51,7 +51,7 @@ export const ParteDiarioListView = ({
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {format(new Date(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
+                        {format(parseISO(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
                       </span>
                     </div>
                     
