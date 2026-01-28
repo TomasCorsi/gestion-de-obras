@@ -68,7 +68,7 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Contraseña</Label>
-                <Link to="/olvide-contrasena" className="text-sm text-red-400 hover:underline hover:text-red-300">
+                <Link to="/olvide-contrasena" className="text-sm text-red-600 hover:underline hover:text-red-500">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
