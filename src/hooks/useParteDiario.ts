@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmpleadoProfile } from './useEmpleadoProfile';
+import { format } from 'date-fns';
 
 export interface ParteDiario {
   id: string;
@@ -23,6 +24,7 @@ export interface ParteDiario {
   check_aceite_motor: boolean;
   check_liquido_refrigerante: boolean;
   check_uria: boolean;
+  estado: 'borrador' | 'completado';
   created_at: string;
   updated_at: string;
   // Joined relations
@@ -63,11 +65,13 @@ export interface ParteDiarioInsert {
   check_aceite_motor?: boolean;
   check_liquido_refrigerante?: boolean;
   check_uria?: boolean;
+  estado?: 'borrador' | 'completado';
 }
 
 export function useParteDiario() {
   const queryClient = useQueryClient();
   const { empleado } = useEmpleadoProfile();
+  const fechaHoy = format(new Date(), 'yyyy-MM-dd');
 
   // Fetch all partes for the current employee
   const { data: partes = [], isLoading, error } = useQuery({
@@ -82,11 +86,35 @@ export function useParteDiario() {
           obras:obra_id (id, nombre),
           maquinarias:maquinaria_id (id, codigo, tipo, patente)
         `)
+        .eq('personal_id', empleado!.id)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as unknown as ParteDiario[];
+    },
+  });
+
+  // Fetch today's draft
+  const { data: borradorHoy = null, isLoading: isLoadingBorrador } = useQuery({
+    queryKey: ['parte_borrador', empleado?.id, fechaHoy],
+    enabled: !!empleado?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partes_diarios')
+        .select(`
+          *,
+          personal:personal_id (id, nombre, apellido, rol),
+          obras:obra_id (id, nombre),
+          maquinarias:maquinaria_id (id, codigo, tipo, patente)
+        `)
+        .eq('personal_id', empleado!.id)
+        .eq('fecha', fechaHoy)
+        .eq('estado', 'borrador')
+        .maybeSingle();
+
+      if (error) throw error;
+      return data as ParteDiario | null;
     },
   });
 
@@ -102,9 +130,11 @@ export function useParteDiario() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      toast.success('Parte diario guardado exitosamente');
+      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      const isComplete = variables.estado === 'completado';
+      toast.success(isComplete ? 'Parte completado exitosamente' : 'Borrador guardado');
     },
     onError: (error: Error) => {
       console.error('Error creating parte:', error);
@@ -125,9 +155,11 @@ export function useParteDiario() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      toast.success('Parte diario actualizado');
+      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      const isComplete = variables.estado === 'completado';
+      toast.success(isComplete ? 'Parte completado exitosamente' : 'Borrador actualizado');
     },
     onError: (error: Error) => {
       console.error('Error updating parte:', error);
@@ -147,7 +179,8 @@ export function useParteDiario() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      toast.success('Parte diario eliminado');
+      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      toast.success('Parte eliminado');
     },
     onError: (error: Error) => {
       console.error('Error deleting parte:', error);
@@ -155,15 +188,50 @@ export function useParteDiario() {
     },
   });
 
+  // Save as draft
+  const saveDraft = async (data: ParteDiarioInsert) => {
+    const parteData = { ...data, estado: 'borrador' as const };
+    
+    if (borradorHoy) {
+      await updateMutation.mutateAsync({ id: borradorHoy.id, ...parteData });
+    } else {
+      await createMutation.mutateAsync(parteData);
+    }
+  };
+
+  // Complete parte
+  const completeParte = async (data: ParteDiarioInsert) => {
+    const parteData = { ...data, estado: 'completado' as const };
+    
+    if (borradorHoy) {
+      await updateMutation.mutateAsync({ id: borradorHoy.id, ...parteData });
+    } else {
+      await createMutation.mutateAsync(parteData);
+    }
+  };
+
+  // Discard draft
+  const discardDraft = async () => {
+    if (borradorHoy) {
+      await deleteMutation.mutateAsync(borradorHoy.id);
+    }
+  };
+
   return {
     partes,
+    borradorHoy,
     isLoading,
+    isLoadingBorrador,
     error,
     createParte: createMutation.mutateAsync,
     updateParte: updateMutation.mutateAsync,
     deleteParte: deleteMutation.mutateAsync,
+    saveDraft,
+    completeParte,
+    discardDraft,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
+    isSaving: createMutation.isPending || updateMutation.isPending,
   };
 }
