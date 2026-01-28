@@ -33,6 +33,8 @@ import {
   Building2,
   User,
   DollarSign,
+  LayoutGrid,
+  Table,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +48,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { GastosMaquinaria } from "@/components/maquinarias/GastosMaquinaria";
+import { MaquinariasDataGrid } from "@/components/maquinarias/MaquinariasDataGrid";
 import { useMaquinarias, MaquinariaWithRelations, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useObras } from "@/hooks/useObras";
@@ -86,7 +89,7 @@ const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; classNa
 };
 
 export default function Maquinarias() {
-  const { maquinarias, loading, createMaquinaria, updateMaquinaria, deleteMaquinaria } = useMaquinarias();
+  const { maquinarias, loading, createMaquinaria, updateMaquinaria, deleteMaquinaria, batchSave } = useMaquinarias();
   const { personal } = usePersonal();
   const { obras } = useObras();
   
@@ -99,6 +102,7 @@ export default function Maquinarias() {
   const [selectedMaquinaria, setSelectedMaquinaria] = useState<MaquinariaWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [viewMode, setViewMode] = useState<"cards" | "grid">("cards");
 
   const operadores = personal.filter(p => p.rol === "maquinista" && p.activo);
 
@@ -223,6 +227,57 @@ export default function Maquinarias() {
         </TabsList>
 
         <TabsContent value="inventario" className="space-y-6">
+          {/* View Mode Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "cards" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("cards")}
+                className="h-8"
+              >
+                <LayoutGrid className="w-4 h-4 mr-1" />
+                Tarjetas
+              </Button>
+              <Button
+                variant={viewMode === "grid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("grid")}
+                className="h-8"
+              >
+                <Table className="w-4 h-4 mr-1" />
+                Grilla
+              </Button>
+            </div>
+            
+            {viewMode === "cards" && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCsvImportOpen(true)}
+                  className="border-border"
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar CSV
+                </Button>
+                <Button
+                  onClick={handleNew}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nueva Maquinaria
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {viewMode === "grid" ? (
+            <MaquinariasDataGrid
+              maquinarias={maquinarias}
+              onSave={batchSave}
+            />
+          ) : (
+            <>
           {/* Actions Bar */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
@@ -247,21 +302,6 @@ export default function Maquinarias() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                onClick={() => setCsvImportOpen(true)}
-                className="border-border"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Importar CSV
-              </Button>
-              <Button
-                onClick={handleNew}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Nueva Maquinaria
-              </Button>
             </div>
           </div>
 
@@ -374,6 +414,8 @@ export default function Maquinarias() {
               })
             )}
           </div>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="gastos">

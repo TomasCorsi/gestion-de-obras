@@ -155,6 +155,50 @@ export function useMaquinarias() {
     return true;
   };
 
+  const batchSave = async (changes: {
+    created: MaquinariaForm[];
+    updated: { id: string; data: Partial<MaquinariaForm> }[];
+    deleted: string[];
+  }) => {
+    // Handle creations
+    if (changes.created.length > 0) {
+      const insertData = changes.created.map(maq => ({
+        codigo: maq.codigo || null,
+        nombre: maq.nombre || null,
+        tipo: maq.tipo || "cargadora",
+        marca: maq.marca || null,
+        anio: maq.anio || null,
+        patente: maq.patente || null,
+        estado: maq.estado || "operativa",
+        horas_acumuladas: maq.horas_acumuladas || 0,
+        operador_asignado_id: maq.operador_asignado_id || null,
+        obra_id: maq.obra_id || null,
+      }));
+      
+      const { error } = await supabase.from("maquinarias").insert(insertData);
+      if (error) throw new Error(`Error creating: ${error.message}`);
+    }
+    
+    // Handle updates
+    for (const item of changes.updated) {
+      const updateData: any = { ...item.data };
+      if (item.data.patente === "") updateData.patente = null;
+      
+      const { error } = await supabase.from("maquinarias").update(updateData).eq("id", item.id);
+      if (error) throw new Error(`Error updating: ${error.message}`);
+    }
+    
+    // Handle deletions
+    if (changes.deleted.length > 0) {
+      const { error } = await supabase.from("maquinarias").delete().in("id", changes.deleted);
+      if (error) throw new Error(`Error deleting: ${error.message}`);
+    }
+    
+    const totalChanges = changes.created.length + changes.updated.length + changes.deleted.length;
+    toast.success(`${totalChanges} cambio${totalChanges > 1 ? 's' : ''} guardado${totalChanges > 1 ? 's' : ''}`);
+    await fetchMaquinarias();
+  };
+
   useEffect(() => {
     fetchMaquinarias();
   }, []);
@@ -166,5 +210,6 @@ export function useMaquinarias() {
     createMaquinaria,
     updateMaquinaria,
     deleteMaquinaria,
+    batchSave,
   };
 }
