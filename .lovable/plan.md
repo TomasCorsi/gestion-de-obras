@@ -1,247 +1,133 @@
 
-# Plan: Migración de Hooks a React Query para Sincronización Automática de Datos
+# Plan: Corregir Problema de Zona Horaria en Fechas
 
-## Resumen del Problema
-Actualmente los hooks de datos (`useObras`, `usePersonal`, `useCombustible`, `useRemitos`, `useMaquinarias`, etc.) utilizan `useState` + `useEffect` para cargar datos. Esto causa que:
+## Problema Identificado
 
-1. **Los datos quedan "atrapados" en estado local** - Cada componente tiene su propia copia de los datos
-2. **No hay invalidación de caché** - Cuando un componente guarda datos, otros componentes no se enteran
-3. **No hay revalidación automática** - Al volver a la app, los datos no se refrescan
+Cuando JavaScript parsea una fecha en formato ISO (`"2026-01-28"`) usando `new Date()`, la interpreta como **medianoche en UTC**. Al mostrarla en la zona horaria local (ej: Argentina UTC-3), la fecha retrocede a las 21:00 del día anterior.
+
+### Ejemplo del Bug
+
+```text
+Entrada del usuario: "2026-01-28"
+                           ↓
+new Date("2026-01-28")  →  2026-01-28 00:00:00 UTC
+                           ↓
+Visualización en Argentina (UTC-3)  →  2026-01-27 21:00:00
+                           ↓
+format(date, "d de MMMM")  →  "27 de enero"  ← ERROR
+```
+
+## Archivos Afectados
+
+| Archivo | Línea | Problema |
+|---------|-------|----------|
+| `src/components/parte-diario/ParteDiarioFormView.tsx` | 174 | `new Date(formData.fecha)` |
+| `src/components/parte-diario/ParteDiarioListView.tsx` | 54 | `new Date(parte.fecha)` |
+| `src/components/parte-diario/ParteDiarioHomeView.tsx` | 69 | `new Date(borradorHoy.fecha)` |
+| `src/lib/utils.ts` | 13 | `parseISO(date)` - Este usa date-fns y es correcto |
 
 ## Solución Propuesta
-Migrar los hooks para usar React Query (`@tanstack/react-query`), que ya está instalado pero no se está utilizando correctamente.
+
+Usar `parseISO()` de date-fns en lugar de `new Date()` para parsear fechas en formato string. `parseISO` trata la fecha como **local** en vez de UTC.
+
+### Cambio de Patrón
+
+```text
+ANTES (incorrecto)                    DESPUÉS (correcto)
+┌────────────────────────────┐       ┌────────────────────────────┐
+│ new Date("2026-01-28")     │  →    │ parseISO("2026-01-28")     │
+│ Interpreta como UTC        │       │ Interpreta como hora local │
+└────────────────────────────┘       └────────────────────────────┘
+```
 
 ## Cambios a Implementar
 
-### 1. Configurar QueryClient con Opciones Globales
+### 1. ParteDiarioFormView.tsx
 
-**Archivo:** `src/App.tsx`
+Línea 174:
+```typescript
+// Antes
+{format(new Date(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
 
-| Configuración | Valor | Propósito |
-|---------------|-------|-----------|
-| `refetchOnWindowFocus` | `true` | Recargar datos al volver a la app |
-| `staleTime` | `30000` (30s) | Datos frescos por 30 segundos |
-| `retry` | `1` | Reintentar 1 vez en caso de error |
-
-### 2. Migrar Hooks de Lectura a useQuery
-
-Para cada hook, se reemplaza el patrón:
-
-```text
-ANTES                              DESPUÉS
-┌─────────────────────────┐        ┌─────────────────────────┐
-│ useState([])            │   →    │ useQuery({              │
-│ useEffect(() => {       │        │   queryKey: ['obras'],  │
-│   fetch()               │        │   queryFn: fetchObras   │
-│ }, [])                  │        │ })                      │
-└─────────────────────────┘        └─────────────────────────┘
+// Después
+{format(parseISO(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
 ```
 
-### 3. Migrar Funciones de Mutación a useMutation
+### 2. ParteDiarioListView.tsx
 
-Las funciones `create`, `update`, `delete` usarán `useMutation` con invalidación automática:
+Línea 54:
+```typescript
+// Antes
+{format(new Date(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
 
-```text
-┌────────────────────────────────────────────────────────┐
-│ useMutation({                                          │
-│   mutationFn: (data) => supabase.insert(data),        │
-│   onSuccess: () => {                                   │
-│     queryClient.invalidateQueries(['obras'])  ← CLAVE │
-│   }                                                    │
-│ })                                                     │
-└────────────────────────────────────────────────────────┘
+// Después  
+{format(parseISO(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
 ```
 
-### 4. Hooks a Migrar (Orden de Prioridad)
+### 3. ParteDiarioHomeView.tsx
 
-| # | Hook | Query Key | Impacto |
-|---|------|-----------|---------|
-| 1 | `useObras.ts` | `['obras']` | Alto - Base de todo |
-| 2 | `usePersonal.ts` | `['personal']` | Alto - Relaciones |
-| 3 | `useMaquinarias.ts` | `['maquinarias']` | Alto - Relaciones |
-| 4 | `useCombustible.ts` | `['combustible']` | Medio - Grid |
-| 5 | `useRemitos.ts` | `['remitos']` | Medio - Grid |
-| 6 | `useViajes.ts` | `['viajes']` | Medio |
-| 7 | `useDashboardData.ts` | `['dashboard']` | Bajo - Compuesto |
-| 8 | `useMantenimientos.ts` | `['mantenimientos']` | Bajo |
-| 9 | `useOtrosGastos.ts` | `['otros-gastos']` | Bajo |
-| 10 | `usePresentismo.ts` | `['presentismo']` | Bajo |
-| 11 | `useHorasMaquina.ts` | `['horas-maquina']` | Bajo |
+Línea 69:
+```typescript
+// Antes
+Fecha: {format(new Date(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
+
+// Después
+Fecha: {format(parseISO(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
+```
+
+### 4. Revisión General
+
+Buscar y corregir otros lugares donde se use `new Date(string)` para parsear fechas ISO, especialmente en componentes de visualización.
 
 ## Archivos a Modificar
 
 | Archivo | Tipo de Cambio |
 |---------|----------------|
-| `src/App.tsx` | Configurar QueryClient con opciones globales |
-| `src/hooks/useObras.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/usePersonal.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useMaquinarias.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useCombustible.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useRemitos.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useViajes.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useDashboardData.ts` | Migrar a useQuery |
-| `src/hooks/useMantenimientos.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useOtrosGastos.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/usePresentismo.ts` | Migrar a useQuery + useMutation |
-| `src/hooks/useHorasMaquina.ts` | Migrar a useQuery |
+| `src/components/parte-diario/ParteDiarioFormView.tsx` | Usar parseISO en vez de new Date |
+| `src/components/parte-diario/ParteDiarioListView.tsx` | Usar parseISO en vez de new Date |
+| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Usar parseISO en vez de new Date |
+| `src/components/dashboard/RecentObras.tsx` | Revisar y corregir si aplica |
+| `src/components/dashboard/CotizacionesPendientes.tsx` | Revisar y corregir si aplica |
+| `src/components/maquinarias/GastosMaquinaria.tsx` | Revisar y corregir si aplica |
 
 ## Sección Técnica
 
-### Configuración del QueryClient
+### Por qué parseISO funciona correctamente
 
 ```typescript
-// src/App.tsx
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: true,  // Recargar al volver a la app
-      staleTime: 30 * 1000,        // 30 segundos de datos frescos
-      retry: 1,                    // 1 reintento en errores
-      refetchOnReconnect: true,    // Recargar al reconectar internet
-    },
-  },
-});
+import { parseISO, format } from 'date-fns';
+
+// new Date() - interpreta como UTC medianoche
+new Date("2026-01-28") 
+// → Tue Jan 27 2026 21:00:00 GMT-0300 (en Argentina)
+
+// parseISO() - interpreta como hora local medianoche  
+parseISO("2026-01-28")
+// → Tue Jan 28 2026 00:00:00 GMT-0300 (en Argentina)
 ```
 
-### Ejemplo de Hook Migrado (useObras)
+### Patrón seguro para mostrar fechas
 
 ```typescript
-// src/hooks/useObras.ts
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { parseISO, format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-// Función de fetch separada
-const fetchObras = async (): Promise<ObraWithRelations[]> => {
-  const { data, error } = await supabase
-    .from("obras")
-    .select(`*, responsable:personal(nombre, apellido)`)
-    .order("created_at", { ascending: false });
-
-  if (error) throw error;
-  return data || [];
-};
-
-export function useObras() {
-  const queryClient = useQueryClient();
-
-  // Query para leer datos
-  const { 
-    data: obras = [], 
-    isLoading: loading,
-    refetch: fetchObras 
-  } = useQuery({
-    queryKey: ['obras'],
-    queryFn: fetchObras,
-  });
-
-  // Mutación para crear
-  const createMutation = useMutation({
-    mutationFn: async (obra: ObraForm) => {
-      const { data, error } = await supabase
-        .from("obras")
-        .insert([...])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast.success("Obra creada correctamente");
-      // CLAVE: Invalidar caché para que todos los componentes se actualicen
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-    },
-    onError: () => {
-      toast.error("Error al crear obra");
-    },
-  });
-
-  // Mutación para actualizar
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, obra }: { id: string; obra: Partial<ObraForm> }) => {
-      const { error } = await supabase
-        .from("obras")
-        .update(obra)
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Obra actualizada correctamente");
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-      // También invalidar dashboard si lo usa
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-    onError: () => {
-      toast.error("Error al actualizar obra");
-    },
-  });
-
-  // Mutación para eliminar
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("obras")
-        .delete()
-        .eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Obra eliminada correctamente");
-      queryClient.invalidateQueries({ queryKey: ['obras'] });
-    },
-    onError: () => {
-      toast.error("Error al eliminar obra");
-    },
-  });
-
-  // Mantener la misma interfaz para compatibilidad
-  return {
-    obras,
-    loading,
-    fetchObras,
-    createObra: (obra: ObraForm) => createMutation.mutateAsync(obra),
-    updateObra: async (id: string, obra: Partial<ObraForm>) => {
-      try {
-        await updateMutation.mutateAsync({ id, obra });
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    deleteObra: async (id: string) => {
-      try {
-        await deleteMutation.mutateAsync(id);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  };
-}
+// Siempre usar parseISO para strings de fecha ISO
+const fechaCorrecta = format(
+  parseISO(fechaString), 
+  "EEEE d 'de' MMMM, yyyy", 
+  { locale: es }
+);
 ```
-
-### Invalidación Cruzada (Dashboard)
-
-Cuando se modifica una obra, también se debe invalidar el dashboard:
-
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['obras'] });
-  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-},
-```
-
-## Beneficios Esperados
-
-1. **Datos siempre sincronizados** - Al crear/editar/eliminar, todos los componentes ven los cambios inmediatamente
-2. **Actualización al volver a la app** - Los datos se refrescan automáticamente al cambiar de pestaña o volver del background
-3. **Caché inteligente** - Evita peticiones innecesarias si los datos son recientes
-4. **Reconexión automática** - Al recuperar conexión a internet, los datos se recargan
-5. **Mejor experiencia móvil** - Crítico para la PWA en campo con conectividad variable
 
 ## Pruebas Recomendadas
 
-1. Crear una obra en un componente y verificar que aparece en otro componente sin recargar
-2. Minimizar la app, esperar unos segundos, y volver para ver que los datos se refrescan
-3. Editar datos en la grilla de combustible y verificar que el dashboard se actualiza
-4. Probar en el celular: cargar datos, cerrar la app, abrir de nuevo y verificar datos actualizados
+1. Crear un parte diario con fecha de hoy y verificar que muestra la fecha correcta
+2. Verificar la lista de partes que las fechas coincidan con lo guardado
+3. Revisar el dashboard y otras vistas que muestran fechas
+
+## Beneficios
+
+1. Las fechas se mostrarán correctamente sin importar la zona horaria del usuario
+2. Consistencia en todo el sistema usando parseISO
+3. El patrón ya existe en utils.ts - solo hay que aplicarlo uniformemente
