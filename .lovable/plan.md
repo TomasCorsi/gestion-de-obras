@@ -1,274 +1,161 @@
 
 
-# Plan: Mejora de Parte Diario con Botones y Sistema de Borradores
+# Plan: Verificación de Actualizaciones PWA Mejorada
 
 ## Resumen
-Agregar dos botones principales ("Nuevo parte" / "Ver mis partes") y un sistema de borradores que permite a los empleados cargar datos parcialmente durante el día y completarlos después.
-
-## Vista Previa de la Nueva Interfaz
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ 🚜 Calamina Sur                           [Juan P.] [⏻]     │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  📋 Parte Diario                                             │
-│  Hola, Juan (Maquinista)                                     │
-│                                                              │
-│  ┌─────────────────────┐  ┌─────────────────────┐            │
-│  │   ➕ Nuevo Parte    │  │   📋 Ver Mis Partes │            │
-│  └─────────────────────┘  └─────────────────────┘            │
-│                                                              │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ ⚠️ Tienes un borrador sin completar                    │  │
-│  │ Fecha: 28/01/2026 - Obra: Proyecto X                   │  │
-│  │ [Continuar] [Descartar]                                │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                              │
-└──────────────────────────────────────────────────────────────┘
-```
+Reducir el intervalo de verificación automática de 60 a 5 minutos y agregar un botón "Buscar actualizaciones" en el menú de usuario para verificación manual.
 
 ## Cambios a Implementar
 
-### 1. Agregar columna `estado` a la tabla `partes_diarios`
+### 1. Actualizar Hook useServiceWorker
 
-Nueva columna para diferenciar borradores de partes completados:
+| Cambio | Antes | Después |
+|--------|-------|---------|
+| Intervalo de verificación | 60 minutos | 5 minutos |
+| Verificación manual | No disponible | Nueva función `checkForUpdates()` |
+| Estado de verificación | No disponible | `isChecking` para feedback visual |
 
-| Valor | Descripción |
-|-------|-------------|
-| `borrador` | Parte parcialmente cargado, se puede editar |
-| `completado` | Parte finalizado, no editable (o con restricciones) |
+### 2. Agregar Botón en Menú de Usuario
 
-### 2. Reestructurar la Página de Parte Diario
-
-Crear tres vistas/modos:
-
-| Modo | Descripción |
-|------|-------------|
-| `home` | Vista inicial con los dos botones principales |
-| `form` | Formulario para crear/editar un parte |
-| `list` | Lista de partes del empleado (historial completo) |
-
-### 3. Sistema de Borradores
-
-- Cuando el empleado guarda parcialmente → `estado = 'borrador'`
-- Cuando el empleado completa el formulario → `estado = 'completado'`
-- Al entrar a "Nuevo parte", verificar si hay borrador del día actual
-- Mostrar alerta si existe borrador pendiente para continuar o descartar
-
-### 4. Actualizar el Hook useParteDiario
-
-Agregar:
-- Consulta de borrador del día actual
-- Función para guardar como borrador
-- Función para completar un parte
-
-## Flujo de Usuario
+El menú de usuario en TopNavbar incluirá una nueva opción:
 
 ```text
-EMPLEADO ABRE LA APP:
-┌─────────────────────────────────────────────────────────────┐
-│ 1. ¿Hay borrador del día de hoy?                            │
-│    ├─ SÍ → Mostrar alerta con opciones [Continuar/Descartar]│
-│    └─ NO → Mostrar solo los dos botones                     │
-├─────────────────────────────────────────────────────────────┤
-│ 2. Click "Nuevo Parte"                                      │
-│    ├─ Si hay borrador → Cargar datos del borrador           │
-│    └─ Si no hay → Formulario vacío                          │
-├─────────────────────────────────────────────────────────────┤
-│ 3. En el formulario:                                        │
-│    ├─ [Guardar Borrador] → Guarda y vuelve a home           │
-│    └─ [Completar Parte] → Valida, guarda como completado    │
-├─────────────────────────────────────────────────────────────┤
-│ 4. Click "Ver Mis Partes"                                   │
-│    └─ Muestra lista completa con filtros y estado           │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────┐
+│ Juan Pérez                 │
+│ Maquinista                 │
+├────────────────────────────┤
+│ 👤 Perfil                  │
+│ 🔄 Buscar actualizaciones  │  ← NUEVO
+├────────────────────────────┤
+│ 🚪 Cerrar Sesión           │
+└────────────────────────────┘
 ```
 
-## Archivos a Modificar/Crear
+### 3. Feedback Visual
 
-| Archivo | Acción | Descripción |
-|---------|--------|-------------|
-| `partes_diarios` (DB) | Migración | Agregar columna `estado` |
-| `src/pages/ParteDiario.tsx` | Refactorizar | Agregar vistas home/form/list |
-| `src/hooks/useParteDiario.ts` | Actualizar | Agregar lógica de borradores |
-| `src/integrations/supabase/types.ts` | Auto-update | Se actualiza automáticamente |
+- Mostrar spinner mientras verifica
+- Mostrar toast de éxito/resultado:
+  - "Nueva versión encontrada" → aparece el UpdatePrompt automáticamente
+  - "Ya tienes la última versión" → toast informativo
+
+## Archivos a Modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/hooks/useServiceWorker.ts` | Reducir intervalo + agregar `checkForUpdates()` |
+| `src/components/layout/TopNavbar.tsx` | Agregar item "Buscar actualizaciones" al menú |
 
 ## Sección Técnica
 
-### Migración de Base de Datos
-
-```sql
--- Agregar columna estado con valor por defecto 'completado'
--- para no afectar registros existentes
-ALTER TABLE public.partes_diarios 
-ADD COLUMN estado text NOT NULL DEFAULT 'completado';
-
--- Agregar constraint para valores válidos
-ALTER TABLE public.partes_diarios
-ADD CONSTRAINT partes_diarios_estado_check 
-CHECK (estado IN ('borrador', 'completado'));
-```
-
-### Estructura del Hook Actualizado
+### Hook Actualizado
 
 ```typescript
-// useParteDiario.ts - Nuevas funciones
+// useServiceWorker.ts
 
-// Buscar borrador del día actual
-const { data: borradorHoy } = useQuery({
-  queryKey: ['parte_borrador', empleado?.id, fechaHoy],
-  queryFn: async () => {
-    const { data } = await supabase
-      .from('partes_diarios')
-      .select('*')
-      .eq('personal_id', empleado.id)
-      .eq('fecha', fechaHoy)
-      .eq('estado', 'borrador')
-      .maybeSingle();
-    return data;
-  }
-});
+export function useServiceWorker() {
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
+  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
+  
+  const {
+    offlineReady: [offlineReady, setOfflineReady],
+    needRefresh: [swNeedRefresh, setSwNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW({
+    onRegistered(r) {
+      console.log('SW registrado:', r);
+      registrationRef.current = r;
+      
+      // Verificar actualizaciones cada 5 MINUTOS (antes era 1 hora)
+      if (r) {
+        setInterval(() => {
+          r.update();
+        }, 5 * 60 * 1000); // 5 minutos
+      }
+    },
+    onRegisterError(error) {
+      console.log('Error al registrar SW:', error);
+    },
+  });
 
-// Guardar como borrador
-const saveDraft = async (data) => {
-  if (borradorHoy) {
-    return updateParte({ id: borradorHoy.id, ...data, estado: 'borrador' });
-  }
-  return createParte({ ...data, estado: 'borrador' });
-};
-
-// Completar parte
-const completeParte = async (data) => {
-  if (borradorHoy) {
-    return updateParte({ id: borradorHoy.id, ...data, estado: 'completado' });
-  }
-  return createParte({ ...data, estado: 'completado' });
-};
-```
-
-### Estructura de la Página Refactorizada
-
-```typescript
-// ParteDiario.tsx - Nueva estructura
-
-const ParteDiario = () => {
-  const [view, setView] = useState<'home' | 'form' | 'list'>('home');
-  const [editingParte, setEditingParte] = useState<ParteDiario | null>(null);
-  const { borradorHoy, partes, saveDraft, completeParte } = useParteDiario();
-
-  // Vista Home
-  if (view === 'home') {
-    return (
-      <HomeView 
-        borradorHoy={borradorHoy}
-        onNewParte={() => setView('form')}
-        onViewList={() => setView('list')}
-        onContinueDraft={() => {
-          setEditingParte(borradorHoy);
-          setView('form');
-        }}
-      />
-    );
-  }
-
-  // Vista Lista
-  if (view === 'list') {
-    return (
-      <ListView 
-        partes={partes}
-        onBack={() => setView('home')}
-        onEdit={(parte) => {
-          setEditingParte(parte);
-          setView('form');
-        }}
-      />
-    );
-  }
-
-  // Vista Formulario
-  return (
-    <FormView
-      parte={editingParte}
-      onBack={() => {
-        setEditingParte(null);
-        setView('home');
-      }}
-      onSaveDraft={saveDraft}
-      onComplete={completeParte}
-    />
-  );
-};
-```
-
-### Componente HomeView
-
-```typescript
-const HomeView = ({ borradorHoy, onNewParte, onViewList, onContinueDraft }) => (
-  <div className="space-y-6">
-    {/* Botones principales */}
-    <div className="grid grid-cols-2 gap-4">
-      <Button onClick={onNewParte} className="h-24 flex-col gap-2">
-        <Plus className="w-8 h-8" />
-        <span>Nuevo Parte</span>
-      </Button>
-      <Button onClick={onViewList} variant="outline" className="h-24 flex-col gap-2">
-        <ClipboardList className="w-8 h-8" />
-        <span>Ver Mis Partes</span>
-      </Button>
-    </div>
-
-    {/* Alerta de borrador pendiente */}
-    {borradorHoy && (
-      <Alert className="bg-amber-500/10 border-amber-500/50">
-        <AlertCircle className="h-4 w-4 text-amber-500" />
-        <AlertDescription>
-          Tienes un borrador sin completar del día de hoy
-          <div className="mt-2 flex gap-2">
-            <Button size="sm" onClick={onContinueDraft}>Continuar</Button>
-            <Button size="sm" variant="ghost">Descartar</Button>
-          </div>
-        </AlertDescription>
-      </Alert>
-    )}
-  </div>
-);
-```
-
-### Botones del Formulario
-
-El formulario tendrá dos botones en la barra inferior:
-
-```typescript
-<div className="fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur border-t">
-  <div className="flex gap-3 max-w-lg mx-auto">
-    {/* Guardar como borrador */}
-    <Button 
-      variant="outline" 
-      onClick={handleSaveDraft}
-      className="flex-1 h-14"
-    >
-      <FileEdit className="w-5 h-5 mr-2" />
-      Guardar Borrador
-    </Button>
+  // Nueva función: verificación manual
+  const checkForUpdates = useCallback(async () => {
+    if (!registrationRef.current) {
+      return { found: false, error: 'Service Worker no registrado' };
+    }
     
-    {/* Completar parte */}
-    <Button 
-      onClick={handleComplete}
-      className="flex-1 h-14"
-    >
-      <CheckCircle className="w-5 h-5 mr-2" />
-      Completar Parte
-    </Button>
-  </div>
-</div>
+    setIsChecking(true);
+    try {
+      await registrationRef.current.update();
+      // Dar tiempo a que se detecte la actualización
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsChecking(false);
+      return { found: swNeedRefresh };
+    } catch (error) {
+      setIsChecking(false);
+      return { found: false, error };
+    }
+  }, [swNeedRefresh]);
+
+  return {
+    needRefresh,
+    offlineReady,
+    isChecking,
+    checkForUpdates, // Nueva función
+    updateServiceWorker: handleUpdate,
+    dismissUpdate: handleDismiss,
+    dismissOfflineReady: handleOfflineReady,
+  };
+}
 ```
 
-## Resultado Esperado
+### TopNavbar con Botón de Actualizaciones
 
-1. **Vista inicial limpia** con dos botones grandes y fáciles de usar en móvil
-2. **Borradores automáticos** - El empleado puede guardar parcialmente a la mañana
-3. **Continuación fluida** - Al volver a la app, se le ofrece continuar el borrador
-4. **Historial organizado** - Lista de partes con indicador visual de estado (borrador vs completado)
-5. **Interfaz 100% móvil** - Botones grandes, táctiles, optimizados para campo
+```typescript
+// TopNavbar.tsx - Nuevo import y uso
+
+import { useServiceWorker } from '@/hooks/useServiceWorker';
+import { RefreshCw, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+
+export function TopNavbar({ title, subtitle }: TopNavbarProps) {
+  const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
+  
+  const handleCheckUpdates = async () => {
+    const result = await checkForUpdates();
+    
+    if (result.found || needRefresh) {
+      toast.success('Nueva versión encontrada', {
+        description: 'Actualiza para obtener las últimas mejoras'
+      });
+    } else {
+      toast.info('Ya tienes la última versión', {
+        description: 'No hay actualizaciones disponibles'
+      });
+    }
+  };
+
+  // En el DropdownMenuContent, después de "Perfil":
+  return (
+    <DropdownMenuItem 
+      onClick={handleCheckUpdates}
+      disabled={isChecking}
+      className="text-foreground focus:bg-accent cursor-pointer"
+    >
+      {isChecking ? (
+        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+      ) : (
+        <RefreshCw className="w-4 h-4 mr-2" />
+      )}
+      Buscar actualizaciones
+    </DropdownMenuItem>
+  );
+}
+```
+
+## Beneficios
+
+1. **Actualizaciones más rápidas**: Los empleados recibirán notificaciones de nuevas versiones en máximo 5 minutos
+2. **Control manual**: Si sospechan que hay una versión nueva, pueden verificar inmediatamente
+3. **Feedback claro**: El usuario siempre sabe el estado de la verificación
 
