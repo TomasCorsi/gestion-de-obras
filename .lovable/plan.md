@@ -1,161 +1,247 @@
 
+# Plan: Migración de Hooks a React Query para Sincronización Automática de Datos
 
-# Plan: Verificación de Actualizaciones PWA Mejorada
+## Resumen del Problema
+Actualmente los hooks de datos (`useObras`, `usePersonal`, `useCombustible`, `useRemitos`, `useMaquinarias`, etc.) utilizan `useState` + `useEffect` para cargar datos. Esto causa que:
 
-## Resumen
-Reducir el intervalo de verificación automática de 60 a 5 minutos y agregar un botón "Buscar actualizaciones" en el menú de usuario para verificación manual.
+1. **Los datos quedan "atrapados" en estado local** - Cada componente tiene su propia copia de los datos
+2. **No hay invalidación de caché** - Cuando un componente guarda datos, otros componentes no se enteran
+3. **No hay revalidación automática** - Al volver a la app, los datos no se refrescan
+
+## Solución Propuesta
+Migrar los hooks para usar React Query (`@tanstack/react-query`), que ya está instalado pero no se está utilizando correctamente.
 
 ## Cambios a Implementar
 
-### 1. Actualizar Hook useServiceWorker
+### 1. Configurar QueryClient con Opciones Globales
 
-| Cambio | Antes | Después |
-|--------|-------|---------|
-| Intervalo de verificación | 60 minutos | 5 minutos |
-| Verificación manual | No disponible | Nueva función `checkForUpdates()` |
-| Estado de verificación | No disponible | `isChecking` para feedback visual |
+**Archivo:** `src/App.tsx`
 
-### 2. Agregar Botón en Menú de Usuario
+| Configuración | Valor | Propósito |
+|---------------|-------|-----------|
+| `refetchOnWindowFocus` | `true` | Recargar datos al volver a la app |
+| `staleTime` | `30000` (30s) | Datos frescos por 30 segundos |
+| `retry` | `1` | Reintentar 1 vez en caso de error |
 
-El menú de usuario en TopNavbar incluirá una nueva opción:
+### 2. Migrar Hooks de Lectura a useQuery
+
+Para cada hook, se reemplaza el patrón:
 
 ```text
-┌────────────────────────────┐
-│ Juan Pérez                 │
-│ Maquinista                 │
-├────────────────────────────┤
-│ 👤 Perfil                  │
-│ 🔄 Buscar actualizaciones  │  ← NUEVO
-├────────────────────────────┤
-│ 🚪 Cerrar Sesión           │
-└────────────────────────────┘
+ANTES                              DESPUÉS
+┌─────────────────────────┐        ┌─────────────────────────┐
+│ useState([])            │   →    │ useQuery({              │
+│ useEffect(() => {       │        │   queryKey: ['obras'],  │
+│   fetch()               │        │   queryFn: fetchObras   │
+│ }, [])                  │        │ })                      │
+└─────────────────────────┘        └─────────────────────────┘
 ```
 
-### 3. Feedback Visual
+### 3. Migrar Funciones de Mutación a useMutation
 
-- Mostrar spinner mientras verifica
-- Mostrar toast de éxito/resultado:
-  - "Nueva versión encontrada" → aparece el UpdatePrompt automáticamente
-  - "Ya tienes la última versión" → toast informativo
+Las funciones `create`, `update`, `delete` usarán `useMutation` con invalidación automática:
+
+```text
+┌────────────────────────────────────────────────────────┐
+│ useMutation({                                          │
+│   mutationFn: (data) => supabase.insert(data),        │
+│   onSuccess: () => {                                   │
+│     queryClient.invalidateQueries(['obras'])  ← CLAVE │
+│   }                                                    │
+│ })                                                     │
+└────────────────────────────────────────────────────────┘
+```
+
+### 4. Hooks a Migrar (Orden de Prioridad)
+
+| # | Hook | Query Key | Impacto |
+|---|------|-----------|---------|
+| 1 | `useObras.ts` | `['obras']` | Alto - Base de todo |
+| 2 | `usePersonal.ts` | `['personal']` | Alto - Relaciones |
+| 3 | `useMaquinarias.ts` | `['maquinarias']` | Alto - Relaciones |
+| 4 | `useCombustible.ts` | `['combustible']` | Medio - Grid |
+| 5 | `useRemitos.ts` | `['remitos']` | Medio - Grid |
+| 6 | `useViajes.ts` | `['viajes']` | Medio |
+| 7 | `useDashboardData.ts` | `['dashboard']` | Bajo - Compuesto |
+| 8 | `useMantenimientos.ts` | `['mantenimientos']` | Bajo |
+| 9 | `useOtrosGastos.ts` | `['otros-gastos']` | Bajo |
+| 10 | `usePresentismo.ts` | `['presentismo']` | Bajo |
+| 11 | `useHorasMaquina.ts` | `['horas-maquina']` | Bajo |
 
 ## Archivos a Modificar
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/hooks/useServiceWorker.ts` | Reducir intervalo + agregar `checkForUpdates()` |
-| `src/components/layout/TopNavbar.tsx` | Agregar item "Buscar actualizaciones" al menú |
+| Archivo | Tipo de Cambio |
+|---------|----------------|
+| `src/App.tsx` | Configurar QueryClient con opciones globales |
+| `src/hooks/useObras.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/usePersonal.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useMaquinarias.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useCombustible.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useRemitos.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useViajes.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useDashboardData.ts` | Migrar a useQuery |
+| `src/hooks/useMantenimientos.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useOtrosGastos.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/usePresentismo.ts` | Migrar a useQuery + useMutation |
+| `src/hooks/useHorasMaquina.ts` | Migrar a useQuery |
 
 ## Sección Técnica
 
-### Hook Actualizado
+### Configuración del QueryClient
 
 ```typescript
-// useServiceWorker.ts
-
-export function useServiceWorker() {
-  const [needRefresh, setNeedRefresh] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const registrationRef = useRef<ServiceWorkerRegistration | null>(null);
-  
-  const {
-    offlineReady: [offlineReady, setOfflineReady],
-    needRefresh: [swNeedRefresh, setSwNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({
-    onRegistered(r) {
-      console.log('SW registrado:', r);
-      registrationRef.current = r;
-      
-      // Verificar actualizaciones cada 5 MINUTOS (antes era 1 hora)
-      if (r) {
-        setInterval(() => {
-          r.update();
-        }, 5 * 60 * 1000); // 5 minutos
-      }
+// src/App.tsx
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,  // Recargar al volver a la app
+      staleTime: 30 * 1000,        // 30 segundos de datos frescos
+      retry: 1,                    // 1 reintento en errores
+      refetchOnReconnect: true,    // Recargar al reconectar internet
     },
-    onRegisterError(error) {
-      console.log('Error al registrar SW:', error);
+  },
+});
+```
+
+### Ejemplo de Hook Migrado (useObras)
+
+```typescript
+// src/hooks/useObras.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+// Función de fetch separada
+const fetchObras = async (): Promise<ObraWithRelations[]> => {
+  const { data, error } = await supabase
+    .from("obras")
+    .select(`*, responsable:personal(nombre, apellido)`)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export function useObras() {
+  const queryClient = useQueryClient();
+
+  // Query para leer datos
+  const { 
+    data: obras = [], 
+    isLoading: loading,
+    refetch: fetchObras 
+  } = useQuery({
+    queryKey: ['obras'],
+    queryFn: fetchObras,
+  });
+
+  // Mutación para crear
+  const createMutation = useMutation({
+    mutationFn: async (obra: ObraForm) => {
+      const { data, error } = await supabase
+        .from("obras")
+        .insert([...])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Obra creada correctamente");
+      // CLAVE: Invalidar caché para que todos los componentes se actualicen
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+    },
+    onError: () => {
+      toast.error("Error al crear obra");
     },
   });
 
-  // Nueva función: verificación manual
-  const checkForUpdates = useCallback(async () => {
-    if (!registrationRef.current) {
-      return { found: false, error: 'Service Worker no registrado' };
-    }
-    
-    setIsChecking(true);
-    try {
-      await registrationRef.current.update();
-      // Dar tiempo a que se detecte la actualización
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setIsChecking(false);
-      return { found: swNeedRefresh };
-    } catch (error) {
-      setIsChecking(false);
-      return { found: false, error };
-    }
-  }, [swNeedRefresh]);
+  // Mutación para actualizar
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, obra }: { id: string; obra: Partial<ObraForm> }) => {
+      const { error } = await supabase
+        .from("obras")
+        .update(obra)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Obra actualizada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+      // También invalidar dashboard si lo usa
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: () => {
+      toast.error("Error al actualizar obra");
+    },
+  });
 
+  // Mutación para eliminar
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("obras")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Obra eliminada correctamente");
+      queryClient.invalidateQueries({ queryKey: ['obras'] });
+    },
+    onError: () => {
+      toast.error("Error al eliminar obra");
+    },
+  });
+
+  // Mantener la misma interfaz para compatibilidad
   return {
-    needRefresh,
-    offlineReady,
-    isChecking,
-    checkForUpdates, // Nueva función
-    updateServiceWorker: handleUpdate,
-    dismissUpdate: handleDismiss,
-    dismissOfflineReady: handleOfflineReady,
+    obras,
+    loading,
+    fetchObras,
+    createObra: (obra: ObraForm) => createMutation.mutateAsync(obra),
+    updateObra: async (id: string, obra: Partial<ObraForm>) => {
+      try {
+        await updateMutation.mutateAsync({ id, obra });
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    deleteObra: async (id: string) => {
+      try {
+        await deleteMutation.mutateAsync(id);
+        return true;
+      } catch {
+        return false;
+      }
+    },
   };
 }
 ```
 
-### TopNavbar con Botón de Actualizaciones
+### Invalidación Cruzada (Dashboard)
+
+Cuando se modifica una obra, también se debe invalidar el dashboard:
 
 ```typescript
-// TopNavbar.tsx - Nuevo import y uso
-
-import { useServiceWorker } from '@/hooks/useServiceWorker';
-import { RefreshCw, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
-
-export function TopNavbar({ title, subtitle }: TopNavbarProps) {
-  const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
-  
-  const handleCheckUpdates = async () => {
-    const result = await checkForUpdates();
-    
-    if (result.found || needRefresh) {
-      toast.success('Nueva versión encontrada', {
-        description: 'Actualiza para obtener las últimas mejoras'
-      });
-    } else {
-      toast.info('Ya tienes la última versión', {
-        description: 'No hay actualizaciones disponibles'
-      });
-    }
-  };
-
-  // En el DropdownMenuContent, después de "Perfil":
-  return (
-    <DropdownMenuItem 
-      onClick={handleCheckUpdates}
-      disabled={isChecking}
-      className="text-foreground focus:bg-accent cursor-pointer"
-    >
-      {isChecking ? (
-        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-      ) : (
-        <RefreshCw className="w-4 h-4 mr-2" />
-      )}
-      Buscar actualizaciones
-    </DropdownMenuItem>
-  );
-}
+onSuccess: () => {
+  queryClient.invalidateQueries({ queryKey: ['obras'] });
+  queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+},
 ```
 
-## Beneficios
+## Beneficios Esperados
 
-1. **Actualizaciones más rápidas**: Los empleados recibirán notificaciones de nuevas versiones en máximo 5 minutos
-2. **Control manual**: Si sospechan que hay una versión nueva, pueden verificar inmediatamente
-3. **Feedback claro**: El usuario siempre sabe el estado de la verificación
+1. **Datos siempre sincronizados** - Al crear/editar/eliminar, todos los componentes ven los cambios inmediatamente
+2. **Actualización al volver a la app** - Los datos se refrescan automáticamente al cambiar de pestaña o volver del background
+3. **Caché inteligente** - Evita peticiones innecesarias si los datos son recientes
+4. **Reconexión automática** - Al recuperar conexión a internet, los datos se recargan
+5. **Mejor experiencia móvil** - Crítico para la PWA en campo con conectividad variable
 
+## Pruebas Recomendadas
+
+1. Crear una obra en un componente y verificar que aparece en otro componente sin recargar
+2. Minimizar la app, esperar unos segundos, y volver para ver que los datos se refrescan
+3. Editar datos en la grilla de combustible y verificar que el dashboard se actualiza
+4. Probar en el celular: cargar datos, cerrar la app, abrir de nuevo y verificar datos actualizados
