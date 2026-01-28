@@ -139,8 +139,10 @@ export function CombustibleDataGrid({
   const [data, setData] = useState<GridRow[]>(initialData);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Filter configurations
+  // Filter configurations for ALL columns
   const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
+    { column: "fecha", title: "Fecha" },
+    { column: "comprobante", title: "Comprobante" },
     { 
       column: "obra_id", 
       title: "Obra",
@@ -158,6 +160,26 @@ export function CombustibleDataGrid({
       }
     },
     { column: "operador", title: "Operador" },
+    { 
+      column: "litros", 
+      title: "Litros",
+      getValue: (row: GridRow) => row.litros?.toString() || ""
+    },
+    { 
+      column: "precio_litro", 
+      title: "$/Litro",
+      getValue: (row: GridRow) => row.precio_litro?.toString() || ""
+    },
+    { 
+      column: "costo_total", 
+      title: "Total",
+      getValue: (row: GridRow) => row.costo_total?.toString() || ""
+    },
+    { 
+      column: "horas_maquina", 
+      title: "Hs Máq",
+      getValue: (row: GridRow) => row.horas_maquina?.toString() || ""
+    },
     { column: "estacion", title: "Estación" },
   ], [activeObras, maquinarias]);
 
@@ -237,8 +259,34 @@ export function CombustibleDataGrid({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const columns: any[] = useMemo(
     () => [
-      { ...keyColumn("fecha", isoDateColumn), title: "Fecha", minWidth: 140 },
-      { ...keyColumn("comprobante", textColumn), title: "Comprobante", minWidth: 120 },
+      { 
+        ...keyColumn("fecha", isoDateColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="fecha"
+            title="Fecha"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 140 
+      },
+      { 
+        ...keyColumn("comprobante", textColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="comprobante"
+            title="Comprobante"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 120 
+      },
       {
         ...keyColumn("obra_id", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -326,15 +374,63 @@ export function CombustibleDataGrid({
         ),
         minWidth: 160,
       },
-      { ...keyColumn("litros", floatColumn), title: "Litros", minWidth: 90 },
-      { ...keyColumn("precio_litro", floatColumn), title: "$/Litro", minWidth: 100 },
+      { 
+        ...keyColumn("litros", floatColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="litros"
+            title="Litros"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 90 
+      },
+      { 
+        ...keyColumn("precio_litro", floatColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="precio_litro"
+            title="$/Litro"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 100 
+      },
       { 
         ...keyColumn("costo_total", floatColumn), 
-        title: "Total", 
+        title: (
+          <ColumnFilterHeader
+            column="costo_total"
+            title="Total"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
         minWidth: 110,
         disabled: true,
       },
-      { ...keyColumn("horas_maquina", floatColumn), title: "Hs Máq", minWidth: 90 },
+      { 
+        ...keyColumn("horas_maquina", floatColumn), 
+        title: (
+          <ColumnFilterHeader
+            column="horas_maquina"
+            title="Hs Máq"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ), 
+        minWidth: 90 
+      },
       { 
         ...keyColumn("estacion", textColumn), 
         title: (
