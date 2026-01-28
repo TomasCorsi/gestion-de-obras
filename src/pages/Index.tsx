@@ -155,19 +155,20 @@ const apps: AppItem[] = [
 ];
 
 const Index = () => {
-  const { hasRole } = useAuth();
+  const { hasRole, loading: authLoading } = useAuth();
   const { isFieldEmployee, loading: empleadoLoading } = useEmpleadoProfile();
   const navigate = useNavigate();
 
   // Redirigir empleados de campo a /parte-diario
   useEffect(() => {
-    if (!empleadoLoading && isFieldEmployee) {
+    if (!authLoading && !empleadoLoading && isFieldEmployee) {
       navigate('/parte-diario', { replace: true });
     }
-  }, [isFieldEmployee, empleadoLoading, navigate]);
+  }, [isFieldEmployee, empleadoLoading, authLoading, navigate]);
 
-  // Mostrar loading mientras se verifica el tipo de usuario
-  if (empleadoLoading || isFieldEmployee) {
+  // Mostrar loading solo mientras se verifica el tipo de usuario
+  // Una vez que loading termine, si es empleado de campo el useEffect redirige
+  if (authLoading || empleadoLoading) {
     return <LoadingScreen />;
   }
 
