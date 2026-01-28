@@ -8,16 +8,11 @@ import {
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Save, Plus, Loader2, RotateCcw, Search, X, Filter } from "lucide-react";
+import { Save, Plus, Loader2, RotateCcw, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { MaquinariaWithRelations, MaquinariaForm, TipoMaquinaria, EstadoMaquinaria } from "@/hooks/useMaquinarias";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
+import { ColumnFilterHeader } from "@/components/shared/GridFilterToolbar";
 import { Badge } from "@/components/ui/badge";
 
 interface GridRow {
@@ -76,79 +71,6 @@ const estadoConfig: Record<EstadoMaquinaria, string> = {
   inactiva: "Inactiva",
   en_uso: "En Uso",
 };
-
-interface ColumnFilterHeaderProps {
-  column: string;
-  title: string;
-  getUniqueValues: (column: string) => string[];
-  columnFilters: Record<string, Set<string>>;
-  toggleColumnFilter: (column: string, value: string) => void;
-  clearColumnFilter: (column: string) => void;
-}
-
-function ColumnFilterHeader({ 
-  column, 
-  title, 
-  getUniqueValues, 
-  columnFilters, 
-  toggleColumnFilter, 
-  clearColumnFilter 
-}: ColumnFilterHeaderProps) {
-  const uniqueValues = getUniqueValues(column);
-  const activeFilter = columnFilters[column];
-  const hasFilter = activeFilter && activeFilter.size > 0;
-  
-  return (
-    <div className="flex items-center gap-1">
-      <span>{title}</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className={`h-5 w-5 p-0 ${hasFilter ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-          >
-            <Filter className="h-3 w-3" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-56 p-2" align="start">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">Filtrar por {title}</span>
-              {hasFilter && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 px-2 text-xs"
-                  onClick={() => clearColumnFilter(column)}
-                >
-                  Limpiar
-                </Button>
-              )}
-            </div>
-            <div className="max-h-48 overflow-y-auto space-y-1">
-              {uniqueValues.map((value) => (
-                <div key={value} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`${column}-${value}`}
-                    checked={activeFilter?.has(value) || false}
-                    onCheckedChange={() => toggleColumnFilter(column, value)}
-                  />
-                  <label
-                    htmlFor={`${column}-${value}`}
-                    className="text-sm cursor-pointer flex-1 truncate"
-                  >
-                    {value}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
 
 export function MaquinariasDataGrid({
   maquinarias,
@@ -311,6 +233,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 100 
@@ -325,6 +248,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 150 
@@ -357,6 +281,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 160,
@@ -371,6 +296,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 120 
@@ -390,6 +316,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 100 
@@ -422,6 +349,7 @@ export function MaquinariasDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 140,
@@ -432,7 +360,7 @@ export function MaquinariasDataGrid({
         minWidth: 80 
       },
     ],
-    [tipoOptions, estadoOptions, columnFilters, getUniqueValues, clearColumnFilter, toggleColumnFilter]
+    [tipoOptions, estadoOptions, columnFilters, getUniqueValues, clearColumnFilter, toggleColumnFilter, setColumnFilters]
   );
 
   const handleChange = useCallback(

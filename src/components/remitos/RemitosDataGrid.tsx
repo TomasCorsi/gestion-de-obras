@@ -253,6 +253,7 @@ export function RemitosDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 140 
@@ -280,6 +281,7 @@ export function RemitosDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 130,
@@ -307,6 +309,7 @@ export function RemitosDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 130,
@@ -362,6 +365,7 @@ export function RemitosDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 110,
@@ -395,6 +399,7 @@ export function RemitosDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 110,
@@ -454,7 +459,7 @@ export function RemitosDataGrid({
           rowData.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
       },
     ],
-    [maquinariaOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter]
+    [maquinariaOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
   );
 
   const handleChange = useCallback(
