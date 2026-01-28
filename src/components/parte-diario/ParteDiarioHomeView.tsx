@@ -1,7 +1,7 @@
 import { Plus, ClipboardList, AlertCircle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 
@@ -66,7 +66,7 @@ export const ParteDiarioHomeView = ({
               <div>
                 <p className="font-semibold text-foreground">Tienes un borrador sin completar</p>
                 <p className="text-sm text-muted-foreground">
-                  Fecha: {format(new Date(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
+                  Fecha: {format(parseISO(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
                   {borradorHoy.obras && ` • ${borradorHoy.obras.nombre}`}
                 </p>
               </div>

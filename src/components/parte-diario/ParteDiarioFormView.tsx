@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { es } from "date-fns/locale";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,7 +171,7 @@ export const ParteDiarioFormView = ({
             {parte ? 'Editar Parte' : 'Nuevo Parte'}
           </h1>
           <p className="text-sm text-muted-foreground">
-            {format(new Date(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
+            {format(parseISO(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
           </p>
         </div>
       </div>

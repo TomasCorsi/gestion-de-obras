@@ -3,7 +3,7 @@ import { FileText, Clock, DollarSign, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Link } from "react-router-dom";
 import { DetailDialog } from "@/components/shared/DetailDialog";
@@ -75,8 +75,8 @@ export function CotizacionesPendientes({ cotizaciones, loading }: CotizacionesPe
           {cotizaciones.length === 0 ? (
             <p className="text-muted-foreground text-sm text-center py-4">No hay cotizaciones pendientes</p>
           ) : (
-            cotizaciones.map((cot, index) => {
-              const diasRestantes = differenceInDays(new Date(cot.fecha_vencimiento), new Date());
+          cotizaciones.map((cot, index) => {
+              const diasRestantes = differenceInDays(parseISO(cot.fecha_vencimiento), new Date());
               return (
                 <div
                   key={cot.id}
@@ -108,7 +108,7 @@ export function CotizacionesPendientes({ cotizaciones, loading }: CotizacionesPe
                   <div className="flex items-center justify-between text-xs">
                     <span className="flex items-center gap-1 text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      Vence: {format(new Date(cot.fecha_vencimiento), "dd/MM/yyyy", { locale: es })}
+                      Vence: {format(parseISO(cot.fecha_vencimiento), "dd/MM/yyyy", { locale: es })}
                     </span>
                     <span className="flex items-center gap-1 font-medium text-foreground">
                       <DollarSign className="w-3 h-3" />
@@ -148,7 +148,7 @@ export function CotizacionesPendientes({ cotizaciones, loading }: CotizacionesPe
             <DetailRow label="Descripción" value={selectedCotizacion.descripcion} />
             <DetailRow
               label="Fecha de Vencimiento"
-              value={format(new Date(selectedCotizacion.fecha_vencimiento), "dd/MM/yyyy", { locale: es })}
+              value={format(parseISO(selectedCotizacion.fecha_vencimiento), "dd/MM/yyyy", { locale: es })}
             />
             <DetailRow label="Total" value={formatCurrency(selectedCotizacion.total || 0)} />
             

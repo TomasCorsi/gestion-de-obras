@@ -2,7 +2,7 @@ import { Building2, MapPin, Calendar, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Link } from "react-router-dom";
 
@@ -91,7 +91,7 @@ export function RecentObras({ obras, loading }: RecentObrasProps) {
                 {obra.fecha_inicio && (
                   <span className="flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    {format(new Date(obra.fecha_inicio), "dd/MM/yyyy")}
+                    {format(parseISO(obra.fecha_inicio), "dd/MM/yyyy")}
                   </span>
                 )}
               </div>

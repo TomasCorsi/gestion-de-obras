@@ -138,7 +138,7 @@ export function GastosMaquinaria() {
     }
 
     const filtrarPorFecha = (fecha: string) => {
-      const fechaItem = new Date(fecha);
+      const fechaItem = parseISO(fecha);
       if (fechaDesde && fechaItem < fechaDesde) return false;
       if (fechaHasta && fechaItem > fechaHasta) return false;
       return true;
@@ -200,14 +200,14 @@ export function GastosMaquinaria() {
 
     datosFiltrados.combustible.forEach((c) => {
       if (!c.fecha) return;
-      const mes = format(new Date(c.fecha), "yyyy-MM");
+      const mes = format(parseISO(c.fecha), "yyyy-MM");
       const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
       actual.combustible += c.costo_total || 0;
       mesesMap.set(mes, actual);
     });
 
     datosFiltrados.mantenimientos.forEach((m) => {
-      const mes = format(new Date(m.fecha), "yyyy-MM");
+      const mes = format(parseISO(m.fecha), "yyyy-MM");
       const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
       actual.mantenimiento += m.costo_total || 0;
       mesesMap.set(mes, actual);
@@ -259,7 +259,7 @@ export function GastosMaquinaria() {
       });
     });
 
-    return gastos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    return gastos.sort((a, b) => (b.fecha ? parseISO(b.fecha).getTime() : 0) - (a.fecha ? parseISO(a.fecha).getTime() : 0));
   }, [datosFiltrados]);
 
   const tipoGastoConfig = {
@@ -307,7 +307,7 @@ export function GastosMaquinaria() {
     const detalleData = [
       ["Fecha", "Tipo", "Descripción", "Obra", "Costo"],
       ...gastosUnificados.map((g) => [
-        g.fecha ? format(new Date(g.fecha), "dd/MM/yyyy") : "",
+        g.fecha ? format(parseISO(g.fecha), "dd/MM/yyyy") : "",
         tipoGastoConfig[g.tipo].label,
         g.descripcion,
         g.obra || "-",
