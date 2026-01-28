@@ -718,6 +718,7 @@ export type Database = {
           check_uria: boolean | null
           combustible: number | null
           created_at: string | null
+          estado: string
           estado_maquina: string | null
           fecha: string
           hora_entrada: string | null
@@ -741,6 +742,7 @@ export type Database = {
           check_uria?: boolean | null
           combustible?: number | null
           created_at?: string | null
+          estado?: string
           estado_maquina?: string | null
           fecha?: string
           hora_entrada?: string | null
@@ -764,6 +766,7 @@ export type Database = {
           check_uria?: boolean | null
           combustible?: number | null
           created_at?: string | null
+          estado?: string
           estado_maquina?: string | null
           fecha?: string
           hora_entrada?: string | null
