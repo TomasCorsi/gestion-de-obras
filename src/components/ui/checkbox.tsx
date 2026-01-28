@@ -15,8 +15,9 @@ const Checkbox = React.forwardRef<
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
       "disabled:cursor-not-allowed disabled:opacity-50",
       // Checked/indeterminate = brand red via semantic tokens
-      "data-[state=checked]:bg-destructive data-[state=checked]:border-destructive data-[state=checked]:text-destructive-foreground",
-      "data-[state=indeterminate]:bg-destructive data-[state=indeterminate]:border-destructive data-[state=indeterminate]:text-destructive-foreground",
+      // NOTE: use ! to reliably override base bg/border utilities in Tailwind output order
+      "data-[state=checked]:!bg-destructive data-[state=checked]:!border-destructive data-[state=checked]:!text-destructive-foreground",
+      "data-[state=indeterminate]:!bg-destructive data-[state=indeterminate]:!border-destructive data-[state=indeterminate]:!text-destructive-foreground",
       className
     )}
     {...props}
