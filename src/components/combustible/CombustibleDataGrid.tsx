@@ -274,6 +274,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 140 
@@ -288,6 +289,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 120 
@@ -315,6 +317,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 180,
@@ -348,6 +351,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 180,
@@ -375,6 +379,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ),
         minWidth: 160,
@@ -389,6 +394,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 90 
@@ -403,6 +409,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 100 
@@ -417,6 +424,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 110,
@@ -432,6 +440,7 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 90 
@@ -446,12 +455,13 @@ export function CombustibleDataGrid({
             columnFilters={columnFilters}
             toggleColumnFilter={toggleColumnFilter}
             clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
           />
         ), 
         minWidth: 140 
       },
     ],
-    [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter]
+    [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
   );
 
   const handleChange = useCallback(

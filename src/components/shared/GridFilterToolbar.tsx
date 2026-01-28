@@ -203,6 +203,7 @@ interface ColumnFilterHeaderProps {
   columnFilters: Record<string, Set<string>>;
   toggleColumnFilter: (column: string, value: string) => void;
   clearColumnFilter: (column: string) => void;
+  setColumnFilters?: React.Dispatch<React.SetStateAction<Record<string, Set<string>>>>;
 }
 
 export function ColumnFilterHeader({ 
@@ -211,7 +212,8 @@ export function ColumnFilterHeader({
   getUniqueValues, 
   columnFilters, 
   toggleColumnFilter, 
-  clearColumnFilter 
+  clearColumnFilter,
+  setColumnFilters 
 }: ColumnFilterHeaderProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -229,6 +231,47 @@ export function ColumnFilterHeader({
     );
   }, [uniqueValues, searchTerm]);
 
+  // Check if all filtered values are selected
+  const allFilteredSelected = useMemo(() => {
+    if (filteredValues.length === 0) return false;
+    return filteredValues.every(value => activeFilter?.has(value));
+  }, [filteredValues, activeFilter]);
+
+  // Check if some (but not all) filtered values are selected
+  const someFilteredSelected = useMemo(() => {
+    if (filteredValues.length === 0) return false;
+    const selectedCount = filteredValues.filter(value => activeFilter?.has(value)).length;
+    return selectedCount > 0 && selectedCount < filteredValues.length;
+  }, [filteredValues, activeFilter]);
+
+  // Toggle all filtered values
+  const handleToggleAll = useCallback(() => {
+    if (!setColumnFilters) return;
+    
+    setColumnFilters(prev => {
+      const newFilters = { ...prev };
+      if (!newFilters[column]) {
+        newFilters[column] = new Set();
+      } else {
+        newFilters[column] = new Set(newFilters[column]);
+      }
+
+      if (allFilteredSelected) {
+        // Deselect all filtered values
+        filteredValues.forEach(value => {
+          newFilters[column].delete(value);
+        });
+      } else {
+        // Select all filtered values
+        filteredValues.forEach(value => {
+          newFilters[column].add(value);
+        });
+      }
+
+      return newFilters;
+    });
+  }, [column, filteredValues, allFilteredSelected, setColumnFilters]);
+
   // Clear search when popover closes
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -236,6 +279,9 @@ export function ColumnFilterHeader({
       setSearchTerm("");
     }
   };
+
+  // Count of selected items
+  const selectedCount = activeFilter?.size || 0;
   
   return (
     <div className="flex items-center gap-1">
@@ -245,59 +291,115 @@ export function ColumnFilterHeader({
           <Button 
             variant="ghost" 
             size="sm" 
-            className={`h-5 w-5 p-0 ${hasFilter ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`h-5 w-5 p-0 relative ${hasFilter ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Filter className="h-3 w-3" />
+            {hasFilter && (
+              <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full h-3.5 min-w-[14px] flex items-center justify-center px-0.5 font-medium">
+                {selectedCount}
+              </span>
+            )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-56 p-2 bg-popover border-border z-50" align="start">
-          <div className="space-y-2">
+        <PopoverContent className="w-64 p-3 bg-popover border-border z-50" align="start">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium">Filtrar por {title}</span>
+              <span className="text-sm font-medium">Filtrar por {title}</span>
               {hasFilter && (
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  className="h-6 px-2 text-xs"
+                  className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
                   onClick={() => clearColumnFilter(column)}
                 >
                   Limpiar
                 </Button>
               )}
             </div>
+            
             {/* Search input */}
             <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="h-7 pl-7 text-xs bg-background border-border"
+                className="h-8 pl-8 text-sm bg-background border-border"
               />
             </div>
-            <div className="max-h-48 overflow-y-auto space-y-1">
+
+            {/* Select All option */}
+            {filteredValues.length > 0 && setColumnFilters && (
+              <div 
+                className="flex items-center space-x-2 py-1.5 px-2 rounded-md bg-muted/50 border border-border cursor-pointer hover:bg-muted transition-colors"
+                onClick={handleToggleAll}
+              >
+                <Checkbox
+                  id={`${column}-select-all`}
+                  checked={allFilteredSelected}
+                  className={someFilteredSelected ? "data-[state=unchecked]:bg-primary/30" : ""}
+                  onCheckedChange={handleToggleAll}
+                />
+                <label
+                  htmlFor={`${column}-select-all`}
+                  className="text-sm font-medium cursor-pointer flex-1"
+                >
+                  {searchTerm ? `Seleccionar todos (${filteredValues.length})` : "Seleccionar todos"}
+                </label>
+              </div>
+            )}
+
+            {/* Divider */}
+            {filteredValues.length > 0 && (
+              <div className="border-t border-border" />
+            )}
+
+            {/* Values list */}
+            <div className="max-h-52 overflow-y-auto space-y-0.5">
               {filteredValues.length === 0 ? (
-                <p className="text-xs text-muted-foreground py-2">
+                <p className="text-sm text-muted-foreground py-3 text-center">
                   {searchTerm ? "Sin resultados" : "Sin valores"}
                 </p>
               ) : (
-                filteredValues.map((value) => (
-                  <div key={value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`${column}-${value}`}
-                      checked={activeFilter?.has(value) || false}
-                      onCheckedChange={() => toggleColumnFilter(column, value)}
-                    />
-                    <label
-                      htmlFor={`${column}-${value}`}
-                      className="text-sm cursor-pointer flex-1 truncate"
+                filteredValues.map((value) => {
+                  const isSelected = activeFilter?.has(value) || false;
+                  return (
+                    <div 
+                      key={value} 
+                      className={`flex items-center space-x-2 py-1.5 px-2 rounded-md cursor-pointer transition-colors ${
+                        isSelected 
+                          ? 'bg-primary/10 border border-primary/30' 
+                          : 'hover:bg-muted border border-transparent'
+                      }`}
+                      onClick={() => toggleColumnFilter(column, value)}
                     >
-                      {value || "(vacío)"}
-                    </label>
-                  </div>
-                ))
+                      <Checkbox
+                        id={`${column}-${value}`}
+                        checked={isSelected}
+                        onCheckedChange={() => toggleColumnFilter(column, value)}
+                      />
+                      <label
+                        htmlFor={`${column}-${value}`}
+                        className={`text-sm cursor-pointer flex-1 truncate ${
+                          isSelected ? 'font-medium text-foreground' : 'text-muted-foreground'
+                        }`}
+                      >
+                        {value || "(vacío)"}
+                      </label>
+                    </div>
+                  );
+                })
               )}
             </div>
+
+            {/* Footer with count */}
+            {hasFilter && (
+              <div className="pt-2 border-t border-border">
+                <p className="text-xs text-muted-foreground text-center">
+                  {selectedCount} de {uniqueValues.length} seleccionados
+                </p>
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>
