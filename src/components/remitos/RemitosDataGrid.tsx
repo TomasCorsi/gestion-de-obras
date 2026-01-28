@@ -17,6 +17,7 @@ import { ObraWithRelations } from "@/hooks/useObras";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
+import { GridFilterToolbar, ColumnFilterHeader, useGridFilters, ColumnFilterConfig } from "@/components/shared/GridFilterToolbar";
 
 // Type for react-datasheet-grid operations
 interface Operation {
@@ -104,15 +105,12 @@ export function RemitosDataGrid({
   generateNumero,
   fullScreen = false,
 }: RemitosDataGridProps) {
-  // useRef Sets for tracking row changes (persists across renders)
   const createdRowIds = useRef(new Set<string>()).current;
   const deletedRowIds = useRef(new Set<string>()).current;
   const updatedRowIds = useRef(new Set<string>()).current;
   
-  // Force re-render counter for hasChanges
   const [, forceUpdate] = useState(0);
 
-  // Obras options with searchable values
   const obrasOptions = useMemo(() => {
     const options = obras.map((o) => ({
       value: o.nombre,
@@ -121,7 +119,6 @@ export function RemitosDataGrid({
     return [{ value: "", label: "Seleccionar..." }, ...options];
   }, [obras]);
 
-  // Maquinaria options with searchable values
   const maquinariaOptions = useMemo(() => {
     const options = maquinarias
       .filter((m) => m.patente)
@@ -159,9 +156,56 @@ export function RemitosDataGrid({
   const [data, setData] = useState<GridRow[]>(initialData);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Filter configurations
+  const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
+    { column: "desde", title: "Desde" },
+    { column: "hasta", title: "Hasta" },
+    { column: "tipo_material", title: "Tipo Material" },
+    { column: "tipo_transporte", title: "Transporte" },
+  ], []);
+
+  // Use grid filters hook
+  const {
+    globalSearch,
+    setGlobalSearch,
+    columnFilters,
+    setColumnFilters,
+    filteredData,
+    activeFilterCount,
+    getUniqueValues,
+    toggleColumnFilter,
+    clearColumnFilter,
+    clearAllFilters,
+  } = useGridFilters(
+    data,
+    filterConfigs,
+    ["remito_tercero", "remito_local", "desde", "hasta", "tipo_material", "tipo_transporte"] as (keyof GridRow)[]
+  );
+
+  // Extend search to include patente
+  const searchFilteredData = useMemo(() => {
+    if (!globalSearch) return filteredData;
+    
+    const searchLower = globalSearch.toLowerCase();
+    return filteredData.filter((row) => {
+      if (row.remito_tercero?.toLowerCase().includes(searchLower)) return true;
+      if (row.remito_local?.toLowerCase().includes(searchLower)) return true;
+      if (row.desde?.toLowerCase().includes(searchLower)) return true;
+      if (row.hasta?.toLowerCase().includes(searchLower)) return true;
+      if (row.tipo_material?.toLowerCase().includes(searchLower)) return true;
+      if (row.tipo_transporte?.toLowerCase().includes(searchLower)) return true;
+      
+      // Check maquinaria patente
+      const maq = maquinarias.find(m => m.id === row.maquinaria_id);
+      if (maq?.patente?.toLowerCase().includes(searchLower)) return true;
+      if (maq?.codigo?.toLowerCase().includes(searchLower)) return true;
+      
+      return false;
+    });
+  }, [filteredData, globalSearch, maquinarias]);
+
   useEffect(() => {
     setData(initialData);
-    // Clear tracking sets when initial data changes
     createdRowIds.clear();
     deletedRowIds.clear();
     updatedRowIds.clear();
@@ -209,7 +253,16 @@ export function RemitosDataGrid({
           copyValue: ({ rowData }: { rowData: string }) => rowData,
           pasteValue: ({ value }: { value: string }) => value,
         }),
-        title: "Desde",
+        title: (
+          <ColumnFilterHeader
+            column="desde"
+            title="Desde"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 130,
       },
       {
@@ -227,7 +280,16 @@ export function RemitosDataGrid({
           copyValue: ({ rowData }: { rowData: string }) => rowData,
           pasteValue: ({ value }: { value: string }) => value,
         }),
-        title: "Hasta",
+        title: (
+          <ColumnFilterHeader
+            column="hasta"
+            title="Hasta"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 130,
       },
       { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
@@ -273,7 +335,16 @@ export function RemitosDataGrid({
             return found?.value || value;
           },
         }),
-        title: "Tipo",
+        title: (
+          <ColumnFilterHeader
+            column="tipo_material"
+            title="Tipo"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 110,
       },
       { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100 },
@@ -297,7 +368,16 @@ export function RemitosDataGrid({
             return found?.value || value;
           },
         }),
-        title: "Transporte",
+        title: (
+          <ColumnFilterHeader
+            column="tipo_transporte"
+            title="Transporte"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+          />
+        ),
         minWidth: 110,
       },
       {
@@ -317,7 +397,6 @@ export function RemitosDataGrid({
               );
             }
             
-            // Free text input for other transport types
             return (
               <input
                 type="text"
@@ -356,7 +435,7 @@ export function RemitosDataGrid({
           rowData.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
       },
     ],
-    [maquinariaOptions, maquinarias, obrasOptions]
+    [maquinariaOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter]
   );
 
   const handleChange = useCallback(
@@ -365,27 +444,22 @@ export function RemitosDataGrid({
       
       for (const operation of operations) {
         if (operation.type === 'DELETE') {
-          // Get the rows that were deleted from the original data
           const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
           
           for (const row of deletedRows) {
             if (row.id && !row.id.startsWith('temp_')) {
-              // Existing row from database - track for deletion
               deletedRowIds.add(row.id);
               updatedRowIds.delete(row.id);
               
-              // Re-insert the row marked as deleted for visual feedback
               const deletedRow = { ...row, _isDeleted: true };
               processedData.splice(operation.fromRowIndex, 0, deletedRow);
             } else if (row.id && row.id.startsWith('temp_')) {
-              // New row that was never saved - just remove from created
               createdRowIds.delete(row.id);
             }
           }
         }
         
         if (operation.type === 'CREATE') {
-          // Mark new rows with temp IDs
           for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
             if (processedData[i] && !processedData[i].id) {
               const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -466,8 +540,9 @@ export function RemitosDataGrid({
     deletedRowIds.clear();
     updatedRowIds.clear();
     clearDraft();
+    clearAllFilters();
     forceUpdate(n => n + 1);
-  }, [initialData, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
+  }, [initialData, clearDraft, clearAllFilters, createdRowIds, deletedRowIds, updatedRowIds]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -477,7 +552,7 @@ export function RemitosDataGrid({
         .map((row) => ({
           numero: row.remito_local || generateNumero(),
           fecha: row.fecha,
-          obra_id: "", // Required field - will need to be handled
+          obra_id: "",
           material: row.tipo_material || "",
           cantidad: row.cantidad || 0,
           unidad: row.unidad,
@@ -519,7 +594,6 @@ export function RemitosDataGrid({
 
       await onSave({ created, updated, deleted });
       
-      // Remove deleted rows from data and clear tracking
       const newData = data.filter(row => !row._isDeleted);
       setData(newData);
       createdRowIds.clear();
@@ -559,8 +633,10 @@ export function RemitosDataGrid({
     };
   }, [createdRowIds]);
 
-  // Calculate dynamic height for fullscreen mode
   const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
+  
+  // Get the data to display (filtered if there are filters/search)
+  const displayData = globalSearch || activeFilterCount > 0 ? searchFilteredData : data;
 
   return (
     <div className={fullScreen ? "flex flex-col h-full" : "space-y-4"}>
@@ -571,32 +647,58 @@ export function RemitosDataGrid({
           onDiscard={discardDraft}
         />
       )}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
-          <Button onClick={handleAddRow} variant="outline" size="sm" className="border-border">
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Fila
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <GridFilterToolbar
+          globalSearch={globalSearch}
+          setGlobalSearch={setGlobalSearch}
+          columnFilters={columnFilters}
+          setColumnFilters={setColumnFilters}
+          data={data}
+          filterConfigs={filterConfigs}
+        >
+          <Button onClick={handleAddRow} variant="outline" size="sm" className="h-8 border-border">
+            <Plus className="w-3.5 h-3.5 mr-1" />
+            Agregar
           </Button>
           {hasChanges && (
-            <Button onClick={handleReset} variant="ghost" size="sm" className="text-muted-foreground">
-              <RotateCcw className="w-4 h-4 mr-2" />
+            <Button onClick={handleReset} variant="ghost" size="sm" className="h-8 text-muted-foreground">
+              <RotateCcw className="w-3.5 h-3.5 mr-1" />
               Descartar
             </Button>
           )}
-        </div>
-        <Button onClick={handleSave} disabled={!hasChanges || isSaving} className="bg-primary hover:bg-primary/90">
-          {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Guardar Cambios
+        </GridFilterToolbar>
+        <Button onClick={handleSave} disabled={!hasChanges || isSaving} size="sm" className="h-8 bg-primary hover:bg-primary/90">
+          {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
+          Guardar
         </Button>
       </div>
       <p className="text-xs text-muted-foreground mb-2">
-        💡 Podés copiar y pegar desde Excel. Usá Tab para navegar entre celdas. Escribí para buscar en los selectores.
+        💡 Usá los iconos de filtro en cada columna para filtrar. Tab para navegar. Escribí para buscar en los selectores.
       </p>
       <div className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}>
         <DataSheetGrid
           key={`remitos-grid-${obrasOptions.length}-${maquinariaOptions.length}`}
-          value={data}
-          onChange={handleChange}
+          value={displayData}
+          onChange={(newData, ops) => {
+            // Map changes back to full data array when filtering is active
+            if (globalSearch || activeFilterCount > 0) {
+              const fullData = [...data];
+              for (const op of ops) {
+                if (op.type === 'UPDATE') {
+                  for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+                    const filteredRow = newData[i];
+                    const originalIndex = data.findIndex(r => r.id === filteredRow.id);
+                    if (originalIndex !== -1) {
+                      fullData[originalIndex] = filteredRow;
+                    }
+                  }
+                }
+              }
+              handleChange(fullData, ops);
+            } else {
+              handleChange(newData, ops);
+            }
+          }}
           columns={columns}
           createRow={createRow}
           height={gridHeight}
