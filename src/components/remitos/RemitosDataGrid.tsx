@@ -41,6 +41,7 @@ interface GridRow {
   precio_total: number | null;
   tipo_transporte: string;
   maquinaria_id: string;
+  patente_tercero: string;
   _isNew?: boolean;
   _isModified?: boolean;
   _isDeleted?: boolean;
@@ -147,6 +148,7 @@ export function RemitosDataGrid({
         precio_total: r.precio_total || 0,
         tipo_transporte: r.tipo_transporte || "",
         maquinaria_id: r.maquinaria_id || "",
+        patente_tercero: r.patente_tercero || "",
         _isNew: false,
         _isModified: false,
         _isDeleted: false,
@@ -200,6 +202,7 @@ export function RemitosDataGrid({
       if (row.hasta?.toLowerCase().includes(searchLower)) return true;
       if (row.tipo_material?.toLowerCase().includes(searchLower)) return true;
       if (row.tipo_transporte?.toLowerCase().includes(searchLower)) return true;
+      if (row.patente_tercero?.toLowerCase().includes(searchLower)) return true;
       
       // Check maquinaria patente
       const maq = maquinarias.find(m => m.id === row.maquinaria_id);
@@ -405,7 +408,7 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       {
-        ...keyColumn("maquinaria_id", {
+        ...keyColumn("patente", {
           component: ({ rowData, setRowData, focus }: { rowData: GridRow; setRowData: (v: GridRow) => void; focus: boolean }) => {
             const isCalaminaSur = rowData.tipo_transporte === "Calamina Sur";
             
@@ -413,9 +416,13 @@ export function RemitosDataGrid({
               return (
                 <GridSelectCell
                   value={rowData.maquinaria_id}
-                  onChange={(v) => setRowData({ ...rowData, maquinaria_id: v })}
+                  onChange={(v) => setRowData({ 
+                    ...rowData, 
+                    maquinaria_id: v,
+                    patente_tercero: ""
+                  })}
                   options={maquinariaOptions}
-                  placeholder="Patente..."
+                  placeholder="Buscar patente..."
                   focus={focus}
                 />
               );
@@ -424,9 +431,13 @@ export function RemitosDataGrid({
             return (
               <input
                 type="text"
-                value={rowData.maquinaria_id || ""}
-                onChange={(e) => setRowData({ ...rowData, maquinaria_id: e.target.value })}
-                placeholder="Patente..."
+                value={rowData.patente_tercero || ""}
+                onChange={(e) => setRowData({ 
+                  ...rowData, 
+                  patente_tercero: e.target.value,
+                  maquinaria_id: ""
+                })}
+                placeholder="Ej: ABC 123"
                 autoFocus={focus}
                 className="w-full h-full px-2 py-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
               />
@@ -438,7 +449,7 @@ export function RemitosDataGrid({
               const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
               return maq?.patente || "";
             }
-            return rowData.maquinaria_id || "";
+            return rowData.patente_tercero || "";
           },
           pasteValue: ({ value, rowData }: { value: string; rowData: GridRow }) => {
             if (rowData.tipo_transporte === "Calamina Sur") {
@@ -448,9 +459,9 @@ export function RemitosDataGrid({
                   m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
                   m.codigo?.toLowerCase() === value.toLowerCase()
               );
-              return found?.id || "";
+              return { maquinaria_id: found?.id || "", patente_tercero: "" };
             }
-            return value;
+            return { maquinaria_id: "", patente_tercero: value };
           },
         }),
         title: "Patente",
@@ -511,7 +522,8 @@ export function RemitosDataGrid({
                   row.tipo_material !== orig.tipo_material ||
                   row.precio_total !== orig.precio_total ||
                   row.tipo_transporte !== orig.tipo_transporte ||
-                  row.maquinaria_id !== orig.maquinaria_id;
+                  row.maquinaria_id !== orig.maquinaria_id ||
+                  row.patente_tercero !== orig.patente_tercero;
                 
                 if (isModified) {
                   updatedRowIds.add(row.id);
@@ -551,6 +563,7 @@ export function RemitosDataGrid({
         precio_total: 0,
         tipo_transporte: "",
         maquinaria_id: "",
+        patente_tercero: "",
         _isNew: true,
         _isModified: false,
         _isDeleted: false,
@@ -573,46 +586,54 @@ export function RemitosDataGrid({
     try {
       const created = data
         .filter((row) => row.id && createdRowIds.has(row.id) && !row._isDeleted)
-        .map((row) => ({
-          numero: row.remito_local || generateNumero(),
-          fecha: row.fecha,
-          obra_id: "",
-          material: row.tipo_material || "",
-          cantidad: row.cantidad || 0,
-          unidad: row.unidad,
-          recibido_por: "",
-          firmado: false,
-          remito_tercero: row.remito_tercero || null,
-          remito_local: row.remito_local || null,
-          desde: row.desde || null,
-          hasta: row.hasta || null,
-          cantidad_viajes: row.cantidad_viajes || 1,
-          tipo_material: row.tipo_material || null,
-          precio_total: row.precio_total || 0,
-          tipo_transporte: row.tipo_transporte || null,
-          maquinaria_id: row.maquinaria_id || null,
-        }));
-
-      const updated = data
-        .filter((row) => row.id && updatedRowIds.has(row.id) && !row._isDeleted)
-        .map((row) => ({
-          id: row.id!,
-          data: {
+        .map((row) => {
+          const isCalaminaSur = row.tipo_transporte === "Calamina Sur";
+          return {
+            numero: row.remito_local || generateNumero(),
+            fecha: row.fecha,
+            obra_id: "",
+            material: row.tipo_material || "",
+            cantidad: row.cantidad || 0,
+            unidad: row.unidad,
+            recibido_por: "",
+            firmado: false,
             remito_tercero: row.remito_tercero || null,
             remito_local: row.remito_local || null,
-            fecha: row.fecha,
             desde: row.desde || null,
             hasta: row.hasta || null,
             cantidad_viajes: row.cantidad_viajes || 1,
-            unidad: row.unidad,
-            cantidad: row.cantidad || 0,
             tipo_material: row.tipo_material || null,
             precio_total: row.precio_total || 0,
             tipo_transporte: row.tipo_transporte || null,
-            maquinaria_id: row.maquinaria_id || null,
-            material: row.tipo_material || "",
-          },
-        }));
+            maquinaria_id: isCalaminaSur ? (row.maquinaria_id || null) : null,
+            patente_tercero: !isCalaminaSur ? (row.patente_tercero || null) : null,
+          };
+        });
+
+      const updated = data
+        .filter((row) => row.id && updatedRowIds.has(row.id) && !row._isDeleted)
+        .map((row) => {
+          const isCalaminaSur = row.tipo_transporte === "Calamina Sur";
+          return {
+            id: row.id!,
+            data: {
+              remito_tercero: row.remito_tercero || null,
+              remito_local: row.remito_local || null,
+              fecha: row.fecha,
+              desde: row.desde || null,
+              hasta: row.hasta || null,
+              cantidad_viajes: row.cantidad_viajes || 1,
+              unidad: row.unidad,
+              cantidad: row.cantidad || 0,
+              tipo_material: row.tipo_material || null,
+              precio_total: row.precio_total || 0,
+              tipo_transporte: row.tipo_transporte || null,
+              maquinaria_id: isCalaminaSur ? (row.maquinaria_id || null) : null,
+              patente_tercero: !isCalaminaSur ? (row.patente_tercero || null) : null,
+              material: row.tipo_material || "",
+            },
+          };
+        });
 
       const deleted = Array.from(deletedRowIds);
 
@@ -651,6 +672,7 @@ export function RemitosDataGrid({
       precio_total: 0,
       tipo_transporte: "",
       maquinaria_id: "",
+      patente_tercero: "",
       _isNew: true,
       _isModified: false,
       _isDeleted: false,

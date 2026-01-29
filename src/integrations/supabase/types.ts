@@ -1059,6 +1059,7 @@ export type Database = {
           numero: string
           obra_id: string
           observaciones: string | null
+          patente_tercero: string | null
           precio_total: number | null
           recibido_por: string
           remito_local: string | null
@@ -1084,6 +1085,7 @@ export type Database = {
           numero: string
           obra_id: string
           observaciones?: string | null
+          patente_tercero?: string | null
           precio_total?: number | null
           recibido_por: string
           remito_local?: string | null
@@ -1109,6 +1111,7 @@ export type Database = {
           numero?: string
           obra_id?: string
           observaciones?: string | null
+          patente_tercero?: string | null
           precio_total?: number | null
           recibido_por?: string
           remito_local?: string | null
