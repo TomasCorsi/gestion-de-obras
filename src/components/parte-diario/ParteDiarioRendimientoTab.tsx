@@ -4,8 +4,6 @@ import { es } from "date-fns/locale";
 import { Loader2, Download, BarChart3, User, Users, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useParteDiarioRendimiento } from "@/hooks/useParteDiarioRendimiento";
 import { ParteDiarioRendimientoChart } from "./ParteDiarioRendimientoChart";
 import { ParteDiarioResumenGeneral } from "./ParteDiarioResumenGeneral";
@@ -47,7 +46,6 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
   const [selectedMes, setSelectedMes] = useState<number>(currentDate.getMonth() + 1);
   const [selectedAnio, setSelectedAnio] = useState<number>(currentDate.getFullYear());
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const { data, isLoading } = useParteDiarioRendimiento(
     selectedEmpleadoId || undefined,
@@ -69,17 +67,20 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
     return options;
   }, [currentDate]);
 
-  // Filter personal by search term
-  const filteredPersonal = useMemo(() => {
-    if (!searchTerm.trim()) return personal;
-    
-    const term = searchTerm.toLowerCase();
-    return personal.filter(emp => {
-      const nombreCompleto = `${emp.nombre || ''} ${emp.apellido || ''}`.toLowerCase();
-      const legajo = (emp.legajo || '').toLowerCase();
-      return nombreCompleto.includes(term) || legajo.includes(term);
+  // Generate combobox options for employees
+  const empleadoOptions: ComboboxOption[] = useMemo(() => {
+    return personal.map(emp => {
+      const nombre = [emp.nombre, emp.apellido].filter(Boolean).join(" ");
+      const rol = ROL_LABELS[emp.rol] || emp.rol;
+      const legajo = emp.legajo || "";
+      return {
+        value: emp.id,
+        label: `${nombre} (${rol})`,
+        // Include legajo, nombre, apellido in search
+        searchValue: `${legajo} ${emp.nombre || ''} ${emp.apellido || ''} ${nombre} ${rol}`,
+      };
     });
-  }, [personal, searchTerm]);
+  }, [personal]);
 
   const handleMonthChange = (value: string) => {
     const [mes, anio] = value.split("-").map(Number);
@@ -156,33 +157,16 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                   </div>
                   
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Search and Employee selector */}
-                    <div className="flex flex-col gap-2 w-full sm:w-auto">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Buscar empleado..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-9 w-full sm:w-[220px]"
-                        />
-                      </div>
-                    </div>
-
-                    <Select value={selectedEmpleadoId} onValueChange={setSelectedEmpleadoId}>
-                      <SelectTrigger className="w-[220px]">
-                        <SelectValue placeholder="Seleccionar empleado" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {filteredPersonal.map((emp) => (
-                          <SelectItem key={emp.id} value={emp.id}>
-                            {[emp.nombre, emp.apellido].filter(Boolean).join(" ")} ({ROL_LABELS[emp.rol] || emp.rol})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Month selector */}
+                    {/* Employee combobox with search */}
+                    <Combobox
+                      options={empleadoOptions}
+                      value={selectedEmpleadoId}
+                      onValueChange={setSelectedEmpleadoId}
+                      placeholder="Seleccionar empleado"
+                      searchPlaceholder="Buscar por nombre o legajo..."
+                      emptyText="No se encontraron empleados"
+                      className="w-[280px]"
+                    />
                     <Select
                       value={`${selectedMes}-${selectedAnio}`}
                       onValueChange={handleMonthChange}
