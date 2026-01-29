@@ -27,6 +27,7 @@ export interface RemitoDB {
   precio_total: number;
   tipo_transporte: string | null;
   maquinaria_id: string | null;
+  patente_tercero: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -57,6 +58,7 @@ export interface RemitoForm {
   precio_total?: number;
   tipo_transporte?: string;
   maquinaria_id?: string;
+  patente_tercero?: string;
 }
 
 const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
