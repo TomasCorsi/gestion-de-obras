@@ -1,273 +1,272 @@
 
-
-# Plan: Formularios Diferenciados por Rol en Parte Diario
+# Plan: Incluir Nuevos Campos en PDF, Exportación y Modal de Detalle
 
 ## Resumen
 
-Crear formularios de carga específicos para cada tipo de empleado en el Parte Diario, agregando nuevos campos a la base de datos y ajustando la interfaz según el rol del usuario.
-
-## Estructura de Formularios por Rol
-
-### Capataz
-| Campo | Tipo |
-|-------|------|
-| Fecha | Automático |
-| Obra | Selector |
-| Rol | Automático |
-| Entrada | Hora |
-| Salida | Hora |
-| Novedades | Texto largo (trabajo realizado) |
-| Ausencias | Multi-selector de empleados (conectado a BD) |
-| Observaciones/Inconvenientes | Texto largo |
-
-### Mecánico y Ayudante
-| Campo | Tipo |
-|-------|------|
-| Fecha | Automático |
-| Obra | Selector |
-| Rol | Automático |
-| Entrada | Hora |
-| Salida | Hora |
-| Tareas | Texto largo |
-| Observaciones/Inconvenientes | Texto largo |
-
-### Maquinista (existente + nuevo campo)
-- Campos actuales: Fecha, Obra, Máquina, Horarios, Horómetro, Combustible, Estado Máquina, Checklist
-- **Nuevo**: Observaciones/Inconvenientes
-
-### Chofer (existente + nuevo campo)
-- Campos actuales: Fecha, Camión, Horarios, Viajes, Mov. Interno, Combustible, Estado Camión, Checklist
-- **Nuevo**: Observaciones/Inconvenientes
-
-### Sereno y Topógrafo
-- Campos: Fecha, Obra, Horarios
-- **Nuevo**: Observaciones/Inconvenientes
-
----
-
-## Cambios en Base de Datos
-
-### Nuevas columnas en `partes_diarios`
-
-```sql
-ALTER TABLE public.partes_diarios
-ADD COLUMN novedades TEXT,
-ADD COLUMN ausencias UUID[] DEFAULT '{}',
-ADD COLUMN tareas TEXT,
-ADD COLUMN observaciones_inconvenientes TEXT;
-```
-
-- `novedades`: Texto libre para que el Capataz describa el trabajo realizado en la obra
-- `ausencias`: Array de UUIDs que referencia IDs de empleados que faltaron
-- `tareas`: Texto libre para Mecánico/Ayudante describir sus tareas del día
-- `observaciones_inconvenientes`: Texto libre para todos los roles justificar baja producción o reportar problemas
+Actualizar tres componentes clave para mostrar y exportar los nuevos campos de partes diarios: novedades, ausencias, tareas y observaciones/inconvenientes.
 
 ---
 
 ## Archivos a Modificar
 
-### 1. src/hooks/useParteDiario.ts
+### 1. src/components/parte-diario/ParteDiarioDetailDialog.tsx
 
-**Actualizar interfaces:**
+El modal de detalle actualmente no muestra los nuevos campos. Agregaremos secciones condicionales según el rol del empleado.
+
+**Cambios:**
+
+1. **Importar icono adicional:**
 ```typescript
-export interface ParteDiario {
-  // ... campos existentes ...
-  novedades: string | null;
-  ausencias: string[] | null;
-  tareas: string | null;
-  observaciones_inconvenientes: string | null;
-}
-
-export interface ParteDiarioInsert {
-  // ... campos existentes ...
-  novedades?: string | null;
-  ausencias?: string[] | null;
-  tareas?: string | null;
-  observaciones_inconvenientes?: string | null;
-}
+import { Users, Wrench, AlertTriangle } from "lucide-react";
 ```
 
----
-
-### 2. src/components/parte-diario/ParteDiarioFormView.tsx
-
-**Cambios principales:**
-
-1. **Agregar nuevos estados al formData:**
+2. **Agregar prop para lista de personal** (para resolver nombres de ausencias):
 ```typescript
-const [formData, setFormData] = useState({
-  // ... campos existentes ...
-  novedades: '',
-  ausencias: [] as string[],
-  tareas: '',
-  observaciones_inconvenientes: '',
-});
-```
-
-2. **Agregar prop para lista de personal:**
-```typescript
-interface ParteDiarioFormViewProps {
-  // ... props existentes ...
-  personal: Array<{ id: string; nombre: string | null; apellido: string | null; legajo: string | null }>;
+interface ParteDiarioDetailDialogProps {
+  parte: ParteDiario | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  showEmpleado?: boolean;
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>;
 }
 ```
 
-3. **Definir visibilidad de campos por rol:**
+3. **Función para obtener nombres de empleados ausentes:**
 ```typescript
-// Formulario Capataz: Obra, Horarios, Novedades, Ausencias, Observaciones
-const isCapataz = rol === 'capataz';
-
-// Formulario Mecánico/Ayudante: Obra, Horarios, Tareas, Observaciones
-const isMecanicoAyudante = rol === 'mecanico' || rol === 'ayudante';
-
-// Todos los demás: Sus campos actuales + Observaciones/Inconvenientes
-const showObservacionesInconvenientes = true; // Para TODOS
-```
-
-4. **Nuevos componentes de UI:**
-
-**Sección Novedades (solo Capataz):**
-```tsx
-{isCapataz && (
-  <Card>
-    <CardContent className="pt-4">
-      <Label>📝 Novedades</Label>
-      <Textarea
-        placeholder="Describa el trabajo realizado en la obra..."
-        value={formData.novedades}
-        onChange={(e) => handleChange('novedades', e.target.value)}
-      />
-    </CardContent>
-  </Card>
-)}
-```
-
-**Sección Ausencias (solo Capataz):**
-```tsx
-{isCapataz && (
-  <Card>
-    <CardContent className="pt-4">
-      <Label>👥 Ausencias</Label>
-      <p className="text-xs text-muted-foreground mb-2">
-        Seleccione los empleados que faltaron hoy
-      </p>
-      {/* Multi-selector con checkboxes de empleados */}
-      <div className="space-y-2 max-h-48 overflow-y-auto">
-        {personal.filter(p => p.id !== empleadoId).map(emp => (
-          <Label key={emp.id} className="flex items-center gap-2 p-2 border rounded">
-            <Checkbox
-              checked={formData.ausencias.includes(emp.id)}
-              onCheckedChange={(checked) => toggleAusencia(emp.id, checked)}
-            />
-            <span>{emp.apellido}, {emp.nombre}</span>
-          </Label>
-        ))}
-      </div>
-    </CardContent>
-  </Card>
-)}
-```
-
-**Sección Tareas (solo Mecánico y Ayudante):**
-```tsx
-{isMecanicoAyudante && (
-  <Card>
-    <CardContent className="pt-4">
-      <Label>🔧 Tareas</Label>
-      <Textarea
-        placeholder="Describa las tareas realizadas..."
-        value={formData.tareas}
-        onChange={(e) => handleChange('tareas', e.target.value)}
-      />
-    </CardContent>
-  </Card>
-)}
-```
-
-**Sección Observaciones/Inconvenientes (TODOS):**
-```tsx
-<Card>
-  <CardContent className="pt-4">
-    <Label>⚠️ Observaciones / Inconvenientes</Label>
-    <Textarea
-      placeholder="Registre cualquier observación o inconveniente del día..."
-      value={formData.observaciones_inconvenientes}
-      onChange={(e) => handleChange('observaciones_inconvenientes', e.target.value)}
-    />
-  </CardContent>
-</Card>
-```
-
-5. **Modificar lógica de visibilidad:**
-- Capataz NO verá: Máquina, Horómetro, Combustible, Viajes, Estado Máquina, Checklist
-- Mecánico/Ayudante NO verán: Máquina, Horómetro, Combustible, Viajes, Estado Máquina, Checklist
-- Sereno/Topógrafo NO verán: Máquina, Horómetro, Combustible, Viajes, Estado Máquina, Checklist
-
-6. **Actualizar función buildParteData():**
-```typescript
-const buildParteData = (): ParteDiarioInsert => {
-  return {
-    // ... campos existentes ...
-    novedades: isCapataz ? formData.novedades || null : null,
-    ausencias: isCapataz ? formData.ausencias : null,
-    tareas: isMecanicoAyudante ? formData.tareas || null : null,
-    observaciones_inconvenientes: formData.observaciones_inconvenientes || null,
-  };
+const getAusenciasNombres = () => {
+  if (!parte.ausencias || parte.ausencias.length === 0 || !personalList) return [];
+  return parte.ausencias.map(id => {
+    const emp = personalList.find(p => p.id === id);
+    return emp ? `${emp.apellido}, ${emp.nombre}` : id;
+  });
 };
 ```
 
----
-
-### 3. src/pages/ParteDiario.tsx
-
-**Agregar hook usePersonal:**
-```typescript
-import { usePersonal } from "@/hooks/usePersonal";
-
-// En el componente:
-const { personal } = usePersonal();
+4. **Nueva sección Novedades (para Capataz):**
+```tsx
+{parte.novedades && (
+  <DetailSection title="Novedades del Día">
+    <div className="p-3 bg-muted/50 rounded-lg">
+      <p className="text-sm whitespace-pre-wrap">{parte.novedades}</p>
+    </div>
+  </DetailSection>
+)}
 ```
 
-**Pasar personal al formulario:**
+5. **Nueva sección Ausencias (para Capataz):**
 ```tsx
-<ParteDiarioFormView
-  // ... props existentes ...
-  personal={personal}
+{parte.ausencias && parte.ausencias.length > 0 && (
+  <DetailSection title="Ausencias Registradas">
+    <div className="flex flex-wrap gap-2">
+      {getAusenciasNombres().map((nombre, idx) => (
+        <Badge key={idx} variant="secondary" className="bg-amber-500/10 text-amber-600">
+          <Users className="w-3 h-3 mr-1" />
+          {nombre}
+        </Badge>
+      ))}
+    </div>
+  </DetailSection>
+)}
+```
+
+6. **Nueva sección Tareas (para Mecánico/Ayudante):**
+```tsx
+{parte.tareas && (
+  <DetailSection title="Tareas Realizadas">
+    <div className="p-3 bg-muted/50 rounded-lg">
+      <p className="text-sm whitespace-pre-wrap">{parte.tareas}</p>
+    </div>
+  </DetailSection>
+)}
+```
+
+7. **Nueva sección Observaciones/Inconvenientes (para TODOS):**
+```tsx
+{parte.observaciones_inconvenientes && (
+  <DetailSection title="Observaciones / Inconvenientes">
+    <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+      <div className="flex items-start gap-2">
+        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+        <p className="text-sm whitespace-pre-wrap">{parte.observaciones_inconvenientes}</p>
+      </div>
+    </div>
+  </DetailSection>
+)}
+```
+
+---
+
+### 2. src/components/parte-diario/ParteDiarioAdminView.tsx
+
+Actualizar para pasar la lista de personal al diálogo de detalle.
+
+**Cambio:**
+```tsx
+<ParteDiarioDetailDialog
+  parte={selectedParte}
+  open={!!selectedParte}
+  onOpenChange={(open) => !open && setSelectedParte(null)}
+  showEmpleado
+  personalList={personal}
 />
 ```
 
 ---
 
-## Resumen Visual de Campos por Rol
+### 3. src/utils/generateParteDiarioPDF.ts
+
+Actualizar el PDF para incluir los nuevos campos específicos por rol.
+
+**Cambios:**
+
+1. **Agregar parámetro opcional de lista de personal:**
+```typescript
+export async function generateParteDiarioPDF(
+  empleado: EmpleadoRendimiento,
+  partes: ParteDiario[],
+  totales: TotalesRendimiento,
+  mes: number,
+  anio: number,
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>
+): Promise<void>
+```
+
+2. **Actualizar columnas de tabla para Capataz:**
+```typescript
+case 'capataz':
+  return {
+    header: ["Fecha", "Obra", "Horario", "Ausencias", "Obs."],
+    keys: ["fecha", "obra", "horario", "ausencias", "observaciones"],
+  };
+```
+
+3. **Actualizar columnas de tabla para Mecánico/Ayudante:**
+```typescript
+case 'mecanico':
+case 'ayudante':
+  return {
+    header: ["Fecha", "Obra", "Horario", "Tareas", "Obs."],
+    keys: ["fecha", "obra", "horario", "tareas", "observaciones"],
+  };
+```
+
+4. **Actualizar getRowDataForRole para nuevos campos:**
+```typescript
+case 'capataz':
+  const ausenciasCount = parte.ausencias?.length || 0;
+  const tieneObs = parte.observaciones_inconvenientes ? 'Sí' : '-';
+  return [fecha, obraName, horario, `${ausenciasCount} emp.`, tieneObs];
+case 'mecanico':
+case 'ayudante':
+  const tareaResumen = parte.tareas ? 
+    (parte.tareas.length > 20 ? parte.tareas.slice(0,20)+'...' : parte.tareas) : '-';
+  const tieneObsMA = parte.observaciones_inconvenientes ? 'Sí' : '-';
+  return [fecha, obraName, horario, tareaResumen, tieneObsMA];
+```
+
+5. **Nueva sección de Novedades en el PDF (después de la tabla, solo para Capataz):**
+```typescript
+if (rol === 'capataz') {
+  const partesConNovedades = partes.filter(p => p.novedades);
+  if (partesConNovedades.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("NOVEDADES REGISTRADAS", margin, yPos);
+    yPos += 4;
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    partesConNovedades.forEach(p => {
+      const fechaStr = format(new Date(p.fecha), "dd/MM");
+      doc.text(`${fechaStr}: ${p.novedades?.slice(0, 100) || ''}...`, margin + 2, yPos);
+      yPos += 3;
+    });
+    yPos += 3;
+  }
+}
+```
+
+6. **Nueva sección de Observaciones/Inconvenientes (para TODOS):**
+```typescript
+const partesConObservaciones = partes.filter(p => p.observaciones_inconvenientes);
+if (partesConObservaciones.length > 0) {
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  doc.text("OBSERVACIONES / INCONVENIENTES", margin, yPos);
+  yPos += 4;
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6);
+  partesConObservaciones.forEach(p => {
+    const fechaStr = format(new Date(p.fecha), "dd/MM");
+    doc.text(`${fechaStr}: ${p.observaciones_inconvenientes?.slice(0, 80) || ''}`, margin + 2, yPos);
+    yPos += 3;
+  });
+  yPos += 3;
+}
+```
+
+---
+
+### 4. src/components/parte-diario/ParteDiarioRendimientoTab.tsx
+
+Pasar la lista de personal al generador de PDF.
+
+**Cambio en handleDownloadPDF:**
+```typescript
+const handleDownloadPDF = async () => {
+  if (!data.empleado || data.partes.length === 0) return;
+
+  setIsGeneratingPDF(true);
+  try {
+    await generateParteDiarioPDF(
+      data.empleado,
+      data.partes,
+      data.totales,
+      selectedMes,
+      selectedAnio,
+      personal // Agregar lista de personal
+    );
+  } catch (error) {
+    console.error("Error generating PDF:", error);
+  } finally {
+    setIsGeneratingPDF(false);
+  }
+};
+```
+
+---
+
+## Resumen Visual de Cambios
 
 ```text
-┌─────────────────┬───────────────────────────────────────────────────────────────┐
-│ ROL             │ CAMPOS VISIBLES                                               │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Capataz         │ Fecha, Obra, Horarios, Novedades, Ausencias, Observaciones    │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Mecánico        │ Fecha, Obra, Horarios, Tareas, Observaciones                  │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Ayudante        │ Fecha, Obra, Horarios, Tareas, Observaciones                  │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Maquinista      │ Fecha, Obra, Máquina, Horarios, Horómetro, Combustible,       │
-│                 │ Estado, Checklist, Observaciones                              │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Chofer          │ Fecha, Camión, Horarios, Viajes, Mov. Interno, Combustible,   │
-│                 │ Estado, Checklist, Observaciones                              │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Sereno          │ Fecha, Obra, Horarios, Observaciones                          │
-├─────────────────┼───────────────────────────────────────────────────────────────┤
-│ Topógrafo       │ Fecha, Obra, Horarios, Observaciones                          │
-└─────────────────┴───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│                    MODAL DE DETALLE (DetailDialog)                  │
+├─────────────────────────────────────────────────────────────────────┤
+│  + Sección "Novedades del Día"       (solo Capataz)                │
+│  + Sección "Ausencias Registradas"   (solo Capataz, con nombres)   │
+│  + Sección "Tareas Realizadas"       (solo Mecánico/Ayudante)      │
+│  + Sección "Observaciones/Inconvenientes" (TODOS los roles)        │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│                    PDF EXPORTADO                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  TABLA ACTUALIZADA:                                                  │
+│    - Capataz: Fecha, Obra, Horario, Ausencias, Obs                  │
+│    - Mecánico/Ayudante: Fecha, Obra, Horario, Tareas, Obs           │
+│                                                                      │
+│  NUEVAS SECCIONES:                                                   │
+│    + "NOVEDADES REGISTRADAS" (solo Capataz)                         │
+│    + "OBSERVACIONES / INCONVENIENTES" (todos los roles)             │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Orden de Implementación
 
-1. **Migración DB**: Agregar las 4 nuevas columnas
-2. **Hook**: Actualizar interfaces en `useParteDiario.ts`
-3. **Página**: Agregar `usePersonal` en `ParteDiario.tsx`
-4. **Formulario**: Implementar campos diferenciados en `ParteDiarioFormView.tsx`
-
+1. **ParteDiarioDetailDialog.tsx** - Agregar secciones para nuevos campos
+2. **ParteDiarioAdminView.tsx** - Pasar personalList al diálogo
+3. **generateParteDiarioPDF.ts** - Actualizar columnas y agregar secciones
+4. **ParteDiarioRendimientoTab.tsx** - Pasar personal a la función PDF
