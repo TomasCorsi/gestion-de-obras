@@ -122,16 +122,14 @@ export function RemitosDataGrid({
   }, [obras]);
 
   // Filter to only show vehicles (trucks, trailers, etc.)
-  const vehicleTypes = ["camion", "batea", "acoplado", "carreton", "cisterna", "camioneta", "auto"];
-  
   const vehiculoOptions = useMemo(() => {
-    const options = maquinarias
-      .filter((m) => m.patente && vehicleTypes.includes(m.tipo))
-      .map((m) => {
-        const label = `${m.codigo || ""} - ${m.patente || ""}`.trim();
-        const searchValue = `${m.codigo || ""} ${m.patente || ""} ${m.tipo || ""}`.toLowerCase();
-        return { value: m.id, label, searchValue };
-      });
+    const vehicleTypes = ["camion", "batea", "acoplado", "carreton", "cisterna", "camioneta", "auto"];
+    const filtered = maquinarias.filter((m) => m.patente && vehicleTypes.includes(m.tipo));
+    const options = filtered.map((m) => {
+      const label = `${m.codigo || ""} - ${m.patente || ""}`.trim();
+      const searchValue = `${m.codigo || ""} ${m.patente || ""} ${m.tipo || ""}`.toLowerCase();
+      return { value: m.id, label, searchValue };
+    });
     return [{ value: "", label: "Seleccionar...", searchValue: "" }, ...options];
   }, [maquinarias]);
 
