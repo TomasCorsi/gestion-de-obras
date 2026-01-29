@@ -39,10 +39,6 @@ import {
   Eye,
   Edit,
   Trash2,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Filter,
   Calendar,
   User,
   ListTodo,
@@ -50,30 +46,12 @@ import {
   Calculator,
   DollarSign,
 } from "lucide-react";
-import { useVacaciones, VacacionDB, VacacionForm, EstadoVacacion } from "@/hooks/useVacaciones";
+import { useVacaciones, VacacionDB, VacacionForm } from "@/hooks/useVacaciones";
 import { usePersonal } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
 import { differenceInDays, parseISO } from "date-fns";
 import { CalendarioVacaciones } from "./CalendarioVacaciones";
 import { SaldoVacacionesTable } from "./SaldoVacacionesTable";
-
-const estadoConfig: Record<EstadoVacacion, { label: string; color: string; icon: React.ReactNode }> = {
-  pendiente: { 
-    label: "Pendiente", 
-    color: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    icon: <Clock className="w-3 h-3" />
-  },
-  aprobada: { 
-    label: "Aprobada", 
-    color: "bg-green-500/20 text-green-400 border-green-500/30",
-    icon: <CheckCircle className="w-3 h-3" />
-  },
-  rechazada: { 
-    label: "Rechazada", 
-    color: "bg-red-500/20 text-red-400 border-red-500/30",
-    icon: <XCircle className="w-3 h-3" />
-  },
-};
 
 const motivoConfig: Record<string, string> = {
   vacaciones: "Vacaciones",
@@ -83,11 +61,11 @@ const motivoConfig: Record<string, string> = {
 };
 
 export function VacacionesTab() {
-  const { vacaciones, loading, createVacacion, updateVacacion, deleteVacacion, aprobarVacacion, rechazarVacacion, togglePagada } = useVacaciones();
+  const { vacaciones, loading, createVacacion, updateVacacion, deleteVacacion, togglePagada } = useVacaciones();
   const { personal } = usePersonal();
   
   const [searchTerm, setSearchTerm] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [pagoFilter, setPagoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -119,14 +97,15 @@ export function VacacionesTab() {
   const filteredVacaciones = vacaciones.filter((v) => {
     const nombreEmpleado = `${v.personal?.nombre || ""} ${v.personal?.apellido || ""}`.toLowerCase();
     const matchesSearch = nombreEmpleado.includes(searchTerm.toLowerCase());
-    const matchesEstado = estadoFilter === "todos" || v.estado === estadoFilter;
-    return matchesSearch && matchesEstado;
+    const matchesPago = pagoFilter === "todos" || 
+      (pagoFilter === "pagada" && v.pagada) || 
+      (pagoFilter === "no_pagada" && !v.pagada);
+    return matchesSearch && matchesPago;
   });
 
   // Stats
-  const pendientes = vacaciones.filter((v) => v.estado === "pendiente").length;
-  const aprobadas = vacaciones.filter((v) => v.estado === "aprobada").length;
-  const rechazadas = vacaciones.filter((v) => v.estado === "rechazada").length;
+  const pagadas = vacaciones.filter((v) => v.pagada).length;
+  const noPagadas = vacaciones.filter((v) => !v.pagada).length;
 
   const calculateDays = (inicio: string, fin: string) => {
     try {
@@ -205,14 +184,6 @@ export function VacacionesTab() {
     setFormOpen(false);
   };
 
-  const handleAprobar = async (vacacion: VacacionDB) => {
-    await aprobarVacacion(vacacion.id);
-  };
-
-  const handleRechazar = async (vacacion: VacacionDB) => {
-    await rechazarVacacion(vacacion.id);
-  };
-
   if (loading) {
     return (
       <div className="space-y-4">
@@ -255,16 +226,15 @@ export function VacacionesTab() {
               />
             </div>
             <div className="flex gap-2">
-              <Select value={estadoFilter} onValueChange={setEstadoFilter}>
+              <Select value={pagoFilter} onValueChange={setPagoFilter}>
                 <SelectTrigger className="w-40 bg-card border-border">
-                  <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-                  <SelectValue placeholder="Estado" />
+                  <DollarSign className="w-4 h-4 mr-2 text-muted-foreground" />
+                  <SelectValue placeholder="Pago" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border-border">
                   <SelectItem value="todos">Todos</SelectItem>
-                  {Object.entries(estadoConfig).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                  ))}
+                  <SelectItem value="pagada">Pagadas</SelectItem>
+                  <SelectItem value="no_pagada">No pagadas</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -278,27 +248,20 @@ export function VacacionesTab() {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div className="card-industrial p-4 text-center">
               <div className="flex items-center justify-center gap-2">
-                <Clock className="w-5 h-5 text-yellow-400" />
-                <p className="text-2xl font-bold text-foreground">{pendientes}</p>
+                <DollarSign className="w-5 h-5 text-green-400" />
+                <p className="text-2xl font-bold text-foreground">{pagadas}</p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Pendientes</p>
+              <p className="text-sm text-muted-foreground mt-1">Pagadas</p>
             </div>
             <div className="card-industrial p-4 text-center">
               <div className="flex items-center justify-center gap-2">
-                <CheckCircle className="w-5 h-5 text-green-400" />
-                <p className="text-2xl font-bold text-foreground">{aprobadas}</p>
+                <DollarSign className="w-5 h-5 text-muted-foreground" />
+                <p className="text-2xl font-bold text-foreground">{noPagadas}</p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">Aprobadas</p>
-            </div>
-            <div className="card-industrial p-4 text-center">
-              <div className="flex items-center justify-center gap-2">
-                <XCircle className="w-5 h-5 text-red-400" />
-                <p className="text-2xl font-bold text-foreground">{rechazadas}</p>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1">Rechazadas</p>
+              <p className="text-sm text-muted-foreground mt-1">No pagadas</p>
             </div>
           </div>
 
@@ -321,7 +284,7 @@ export function VacacionesTab() {
                 {filteredVacaciones.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      {searchTerm || estadoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
+                      {searchTerm || pagoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -392,31 +355,13 @@ export function VacacionesTab() {
                               <Eye className="w-4 h-4 mr-2" />
                               Ver detalle
                             </DropdownMenuItem>
-                            {vacacion.estado === "pendiente" && (
-                              <>
-                                <DropdownMenuItem
-                                  onClick={() => handleAprobar(vacacion)}
-                                  className="text-green-400 cursor-pointer"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-2" />
-                                  Aprobar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleRechazar(vacacion)}
-                                  className="text-red-400 cursor-pointer"
-                                >
-                                  <XCircle className="w-4 h-4 mr-2" />
-                                  Rechazar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleEdit(vacacion)}
-                                  className="text-foreground cursor-pointer"
-                                >
-                                  <Edit className="w-4 h-4 mr-2" />
-                                  Editar
-                                </DropdownMenuItem>
-                              </>
-                            )}
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(vacacion)}
+                              className="text-foreground cursor-pointer"
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDelete(vacacion)}
                               className="text-destructive cursor-pointer"
@@ -562,17 +507,19 @@ export function VacacionesTab() {
             <DetailSection title="Solicitud">
               <DetailRow label="Motivo" value={motivoConfig[selectedVacacion.motivo] || selectedVacacion.motivo} />
               <DetailRow
-                label="Estado"
+                label="Pago"
                 value={
-                  <Badge className={cn("status-badge flex items-center gap-1 w-fit", estadoConfig[selectedVacacion.estado]?.color)}>
-                    {estadoConfig[selectedVacacion.estado]?.icon}
-                    {estadoConfig[selectedVacacion.estado]?.label}
+                  <Badge className={cn(
+                    "status-badge flex items-center gap-1 w-fit",
+                    selectedVacacion.pagada 
+                      ? "bg-green-500/20 text-green-400 border-green-500/30"
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    <DollarSign className="w-3 h-3" />
+                    {selectedVacacion.pagada ? "Pagada" : "No pagada"}
                   </Badge>
                 }
               />
-              {selectedVacacion.fecha_aprobacion && (
-                <DetailRow label="Fecha Aprobación" value={formatDate(selectedVacacion.fecha_aprobacion)} />
-              )}
               <DetailRow label="Observaciones" value={selectedVacacion.observaciones || "-"} />
             </DetailSection>
           </div>

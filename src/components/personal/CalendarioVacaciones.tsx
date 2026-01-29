@@ -55,14 +55,13 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
 
-  // Filtrar solo aprobadas y pendientes del mes actual
+  // Filtrar vacaciones del mes actual
   const vacacionesDelMes = useMemo(() => {
     const inicioMes = startOfMonth(mesActual);
     const finMes = endOfMonth(mesActual);
 
     return vacaciones
       .filter(v => {
-        if (v.estado === "rechazada") return false;
         const inicio = parseISO(v.fecha_inicio);
         const fin = parseISO(v.fecha_fin);
         // La licencia toca el mes si termina después del inicio del mes Y empieza antes del fin del mes
@@ -139,11 +138,11 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-1.5">
             <Circle className="w-3 h-3 fill-green-500 text-green-500" />
-            <span className="text-muted-foreground">Aprobada</span>
+            <span className="text-muted-foreground">Pagada</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Circle className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-            <span className="text-muted-foreground">Pendiente</span>
+            <span className="text-muted-foreground">No pagada</span>
           </div>
         </div>
       </div>
@@ -201,7 +200,7 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
             </Card>
           ) : (
             vacacionesFiltradas.map((vacacion) => {
-              const isAprobada = vacacion.estado === "aprobada";
+              const isPagada = vacacion.pagada;
               const isExpanded = expandedId === vacacion.id;
 
               return (
@@ -216,11 +215,11 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
                   )}>
                     <CollapsibleTrigger className="w-full">
                       <div className="flex items-center gap-4 p-4">
-                        {/* Indicador de estado */}
+                        {/* Indicador de estado de pago */}
                         <Circle 
                           className={cn(
                             "w-3 h-3 shrink-0",
-                            isAprobada 
+                            isPagada 
                               ? "fill-green-500 text-green-500" 
                               : "fill-yellow-500 text-yellow-500"
                           )} 
@@ -267,12 +266,12 @@ export function CalendarioVacaciones({ vacaciones }: CalendarioVacacionesProps) 
                             <span className="ml-2 font-medium">{vacacion.personal?.legajo || "-"}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground">Estado:</span>
+                            <span className="text-muted-foreground">Pago:</span>
                             <span className={cn(
                               "ml-2 font-medium",
-                              isAprobada ? "text-green-500" : "text-yellow-500"
+                              isPagada ? "text-green-500" : "text-yellow-500"
                             )}>
-                              {isAprobada ? "Aprobada" : "Pendiente"}
+                              {isPagada ? "Pagada" : "No pagada"}
                             </span>
                           </div>
                           <div>
