@@ -13,6 +13,7 @@ export interface VacacionDB {
   dias_totales: number;
   motivo: string;
   estado: EstadoVacacion;
+  pagada: boolean;
   aprobado_por: string | null;
   fecha_aprobacion: string | null;
   observaciones: string | null;
@@ -197,6 +198,28 @@ export function useVacaciones() {
     return true;
   };
 
+  const togglePagada = async (id: string) => {
+    // Get current state
+    const vacacion = vacaciones.find(v => v.id === id);
+    if (!vacacion) return false;
+
+    const newPagada = !vacacion.pagada;
+    const { error } = await supabase
+      .from("vacaciones")
+      .update({ pagada: newPagada })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error toggling pagada:", error);
+      toast.error("Error al actualizar estado de pago");
+      return false;
+    }
+
+    toast.success(newPagada ? "Vacaciones marcadas como pagadas" : "Vacaciones marcadas como no pagadas");
+    await fetchVacaciones();
+    return true;
+  };
+
   useEffect(() => {
     fetchVacaciones();
   }, []);
@@ -210,5 +233,6 @@ export function useVacaciones() {
     deleteVacacion,
     aprobarVacacion,
     rechazarVacacion,
+    togglePagada,
   };
 }

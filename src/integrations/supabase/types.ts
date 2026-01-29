@@ -1163,6 +1163,7 @@ export type Database = {
           id: string
           motivo: string
           observaciones: string | null
+          pagada: boolean
           personal_id: string
           updated_at: string
         }
@@ -1177,6 +1178,7 @@ export type Database = {
           id?: string
           motivo?: string
           observaciones?: string | null
+          pagada?: boolean
           personal_id: string
           updated_at?: string
         }
@@ -1191,6 +1193,7 @@ export type Database = {
           id?: string
           motivo?: string
           observaciones?: string | null
+          pagada?: boolean
           personal_id?: string
           updated_at?: string
         }

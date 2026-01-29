@@ -48,6 +48,7 @@ import {
   ListTodo,
   CalendarDays,
   Calculator,
+  DollarSign,
 } from "lucide-react";
 import { useVacaciones, VacacionDB, VacacionForm, EstadoVacacion } from "@/hooks/useVacaciones";
 import { usePersonal } from "@/hooks/usePersonal";
@@ -82,7 +83,7 @@ const motivoConfig: Record<string, string> = {
 };
 
 export function VacacionesTab() {
-  const { vacaciones, loading, createVacacion, updateVacacion, deleteVacacion, aprobarVacacion, rechazarVacacion } = useVacaciones();
+  const { vacaciones, loading, createVacacion, updateVacacion, deleteVacacion, aprobarVacacion, rechazarVacacion, togglePagada } = useVacaciones();
   const { personal } = usePersonal();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -312,13 +313,14 @@ export function VacacionesTab() {
                   <TableHead className="text-muted-foreground font-medium">Días</TableHead>
                   <TableHead className="text-muted-foreground font-medium">Motivo</TableHead>
                   <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+                  <TableHead className="text-muted-foreground font-medium">Pago</TableHead>
                   <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredVacaciones.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {searchTerm || estadoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
                     </TableCell>
                   </TableRow>
@@ -364,6 +366,22 @@ export function VacacionesTab() {
                           {estadoConfig[vacacion.estado]?.icon}
                           {estadoConfig[vacacion.estado]?.label}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => togglePagada(vacacion.id)}
+                          className={cn(
+                            "h-8 px-2 gap-1 font-medium transition-colors",
+                            vacacion.pagada
+                              ? "text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                        >
+                          <DollarSign className="w-4 h-4" />
+                          {vacacion.pagada ? "Pagada" : "No pagada"}
+                        </Button>
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
