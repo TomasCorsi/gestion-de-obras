@@ -410,6 +410,13 @@ export type Database = {
             referencedRelation: "personal"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "horas_maquina_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
         ]
       }
       mantenimientos: {
@@ -538,6 +545,13 @@ export type Database = {
             referencedRelation: "personal"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "maquinarias_operador_asignado_id_fkey"
+            columns: ["operador_asignado_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
         ]
       }
       movimientos_stock: {
@@ -608,6 +622,13 @@ export type Database = {
             referencedRelation: "personal"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "movimientos_stock_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
         ]
       }
       obras: {
@@ -653,6 +674,13 @@ export type Database = {
             columns: ["responsable_id"]
             isOneToOne: false
             referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obras_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
         ]
@@ -812,6 +840,13 @@ export type Database = {
             columns: ["personal_id"]
             isOneToOne: false
             referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partes_diarios_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
         ]
@@ -979,6 +1014,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "registros_hh_capataz_id_fkey"
+            columns: ["capataz_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "registros_hh_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
@@ -990,6 +1032,13 @@ export type Database = {
             columns: ["persona_id"]
             isOneToOne: false
             referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_hh_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
         ]
@@ -1214,6 +1263,13 @@ export type Database = {
             referencedRelation: "personal"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vacaciones_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
         ]
       }
       viajes: {
@@ -1287,6 +1343,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "viajes_chofer_id_fkey"
+            columns: ["chofer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "viajes_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
@@ -1297,7 +1360,27 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      personal_legajo_lookup: {
+        Row: {
+          id: string | null
+          legajo: string | null
+          rol: Database["public"]["Enums"]["rol_personal"] | null
+          ya_vinculado: boolean | null
+        }
+        Insert: {
+          id?: string | null
+          legajo?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"] | null
+          ya_vinculado?: never
+        }
+        Update: {
+          id?: string | null
+          legajo?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"] | null
+          ya_vinculado?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_user_role: {
@@ -1310,6 +1393,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      link_personal_to_user: {
+        Args: { p_legajo: string; p_user_id: string }
+        Returns: {
+          error_message: string
+          personal_id: string
+          rol: Database["public"]["Enums"]["rol_personal"]
+          success: boolean
+        }[]
       }
     }
     Enums: {
