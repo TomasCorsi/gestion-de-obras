@@ -15,13 +15,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, User, AlertTriangle, CheckCircle, Clock, XCircle } from "lucide-react";
+import { Search, User, AlertTriangle, CheckCircle } from "lucide-react";
 import {
   VacacionDB,
   calcularAntiguedad,
   calcularDiasBase,
   calcularDiasUsados,
-  calcularDiasPendientes,
 } from "@/hooks/useVacaciones";
 import { PersonalDB } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
@@ -39,7 +38,6 @@ interface SaldoEmpleado {
   antiguedad: number | null;
   diasBase: number;
   diasUsados: number;
-  diasPendientes: number;
   diasDisponibles: number;
 }
 
@@ -53,8 +51,7 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
         const antiguedad = calcularAntiguedad(p.fecha_ingreso);
         const diasBase = calcularDiasBase(antiguedad);
         const diasUsados = calcularDiasUsados(vacaciones, p.id);
-        const diasPendientes = calcularDiasPendientes(vacaciones, p.id);
-        const diasDisponibles = Math.max(0, diasBase - diasUsados - diasPendientes);
+        const diasDisponibles = Math.max(0, diasBase - diasUsados);
 
         return {
           id: p.id,
@@ -64,7 +61,6 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
           antiguedad,
           diasBase,
           diasUsados,
-          diasPendientes,
           diasDisponibles,
         };
       });
@@ -95,18 +91,11 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
         tooltip: "Sin fecha de ingreso registrada",
       };
     }
-    if (saldo.diasDisponibles === 0 && saldo.diasPendientes === 0) {
+    if (saldo.diasDisponibles === 0) {
       return {
-        icon: <XCircle className="w-4 h-4" />,
+        icon: <AlertTriangle className="w-4 h-4" />,
         color: "text-red-400",
         tooltip: "Sin días disponibles",
-      };
-    }
-    if (saldo.diasPendientes > 0) {
-      return {
-        icon: <Clock className="w-4 h-4" />,
-        color: "text-yellow-400",
-        tooltip: `${saldo.diasPendientes} días pendientes de aprobación`,
       };
     }
     return {
@@ -162,14 +151,13 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
               <TableHead className="text-muted-foreground font-medium">Antigüedad</TableHead>
               <TableHead className="text-muted-foreground font-medium text-center">Días Base</TableHead>
               <TableHead className="text-muted-foreground font-medium text-center">Usados</TableHead>
-              <TableHead className="text-muted-foreground font-medium text-center">Pendientes</TableHead>
               <TableHead className="text-muted-foreground font-medium text-center">Disponibles</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredSaldos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   {searchTerm ? "No se encontraron empleados" : "No hay empleados activos"}
                 </TableCell>
               </TableRow>
@@ -227,18 +215,6 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
                         )}
                       >
                         {saldo.diasUsados}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          saldo.diasPendientes > 0
-                            ? "bg-yellow-500/20 text-yellow-400 border-yellow-500/30"
-                            : "bg-muted text-muted-foreground"
-                        )}
-                      >
-                        {saldo.diasPendientes}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">

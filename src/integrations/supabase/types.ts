@@ -1156,7 +1156,6 @@ export type Database = {
           aprobado_por: string | null
           created_at: string
           dias_totales: number
-          estado: string
           fecha_aprobacion: string | null
           fecha_fin: string
           fecha_inicio: string
@@ -1171,7 +1170,6 @@ export type Database = {
           aprobado_por?: string | null
           created_at?: string
           dias_totales: number
-          estado?: string
           fecha_aprobacion?: string | null
           fecha_fin: string
           fecha_inicio: string
@@ -1186,7 +1184,6 @@ export type Database = {
           aprobado_por?: string | null
           created_at?: string
           dias_totales?: number
-          estado?: string
           fecha_aprobacion?: string | null
           fecha_fin?: string
           fecha_inicio?: string

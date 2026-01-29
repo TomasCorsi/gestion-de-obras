@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-export type EstadoVacacion = "pendiente" | "aprobada" | "rechazada";
 export type MotivoVacacion = "vacaciones" | "licencia_medica" | "permiso_personal" | "otro";
 
 export interface VacacionDB {
@@ -12,7 +11,6 @@ export interface VacacionDB {
   fecha_fin: string;
   dias_totales: number;
   motivo: string;
-  estado: EstadoVacacion;
   pagada: boolean;
   aprobado_por: string | null;
   fecha_aprobacion: string | null;
@@ -53,29 +51,17 @@ export const calcularDiasBase = (antiguedad: number | null): number => {
   return 35;
 };
 
-// Calcular días usados (vacaciones aprobadas del año actual)
+// Calcular días usados (vacaciones del año actual)
 export const calcularDiasUsados = (vacaciones: VacacionDB[], personalId: string): number => {
   const añoActual = new Date().getFullYear();
   return vacaciones
     .filter(v => 
       v.personal_id === personalId && 
-      v.estado === "aprobada" &&
       new Date(v.fecha_inicio).getFullYear() === añoActual
     )
     .reduce((sum, v) => sum + v.dias_totales, 0);
 };
 
-// Calcular días pendientes de aprobación
-export const calcularDiasPendientes = (vacaciones: VacacionDB[], personalId: string): number => {
-  const añoActual = new Date().getFullYear();
-  return vacaciones
-    .filter(v => 
-      v.personal_id === personalId && 
-      v.estado === "pendiente" &&
-      new Date(v.fecha_inicio).getFullYear() === añoActual
-    )
-    .reduce((sum, v) => sum + v.dias_totales, 0);
-};
 
 export function useVacaciones() {
   const [vacaciones, setVacaciones] = useState<VacacionDB[]>([]);
@@ -156,47 +142,6 @@ export function useVacaciones() {
     return true;
   };
 
-  const aprobarVacacion = async (id: string, aprobadoPorId?: string) => {
-    const { error } = await supabase
-      .from("vacaciones")
-      .update({
-        estado: "aprobada",
-        aprobado_por: aprobadoPorId || null,
-        fecha_aprobacion: new Date().toISOString().split("T")[0],
-      })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error approving vacacion:", error);
-      toast.error("Error al aprobar vacaciones");
-      return false;
-    }
-
-    toast.success("Vacaciones aprobadas correctamente");
-    await fetchVacaciones();
-    return true;
-  };
-
-  const rechazarVacacion = async (id: string, aprobadoPorId?: string) => {
-    const { error } = await supabase
-      .from("vacaciones")
-      .update({
-        estado: "rechazada",
-        aprobado_por: aprobadoPorId || null,
-        fecha_aprobacion: new Date().toISOString().split("T")[0],
-      })
-      .eq("id", id);
-
-    if (error) {
-      console.error("Error rejecting vacacion:", error);
-      toast.error("Error al rechazar vacaciones");
-      return false;
-    }
-
-    toast.success("Vacaciones rechazadas");
-    await fetchVacaciones();
-    return true;
-  };
 
   const togglePagada = async (id: string) => {
     // Get current state
@@ -231,8 +176,6 @@ export function useVacaciones() {
     createVacacion,
     updateVacacion,
     deleteVacacion,
-    aprobarVacacion,
-    rechazarVacacion,
     togglePagada,
   };
 }
