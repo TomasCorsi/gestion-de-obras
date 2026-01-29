@@ -1,133 +1,153 @@
 
-# Plan: Corregir Problema de Zona Horaria en Fechas
+# Plan: Vista de Administrador para Partes Diarios
 
-## Problema Identificado
+## Objetivo
 
-Cuando JavaScript parsea una fecha en formato ISO (`"2026-01-28"`) usando `new Date()`, la interpreta como **medianoche en UTC**. Al mostrarla en la zona horaria local (ej: Argentina UTC-3), la fecha retrocede a las 21:00 del día anterior.
+Permitir a los administradores ver todos los partes diarios de todos los empleados, con la capacidad de filtrar por empleado, fecha, y ver el detalle completo de cada parte.
 
-### Ejemplo del Bug
+## Situación Actual
 
-```text
-Entrada del usuario: "2026-01-28"
-                           ↓
-new Date("2026-01-28")  →  2026-01-28 00:00:00 UTC
-                           ↓
-Visualización en Argentina (UTC-3)  →  2026-01-27 21:00:00
-                           ↓
-format(date, "d de MMMM")  →  "27 de enero"  ← ERROR
-```
-
-## Archivos Afectados
-
-| Archivo | Línea | Problema |
-|---------|-------|----------|
-| `src/components/parte-diario/ParteDiarioFormView.tsx` | 174 | `new Date(formData.fecha)` |
-| `src/components/parte-diario/ParteDiarioListView.tsx` | 54 | `new Date(parte.fecha)` |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | 69 | `new Date(borradorHoy.fecha)` |
-| `src/lib/utils.ts` | 13 | `parseISO(date)` - Este usa date-fns y es correcto |
+| Componente | Comportamiento Actual |
+|------------|----------------------|
+| `useParteDiario.ts` | Solo carga partes del empleado logueado (`empleado.id`) |
+| `ParteDiario.tsx` | Requiere que el usuario tenga un perfil de empleado vinculado |
+| `ParteDiarioListView.tsx` | Muestra "Mis Partes" - solo los partes del usuario |
+| Políticas RLS | Admin ya puede ver todos los partes vía `has_role(auth.uid(), 'admin')` |
 
 ## Solución Propuesta
 
-Usar `parseISO()` de date-fns en lugar de `new Date()` para parsear fechas en formato string. `parseISO` trata la fecha como **local** en vez de UTC.
+Crear una nueva sección para administradores que muestre todos los partes diarios de todos los empleados, separada de la vista de empleados.
 
-### Cambio de Patrón
+### Arquitectura
 
 ```text
-ANTES (incorrecto)                    DESPUÉS (correcto)
-┌────────────────────────────┐       ┌────────────────────────────┐
-│ new Date("2026-01-28")     │  →    │ parseISO("2026-01-28")     │
-│ Interpreta como UTC        │       │ Interpreta como hora local │
-└────────────────────────────┘       └────────────────────────────┘
+/parte-diario
+├── Vista Empleado (actual)
+│   └── Solo ve sus propios partes
+│
+└── Vista Admin/Capataz (nueva)
+    ├── Lista de TODOS los partes
+    ├── Filtros por empleado, fecha, estado
+    └── Detalle de cada parte (solo lectura)
 ```
 
-## Cambios a Implementar
+## Componentes a Crear/Modificar
 
-### 1. ParteDiarioFormView.tsx
+### 1. Nuevo Hook: `useParteDiarioAdmin.ts`
 
-Línea 174:
-```typescript
-// Antes
-{format(new Date(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
+| Característica | Descripción |
+|----------------|-------------|
+| Consulta | Trae todos los partes diarios sin filtrar por `personal_id` |
+| Joins | Incluye datos de empleado, obra y maquinaria |
+| Ordenamiento | Por fecha descendente |
+| Solo lectura | No incluye funciones de creación/edición |
 
-// Después
-{format(parseISO(formData.fecha), "EEEE d 'de' MMMM", { locale: es })}
+### 2. Nuevo Componente: `ParteDiarioAdminView.tsx`
+
+Vista con tabla/lista que muestra:
+
+| Columna | Datos |
+|---------|-------|
+| Fecha | Fecha del parte |
+| Empleado | Nombre completo y rol |
+| Obra | Nombre de la obra asignada |
+| Máquina | Código/tipo de maquinaria |
+| Horario | Entrada - Salida |
+| Estado | Borrador / Completado |
+| Acción | Ver detalle |
+
+### 3. Nuevo Componente: `ParteDiarioAdminFilters.tsx`
+
+Filtros para:
+- Empleado (selector con todos los empleados)
+- Rango de fechas
+- Estado (borrador/completado)
+- Obra
+
+### 4. Modificar: `ParteDiario.tsx`
+
+Detectar si el usuario es admin/capataz y mostrar:
+- **Si es admin/capataz**: Vista administrativa con todos los partes
+- **Si es empleado**: Vista actual con sus propios partes
+
+## Flujo de Navegación
+
+```text
+Admin ingresa a /parte-diario
+         ↓
+¿Tiene rol admin o capataz?
+         ↓
+    SÍ → Mostrar ParteDiarioAdminView
+         ├── Tabla con todos los partes
+         ├── Filtros arriba
+         └── Click en fila → ParteDiarioDetailDialog
+         
+    NO → Mostrar vista actual (ParteDiarioHomeView)
+         └── Solo sus propios partes
 ```
 
-### 2. ParteDiarioListView.tsx
+## Cambios Detallados
 
-Línea 54:
-```typescript
-// Antes
-{format(new Date(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
+### Archivo: `src/hooks/useParteDiarioAdmin.ts` (nuevo)
 
-// Después  
-{format(parseISO(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
+Hook que consulta todos los partes diarios para administradores:
+- Query sin filtro de `personal_id`
+- Incluye join con tabla `personal` para nombre/rol del empleado
+- Ordenado por fecha descendente
+- Opciones de filtrado por fecha, empleado, estado
+
+### Archivo: `src/components/parte-diario/ParteDiarioAdminView.tsx` (nuevo)
+
+Componente principal de la vista administrativa:
+- Barra de filtros en la parte superior
+- Tabla/grilla con todos los partes
+- Reutiliza `ParteDiarioDetailDialog` para ver detalles
+- Indicador del empleado en cada fila
+
+### Archivo: `src/pages/ParteDiario.tsx` (modificar)
+
+Agregar lógica condicional:
+- Usar `useAuth()` para obtener el rol
+- Si es `admin` o `capataz`: renderizar `ParteDiarioAdminView`
+- Si no: mantener comportamiento actual para empleados
+
+## Políticas RLS (sin cambios necesarios)
+
+Las políticas actuales ya permiten a admins ver todos los partes:
+
+```sql
+-- Política existente
+"Admins and capataces can manage all partes"
+USING: (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'capataz'))
 ```
 
-### 3. ParteDiarioHomeView.tsx
+## Archivos a Crear
 
-Línea 69:
-```typescript
-// Antes
-Fecha: {format(new Date(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
-
-// Después
-Fecha: {format(parseISO(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
-```
-
-### 4. Revisión General
-
-Buscar y corregir otros lugares donde se use `new Date(string)` para parsear fechas ISO, especialmente en componentes de visualización.
+| Archivo | Propósito |
+|---------|-----------|
+| `src/hooks/useParteDiarioAdmin.ts` | Hook para consultar todos los partes |
+| `src/components/parte-diario/ParteDiarioAdminView.tsx` | Vista principal para admins |
+| `src/components/parte-diario/ParteDiarioAdminFilters.tsx` | Componente de filtros |
 
 ## Archivos a Modificar
 
-| Archivo | Tipo de Cambio |
-|---------|----------------|
-| `src/components/parte-diario/ParteDiarioFormView.tsx` | Usar parseISO en vez de new Date |
-| `src/components/parte-diario/ParteDiarioListView.tsx` | Usar parseISO en vez de new Date |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Usar parseISO en vez de new Date |
-| `src/components/dashboard/RecentObras.tsx` | Revisar y corregir si aplica |
-| `src/components/dashboard/CotizacionesPendientes.tsx` | Revisar y corregir si aplica |
-| `src/components/maquinarias/GastosMaquinaria.tsx` | Revisar y corregir si aplica |
-
-## Sección Técnica
-
-### Por qué parseISO funciona correctamente
-
-```typescript
-import { parseISO, format } from 'date-fns';
-
-// new Date() - interpreta como UTC medianoche
-new Date("2026-01-28") 
-// → Tue Jan 27 2026 21:00:00 GMT-0300 (en Argentina)
-
-// parseISO() - interpreta como hora local medianoche  
-parseISO("2026-01-28")
-// → Tue Jan 28 2026 00:00:00 GMT-0300 (en Argentina)
-```
-
-### Patrón seguro para mostrar fechas
-
-```typescript
-import { parseISO, format } from 'date-fns';
-import { es } from 'date-fns/locale';
-
-// Siempre usar parseISO para strings de fecha ISO
-const fechaCorrecta = format(
-  parseISO(fechaString), 
-  "EEEE d 'de' MMMM, yyyy", 
-  { locale: es }
-);
-```
-
-## Pruebas Recomendadas
-
-1. Crear un parte diario con fecha de hoy y verificar que muestra la fecha correcta
-2. Verificar la lista de partes que las fechas coincidan con lo guardado
-3. Revisar el dashboard y otras vistas que muestran fechas
+| Archivo | Cambio |
+|---------|--------|
+| `src/pages/ParteDiario.tsx` | Agregar lógica condicional según rol |
+| `src/components/parte-diario/ParteDiarioDetailDialog.tsx` | Mostrar nombre del empleado en el detalle |
 
 ## Beneficios
 
-1. Las fechas se mostrarán correctamente sin importar la zona horaria del usuario
-2. Consistencia en todo el sistema usando parseISO
-3. El patrón ya existe en utils.ts - solo hay que aplicarlo uniformemente
+1. Los administradores pueden supervisar todos los partes diarios
+2. Pueden identificar empleados que no completaron sus partes
+3. Pueden revisar observaciones de máquinas reportadas
+4. Los empleados mantienen su vista simplificada actual
+5. Reutiliza el componente de detalle existente
+
+## Pruebas Recomendadas
+
+1. Ingresar como admin y verificar que se ve la vista administrativa
+2. Verificar que aparecen partes de todos los empleados
+3. Probar los filtros por empleado, fecha y estado
+4. Verificar que el detalle muestra toda la información correctamente
+5. Ingresar como empleado normal y verificar que solo ve sus partes
