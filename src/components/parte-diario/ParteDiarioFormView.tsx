@@ -97,7 +97,7 @@ export const ParteDiarioFormView = ({
     { id: 'check_filtro_aire', label: 'Revisión filtro de aire', roles: ['maquinista'] },
     { id: 'check_aceite_motor', label: 'Control aceite motor', roles: ['maquinista', 'chofer'] },
     { id: 'check_aceite_hidraulico', label: 'Control aceite hidráulico', roles: ['maquinista'] },
-    { id: 'check_liquido_refrigerante', label: 'Control líquido refrigerante', roles: ['chofer'] },
+    { id: 'check_liquido_refrigerante', label: 'Control líquido refrigerante', roles: ['maquinista', 'chofer'] },
     { id: 'check_uria', label: 'Control Uría', roles: ['chofer'] },
   ].filter(item => rol && item.roles.includes(rol));
 
