@@ -1,264 +1,219 @@
 
-# Plan: Incluir Nuevos Campos en PDF, Exportación y Modal de Detalle
+# Plan: Corrección de Vulnerabilidades de Seguridad en Tabla Personal
 
-## Resumen
+## Resumen del Problema
 
-Actualizar tres componentes clave para mostrar y exportar los nuevos campos de partes diarios: novedades, ausencias, tareas y observaciones/inconvenientes.
+Se han identificado **3 vulnerabilidades críticas** en la tabla `personal`:
+
+### 1. Exposición Pública de Datos Sensibles (CRÍTICO)
+- La política `Allow public legajo lookup for registration` permite SELECT con condición `true`
+- Expone **68 registros** con: DNI, emails, teléfonos, cuentas bancarias, sueldos
+- **Riesgo**: Robo de identidad, fraude financiero, filtración de sueldos no declarados
+
+### 2. Escalación de Privilegios vía UPDATE (ALTO)
+- La política `Users can link their own personal record` permite a cualquier usuario autenticado vincular su ID a registros sin user_id
+- **66 registros** vulnerables a ser "reclamados" por atacantes
+- **Riesgo**: Un atacante podría crear cuenta y vincularse a un empleado existente
+
+### 3. Datos Financieros Sin Protección (ALTO)
+- Columnas `sueldo`, `sueldo_negro`, `banco`, `numero_cuenta` visibles públicamente
+- **62 registros** con información bancaria expuesta
 
 ---
 
-## Archivos a Modificar
+## Solución Propuesta
 
-### 1. src/components/parte-diario/ParteDiarioDetailDialog.tsx
+### Enfoque: Vista Segura + Políticas Restrictivas
 
-El modal de detalle actualmente no muestra los nuevos campos. Agregaremos secciones condicionales según el rol del empleado.
+Crear una vista que solo exponga los campos mínimos necesarios para el registro, y restringir el acceso directo a la tabla base.
 
-**Cambios:**
+---
 
-1. **Importar icono adicional:**
-```typescript
-import { Users, Wrench, AlertTriangle } from "lucide-react";
+## Cambios en Base de Datos
+
+### 1. Crear Vista Segura para Lookup de Legajo
+
+```sql
+-- Vista que solo expone legajo, id y si está vinculado (para registro)
+CREATE VIEW public.personal_legajo_lookup
+WITH (security_invoker = on) AS
+SELECT 
+  id,
+  legajo,
+  rol,
+  (user_id IS NOT NULL) as ya_vinculado
+FROM public.personal;
+
+-- Comentario explicativo
+COMMENT ON VIEW public.personal_legajo_lookup IS 
+  'Vista segura para validar legajos durante registro de empleados. No expone datos sensibles.';
 ```
 
-2. **Agregar prop para lista de personal** (para resolver nombres de ausencias):
+### 2. Actualizar Políticas RLS de la Tabla Personal
+
+```sql
+-- ELIMINAR política pública de SELECT
+DROP POLICY IF EXISTS "Allow public legajo lookup for registration" ON public.personal;
+
+-- ELIMINAR política vulnerable de UPDATE
+DROP POLICY IF EXISTS "Users can link their own personal record" ON public.personal;
+
+-- NUEVA política: Solo admins y capataces ven datos completos
+-- (Ya existe: "Admins and capataces can manage personal")
+
+-- NUEVA política: Empleados pueden ver su propio registro
+CREATE POLICY "Employees can view own record"
+ON public.personal
+FOR SELECT
+USING (user_id = auth.uid());
+
+-- NUEVA política: Empleados pueden actualizar campos limitados de su registro
+CREATE POLICY "Employees can update own contact info"
+ON public.personal
+FOR UPDATE
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+```
+
+### 3. Política para Vista de Lookup
+
+```sql
+-- Habilitar RLS en la vista (heredada de tabla base por security_invoker)
+-- Crear política que permita SELECT público SOLO en la vista
+CREATE POLICY "Public can lookup legajo"
+ON public.personal_legajo_lookup
+FOR SELECT
+USING (true);
+```
+
+### 4. Función Segura para Vinculación
+
+```sql
+-- Función que valida y vincula de forma segura
+CREATE OR REPLACE FUNCTION public.link_personal_to_user(
+  p_legajo TEXT,
+  p_user_id UUID
+)
+RETURNS TABLE (
+  success BOOLEAN,
+  personal_id UUID,
+  rol rol_personal,
+  error_message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_personal_id UUID;
+  v_rol rol_personal;
+  v_existing_user_id UUID;
+BEGIN
+  -- Buscar el registro de personal
+  SELECT id, rol, user_id 
+  INTO v_personal_id, v_rol, v_existing_user_id
+  FROM public.personal
+  WHERE legajo = p_legajo;
+
+  -- Validar que existe
+  IF v_personal_id IS NULL THEN
+    RETURN QUERY SELECT false, NULL::UUID, NULL::rol_personal, 'Legajo no encontrado';
+    RETURN;
+  END IF;
+
+  -- Validar que no está vinculado
+  IF v_existing_user_id IS NOT NULL THEN
+    RETURN QUERY SELECT false, NULL::UUID, NULL::rol_personal, 'Este legajo ya tiene cuenta asociada';
+    RETURN;
+  END IF;
+
+  -- Vincular
+  UPDATE public.personal
+  SET user_id = p_user_id
+  WHERE id = v_personal_id;
+
+  RETURN QUERY SELECT true, v_personal_id, v_rol, NULL::TEXT;
+END;
+$$;
+```
+
+---
+
+## Cambios en Código
+
+### 1. src/pages/RegistroEmpleado.tsx
+
+Actualizar para usar la vista segura y la función de vinculación:
+
 ```typescript
-interface ParteDiarioDetailDialogProps {
-  parte: ParteDiario | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  showEmpleado?: boolean;
-  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>;
+// Cambiar consulta de búsqueda
+const { data: personal, error: searchError } = await supabase
+  .from('personal_legajo_lookup')  // <- Vista segura
+  .select('id, legajo, rol, ya_vinculado')
+  .eq('legajo', formData.legajo.trim())
+  .maybeSingle();
+
+// Validar si ya está vinculado
+if (personal?.ya_vinculado) {
+  setError("Este legajo ya tiene una cuenta asociada.");
+  return;
 }
-```
 
-3. **Función para obtener nombres de empleados ausentes:**
-```typescript
-const getAusenciasNombres = () => {
-  if (!parte.ausencias || parte.ausencias.length === 0 || !personalList) return [];
-  return parte.ausencias.map(id => {
-    const emp = personalList.find(p => p.id === id);
-    return emp ? `${emp.apellido}, ${emp.nombre}` : id;
+// Usar función segura para vincular
+const { data: linkResult, error: linkError } = await supabase
+  .rpc('link_personal_to_user', {
+    p_legajo: formData.legajo.trim(),
+    p_user_id: authData.user.id
   });
-};
 ```
 
-4. **Nueva sección Novedades (para Capataz):**
-```tsx
-{parte.novedades && (
-  <DetailSection title="Novedades del Día">
-    <div className="p-3 bg-muted/50 rounded-lg">
-      <p className="text-sm whitespace-pre-wrap">{parte.novedades}</p>
-    </div>
-  </DetailSection>
-)}
-```
+### 2. src/hooks/useEmpleadoProfile.ts
 
-5. **Nueva sección Ausencias (para Capataz):**
-```tsx
-{parte.ausencias && parte.ausencias.length > 0 && (
-  <DetailSection title="Ausencias Registradas">
-    <div className="flex flex-wrap gap-2">
-      {getAusenciasNombres().map((nombre, idx) => (
-        <Badge key={idx} variant="secondary" className="bg-amber-500/10 text-amber-600">
-          <Users className="w-3 h-3 mr-1" />
-          {nombre}
-        </Badge>
-      ))}
-    </div>
-  </DetailSection>
-)}
-```
+Actualizar auto-link para usar la función segura:
 
-6. **Nueva sección Tareas (para Mecánico/Ayudante):**
-```tsx
-{parte.tareas && (
-  <DetailSection title="Tareas Realizadas">
-    <div className="p-3 bg-muted/50 rounded-lg">
-      <p className="text-sm whitespace-pre-wrap">{parte.tareas}</p>
-    </div>
-  </DetailSection>
-)}
-```
-
-7. **Nueva sección Observaciones/Inconvenientes (para TODOS):**
-```tsx
-{parte.observaciones_inconvenientes && (
-  <DetailSection title="Observaciones / Inconvenientes">
-    <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-      <div className="flex items-start gap-2">
-        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
-        <p className="text-sm whitespace-pre-wrap">{parte.observaciones_inconvenientes}</p>
-      </div>
-    </div>
-  </DetailSection>
-)}
-```
-
----
-
-### 2. src/components/parte-diario/ParteDiarioAdminView.tsx
-
-Actualizar para pasar la lista de personal al diálogo de detalle.
-
-**Cambio:**
-```tsx
-<ParteDiarioDetailDialog
-  parte={selectedParte}
-  open={!!selectedParte}
-  onOpenChange={(open) => !open && setSelectedParte(null)}
-  showEmpleado
-  personalList={personal}
-/>
-```
-
----
-
-### 3. src/utils/generateParteDiarioPDF.ts
-
-Actualizar el PDF para incluir los nuevos campos específicos por rol.
-
-**Cambios:**
-
-1. **Agregar parámetro opcional de lista de personal:**
 ```typescript
-export async function generateParteDiarioPDF(
-  empleado: EmpleadoRendimiento,
-  partes: ParteDiario[],
-  totales: TotalesRendimiento,
-  mes: number,
-  anio: number,
-  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>
-): Promise<void>
-```
-
-2. **Actualizar columnas de tabla para Capataz:**
-```typescript
-case 'capataz':
-  return {
-    header: ["Fecha", "Obra", "Horario", "Ausencias", "Obs."],
-    keys: ["fecha", "obra", "horario", "ausencias", "observaciones"],
-  };
-```
-
-3. **Actualizar columnas de tabla para Mecánico/Ayudante:**
-```typescript
-case 'mecanico':
-case 'ayudante':
-  return {
-    header: ["Fecha", "Obra", "Horario", "Tareas", "Obs."],
-    keys: ["fecha", "obra", "horario", "tareas", "observaciones"],
-  };
-```
-
-4. **Actualizar getRowDataForRole para nuevos campos:**
-```typescript
-case 'capataz':
-  const ausenciasCount = parte.ausencias?.length || 0;
-  const tieneObs = parte.observaciones_inconvenientes ? 'Sí' : '-';
-  return [fecha, obraName, horario, `${ausenciasCount} emp.`, tieneObs];
-case 'mecanico':
-case 'ayudante':
-  const tareaResumen = parte.tareas ? 
-    (parte.tareas.length > 20 ? parte.tareas.slice(0,20)+'...' : parte.tareas) : '-';
-  const tieneObsMA = parte.observaciones_inconvenientes ? 'Sí' : '-';
-  return [fecha, obraName, horario, tareaResumen, tieneObsMA];
-```
-
-5. **Nueva sección de Novedades en el PDF (después de la tabla, solo para Capataz):**
-```typescript
-if (rol === 'capataz') {
-  const partesConNovedades = partes.filter(p => p.novedades);
-  if (partesConNovedades.length > 0) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.text("NOVEDADES REGISTRADAS", margin, yPos);
-    yPos += 4;
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6);
-    partesConNovedades.forEach(p => {
-      const fechaStr = format(new Date(p.fecha), "dd/MM");
-      doc.text(`${fechaStr}: ${p.novedades?.slice(0, 100) || ''}...`, margin + 2, yPos);
-      yPos += 3;
+// Reemplazar UPDATE directo por función RPC
+if (unlinkedPersonal) {
+  const { data: linkResult, error: linkError } = await supabase
+    .rpc('link_personal_to_user', {
+      p_legajo: legajo,
+      p_user_id: user.id
     });
-    yPos += 3;
-  }
-}
-```
 
-6. **Nueva sección de Observaciones/Inconvenientes (para TODOS):**
-```typescript
-const partesConObservaciones = partes.filter(p => p.observaciones_inconvenientes);
-if (partesConObservaciones.length > 0) {
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("OBSERVACIONES / INCONVENIENTES", margin, yPos);
-  yPos += 4;
-  
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(6);
-  partesConObservaciones.forEach(p => {
-    const fechaStr = format(new Date(p.fecha), "dd/MM");
-    doc.text(`${fechaStr}: ${p.observaciones_inconvenientes?.slice(0, 80) || ''}`, margin + 2, yPos);
-    yPos += 3;
-  });
-  yPos += 3;
+  if (linkResult?.[0]?.success) {
+    // Refetch con datos actualizados
+    const { data: linkedData } = await supabase
+      .from('personal')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    data = linkedData;
+  }
 }
 ```
 
 ---
 
-### 4. src/components/parte-diario/ParteDiarioRendimientoTab.tsx
-
-Pasar la lista de personal al generador de PDF.
-
-**Cambio en handleDownloadPDF:**
-```typescript
-const handleDownloadPDF = async () => {
-  if (!data.empleado || data.partes.length === 0) return;
-
-  setIsGeneratingPDF(true);
-  try {
-    await generateParteDiarioPDF(
-      data.empleado,
-      data.partes,
-      data.totales,
-      selectedMes,
-      selectedAnio,
-      personal // Agregar lista de personal
-    );
-  } catch (error) {
-    console.error("Error generating PDF:", error);
-  } finally {
-    setIsGeneratingPDF(false);
-  }
-};
-```
-
----
-
-## Resumen Visual de Cambios
+## Resumen de Cambios
 
 ```text
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    MODAL DE DETALLE (DetailDialog)                  │
+│                    ANTES (VULNERABLE)                               │
 ├─────────────────────────────────────────────────────────────────────┤
-│  + Sección "Novedades del Día"       (solo Capataz)                │
-│  + Sección "Ausencias Registradas"   (solo Capataz, con nombres)   │
-│  + Sección "Tareas Realizadas"       (solo Mecánico/Ayudante)      │
-│  + Sección "Observaciones/Inconvenientes" (TODOS los roles)        │
+│  Tabla personal: SELECT público (TODOS los campos)                  │
+│  - DNI, Email, Teléfono, Banco, Cuenta, Sueldos expuestos          │
+│  - 68 registros con datos sensibles públicos                        │
+│  - UPDATE permite reclamar cualquier registro sin user_id           │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    PDF EXPORTADO                                     │
+│                    DESPUÉS (SEGURO)                                 │
 ├─────────────────────────────────────────────────────────────────────┤
-│  TABLA ACTUALIZADA:                                                  │
-│    - Capataz: Fecha, Obra, Horario, Ausencias, Obs                  │
-│    - Mecánico/Ayudante: Fecha, Obra, Horario, Tareas, Obs           │
-│                                                                      │
-│  NUEVAS SECCIONES:                                                   │
-│    + "NOVEDADES REGISTRADAS" (solo Capataz)                         │
-│    + "OBSERVACIONES / INCONVENIENTES" (todos los roles)             │
+│  Vista personal_legajo_lookup: Solo id, legajo, rol, ya_vinculado  │
+│  - Datos sensibles NUNCA expuestos públicamente                     │
+│  - Tabla base: solo acceso para admins/capataces/propietario       │
+│  - Vinculación via función SECURITY DEFINER validada               │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -266,7 +221,7 @@ const handleDownloadPDF = async () => {
 
 ## Orden de Implementación
 
-1. **ParteDiarioDetailDialog.tsx** - Agregar secciones para nuevos campos
-2. **ParteDiarioAdminView.tsx** - Pasar personalList al diálogo
-3. **generateParteDiarioPDF.ts** - Actualizar columnas y agregar secciones
-4. **ParteDiarioRendimientoTab.tsx** - Pasar personal a la función PDF
+1. **Migración DB**: Crear vista, eliminar políticas vulnerables, crear nuevas políticas, crear función RPC
+2. **RegistroEmpleado.tsx**: Usar vista segura y función RPC
+3. **useEmpleadoProfile.ts**: Usar función RPC para auto-link
+4. **Verificar**: Probar registro y acceso con diferentes roles
