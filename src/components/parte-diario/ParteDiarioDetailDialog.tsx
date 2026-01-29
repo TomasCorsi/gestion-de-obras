@@ -7,16 +7,29 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 
+const ROL_LABELS: Record<string, string> = {
+  maquinista: 'Maquinista',
+  chofer: 'Chofer',
+  capataz: 'Capataz',
+  mecanico: 'Mecánico',
+  sereno: 'Sereno',
+  topografo: 'Topógrafo',
+  ayudante: 'Ayudante',
+  administrativo: 'Administrativo',
+};
+
 interface ParteDiarioDetailDialogProps {
   parte: ParteDiario | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  showEmpleado?: boolean;
 }
 
 export const ParteDiarioDetailDialog = ({
   parte,
   open,
   onOpenChange,
+  showEmpleado = false,
 }: ParteDiarioDetailDialogProps) => {
   if (!parte) return null;
 
@@ -37,6 +50,17 @@ export const ParteDiarioDetailDialog = ({
     item => parte[item.key as keyof ParteDiario]
   );
 
+  const getEmpleadoNombre = () => {
+    if (!parte.personal) return "Sin asignar";
+    const { nombre, apellido } = parte.personal;
+    return [nombre, apellido].filter(Boolean).join(" ") || "Sin nombre";
+  };
+
+  const getEmpleadoRol = () => {
+    if (!parte.personal) return "";
+    return ROL_LABELS[parte.personal.rol] || parte.personal.rol;
+  };
+
   return (
     <DetailDialog
       open={open}
@@ -53,6 +77,11 @@ export const ParteDiarioDetailDialog = ({
               <p className="font-semibold text-foreground">
                 {format(parseISO(parte.fecha), "EEEE d 'de' MMMM, yyyy", { locale: es })}
               </p>
+              {showEmpleado && parte.personal && (
+                <p className="text-sm text-muted-foreground">
+                  {getEmpleadoNombre()} • {getEmpleadoRol()}
+                </p>
+              )}
             </div>
           </div>
           <Badge 
