@@ -144,24 +144,32 @@ export function useVacaciones() {
 
 
   const togglePagada = async (id: string) => {
-    // Get current state
     const vacacion = vacaciones.find(v => v.id === id);
     if (!vacacion) return false;
 
     const newPagada = !vacacion.pagada;
+    
+    // Optimistic update - actualizar estado local inmediatamente
+    setVacaciones(prev => 
+      prev.map(v => v.id === id ? { ...v, pagada: newPagada } : v)
+    );
+
     const { error } = await supabase
       .from("vacaciones")
       .update({ pagada: newPagada })
       .eq("id", id);
 
     if (error) {
+      // Revertir si hay error
+      setVacaciones(prev => 
+        prev.map(v => v.id === id ? { ...v, pagada: !newPagada } : v)
+      );
       console.error("Error toggling pagada:", error);
       toast.error("Error al actualizar estado de pago");
       return false;
     }
 
     toast.success(newPagada ? "Vacaciones marcadas como pagadas" : "Vacaciones marcadas como no pagadas");
-    await fetchVacaciones();
     return true;
   };
 
