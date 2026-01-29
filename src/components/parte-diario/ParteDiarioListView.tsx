@@ -1,4 +1,5 @@
-import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar, Lock, Pencil } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar, Lock, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -6,6 +7,7 @@ import { format, parseISO, isToday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ParteDiario } from "@/hooks/useParteDiario";
+import { ParteDiarioDetailDialog } from "./ParteDiarioDetailDialog";
 
 interface ParteDiarioListViewProps {
   partes: ParteDiario[];
@@ -18,6 +20,19 @@ export const ParteDiarioListView = ({
   onBack,
   onEdit,
 }: ParteDiarioListViewProps) => {
+  const [viewingParte, setViewingParte] = useState<ParteDiario | null>(null);
+
+  const handleCardClick = (parte: ParteDiario) => {
+    const parteDate = parseISO(parte.fecha);
+    const canEdit = isToday(parteDate);
+    
+    if (canEdit) {
+      onEdit(parte);
+    } else {
+      setViewingParte(parte);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header with back button */}
@@ -42,12 +57,11 @@ export const ParteDiarioListView = ({
             <Card 
               key={parte.id} 
               className={cn(
-                "transition-all",
-                canEdit && "cursor-pointer hover:shadow-md",
+                "cursor-pointer transition-all hover:shadow-md",
                 isBorrador && "border-amber-500/50 bg-amber-500/5",
-                !canEdit && "opacity-80"
+                !canEdit && "opacity-90"
               )}
-              onClick={() => canEdit && onEdit(parte)}
+              onClick={() => handleCardClick(parte)}
             >
               <CardContent className="py-4 px-4">
                 <div className="flex justify-between items-start gap-3">
@@ -112,7 +126,7 @@ export const ParteDiarioListView = ({
                       </span>
                     )}
                     
-                    {/* Indicador de editable/bloqueado */}
+                    {/* Indicador de editable/ver detalle */}
                     {canEdit ? (
                       <span className="flex items-center gap-1 text-xs text-primary">
                         <Pencil className="w-3 h-3" />
@@ -120,8 +134,8 @@ export const ParteDiarioListView = ({
                       </span>
                     ) : (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Lock className="w-3 h-3" />
-                        Solo lectura
+                        <Eye className="w-3 h-3" />
+                        Ver detalle
                       </span>
                     )}
                   </div>
@@ -139,6 +153,13 @@ export const ParteDiarioListView = ({
           </Card>
         )}
       </div>
+
+      {/* Detail Dialog for past entries */}
+      <ParteDiarioDetailDialog
+        parte={viewingParte}
+        open={!!viewingParte}
+        onOpenChange={(open) => !open && setViewingParte(null)}
+      />
     </div>
   );
 };
