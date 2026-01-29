@@ -123,14 +123,26 @@ export function RemitosDataGrid({
 
   // Filter to only show vehicles (trucks, trailers, etc.)
   const vehiculoOptions = useMemo(() => {
-    const vehicleTypes = ["camion", "batea", "acoplado", "carreton", "cisterna", "camioneta", "auto"];
-    const filtered = maquinarias.filter((m) => m.patente && vehicleTypes.includes(m.tipo));
-    const options = filtered.map((m) => {
-      const label = `${m.codigo || ""} - ${m.patente || ""}`.trim();
-      const searchValue = `${m.codigo || ""} ${m.patente || ""} ${m.tipo || ""}`.toLowerCase();
-      return { value: m.id, label, searchValue };
-    });
-    return [{ value: "", label: "Seleccionar...", searchValue: "" }, ...options];
+    const vehicleTypes: Array<MaquinariaWithRelations["tipo"]> = [
+      "camion",
+      "batea",
+      "acoplado",
+      "carreton",
+      "cisterna",
+      "camioneta",
+      "auto",
+    ];
+
+    const filtered = maquinarias
+      .filter((m) => vehicleTypes.includes(m.tipo))
+      .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }));
+
+    const options = filtered.map((m) => ({
+      value: m.id,
+      label: [m.codigo || "", m.tipo, m.patente || ""].filter(Boolean).join(" - "),
+    }));
+
+    return [{ value: "", label: "Seleccionar..." }, ...options];
   }, [maquinarias]);
 
   const initialData = useMemo(
@@ -409,42 +421,39 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       {
+        ...keyColumn("patente_tercero", textColumn),
+        title: "Patente Tercero",
+        minWidth: 140,
+      },
+      {
         ...keyColumn("maquinaria_id", {
-          component: ({ rowData, setRowData, focus }: { rowData: GridRow; setRowData: (v: GridRow) => void; focus: boolean }) => {
-            if (!rowData) return null;
-            return (
-              <GridSelectCell
-                value={rowData.maquinaria_id}
-                onChange={(v) => setRowData({ ...rowData, maquinaria_id: v })}
-                options={vehiculoOptions}
-                placeholder="Buscar vehículo..."
-                focus={focus}
-              />
-            );
-          },
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
+            <GridSelectCell
+              value={rowData || ""}
+              onChange={setRowData}
+              options={vehiculoOptions}
+              placeholder="Buscar vehículo..."
+              focus={focus}
+            />
+          ),
           deleteValue: () => "",
-          copyValue: ({ rowData }: { rowData: GridRow }) => {
-            if (!rowData) return "";
-            const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
+          copyValue: ({ rowData }: { rowData: string }) => {
+            const maq = maquinarias.find((m) => m.id === rowData);
             return maq?.patente || maq?.codigo || "";
           },
           pasteValue: ({ value }: { value: string }) => {
-            const normalized = value.replace(/[-\s]/g, "").toLowerCase();
+            const raw = value.trim();
+            const normalized = raw.replace(/[-\s]/g, "").toLowerCase();
             const found = maquinarias.find(
               (m) =>
-                m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
-                m.codigo?.toLowerCase() === value.toLowerCase()
+                m.codigo?.toLowerCase() === raw.toLowerCase() ||
+                m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized
             );
             return found?.id || "";
           },
         }),
         title: "Vehículo",
-        minWidth: 130,
-      },
-      {
-        ...keyColumn("patente_tercero", textColumn),
-        title: "Patente Tercero",
-        minWidth: 120,
+        minWidth: 180,
       },
     ],
     [vehiculoOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
