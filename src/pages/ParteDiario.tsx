@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopNavbar } from "@/components/layout/TopNavbar";
+import { useAuth } from "@/hooks/useAuth";
 import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 import { useParteDiario, type ParteDiario as ParteDiarioType } from "@/hooks/useParteDiario";
 import { useObras } from "@/hooks/useObras";
@@ -9,6 +10,7 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeView";
 import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListView";
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
+import { ParteDiarioAdminView } from "@/components/parte-diario/ParteDiarioAdminView";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo';
 
@@ -26,6 +28,7 @@ const ROL_LABELS: Record<RolPersonal, string> = {
 type ViewMode = 'home' | 'form' | 'list';
 
 const ParteDiario = () => {
+  const { role, loading: loadingAuth } = useAuth();
   const { empleado, rolPersonal, loading: loadingEmpleado } = useEmpleadoProfile();
   const { 
     partes = [], 
@@ -44,12 +47,25 @@ const ParteDiario = () => {
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
 
   const rol = rolPersonal as RolPersonal | null;
+  const isAdmin = role === 'admin' || role === 'capataz';
 
   // Loading state
-  if (loadingEmpleado) {
+  if (loadingAuth || loadingEmpleado) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Admin/Capataz view - show all partes
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TopNavbar />
+        <main className="container mx-auto px-4 py-4">
+          <ParteDiarioAdminView />
+        </main>
       </div>
     );
   }
