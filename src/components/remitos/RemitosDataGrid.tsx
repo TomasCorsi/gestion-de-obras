@@ -408,8 +408,9 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       {
-        ...keyColumn("patente", {
+        ...keyColumn("maquinaria_id", {
           component: ({ rowData, setRowData, focus }: { rowData: GridRow; setRowData: (v: GridRow) => void; focus: boolean }) => {
+            if (!rowData) return null;
             const isCalaminaSur = rowData.tipo_transporte === "Calamina Sur";
             
             if (isCalaminaSur) {
@@ -445,6 +446,7 @@ export function RemitosDataGrid({
           },
           deleteValue: () => "",
           copyValue: ({ rowData }: { rowData: GridRow }) => {
+            if (!rowData) return "";
             if (rowData.tipo_transporte === "Calamina Sur") {
               const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
               return maq?.patente || "";
@@ -452,6 +454,7 @@ export function RemitosDataGrid({
             return rowData.patente_tercero || "";
           },
           pasteValue: ({ value, rowData }: { value: string; rowData: GridRow }) => {
+            if (!rowData) return value;
             if (rowData.tipo_transporte === "Calamina Sur") {
               const normalized = value.replace(/[-\s]/g, "").toLowerCase();
               const found = maquinarias.find(
@@ -459,15 +462,15 @@ export function RemitosDataGrid({
                   m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
                   m.codigo?.toLowerCase() === value.toLowerCase()
               );
-              return { maquinaria_id: found?.id || "", patente_tercero: "" };
+              return found?.id || "";
             }
-            return { maquinaria_id: "", patente_tercero: value };
+            return value;
           },
         }),
         title: "Patente",
         minWidth: 120,
         cellClassName: ({ rowData }: { rowData: GridRow }) => 
-          rowData.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
+          rowData?.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
       },
     ],
     [maquinariaOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
