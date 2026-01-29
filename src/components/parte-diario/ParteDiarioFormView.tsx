@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { es } from "date-fns/locale";
 import { format, parseISO } from "date-fns";
 import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2, Users } from "lucide-react";
@@ -9,8 +9,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ParteDiario, ParteDiarioInsert } from "@/hooks/useParteDiario";
@@ -146,6 +146,29 @@ export const ParteDiarioFormView = ({
   // Filter personal for ausencias (exclude current employee)
   const personalForAusencias = personal.filter(p => p.id !== empleadoId);
 
+  // Generate combobox options for obras (only active)
+  const obraOptions: ComboboxOption[] = useMemo(() => {
+    return obras
+      .filter(o => o.estado === 'activa')
+      .map(obra => ({
+        value: obra.id,
+        label: obra.nombre,
+        searchValue: obra.nombre.toLowerCase(),
+      }));
+  }, [obras]);
+
+  // Generate combobox options for maquinarias
+  const maquinariaOptions: ComboboxOption[] = useMemo(() => {
+    return maquinarias.map(maq => {
+      const label = `${maq.codigo || maq.tipo}${maq.patente ? ` - ${maq.patente}` : ''}`;
+      return {
+        value: maq.id,
+        label,
+        searchValue: `${maq.codigo || ''} ${maq.tipo} ${maq.patente || ''}`.toLowerCase(),
+      };
+    });
+  }, [maquinarias]);
+
   const handleChange = (field: string, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -270,18 +293,15 @@ export const ParteDiarioFormView = ({
           <Card>
             <CardContent className="pt-4">
               <Label className="text-sm text-muted-foreground mb-2 block">🏗️ Obra</Label>
-              <Select value={formData.obra_id} onValueChange={(v) => handleChange('obra_id', v)}>
-                <SelectTrigger className="h-14 text-lg">
-                  <SelectValue placeholder="Seleccionar obra..." />
-                </SelectTrigger>
-                <SelectContent className="bg-background">
-                  {obras.filter(o => o.estado === 'activa').map(obra => (
-                    <SelectItem key={obra.id} value={obra.id} className="text-base py-3">
-                      {obra.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={obraOptions}
+                value={formData.obra_id}
+                onValueChange={(v) => handleChange('obra_id', v)}
+                placeholder="Seleccionar obra..."
+                searchPlaceholder="Buscar obra..."
+                emptyText="No se encontró la obra"
+                className="h-14 text-lg"
+              />
             </CardContent>
           </Card>
         )}
@@ -325,18 +345,15 @@ export const ParteDiarioFormView = ({
               <Label className="text-sm text-muted-foreground mb-2 block">
                 🚜 {rol === 'chofer' ? 'Camión' : 'Máquina'}
               </Label>
-              <Select value={formData.maquinaria_id} onValueChange={(v) => handleChange('maquinaria_id', v)}>
-                <SelectTrigger className="h-14 text-lg">
-                  <SelectValue placeholder="Seleccionar..." />
-                </SelectTrigger>
-                <SelectContent className="bg-background max-h-60">
-                  {maquinarias.map(maq => (
-                    <SelectItem key={maq.id} value={maq.id} className="text-base py-3">
-                      {maq.codigo || maq.tipo} {maq.patente ? `- ${maq.patente}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Combobox
+                options={maquinariaOptions}
+                value={formData.maquinaria_id}
+                onValueChange={(v) => handleChange('maquinaria_id', v)}
+                placeholder="Seleccionar..."
+                searchPlaceholder={`Buscar ${rol === 'chofer' ? 'camión' : 'máquina'}...`}
+                emptyText="No se encontró"
+                className="h-14 text-lg"
+              />
             </CardContent>
           </Card>
         )}
