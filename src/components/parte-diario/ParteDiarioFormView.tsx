@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { es } from "date-fns/locale";
 import { format, parseISO } from "date-fns";
-import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,11 +10,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ParteDiario, ParteDiarioInsert } from "@/hooks/useParteDiario";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo';
+
+interface PersonalItem {
+  id: string;
+  nombre: string | null;
+  apellido: string | null;
+  legajo: string | null;
+}
 
 interface ParteDiarioFormViewProps {
   parte: ParteDiario | null;
@@ -22,11 +30,23 @@ interface ParteDiarioFormViewProps {
   rol: RolPersonal | null;
   obras: Array<{ id: string; nombre: string; estado: string }>;
   maquinarias: Array<{ id: string; codigo: string | null; tipo: string; patente: string | null }>;
+  personal: PersonalItem[];
   onBack: () => void;
   onSaveDraft: (data: ParteDiarioInsert) => Promise<void>;
   onComplete: (data: ParteDiarioInsert) => Promise<void>;
   isSaving: boolean;
 }
+
+const ROL_LABELS: Record<RolPersonal, string> = {
+  maquinista: 'Maquinista',
+  chofer: 'Chofer',
+  capataz: 'Capataz',
+  mecanico: 'Mecánico',
+  sereno: 'Sereno',
+  topografo: 'Topógrafo',
+  ayudante: 'Ayudante',
+  administrativo: 'Administrativo',
+};
 
 export const ParteDiarioFormView = ({
   parte,
@@ -34,6 +54,7 @@ export const ParteDiarioFormView = ({
   rol,
   obras,
   maquinarias,
+  personal,
   onBack,
   onSaveDraft,
   onComplete,
@@ -58,6 +79,11 @@ export const ParteDiarioFormView = ({
     check_aceite_hidraulico: false,
     check_liquido_refrigerante: false,
     check_uria: false,
+    // New role-specific fields
+    novedades: '',
+    ausencias: [] as string[],
+    tareas: '',
+    observaciones_inconvenientes: '',
   });
 
   // Load existing parte data
@@ -81,17 +107,33 @@ export const ParteDiarioFormView = ({
         check_aceite_hidraulico: parte.check_aceite_hidraulico || false,
         check_liquido_refrigerante: parte.check_liquido_refrigerante || false,
         check_uria: parte.check_uria || false,
+        // New fields
+        novedades: parte.novedades || '',
+        ausencias: parte.ausencias || [],
+        tareas: parte.tareas || '',
+        observaciones_inconvenientes: parte.observaciones_inconvenientes || '',
       });
     }
   }, [parte]);
 
-  // Field visibility based on role
-  const showObraField = rol === 'maquinista';
-  const showMaquinaField = rol === 'maquinista' || rol === 'chofer';
-  const showHorometro = rol === 'maquinista';
-  const showViajes = rol === 'chofer';
-  const showCombustible = rol === 'maquinista' || rol === 'chofer';
-  const showEstadoMaquina = rol === 'maquinista' || rol === 'chofer';
+  // Role-based field visibility
+  const isCapataz = rol === 'capataz';
+  const isMecanicoAyudante = rol === 'mecanico' || rol === 'ayudante';
+  const isMaquinista = rol === 'maquinista';
+  const isChofer = rol === 'chofer';
+  const isSerenoTopografo = rol === 'sereno' || rol === 'topografo';
+
+  // Fields visibility
+  const showObraField = isMaquinista || isCapataz || isMecanicoAyudante || isSerenoTopografo;
+  const showMaquinaField = isMaquinista || isChofer;
+  const showHorometro = isMaquinista;
+  const showViajes = isChofer;
+  const showCombustible = isMaquinista || isChofer;
+  const showEstadoMaquina = isMaquinista || isChofer;
+  const showChecklist = isMaquinista || isChofer;
+  const showNovedades = isCapataz;
+  const showAusencias = isCapataz;
+  const showTareas = isMecanicoAyudante;
 
   const checklistItems = [
     { id: 'check_filtro_aire', label: 'Revisión filtro de aire', roles: ['maquinista'] },
@@ -101,8 +143,20 @@ export const ParteDiarioFormView = ({
     { id: 'check_uria', label: 'Control Uría', roles: ['chofer'] },
   ].filter(item => rol && item.roles.includes(rol));
 
-  const handleChange = (field: string, value: string | boolean) => {
+  // Filter personal for ausencias (exclude current employee)
+  const personalForAusencias = personal.filter(p => p.id !== empleadoId);
+
+  const handleChange = (field: string, value: string | boolean | string[]) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleAusencia = (empleadoIdToToggle: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      ausencias: checked 
+        ? [...prev.ausencias, empleadoIdToToggle]
+        : prev.ausencias.filter(id => id !== empleadoIdToToggle)
+    }));
   };
 
   const buildParteData = (): ParteDiarioInsert => {
@@ -125,6 +179,11 @@ export const ParteDiarioFormView = ({
       check_aceite_hidraulico: formData.check_aceite_hidraulico,
       check_liquido_refrigerante: formData.check_liquido_refrigerante,
       check_uria: formData.check_uria,
+      // New role-specific fields
+      novedades: isCapataz ? formData.novedades || null : null,
+      ausencias: isCapataz && formData.ausencias.length > 0 ? formData.ausencias : null,
+      tareas: isMecanicoAyudante ? formData.tareas || null : null,
+      observaciones_inconvenientes: formData.observaciones_inconvenientes || null,
     };
   };
 
@@ -192,6 +251,16 @@ export const ParteDiarioFormView = ({
                   className="h-12 text-lg border-0 p-0 focus-visible:ring-0"
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Rol (automático) */}
+        <Card>
+          <CardContent className="pt-4">
+            <Label className="text-sm text-muted-foreground mb-2 block">👤 Rol</Label>
+            <div className="h-14 flex items-center text-lg font-medium text-foreground bg-muted/30 rounded-md px-3">
+              {rol ? ROL_LABELS[rol] : 'Empleado'}
             </div>
           </CardContent>
         </Card>
@@ -414,7 +483,7 @@ export const ParteDiarioFormView = ({
         )}
 
         {/* Checklist */}
-        {checklistItems.length > 0 && (
+        {showChecklist && checklistItems.length > 0 && (
           <Card>
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 mb-4">
@@ -446,6 +515,111 @@ export const ParteDiarioFormView = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Novedades (Capataz only) */}
+        {showNovedades && (
+          <Card>
+            <CardContent className="pt-4">
+              <Label className="text-sm text-muted-foreground mb-2 block">📝 Novedades</Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                Describa el trabajo realizado en la obra
+              </p>
+              <Textarea
+                placeholder="Describa todo lo que se haya hecho en la obra..."
+                value={formData.novedades}
+                onChange={(e) => handleChange('novedades', e.target.value)}
+                className="min-h-32 text-base"
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Ausencias (Capataz only) */}
+        {showAusencias && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-5 h-5 text-primary" />
+                <Label className="text-sm text-muted-foreground">Ausencias</Label>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                Seleccione los empleados que faltaron hoy
+              </p>
+              {personalForAusencias.length > 0 ? (
+                <ScrollArea className="h-48 border rounded-lg">
+                  <div className="p-2 space-y-2">
+                    {personalForAusencias.map(emp => (
+                      <Label
+                        key={emp.id}
+                        htmlFor={`ausencia-${emp.id}`}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                          formData.ausencias.includes(emp.id)
+                            ? "border-destructive bg-destructive/5"
+                            : "border-border hover:border-destructive/50"
+                        )}
+                      >
+                        <Checkbox
+                          id={`ausencia-${emp.id}`}
+                          checked={formData.ausencias.includes(emp.id)}
+                          onCheckedChange={(checked) => toggleAusencia(emp.id, !!checked)}
+                          className="h-5 w-5"
+                        />
+                        <span className="text-sm font-medium">
+                          {emp.apellido}, {emp.nombre}
+                          {emp.legajo && <span className="text-muted-foreground ml-1">(#{emp.legajo})</span>}
+                        </span>
+                      </Label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              ) : (
+                <p className="text-sm text-muted-foreground p-4 text-center border rounded-lg">
+                  No hay empleados cargados
+                </p>
+              )}
+              {formData.ausencias.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formData.ausencias.length} empleado(s) marcado(s) como ausente(s)
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Tareas (Mecánico/Ayudante only) */}
+        {showTareas && (
+          <Card>
+            <CardContent className="pt-4">
+              <Label className="text-sm text-muted-foreground mb-2 block">🔧 Tareas</Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                Describa las tareas realizadas durante el día
+              </p>
+              <Textarea
+                placeholder="Describa las tareas realizadas..."
+                value={formData.tareas}
+                onChange={(e) => handleChange('tareas', e.target.value)}
+                className="min-h-32 text-base"
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Observaciones/Inconvenientes (TODOS) */}
+        <Card>
+          <CardContent className="pt-4">
+            <Label className="text-sm text-muted-foreground mb-2 block">⚠️ Observaciones / Inconvenientes</Label>
+            <p className="text-xs text-muted-foreground mb-3">
+              Registre cualquier observación o inconveniente del día
+            </p>
+            <Textarea
+              placeholder="Registre cualquier observación o inconveniente..."
+              value={formData.observaciones_inconvenientes}
+              onChange={(e) => handleChange('observaciones_inconvenientes', e.target.value)}
+              className="min-h-24 text-base"
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Sticky footer with two buttons */}

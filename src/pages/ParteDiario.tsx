@@ -7,6 +7,7 @@ import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 import { useParteDiario, type ParteDiario as ParteDiarioType } from "@/hooks/useParteDiario";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { usePersonal } from "@/hooks/usePersonal";
 import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeView";
 import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListView";
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
@@ -42,6 +43,7 @@ const ParteDiario = () => {
   } = useParteDiario();
   const { obras = [] } = useObras();
   const { maquinarias = [] } = useMaquinarias();
+  const { personal = [] } = usePersonal();
   
   const [view, setView] = useState<ViewMode>('home');
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
@@ -166,6 +168,7 @@ const ParteDiario = () => {
             rol={rol}
             obras={obras}
             maquinarias={maquinarias}
+            personal={personal}
             onBack={handleBack}
             onSaveDraft={handleSaveDraft}
             onComplete={handleComplete}

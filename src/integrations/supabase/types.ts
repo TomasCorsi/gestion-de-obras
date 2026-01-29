@@ -709,6 +709,7 @@ export type Database = {
       }
       partes_diarios: {
         Row: {
+          ausencias: string[] | null
           cantidad_movimiento_interno: number | null
           cantidad_viajes: number | null
           check_aceite_hidraulico: boolean | null
@@ -727,12 +728,16 @@ export type Database = {
           horometro_inicio: number | null
           id: string
           maquinaria_id: string | null
+          novedades: string | null
           obra_id: string | null
           observacion_maquina: string | null
+          observaciones_inconvenientes: string | null
           personal_id: string
+          tareas: string | null
           updated_at: string | null
         }
         Insert: {
+          ausencias?: string[] | null
           cantidad_movimiento_interno?: number | null
           cantidad_viajes?: number | null
           check_aceite_hidraulico?: boolean | null
@@ -751,12 +756,16 @@ export type Database = {
           horometro_inicio?: number | null
           id?: string
           maquinaria_id?: string | null
+          novedades?: string | null
           obra_id?: string | null
           observacion_maquina?: string | null
+          observaciones_inconvenientes?: string | null
           personal_id: string
+          tareas?: string | null
           updated_at?: string | null
         }
         Update: {
+          ausencias?: string[] | null
           cantidad_movimiento_interno?: number | null
           cantidad_viajes?: number | null
           check_aceite_hidraulico?: boolean | null
@@ -775,9 +784,12 @@ export type Database = {
           horometro_inicio?: number | null
           id?: string
           maquinaria_id?: string | null
+          novedades?: string | null
           obra_id?: string | null
           observacion_maquina?: string | null
+          observaciones_inconvenientes?: string | null
           personal_id?: string
+          tareas?: string | null
           updated_at?: string | null
         }
         Relationships: [
