@@ -74,24 +74,29 @@ function getTableColumnsForRole(rol: RolPersonal): { header: string[]; keys: str
   switch (rol) {
     case 'maquinista':
       return {
-        header: ["Fecha", "Obra", "Máquina", "Horario", "Horómetro", "Comb.", "Estado"],
-        keys: ["fecha", "obra", "maquina", "horario", "horometro", "combustible", "estado"],
+        header: ["Fecha", "Obra", "Máquina", "Horario", "Horómetro", "Comb.", "Obs."],
+        keys: ["fecha", "obra", "maquina", "horario", "horometro", "combustible", "obs"],
       };
     case 'chofer':
       return {
-        header: ["Fecha", "Camión", "Horario", "Viajes", "Mov.Int", "Comb.", "Estado"],
-        keys: ["fecha", "camion", "horario", "viajes", "movInterno", "combustible", "estado"],
+        header: ["Fecha", "Camión", "Horario", "Viajes", "Mov.Int", "Comb.", "Obs."],
+        keys: ["fecha", "camion", "horario", "viajes", "movInterno", "combustible", "obs"],
       };
     case 'capataz':
-    case 'mecanico':
       return {
-        header: ["Fecha", "Obra", "Máquina", "Horario", "Estado"],
-        keys: ["fecha", "obra", "maquina", "horario", "estado"],
+        header: ["Fecha", "Obra", "Horario", "Ausencias", "Obs."],
+        keys: ["fecha", "obra", "horario", "ausencias", "obs"],
+      };
+    case 'mecanico':
+    case 'ayudante':
+      return {
+        header: ["Fecha", "Obra", "Horario", "Tareas", "Obs."],
+        keys: ["fecha", "obra", "horario", "tareas", "obs"],
       };
     default:
       return {
-        header: ["Fecha", "Horario", "Estado"],
-        keys: ["fecha", "horario", "estado"],
+        header: ["Fecha", "Obra", "Horario", "Obs."],
+        keys: ["fecha", "obra", "horario", "obs"],
       };
   }
 }
@@ -99,14 +104,14 @@ function getTableColumnsForRole(rol: RolPersonal): { header: string[]; keys: str
 function getRowDataForRole(parte: ParteDiario, rol: RolPersonal): string[] {
   const fecha = format(new Date(parte.fecha), "dd/MM/yyyy");
   const horario = `${formatTime(parte.hora_entrada)}-${formatTime(parte.hora_salida)}`;
-  const estado = parte.estado === 'completado' ? 'OK' : 'Borr.';
   const obraName = parte.obras?.nombre || "-";
   const maquinaName = parte.maquinarias?.codigo || parte.maquinarias?.tipo || "-";
+  const tieneObs = parte.observaciones_inconvenientes ? 'Sí' : '-';
   
   switch (rol) {
     case 'maquinista':
       const horometro = `${parte.horometro_inicio || 0}→${parte.horometro_fin || 0}`;
-      return [fecha, obraName, maquinaName, horario, horometro, `${parte.combustible || 0}L`, estado];
+      return [fecha, obraName, maquinaName, horario, horometro, `${parte.combustible || 0}L`, tieneObs];
     case 'chofer':
       return [
         fecha,
@@ -115,13 +120,19 @@ function getRowDataForRole(parte: ParteDiario, rol: RolPersonal): string[] {
         String(parte.cantidad_viajes || 0),
         String(parte.cantidad_movimiento_interno || 0),
         `${parte.combustible || 0}L`,
-        estado,
+        tieneObs,
       ];
     case 'capataz':
+      const ausenciasCount = parte.ausencias?.length || 0;
+      return [fecha, obraName, horario, `${ausenciasCount} emp.`, tieneObs];
     case 'mecanico':
-      return [fecha, obraName, maquinaName, horario, estado];
+    case 'ayudante':
+      const tareaResumen = parte.tareas 
+        ? (parte.tareas.length > 18 ? parte.tareas.slice(0, 18) + '...' : parte.tareas) 
+        : '-';
+      return [fecha, obraName, horario, tareaResumen, tieneObs];
     default:
-      return [fecha, horario, estado];
+      return [fecha, obraName, horario, tieneObs];
   }
 }
 
@@ -150,7 +161,8 @@ export async function generateParteDiarioPDF(
   partes: ParteDiario[],
   totales: TotalesRendimiento,
   mes: number,
-  anio: number
+  anio: number,
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>
 ): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -353,6 +365,68 @@ export async function generateParteDiarioPDF(
     });
 
     yPos += 2;
+  }
+
+  // ============== NOVEDADES (Capataz only) ==============
+  if (rol === 'capataz') {
+    const partesConNovedades = partes.filter(p => p.novedades);
+    if (partesConNovedades.length > 0) {
+      // Check if we need a new page
+      if (yPos > 250) {
+        doc.addPage();
+        yPos = 15;
+      }
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "bold");
+      doc.text("NOVEDADES REGISTRADAS", margin, yPos);
+      yPos += 4;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6);
+      partesConNovedades.forEach(p => {
+        const fechaStr = format(new Date(p.fecha), "dd/MM");
+        const novedadText = p.novedades?.slice(0, 100) || '';
+        const suffix = (p.novedades?.length || 0) > 100 ? '...' : '';
+        doc.text(`${fechaStr}: ${novedadText}${suffix}`, margin + 2, yPos);
+        yPos += 3;
+        if (yPos > 280) {
+          doc.addPage();
+          yPos = 15;
+        }
+      });
+      yPos += 3;
+    }
+  }
+
+  // ============== OBSERVACIONES / INCONVENIENTES (all roles) ==============
+  const partesConObservaciones = partes.filter(p => p.observaciones_inconvenientes);
+  if (partesConObservaciones.length > 0) {
+    // Check if we need a new page
+    if (yPos > 250) {
+      doc.addPage();
+      yPos = 15;
+    }
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("OBSERVACIONES / INCONVENIENTES", margin, yPos);
+    yPos += 4;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6);
+    partesConObservaciones.forEach(p => {
+      const fechaStr = format(new Date(p.fecha), "dd/MM");
+      const obsText = p.observaciones_inconvenientes?.slice(0, 80) || '';
+      const suffix = (p.observaciones_inconvenientes?.length || 0) > 80 ? '...' : '';
+      doc.text(`${fechaStr}: ${obsText}${suffix}`, margin + 2, yPos);
+      yPos += 3;
+      if (yPos > 280) {
+        doc.addPage();
+        yPos = 15;
+      }
+    });
+    yPos += 3;
   }
 
   // ============== FOOTER ==============

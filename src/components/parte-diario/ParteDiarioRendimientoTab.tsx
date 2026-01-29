@@ -98,7 +98,8 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
         data.partes,
         data.totales,
         selectedMes,
-        selectedAnio
+        selectedAnio,
+        personal
       );
     } catch (error) {
       console.error("Error generating PDF:", error);
