@@ -25,6 +25,11 @@ export interface ParteDiario {
   check_liquido_refrigerante: boolean;
   check_uria: boolean;
   estado: 'borrador' | 'completado';
+  // New role-specific fields
+  novedades: string | null;
+  ausencias: string[] | null;
+  tareas: string | null;
+  observaciones_inconvenientes: string | null;
   created_at: string;
   updated_at: string;
   // Joined relations
@@ -66,6 +71,11 @@ export interface ParteDiarioInsert {
   check_liquido_refrigerante?: boolean;
   check_uria?: boolean;
   estado?: 'borrador' | 'completado';
+  // New role-specific fields
+  novedades?: string | null;
+  ausencias?: string[] | null;
+  tareas?: string | null;
+  observaciones_inconvenientes?: string | null;
 }
 
 export function useParteDiario() {
