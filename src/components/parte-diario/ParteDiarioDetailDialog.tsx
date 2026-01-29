@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Clock, Fuel, ClipboardCheck, CheckCircle, XCircle } from "lucide-react";
+import { Calendar, Clock, Fuel, CheckCircle, XCircle, Users, Wrench, AlertTriangle, ClipboardList } from "lucide-react";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ interface ParteDiarioDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   showEmpleado?: boolean;
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>;
 }
 
 export const ParteDiarioDetailDialog = ({
@@ -30,6 +31,7 @@ export const ParteDiarioDetailDialog = ({
   open,
   onOpenChange,
   showEmpleado = false,
+  personalList = [],
 }: ParteDiarioDetailDialogProps) => {
   if (!parte) return null;
 
@@ -59,6 +61,14 @@ export const ParteDiarioDetailDialog = ({
   const getEmpleadoRol = () => {
     if (!parte.personal) return "";
     return ROL_LABELS[parte.personal.rol] || parte.personal.rol;
+  };
+
+  const getAusenciasNombres = () => {
+    if (!parte.ausencias || parte.ausencias.length === 0 || personalList.length === 0) return [];
+    return parte.ausencias.map(id => {
+      const emp = personalList.find(p => p.id === id);
+      return emp ? `${emp.apellido || ''}, ${emp.nombre || ''}`.trim() : id;
+    });
   };
 
   return (
@@ -186,6 +196,60 @@ export const ParteDiarioDetailDialog = ({
                   {item.label}
                 </span>
               ))}
+            </div>
+          </DetailSection>
+        )}
+
+        {/* Novedades (Capataz) */}
+        {parte.novedades && (
+          <DetailSection title="Novedades del Día">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <ClipboardList className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-sm whitespace-pre-wrap">{parte.novedades}</p>
+              </div>
+            </div>
+          </DetailSection>
+        )}
+
+        {/* Ausencias (Capataz) */}
+        {parte.ausencias && parte.ausencias.length > 0 && (
+          <DetailSection title="Ausencias Registradas">
+            <div className="flex flex-wrap gap-2">
+              {getAusenciasNombres().map((nombre, idx) => (
+                <Badge 
+                  key={idx} 
+                  variant="secondary" 
+                  className="bg-chart-3/10 text-chart-3 border-chart-3/30"
+                >
+                  <Users className="w-3 h-3 mr-1" />
+                  {nombre}
+                </Badge>
+              ))}
+            </div>
+          </DetailSection>
+        )}
+
+        {/* Tareas (Mecánico/Ayudante) */}
+        {parte.tareas && (
+          <DetailSection title="Tareas Realizadas">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <Wrench className="w-4 h-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-sm whitespace-pre-wrap">{parte.tareas}</p>
+              </div>
+            </div>
+          </DetailSection>
+        )}
+
+        {/* Observaciones/Inconvenientes (TODOS) */}
+        {parte.observaciones_inconvenientes && (
+          <DetailSection title="Observaciones / Inconvenientes">
+            <div className="p-3 bg-chart-3/10 rounded-lg border border-chart-3/20">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-chart-3 mt-0.5 flex-shrink-0" />
+                <p className="text-sm whitespace-pre-wrap">{parte.observaciones_inconvenientes}</p>
+              </div>
             </div>
           </DetailSection>
         )}

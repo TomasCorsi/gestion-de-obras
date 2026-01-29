@@ -231,6 +231,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
         open={!!selectedParte}
         onOpenChange={(open) => !open && setSelectedParte(null)}
         showEmpleado
+        personalList={personal}
       />
     </>
   );
