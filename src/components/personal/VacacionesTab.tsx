@@ -312,7 +312,7 @@ export function VacacionesTab() {
                   <TableHead className="text-muted-foreground font-medium">Hasta</TableHead>
                   <TableHead className="text-muted-foreground font-medium">Días</TableHead>
                   <TableHead className="text-muted-foreground font-medium">Motivo</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+                  
                   <TableHead className="text-muted-foreground font-medium">Pago</TableHead>
                   <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
                 </TableRow>
@@ -320,7 +320,7 @@ export function VacacionesTab() {
               <TableBody>
                 {filteredVacaciones.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {searchTerm || estadoFilter !== "todos" ? "No se encontraron vacaciones" : "No hay solicitudes de vacaciones"}
                     </TableCell>
                   </TableRow>
@@ -360,12 +360,6 @@ export function VacacionesTab() {
                         <span className="text-muted-foreground">
                           {motivoConfig[vacacion.motivo] || vacacion.motivo}
                         </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn("status-badge flex items-center gap-1 w-fit", estadoConfig[vacacion.estado]?.color)}>
-                          {estadoConfig[vacacion.estado]?.icon}
-                          {estadoConfig[vacacion.estado]?.label}
-                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Button
