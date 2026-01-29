@@ -1,264 +1,91 @@
 
 
-# Plan: Gráficos de Rendimiento y PDF Adaptado por Rol
+# Plan: Optimizar Toggle de Pago sin Reiniciar Tabla
 
-## Objetivo
+## Problema Actual
 
-Agregar a la vista administrativa de Partes Diarios:
-1. Gráficos de rendimiento mensual por empleado
-2. Descarga de reporte PDF adaptado según el rol del empleado
+Cuando cambias el estado de pago de una vacación, la función `togglePagada` ejecuta `fetchVacaciones()` que:
+1. Activa el estado `loading = true`
+2. Muestra el Skeleton de carga (tabla desaparece)
+3. Recarga todos los datos desde la base de datos
+4. Desactiva `loading = false` (tabla reaparece)
 
-## Estructura del PDF por Rol
+Esto causa el efecto visual de "reinicio" de la tabla.
 
-El PDF mostrará únicamente los campos relevantes según el rol del empleado:
+## Solución
 
-| Rol | Secciones en el PDF |
-|-----|---------------------|
-| **Maquinista** | Horómetro (inicio/fin/horas), Estado máquina, Checklist (Filtro aire, Aceite motor, Aceite hidráulico, Líquido refrigerante), Combustible |
-| **Chofer** | Viajes, Movimiento interno, Checklist (Aceite motor, Líquido refrigerante, Uría), Combustible |
-| **Capataz/Mecánico** | Horarios y asignación de equipo (versión simplificada) |
-| **Otros roles** | Horarios básicos |
+Actualizar el estado local inmediatamente sin recargar todos los datos. Esto se conoce como "optimistic update" (actualización optimista).
 
-## Arquitectura de Componentes
+## Archivo a Modificar
 
-```text
-ParteDiarioAdminView.tsx (modificar)
-├── Tabs: "Listado" | "Rendimiento"
-│
-├── Tab Listado (actual)
-│   └── Tabla con todos los partes + filtros
-│
-└── Tab Rendimiento (nuevo)
-    ├── Selector de empleado y mes
-    ├── KPIs del empleado (adaptados al rol)
-    ├── Gráficos de rendimiento
-    └── Botón "Descargar PDF"
-```
+`src/hooks/useVacaciones.ts`
 
-## Archivos a Crear
+## Cambios
 
-### 1. `src/hooks/useParteDiarioRendimiento.ts`
+### Función `togglePagada` - Actualización Optimista
 
-Hook para calcular métricas agregadas por mes:
-
-- Recibe: `empleadoId`, `mes`, `año`
-- Retorna datos agregados por día del mes
-- Incluye rol del empleado para filtrar métricas relevantes
-
+Cambiar de:
 ```typescript
-interface RendimientoData {
-  empleado: {
-    nombre: string;
-    apellido: string;
-    rol: RolPersonal;
-    legajo: string;
-  };
-  diasDelMes: {
-    dia: number;
-    fecha: string;
-    tieneParte: boolean;
-    horasTrabajadas: number;
-    horasMaquina: number;     // Solo maquinistas
-    viajes: number;            // Solo choferes
-    movimientoInterno: number; // Solo choferes
-    combustible: number;
-  }[];
-  totales: {
-    partesCompletados: number;
-    partesBorrador: number;
-    diasTrabajados: number;
-    horasMaquinaTotales: number;
-    viajesTotales: number;
-    combustibleTotal: number;
-    checklistCumplimiento: number; // Porcentaje
-  };
-}
+const togglePagada = async (id: string) => {
+  const vacacion = vacaciones.find(v => v.id === id);
+  if (!vacacion) return false;
+
+  const newPagada = !vacacion.pagada;
+  const { error } = await supabase
+    .from("vacaciones")
+    .update({ pagada: newPagada })
+    .eq("id", id);
+
+  // ...
+  await fetchVacaciones(); // <-- Esto recarga todo
+  return true;
+};
 ```
 
-### 2. `src/components/parte-diario/ParteDiarioRendimientoChart.tsx`
-
-Componente de gráficos adaptado al rol:
-
-**Para Maquinistas:**
-- Gráfico de barras: Horas de máquina por día (horómetro)
-- Gráfico de área: Combustible acumulado
-- KPIs: Horas totales, Combustible, Checklist %
-
-**Para Choferes:**
-- Gráfico de barras: Viajes por día
-- Gráfico secundario: Movimiento interno
-- KPIs: Total viajes, Mov. interno, Combustible
-
-**Para otros roles:**
-- Gráfico de asistencia (días trabajados)
-- KPIs: Días trabajados, Horas totales
-
-### 3. `src/utils/generateParteDiarioPDF.ts`
-
-Función que genera PDF adaptado al rol:
-
+A:
 ```typescript
-export async function generateParteDiarioPDF(
-  empleado: EmpleadoData,
-  partes: ParteDiario[],
-  totales: TotalesData,
-  mes: number,
-  anio: number
-): Promise<void>
+const togglePagada = async (id: string) => {
+  const vacacion = vacaciones.find(v => v.id === id);
+  if (!vacacion) return false;
+
+  const newPagada = !vacacion.pagada;
+  
+  // 1. Actualizar estado local inmediatamente (optimistic update)
+  setVacaciones(prev => 
+    prev.map(v => v.id === id ? { ...v, pagada: newPagada } : v)
+  );
+
+  // 2. Luego actualizar en la base de datos
+  const { error } = await supabase
+    .from("vacaciones")
+    .update({ pagada: newPagada })
+    .eq("id", id);
+
+  if (error) {
+    // 3. Si hay error, revertir el cambio local
+    setVacaciones(prev => 
+      prev.map(v => v.id === id ? { ...v, pagada: !newPagada } : v)
+    );
+    toast.error("Error al actualizar estado de pago");
+    return false;
+  }
+
+  toast.success(newPagada ? "Vacaciones marcadas como pagadas" : "Vacaciones marcadas como no pagadas");
+  return true;
+  // Ya no se llama a fetchVacaciones()
+};
 ```
 
-**Lógica de adaptación:**
-- Detecta el rol del empleado
-- Selecciona columnas de tabla según rol
-- Muestra secciones de resumen relevantes
-- Filtra ítems de checklist por rol
+## Beneficios
 
-## Estructura del PDF (ejemplo Maquinista)
+| Antes | Después |
+|-------|---------|
+| Tabla parpadea/reinicia | Cambio instantáneo sin parpadeo |
+| Recarga 40+ registros | Solo actualiza 1 registro en memoria |
+| Loading skeleton visible | Sin skeleton |
+| Posición de scroll se pierde | Scroll se mantiene |
 
-```text
-+------------------------------------------+
-| [LOGO]            CALAMINA SUR S.A.      |
-|          CUIT: 30-71457642-5             |
-+------------------------------------------+
-| REPORTE DE PARTES DIARIOS                |
-| Fecha: 29/01/2026                        |
-+------------------------------------------+
-| EMPLEADO                                 |
-| Nombre: Juan Pérez                       |
-| Rol: Maquinista | Legajo: 001            |
-+------------------------------------------+
-| PERÍODO: Enero 2026                      |
-+------------------------------------------+
-| RESUMEN (campos de maquinista)           |
-| Partes completados: 22                   |
-| Horas de máquina: 176 hrs                |
-| Combustible: 350 L                       |
-| Checklist cumplido: 95%                  |
-| Días trabajados: 22/31                   |
-+------------------------------------------+
-| DETALLE DE PARTES                        |
-| Fecha | Obra | Horario | Horometro | Est |
-| 02/01 | ObraA| 08-17   | 100→108   | OK  |
-| ...                                      |
-+------------------------------------------+
-| Generado el 29/01/2026 10:30            |
-+------------------------------------------+
-```
+## Resumen
 
-## Estructura del PDF (ejemplo Chofer)
-
-```text
-+------------------------------------------+
-| [LOGO]            CALAMINA SUR S.A.      |
-+------------------------------------------+
-| REPORTE DE PARTES DIARIOS                |
-+------------------------------------------+
-| EMPLEADO                                 |
-| Nombre: Pedro García                     |
-| Rol: Chofer | Legajo: 015                |
-+------------------------------------------+
-| PERÍODO: Enero 2026                      |
-+------------------------------------------+
-| RESUMEN (campos de chofer)               |
-| Partes completados: 20                   |
-| Total viajes: 145                        |
-| Movimiento interno: 23                   |
-| Combustible: 520 L                       |
-| Días trabajados: 20/31                   |
-+------------------------------------------+
-| DETALLE DE PARTES                        |
-| Fecha | Camión  | Viajes | Mov.Int | Est |
-| 02/01 | CAM-001 | 8      | 2       | OK  |
-| ...                                      |
-+------------------------------------------+
-```
-
-## Modificaciones a Archivos Existentes
-
-### `src/components/parte-diario/ParteDiarioAdminView.tsx`
-
-Cambios:
-- Agregar sistema de Tabs ("Listado" / "Rendimiento")
-- Integrar selector de empleado y mes
-- Mostrar gráficos de rendimiento
-- Agregar botón "Descargar PDF"
-
-## Flujo de Usuario
-
-```text
-Admin entra a /parte-diario
-         ↓
-Ve tabs: [Listado] [Rendimiento]
-         ↓
-Click en "Rendimiento"
-         ↓
-Selecciona empleado (ej: Juan - Maquinista)
-         ↓
-Ve gráficos adaptados a maquinista:
-  - Horas de horómetro por día
-  - Combustible consumido
-  - % checklist cumplido
-         ↓
-Click "Descargar PDF"
-         ↓
-PDF generado con columnas de maquinista:
-  - Horómetro inicio/fin
-  - Estado máquina
-  - Checklist específico
-```
-
-## Resumen de Archivos
-
-**Crear:**
-| Archivo | Propósito |
-|---------|-----------|
-| `src/hooks/useParteDiarioRendimiento.ts` | Hook para datos de rendimiento |
-| `src/components/parte-diario/ParteDiarioRendimientoChart.tsx` | Gráficos adaptados al rol |
-| `src/utils/generateParteDiarioPDF.ts` | Generador de PDF adaptado al rol |
-
-**Modificar:**
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/parte-diario/ParteDiarioAdminView.tsx` | Agregar tabs, selector y botón PDF |
-
-## Mapeo de Campos por Rol en PDF
-
-### Columnas de tabla
-
-| Columna | Maquinista | Chofer | Otros |
-|---------|:----------:|:------:|:-----:|
-| Fecha | ✓ | ✓ | ✓ |
-| Obra | ✓ | - | - |
-| Máquina/Camión | ✓ | ✓ | - |
-| Horario | ✓ | ✓ | ✓ |
-| Horómetro | ✓ | - | - |
-| Viajes | - | ✓ | - |
-| Mov. Interno | - | ✓ | - |
-| Combustible | ✓ | ✓ | - |
-| Estado | ✓ | ✓ | - |
-
-### Items de checklist
-
-| Item | Maquinista | Chofer |
-|------|:----------:|:------:|
-| Filtro de aire | ✓ | - |
-| Aceite motor | ✓ | ✓ |
-| Aceite hidráulico | ✓ | - |
-| Líquido refrigerante | ✓ | ✓ |
-| Uría | - | ✓ |
-
-## Tecnologías Utilizadas
-
-- **Recharts**: Gráficos (ya instalado en el proyecto)
-- **jsPDF + jspdf-autotable**: Generación de PDF (ya instalado)
-- **date-fns**: Manejo de fechas (ya instalado)
-
-## Pruebas Recomendadas
-
-1. Seleccionar un maquinista y verificar que los gráficos muestran horómetro
-2. Seleccionar un chofer y verificar que los gráficos muestran viajes
-3. Descargar PDF de maquinista y verificar columnas correctas
-4. Descargar PDF de chofer y verificar columnas correctas
-5. Cambiar de mes y verificar actualización de datos
-6. Verificar formato de fechas dd/mm/yyyy en todo el PDF
+Solo se modifica la función `togglePagada` en `src/hooks/useVacaciones.ts` para usar actualización optimista del estado local en lugar de recargar todos los datos.
 
