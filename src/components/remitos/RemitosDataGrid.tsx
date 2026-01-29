@@ -121,9 +121,12 @@ export function RemitosDataGrid({
     return [{ value: "", label: "Seleccionar..." }, ...options];
   }, [obras]);
 
-  const maquinariaOptions = useMemo(() => {
+  // Filter to only show vehicles (trucks, trailers, etc.)
+  const vehicleTypes = ["camion", "batea", "acoplado", "carreton", "cisterna", "camioneta", "auto"];
+  
+  const vehiculoOptions = useMemo(() => {
     const options = maquinarias
-      .filter((m) => m.patente)
+      .filter((m) => m.patente && vehicleTypes.includes(m.tipo))
       .map((m) => {
         const label = `${m.codigo || ""} - ${m.patente || ""}`.trim();
         const searchValue = `${m.codigo || ""} ${m.patente || ""} ${m.tipo || ""}`.toLowerCase();
@@ -411,69 +414,42 @@ export function RemitosDataGrid({
         ...keyColumn("maquinaria_id", {
           component: ({ rowData, setRowData, focus }: { rowData: GridRow; setRowData: (v: GridRow) => void; focus: boolean }) => {
             if (!rowData) return null;
-            const isCalaminaSur = rowData.tipo_transporte === "Calamina Sur";
-            
-            if (isCalaminaSur) {
-              return (
-                <GridSelectCell
-                  value={rowData.maquinaria_id}
-                  onChange={(v) => setRowData({ 
-                    ...rowData, 
-                    maquinaria_id: v,
-                    patente_tercero: ""
-                  })}
-                  options={maquinariaOptions}
-                  placeholder="Buscar patente..."
-                  focus={focus}
-                />
-              );
-            }
-            
             return (
-              <input
-                type="text"
-                value={rowData.patente_tercero || ""}
-                onChange={(e) => setRowData({ 
-                  ...rowData, 
-                  patente_tercero: e.target.value,
-                  maquinaria_id: ""
-                })}
-                placeholder="Ej: ABC 123"
-                autoFocus={focus}
-                className="w-full h-full px-2 py-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+              <GridSelectCell
+                value={rowData.maquinaria_id}
+                onChange={(v) => setRowData({ ...rowData, maquinaria_id: v })}
+                options={vehiculoOptions}
+                placeholder="Buscar vehículo..."
+                focus={focus}
               />
             );
           },
           deleteValue: () => "",
           copyValue: ({ rowData }: { rowData: GridRow }) => {
             if (!rowData) return "";
-            if (rowData.tipo_transporte === "Calamina Sur") {
-              const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
-              return maq?.patente || "";
-            }
-            return rowData.patente_tercero || "";
+            const maq = maquinarias.find((m) => m.id === rowData.maquinaria_id);
+            return maq?.patente || maq?.codigo || "";
           },
-          pasteValue: ({ value, rowData }: { value: string; rowData: GridRow }) => {
-            if (!rowData) return value;
-            if (rowData.tipo_transporte === "Calamina Sur") {
-              const normalized = value.replace(/[-\s]/g, "").toLowerCase();
-              const found = maquinarias.find(
-                (m) =>
-                  m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
-                  m.codigo?.toLowerCase() === value.toLowerCase()
-              );
-              return found?.id || "";
-            }
-            return value;
+          pasteValue: ({ value }: { value: string }) => {
+            const normalized = value.replace(/[-\s]/g, "").toLowerCase();
+            const found = maquinarias.find(
+              (m) =>
+                m.patente?.replace(/[-\s]/g, "").toLowerCase() === normalized ||
+                m.codigo?.toLowerCase() === value.toLowerCase()
+            );
+            return found?.id || "";
           },
         }),
-        title: "Patente",
+        title: "Vehículo",
+        minWidth: 130,
+      },
+      {
+        ...keyColumn("patente_tercero", textColumn),
+        title: "Patente Tercero",
         minWidth: 120,
-        cellClassName: ({ rowData }: { rowData: GridRow }) => 
-          rowData?.tipo_transporte === "Calamina Sur" ? "" : "dsg-cell-text-input",
       },
     ],
-    [maquinariaOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
+    [vehiculoOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
   );
 
   const handleChange = useCallback(
@@ -589,54 +565,48 @@ export function RemitosDataGrid({
     try {
       const created = data
         .filter((row) => row.id && createdRowIds.has(row.id) && !row._isDeleted)
-        .map((row) => {
-          const isCalaminaSur = row.tipo_transporte === "Calamina Sur";
-          return {
-            numero: row.remito_local || generateNumero(),
-            fecha: row.fecha,
-            obra_id: "",
-            material: row.tipo_material || "",
-            cantidad: row.cantidad || 0,
-            unidad: row.unidad,
-            recibido_por: "",
-            firmado: false,
-            remito_tercero: row.remito_tercero || null,
-            remito_local: row.remito_local || null,
-            desde: row.desde || null,
-            hasta: row.hasta || null,
-            cantidad_viajes: row.cantidad_viajes || 1,
-            tipo_material: row.tipo_material || null,
-            precio_total: row.precio_total || 0,
-            tipo_transporte: row.tipo_transporte || null,
-            maquinaria_id: isCalaminaSur ? (row.maquinaria_id || null) : null,
-            patente_tercero: !isCalaminaSur ? (row.patente_tercero || null) : null,
-          };
-        });
+        .map((row) => ({
+          numero: row.remito_local || generateNumero(),
+          fecha: row.fecha,
+          obra_id: "",
+          material: row.tipo_material || "",
+          cantidad: row.cantidad || 0,
+          unidad: row.unidad,
+          recibido_por: "",
+          firmado: false,
+          remito_tercero: row.remito_tercero || null,
+          remito_local: row.remito_local || null,
+          desde: row.desde || null,
+          hasta: row.hasta || null,
+          cantidad_viajes: row.cantidad_viajes || 1,
+          tipo_material: row.tipo_material || null,
+          precio_total: row.precio_total || 0,
+          tipo_transporte: row.tipo_transporte || null,
+          maquinaria_id: row.maquinaria_id || null,
+          patente_tercero: row.patente_tercero || null,
+        }));
 
       const updated = data
         .filter((row) => row.id && updatedRowIds.has(row.id) && !row._isDeleted)
-        .map((row) => {
-          const isCalaminaSur = row.tipo_transporte === "Calamina Sur";
-          return {
-            id: row.id!,
-            data: {
-              remito_tercero: row.remito_tercero || null,
-              remito_local: row.remito_local || null,
-              fecha: row.fecha,
-              desde: row.desde || null,
-              hasta: row.hasta || null,
-              cantidad_viajes: row.cantidad_viajes || 1,
-              unidad: row.unidad,
-              cantidad: row.cantidad || 0,
-              tipo_material: row.tipo_material || null,
-              precio_total: row.precio_total || 0,
-              tipo_transporte: row.tipo_transporte || null,
-              maquinaria_id: isCalaminaSur ? (row.maquinaria_id || null) : null,
-              patente_tercero: !isCalaminaSur ? (row.patente_tercero || null) : null,
-              material: row.tipo_material || "",
-            },
-          };
-        });
+        .map((row) => ({
+          id: row.id!,
+          data: {
+            remito_tercero: row.remito_tercero || null,
+            remito_local: row.remito_local || null,
+            fecha: row.fecha,
+            desde: row.desde || null,
+            hasta: row.hasta || null,
+            cantidad_viajes: row.cantidad_viajes || 1,
+            unidad: row.unidad,
+            cantidad: row.cantidad || 0,
+            tipo_material: row.tipo_material || null,
+            precio_total: row.precio_total || 0,
+            tipo_transporte: row.tipo_transporte || null,
+            maquinaria_id: row.maquinaria_id || null,
+            patente_tercero: row.patente_tercero || null,
+            material: row.tipo_material || "",
+          },
+        }));
 
       const deleted = Array.from(deletedRowIds);
 
@@ -726,7 +696,7 @@ export function RemitosDataGrid({
       </p>
       <div className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}>
         <DataSheetGrid
-          key={`remitos-grid-${obrasOptions.length}-${maquinariaOptions.length}`}
+          key={`remitos-grid-${obrasOptions.length}-${vehiculoOptions.length}`}
           value={displayData}
           onChange={(newData, ops) => {
             // Map changes back to full data array when filtering is active
