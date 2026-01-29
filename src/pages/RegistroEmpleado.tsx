@@ -37,10 +37,10 @@ const RegistroEmpleado = () => {
     setError(null);
 
     try {
-      // 1. Buscar empleado por legajo
+      // 1. Buscar empleado por legajo usando la vista segura
       const { data: personal, error: searchError } = await supabase
-        .from('personal')
-        .select('id, legajo, rol, user_id')
+        .from('personal_legajo_lookup')
+        .select('id, legajo, rol, ya_vinculado')
         .eq('legajo', formData.legajo.trim())
         .maybeSingle();
 
@@ -52,7 +52,7 @@ const RegistroEmpleado = () => {
         return;
       }
 
-      if (personal.user_id) {
+      if (personal.ya_vinculado) {
         setError("Este legajo ya tiene una cuenta asociada. Use 'Iniciar Sesión' o contacte al administrador.");
         setLoading(false);
         return;
@@ -87,18 +87,18 @@ const RegistroEmpleado = () => {
         return;
       }
 
-      // 3. Vincular personal.user_id con el nuevo usuario
-      const { error: updateError } = await supabase
-        .from('personal')
-        .update({ 
-          user_id: authData.user.id,
-          telefono: formData.telefono.trim() || null,
-        })
-        .eq('id', personal.id);
+      // 3. Vincular usando la función segura RPC
+      const { data: linkResult, error: linkError } = await supabase
+        .rpc('link_personal_to_user', {
+          p_legajo: formData.legajo.trim(),
+          p_user_id: authData.user.id
+        });
 
-      if (updateError) {
-        console.error('Error linking user to personal:', updateError);
+      if (linkError) {
+        console.error('Error linking user to personal:', linkError);
         // No falla el registro, el admin puede vincular manualmente
+      } else if (linkResult && linkResult.length > 0 && !linkResult[0].success) {
+        console.error('Link failed:', linkResult[0].error_message);
       }
 
       // 4. Asignar rol en user_roles según el rol del personal

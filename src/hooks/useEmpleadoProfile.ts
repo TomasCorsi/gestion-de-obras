@@ -46,27 +46,28 @@ export function useEmpleadoProfile() {
         const legajo = user.user_metadata?.legajo;
         
         if (legajo) {
-          // Find unlinked personal record with matching legajo
-          const { data: unlinkedPersonal } = await supabase
-            .from('personal')
-            .select('*')
-            .eq('legajo', legajo)
-            .is('user_id', null)
-            .maybeSingle();
+          // Use secure RPC function to link
+          const { data: linkResult, error: linkError } = await supabase
+            .rpc('link_personal_to_user', {
+              p_legajo: legajo,
+              p_user_id: user.id
+            });
 
-          if (unlinkedPersonal) {
-            // Try to link it (RLS policy allows this now)
-            const { error: linkError } = await supabase
+          if (!linkError && linkResult && linkResult.length > 0 && linkResult[0].success) {
+            console.log('Successfully auto-linked personal record via RPC');
+            
+            // Refetch the linked record
+            const { data: linkedData } = await supabase
               .from('personal')
-              .update({ user_id: user.id })
-              .eq('id', unlinkedPersonal.id);
-
-            if (!linkError) {
-              console.log('Successfully auto-linked personal record');
-              data = { ...unlinkedPersonal, user_id: user.id };
-            } else {
-              console.error('Failed to auto-link personal record:', linkError);
-            }
+              .select('*')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            
+            data = linkedData;
+          } else if (linkError) {
+            console.error('Failed to auto-link personal record:', linkError);
+          } else if (linkResult?.[0]?.error_message) {
+            console.log('Auto-link not possible:', linkResult[0].error_message);
           }
         }
       }
