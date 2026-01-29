@@ -45,7 +45,9 @@ import {
   CalendarDays,
   Calculator,
   DollarSign,
+  Download,
 } from "lucide-react";
+import { ExportVacacionesDialog } from "./ExportVacacionesDialog";
 import { useVacaciones, VacacionDB, VacacionForm } from "@/hooks/useVacaciones";
 import { usePersonal } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
@@ -69,6 +71,7 @@ export function VacacionesTab() {
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [selectedVacacion, setSelectedVacacion] = useState<VacacionDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -237,6 +240,15 @@ export function VacacionesTab() {
                   <SelectItem value="no_pagada">No pagadas</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                onClick={() => setExportDialogOpen(true)}
+                disabled={noPagadas === 0}
+                className="border-border"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Exportar No Pagadas
+              </Button>
               <Button
                 onClick={handleNew}
                 className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
@@ -533,6 +545,13 @@ export function VacacionesTab() {
         onConfirm={confirmDelete}
         title="Eliminar Vacaciones"
         description={`¿Estás seguro de que deseas eliminar esta solicitud de vacaciones? Esta acción no se puede deshacer.`}
+      />
+
+      {/* Export Dialog */}
+      <ExportVacacionesDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+        vacaciones={vacaciones}
       />
     </div>
   );
