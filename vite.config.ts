@@ -14,8 +14,8 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "prompt",
-      injectRegister: null,
+      registerType: "autoUpdate",
+      injectRegister: "auto",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
         name: "Calamina Sur - Gestión de Obras",
