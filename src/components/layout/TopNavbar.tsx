@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
 import { AppLauncher } from "./AppLauncher";
-import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
+
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { toast } from "@/components/ui/sonner";
 
@@ -32,7 +32,6 @@ const roleLabels: Record<string, string> = {
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
   const { profile, role, signOut } = useAuth();
-  const { isFieldEmployee, empleado } = useEmpleadoProfile();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
   const navigate = useNavigate();
 
@@ -109,11 +108,11 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* App Launcher - Solo para usuarios NO de campo */}
-        {!isFieldEmployee && <AppLauncher />}
+        {/* App Launcher - Solo para admin */}
+        {role === 'admin' && <AppLauncher />}
 
-        {/* Notifications - Solo para usuarios NO de campo */}
-        {!isFieldEmployee && (
+        {/* Notifications - Solo para admin */}
+        {role === 'admin' && (
           <Button variant="ghost" size="icon" className="relative">
             <Bell className="w-5 h-5 text-muted-foreground" />
             <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">

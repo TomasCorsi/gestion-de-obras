@@ -42,38 +42,38 @@ const appCategories: AppCategory[] = [
   {
     name: "Principal",
     apps: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary", roles: ['admin'] },
     ],
   },
   {
     name: "Operaciones",
     apps: [
-      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin', 'capataz', 'maquinista'] },
-      { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin', 'capataz'] },
-      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin', 'capataz', 'maquinista'] },
-      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin'] },
+      { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin'] },
+      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin'] },
+      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin'] },
     ],
   },
   {
     name: "Recursos",
     apps: [
-      { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin', 'capataz'] },
-      { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin', 'capataz'] },
-      { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin'] },
+      { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin'] },
+      { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400", roles: ['admin'] },
     ],
   },
   {
     name: "Gastos",
     apps: [
-      { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
-      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin', 'capataz', 'maquinista'] },
-      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin'] },
+      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin'] },
+      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin'] },
     ],
   },
   {
     name: "Administración",
     apps: [
-      { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin', 'capataz'] },
+      { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin'] },
       { icon: Settings, label: "Configuración", path: "/configuracion", color: "bg-slate-600", roles: ['admin'] },
     ],
   },
