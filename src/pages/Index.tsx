@@ -19,7 +19,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TopNavbar } from "@/components/layout/TopNavbar";
-import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
+
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 
 type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
@@ -155,25 +155,24 @@ const apps: AppItem[] = [
 ];
 
 const Index = () => {
-  const { hasRole } = useAuth();
-  const { isFieldEmployee, loading: empleadoLoading } = useEmpleadoProfile();
+  const { hasRole, loading: loadingAuth, role } = useAuth();
   const navigate = useNavigate();
 
-  // Redirigir empleados de campo a /parte-diario
+  // Redirigir usuarios no-admin a /parte-diario
   useEffect(() => {
-    if (!empleadoLoading && isFieldEmployee) {
+    if (!loadingAuth && role && role !== 'admin') {
       navigate('/parte-diario', { replace: true });
     }
-  }, [isFieldEmployee, empleadoLoading, navigate]);
+  }, [role, loadingAuth, navigate]);
 
-  // Mostrar loading mientras se verifica el tipo de usuario
-  if (empleadoLoading || isFieldEmployee) {
+  // Mostrar loading mientras se verifica el rol
+  if (loadingAuth || (role && role !== 'admin')) {
     return <LoadingScreen />;
   }
 
   const filteredApps = apps.filter(app => {
     if (!app.roles) return true;
-    return app.roles.some(role => hasRole(role));
+    return app.roles.some(r => hasRole(r));
   });
 
   return (

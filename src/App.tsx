@@ -73,74 +73,72 @@ const App = () => (
 
               {/* Protected routes - Main roles (not ayudante) */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              {/* Admin-only routes */}
               <Route path="/dashboard" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Dashboard />
                 </ProtectedRoute>
               } />
               <Route path="/obras" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Obras />
                 </ProtectedRoute>
               } />
               <Route path="/viajes" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Viajes />
                 </ProtectedRoute>
               } />
               <Route path="/remitos" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Remitos />
                 </ProtectedRoute>
               } />
-              {/* Gastos - accessible to all including ayudante */}
               <Route path="/gastos" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Gastos />
                 </ProtectedRoute>
               } />
               <Route path="/mantenimiento" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Mantenimiento />
                 </ProtectedRoute>
               } />
               <Route path="/stock" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Stock />
                 </ProtectedRoute>
               } />
-              <Route path="/parte-diario" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista']}>
-                  <ParteDiario />
-                </ProtectedRoute>
-              } />
-
-              {/* Protected routes - Admin and Capataz only */}
               <Route path="/cotizaciones" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Cotizaciones />
                 </ProtectedRoute>
               } />
               <Route path="/personal" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Personal />
                 </ProtectedRoute>
               } />
               <Route path="/maquinarias" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Maquinarias />
                 </ProtectedRoute>
               } />
               <Route path="/reportes" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                <ProtectedRoute requiredRoles={['admin']}>
                   <Reportes />
                 </ProtectedRoute>
               } />
-
-              {/* Protected routes - Admin only */}
               <Route path="/configuracion" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Configuracion />
+                </ProtectedRoute>
+              } />
+
+              {/* Parte Diario - accessible to all authenticated roles */}
+              <Route path="/parte-diario" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
+                  <ParteDiario />
                 </ProtectedRoute>
               } />
 

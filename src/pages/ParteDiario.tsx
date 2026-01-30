@@ -49,7 +49,7 @@ const ParteDiario = () => {
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
 
   const rol = rolPersonal as RolPersonal | null;
-  const isAdmin = role === 'admin' || role === 'capataz';
+  const isAdmin = role === 'admin';
 
   // Loading state
   if (loadingAuth || loadingEmpleado) {
