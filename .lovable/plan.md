@@ -1,172 +1,64 @@
 
-# Plan: Campo Patente Dinámico en Remitos
+# Plan: Restringir acceso al sistema solo para administradores
 
-## Problema Identificado
+## Resumen
+Modificar el sistema de permisos para que **solo los administradores** tengan acceso completo a todas las funcionalidades del sistema. Los usuarios con otros roles (capataz, maquinista, ayudante) solo podrán acceder a la sección de **Parte Diario**.
 
-La columna `maquinaria_id` en la base de datos es de tipo **UUID**, por lo que no puede almacenar texto libre (patentes de terceros). El código actual intenta guardar texto en esta columna cuando se selecciona un transporte que no es "Calamina Sur", lo cual causa errores.
+## Cambios necesarios
 
-## Solución
+### 1. Modificar rutas protegidas (src/App.tsx)
+Actualizar todas las rutas para que solo `admin` tenga acceso:
+- Dashboard, Obras, Viajes, Remitos, Gastos, Mantenimiento, Stock, Cotizaciones, Personal, Maquinarias, Reportes, Configuracion: solo `['admin']`
+- Parte Diario: accesible para todos los roles autenticados `['admin', 'capataz', 'maquinista', 'ayudante']`
+- Ruta raíz (`/`): redirigir automáticamente a `/parte-diario` para usuarios no-admin
 
-Agregar una nueva columna `patente_tercero` de tipo texto para almacenar las patentes de vehículos de terceros.
+### 2. Actualizar Index.tsx (Página principal)
+Modificar la lógica de redirección:
+- Si el usuario **no es admin**: redirigir automáticamente a `/parte-diario`
+- Si el usuario **es admin**: mostrar el App Launcher con todas las aplicaciones
 
----
+### 3. Actualizar AppLauncher.tsx
+Simplificar los roles de acceso en cada aplicación:
+- Todas las apps excepto Parte Diario: solo `['admin']`
+- Parte Diario: `['admin', 'capataz', 'maquinista', 'ayudante']`
 
-## Cambios en Base de Datos
+### 4. Actualizar TopNavbar.tsx
+Modificar la lógica de visibilidad del AppLauncher:
+- Mostrar el botón de AppLauncher **solo para admin**
+- Ocultar notificaciones y launcher para todos los demás roles
 
-### Nueva Columna
+### 5. Actualizar ParteDiario.tsx
+Ajustar la vista administrativa:
+- Solo `admin` ve la vista de administración (ParteDiarioAdminView)
+- Capataz ahora ve la misma interfaz que maquinistas/choferes (su propio parte diario)
 
-```sql
-ALTER TABLE remitos 
-ADD COLUMN patente_tercero TEXT DEFAULT NULL;
-```
+### 6. Actualizar useEmpleadoProfile.ts
+Simplificar la detección de "empleado de campo":
+- Ahora **todos los que no son admin** son tratados como empleados de campo
+- Esto incluye capataz, maquinista, chofer, ayudante, etc.
 
----
-
-## Cambios en Código
-
-### 1. src/hooks/useRemitos.ts
-
-Agregar el nuevo campo a las interfaces:
-
-```typescript
-export interface RemitoDB {
-  // ... campos existentes ...
-  patente_tercero: string | null;  // NUEVO
-}
-
-export interface RemitoForm {
-  // ... campos existentes ...
-  patente_tercero?: string;  // NUEVO
-}
-```
-
-### 2. src/components/remitos/RemitosDataGrid.tsx
-
-**Actualizar GridRow:**
-```typescript
-interface GridRow {
-  // ... campos existentes ...
-  maquinaria_id: string;      // UUID para Calamina Sur
-  patente_tercero: string;    // Texto para terceros
-}
-```
-
-**Actualizar initialData (línea ~134):**
-```typescript
-maquinaria_id: r.maquinaria_id || "",
-patente_tercero: r.patente_tercero || "",  // NUEVO
-```
-
-**Modificar columna Patente (líneas 407-460):**
-```typescript
-{
-  ...keyColumn("patente", {
-    component: ({ rowData, setRowData, focus }) => {
-      const isCalaminaSur = rowData.tipo_transporte === "Calamina Sur";
-      
-      if (isCalaminaSur) {
-        // Selector de maquinarias de la base de datos
-        return (
-          <GridSelectCell
-            value={rowData.maquinaria_id}
-            onChange={(v) => setRowData({ 
-              ...rowData, 
-              maquinaria_id: v,
-              patente_tercero: ""  // Limpiar campo tercero
-            })}
-            options={maquinariaOptions}
-            placeholder="Buscar patente..."
-            focus={focus}
-          />
-        );
-      }
-      
-      // Campo de texto libre para terceros
-      return (
-        <input
-          type="text"
-          value={rowData.patente_tercero || ""}
-          onChange={(e) => setRowData({ 
-            ...rowData, 
-            patente_tercero: e.target.value,
-            maquinaria_id: ""  // Limpiar campo maquinaria
-          })}
-          placeholder="Ej: ABC 123"
-          autoFocus={focus}
-          className="w-full h-full px-2 py-1 bg-transparent ..."
-        />
-      );
-    },
-    // ... resto de handlers
-  }),
-  title: "Patente",
-  minWidth: 120,
-}
-```
-
-**Actualizar handleSave (líneas 571-634):**
-```typescript
-// En created:
-maquinaria_id: row.tipo_transporte === "Calamina Sur" 
-  ? (row.maquinaria_id || null) 
-  : null,
-patente_tercero: row.tipo_transporte !== "Calamina Sur" 
-  ? (row.patente_tercero || null) 
-  : null,
-
-// En updated:
-maquinaria_id: row.tipo_transporte === "Calamina Sur" 
-  ? (row.maquinaria_id || null) 
-  : null,
-patente_tercero: row.tipo_transporte !== "Calamina Sur" 
-  ? (row.patente_tercero || null) 
-  : null,
-```
-
-**Actualizar visualización de datos:**
-
-Cuando se carga un remito existente, mostrar la patente correcta:
-```typescript
-// En initialData
-const displayPatente = r.maquinaria?.patente || r.patente_tercero || "";
-```
-
----
-
-## Flujo de Datos
+## Diagrama de acceso resultante
 
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                   TIPO TRANSPORTE                                   │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  "Calamina Sur"               │  Otros (Geo, Diaz, etc.)           │
-│  ─────────────────            │  ─────────────────────────          │
-│  ↓                            │  ↓                                  │
-│  GridSelectCell               │  Input texto libre                  │
-│  (busca en maquinarias)       │  (escribe patente)                 │
-│  ↓                            │  ↓                                  │
-│  Guarda: maquinaria_id=UUID   │  Guarda: patente_tercero="ABC123"  │
-│          patente_tercero=null │          maquinaria_id=null        │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
++-------------------+------------------------+------------------+
+| Rol               | Acceso                 | Vista Inicial    |
++-------------------+------------------------+------------------+
+| admin             | Todo el sistema        | App Launcher (/) |
+| capataz           | Solo Parte Diario      | /parte-diario    |
+| maquinista        | Solo Parte Diario      | /parte-diario    |
+| ayudante          | Solo Parte Diario      | /parte-diario    |
++-------------------+------------------------+------------------+
 ```
 
----
+## Archivos a modificar
+1. `src/App.tsx` - Rutas y roles requeridos
+2. `src/pages/Index.tsx` - Lógica de redirección  
+3. `src/components/layout/AppLauncher.tsx` - Roles por aplicación
+4. `src/components/layout/TopNavbar.tsx` - Visibilidad de controles
+5. `src/pages/ParteDiario.tsx` - Vista admin vs empleado
+6. `src/hooks/useEmpleadoProfile.ts` - Detección de tipo de usuario
 
-## Archivos a Modificar
-
-1. **Base de datos** - Agregar columna `patente_tercero`
-2. **src/hooks/useRemitos.ts** - Agregar campo a interfaces
-3. **src/components/remitos/RemitosDataGrid.tsx** - Lógica de campo dinámico
-4. **src/integrations/supabase/types.ts** - Se actualiza automáticamente
-
----
-
-## Beneficios
-
-- Cada tipo de patente se almacena en su columna correcta
-- UUID para referencias a maquinarias propias
-- Texto libre para patentes de terceros
-- Sin errores de tipo de dato
-- Búsqueda funciona correctamente para ambos casos
+## Consideraciones
+- Los usuarios no-admin que intenten acceder a rutas restringidas serán redirigidos a `/sin-acceso`
+- El capataz ahora cargará su propio parte diario como cualquier otro empleado, sin acceso a ver todos los partes
+- Las políticas RLS de la base de datos ya están configuradas correctamente, no requieren cambios
