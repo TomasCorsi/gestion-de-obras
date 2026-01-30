@@ -27,61 +27,72 @@ export function useEmpleadoProfile() {
       setLoading(true);
       setError(null);
       
-      // First try to find by user_id (already linked)
-      let { data, error: fetchError } = await supabase
-        .from('personal')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        // First try to find by user_id (already linked)
+        let { data, error: fetchError } = await supabase
+          .from('personal')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (fetchError) {
-        console.error('Error fetching empleado profile:', fetchError);
-        setError('Error al cargar perfil de empleado');
-        setLoading(false);
-        return;
-      }
+        if (fetchError) {
+          console.error('Error fetching empleado profile:', fetchError);
+          setError('Error al cargar perfil de empleado');
+          setLoading(false);
+          return;
+        }
 
-      // If not found by user_id, try to auto-link using legajo from user metadata
-      if (!data) {
-        const legajo = user.user_metadata?.legajo;
-        
-        if (legajo) {
-          // Use secure RPC function to link
-          const { data: linkResult, error: linkError } = await supabase
-            .rpc('link_personal_to_user', {
-              p_legajo: legajo,
-              p_user_id: user.id
-            });
-
-          if (!linkError && linkResult && linkResult.length > 0 && linkResult[0].success) {
-            console.log('Successfully auto-linked personal record via RPC');
+        // If not found by user_id, try to auto-link using legajo from user metadata
+        if (!data) {
+          const legajo = user.user_metadata?.legajo;
+          
+          if (legajo) {
+            console.log('Attempting auto-link for legajo:', legajo, 'user_id:', user.id);
             
-            // Refetch the linked record
-            const { data: linkedData } = await supabase
-              .from('personal')
-              .select('*')
-              .eq('user_id', user.id)
-              .maybeSingle();
-            
-            data = linkedData;
-          } else if (linkError) {
-            console.error('Failed to auto-link personal record:', linkError);
-          } else if (linkResult?.[0]?.error_message) {
-            console.log('Auto-link not possible:', linkResult[0].error_message);
+            // Use secure RPC function to link
+            const { data: linkResult, error: linkError } = await supabase
+              .rpc('link_personal_to_user', {
+                p_legajo: String(legajo).trim(),
+                p_user_id: user.id
+              });
+
+            console.log('Link result:', linkResult, 'Error:', linkError);
+
+            if (!linkError && linkResult && linkResult.length > 0 && linkResult[0].success) {
+              console.log('Successfully auto-linked personal record via RPC');
+              
+              // Refetch the linked record
+              const { data: linkedData } = await supabase
+                .from('personal')
+                .select('*')
+                .eq('user_id', user.id)
+                .maybeSingle();
+              
+              data = linkedData;
+            } else if (linkError) {
+              console.error('Failed to auto-link personal record:', linkError);
+            } else if (linkResult?.[0]?.error_message) {
+              console.log('Auto-link not possible:', linkResult[0].error_message);
+            }
+          } else {
+            console.log('No legajo found in user metadata:', user.user_metadata);
           }
         }
-      }
 
-      if (data) {
-        setEmpleado({
-          ...data,
-          nombreCompleto: `${data.nombre || ''} ${data.apellido || ''}`.trim(),
-        });
-      } else {
-        setEmpleado(null);
+        if (data) {
+          setEmpleado({
+            ...data,
+            nombreCompleto: `${data.nombre || ''} ${data.apellido || ''}`.trim(),
+          });
+        } else {
+          setEmpleado(null);
+        }
+      } catch (err) {
+        console.error('Error in fetchAndLinkEmpleado:', err);
+        setError('Error al cargar perfil');
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     };
 
     fetchAndLinkEmpleado();
