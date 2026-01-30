@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import logoFull from '@/assets/logo-full.png';
 import authBackground from '@/assets/auth-background.jpg';
+import InstallAppBanner from '@/components/auth/InstallAppBanner';
 
 const RegistroEmpleado = () => {
   const navigate = useNavigate();
@@ -305,6 +306,7 @@ const RegistroEmpleado = () => {
               </Link>
             </div>
           </form>
+          <InstallAppBanner />
         </CardContent>
       </Card>
     </main>
