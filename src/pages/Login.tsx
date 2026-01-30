@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Loader2, LogIn } from 'lucide-react';
 import logoFull from '@/assets/logo-full.png';
 import authBackground from '@/assets/auth-background.jpg';
+import InstallAppBanner from '@/components/auth/InstallAppBanner';
 
 export default function Login() {
   const { signIn, user, loading } = useAuth();
@@ -109,6 +110,7 @@ export default function Login() {
             </p>
           </CardFooter>
         </form>
+        <InstallAppBanner />
       </Card>
     </main>
   );
