@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import type { ParteDiario } from './useParteDiario';
 
 export interface ParteDiarioAdminFilters {
@@ -11,6 +12,8 @@ export interface ParteDiarioAdminFilters {
 }
 
 export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
+  const queryClient = useQueryClient();
+
   const { data: partes = [], isLoading, error } = useQuery({
     queryKey: ['partes_diarios_admin', filters],
     queryFn: async () => {
@@ -49,9 +52,32 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
     },
   });
 
+  // Delete parte mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('partes_diarios')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partes_diarios_admin'] });
+      queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
+      toast.success('Parte diario eliminado');
+    },
+    onError: (error: Error) => {
+      console.error('Error deleting parte:', error);
+      toast.error('Error al eliminar el parte diario');
+    },
+  });
+
   return {
     partes,
     isLoading,
     error,
+    deleteParte: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
