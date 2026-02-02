@@ -9,7 +9,8 @@ import {
   FileText,
   ArrowLeft,
   BarChart3,
-  List
+  List,
+  Trash2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { useObras } from "@/hooks/useObras";
 import { ParteDiarioAdminFilters as FilterComponent } from "./ParteDiarioAdminFilters";
 import { ParteDiarioDetailDialog } from "./ParteDiarioDetailDialog";
 import { ParteDiarioRendimientoTab } from "./ParteDiarioRendimientoTab";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 
 const ROL_LABELS: Record<string, string> = {
@@ -50,9 +52,10 @@ interface ParteDiarioAdminViewProps {
 export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const [filters, setFilters] = useState<ParteDiarioAdminFilters>({});
   const [selectedParte, setSelectedParte] = useState<ParteDiario | null>(null);
+  const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
   const [activeTab, setActiveTab] = useState<string>("listado");
   
-  const { partes, isLoading } = useParteDiarioAdmin(filters);
+  const { partes, isLoading, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
 
@@ -192,16 +195,29 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                               </Badge>
                             </TableCell>
                             <TableCell>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedParte(parte);
-                                }}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedParte(parte);
+                                  }}
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setParteToDelete(parte);
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -232,6 +248,22 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
         onOpenChange={(open) => !open && setSelectedParte(null)}
         showEmpleado
         personalList={personal}
+      />
+
+      <DeleteConfirmDialog
+        open={!!parteToDelete}
+        onOpenChange={(open) => !open && setParteToDelete(null)}
+        onConfirm={async () => {
+          if (parteToDelete) {
+            await deleteParte(parteToDelete.id);
+            setParteToDelete(null);
+          }
+        }}
+        title="¿Eliminar parte diario?"
+        description={parteToDelete ? 
+          `Se eliminará permanentemente el parte de ${parteToDelete.personal?.nombre || ''} ${parteToDelete.personal?.apellido || ''} del ${format(parseISO(parteToDelete.fecha), "dd/MM/yyyy")}.` 
+          : "Esta acción no se puede deshacer."
+        }
       />
     </>
   );
