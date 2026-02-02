@@ -36,7 +36,9 @@ import {
   Upload,
   LayoutGrid,
   List,
+  Download,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -246,6 +248,35 @@ export default function Combustible() {
 
   const calculateTotal = (litros: number, precio: number) => litros * precio;
 
+  const handleExportExcel = () => {
+    const exportData = filteredCargas.map((c) => ({
+      Fecha: formatDate(c.fecha),
+      Obra: c.obra?.nombre || "-",
+      Maquinaria: c.maquinaria?.nombre || "-",
+      Código: c.maquinaria?.codigo || "-",
+      Operador: c.operador || "-",
+      Litros: c.litros,
+      "Precio/Litro": c.precio_litro,
+      "Costo Total": c.costo_total,
+      "Horas Máquina": c.horas_maquina || "-",
+      Estación: c.estacion || "-",
+      Comprobante: c.comprobante || "-",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Combustible");
+
+    // Auto-size columns
+    const colWidths = Object.keys(exportData[0] || {}).map((key) => ({
+      wch: Math.max(key.length, 12),
+    }));
+    ws["!cols"] = colWidths;
+
+    XLSX.writeFile(wb, `combustible_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success(`${exportData.length} registros exportados a Excel`);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -320,6 +351,14 @@ export default function Combustible() {
               <LayoutGrid className="w-4 h-4" />
             </Button>
           </div>
+          <Button
+            variant="outline"
+            onClick={handleExportExcel}
+            className="border-border"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
           <Button
             variant="outline"
             onClick={() => setImportOpen(true)}
