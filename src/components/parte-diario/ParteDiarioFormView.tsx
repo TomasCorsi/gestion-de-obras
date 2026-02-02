@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { es } from "date-fns/locale";
 import { format, parseISO } from "date-fns";
-import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2, Users } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2, Users, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,6 +61,7 @@ export const ParteDiarioFormView = ({
   isSaving,
 }: ParteDiarioFormViewProps) => {
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
+  const [searchAusencia, setSearchAusencia] = useState('');
   const [formData, setFormData] = useState({
     fecha: format(new Date(), 'yyyy-MM-dd'),
     obra_id: '',
@@ -144,7 +145,32 @@ export const ParteDiarioFormView = ({
   ].filter(item => rol && item.roles.includes(rol));
 
   // Filter personal for ausencias (exclude current employee)
-  const personalForAusencias = personal.filter(p => p.id !== empleadoId);
+  const personalForAusencias = useMemo(() => {
+    return personal.filter(p => p.id !== empleadoId);
+  }, [personal, empleadoId]);
+
+  // Filtered personal based on search
+  const filteredPersonalForAusencias = useMemo(() => {
+    if (!searchAusencia.trim()) return personalForAusencias;
+    const searchLower = searchAusencia.toLowerCase().trim();
+    return personalForAusencias.filter(p => {
+      const nombre = (p.nombre || '').toLowerCase();
+      const apellido = (p.apellido || '').toLowerCase();
+      const legajo = (p.legajo || '').toLowerCase();
+      const fullName = `${apellido} ${nombre}`.toLowerCase();
+      return nombre.includes(searchLower) || 
+             apellido.includes(searchLower) || 
+             legajo.includes(searchLower) ||
+             fullName.includes(searchLower);
+    });
+  }, [personalForAusencias, searchAusencia]);
+
+  // Get selected employees info for display
+  const selectedAusenciasInfo = useMemo(() => {
+    return formData.ausencias
+      .map(id => personalForAusencias.find(p => p.id === id))
+      .filter(Boolean) as typeof personalForAusencias;
+  }, [formData.ausencias, personalForAusencias]);
 
   // Generate combobox options for obras (only active)
   const obraOptions: ComboboxOption[] = useMemo(() => {
@@ -562,39 +588,89 @@ export const ParteDiarioFormView = ({
               <p className="text-xs text-muted-foreground mb-3">
                 Seleccione los empleados que faltaron hoy
               </p>
+
+              {/* Selected employees badges */}
+              {selectedAusenciasInfo.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {selectedAusenciasInfo.map(emp => (
+                    <button
+                      key={emp.id}
+                      type="button"
+                      onClick={() => toggleAusencia(emp.id, false)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
+                    >
+                      {emp.apellido}, {emp.nombre?.charAt(0)}.
+                      {emp.legajo && <span className="opacity-70">#{emp.legajo}</span>}
+                      <X className="w-3 h-3" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {personalForAusencias.length > 0 ? (
-                <ScrollArea className="h-48 border rounded-lg">
-                  <div className="p-2 space-y-2">
-                    {personalForAusencias.map(emp => (
-                      <Label
-                        key={emp.id}
-                        htmlFor={`ausencia-${emp.id}`}
-                        className={cn(
-                          "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
-                          formData.ausencias.includes(emp.id)
-                            ? "border-destructive bg-destructive/5"
-                            : "border-border hover:border-destructive/50"
-                        )}
+                <>
+                  {/* Search input */}
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar por nombre o legajo..."
+                      value={searchAusencia}
+                      onChange={(e) => setSearchAusencia(e.target.value)}
+                      className="pl-9 h-11"
+                    />
+                    {searchAusencia && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchAusencia('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
-                        <Checkbox
-                          id={`ausencia-${emp.id}`}
-                          checked={formData.ausencias.includes(emp.id)}
-                          onCheckedChange={(checked) => toggleAusencia(emp.id, !!checked)}
-                          className="h-5 w-5"
-                        />
-                        <span className="text-sm font-medium">
-                          {emp.apellido}, {emp.nombre}
-                          {emp.legajo && <span className="text-muted-foreground ml-1">(#{emp.legajo})</span>}
-                        </span>
-                      </Label>
-                    ))}
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
-                </ScrollArea>
+
+                  {/* Filtered list */}
+                  <ScrollArea className="h-48 border rounded-lg">
+                    <div className="p-2 space-y-1">
+                      {filteredPersonalForAusencias.length > 0 ? (
+                        filteredPersonalForAusencias.map(emp => (
+                          <Label
+                            key={emp.id}
+                            htmlFor={`ausencia-${emp.id}`}
+                            className={cn(
+                              "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                              formData.ausencias.includes(emp.id)
+                                ? "border-destructive bg-destructive/10"
+                                : "border-transparent hover:bg-muted/50"
+                            )}
+                          >
+                            <Checkbox
+                              id={`ausencia-${emp.id}`}
+                              checked={formData.ausencias.includes(emp.id)}
+                              onCheckedChange={(checked) => toggleAusencia(emp.id, !!checked)}
+                              className="h-5 w-5"
+                            />
+                            <span className="text-sm font-medium">
+                              {emp.apellido}, {emp.nombre}
+                              {emp.legajo && <span className="text-muted-foreground ml-1">(#{emp.legajo})</span>}
+                            </span>
+                          </Label>
+                        ))
+                      ) : (
+                        <p className="text-sm text-muted-foreground p-4 text-center">
+                          No se encontró "{searchAusencia}"
+                        </p>
+                      )}
+                    </div>
+                  </ScrollArea>
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground p-4 text-center border rounded-lg">
                   No hay empleados cargados
                 </p>
               )}
+
               {formData.ausencias.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-2">
                   {formData.ausencias.length} empleado(s) marcado(s) como ausente(s)
