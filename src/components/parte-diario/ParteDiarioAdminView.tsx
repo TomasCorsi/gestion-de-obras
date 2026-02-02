@@ -15,7 +15,8 @@ import {
   Search,
   LayoutGrid,
   Table as TableIcon,
-  Download
+  Download,
+  UserX
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -50,14 +51,15 @@ import { cn } from "@/lib/utils";
 import { useParteDiarioAdmin, type ParteDiarioAdminFilters } from "@/hooks/useParteDiarioAdmin";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useObras } from "@/hooks/useObras";
+import { useEmpleadosSinParte } from "@/hooks/useEmpleadosSinParte";
 import { ParteDiarioDetailDialog } from "./ParteDiarioDetailDialog";
 import { ParteDiarioRendimientoTab } from "./ParteDiarioRendimientoTab";
 import { ParteDiarioKPIs } from "./ParteDiarioKPIs";
 import { ParteDiarioQuickFilters } from "./ParteDiarioQuickFilters";
 import { ParteDiarioCardView } from "./ParteDiarioCardView";
+import { EmpleadosSinParteTab } from "./EmpleadosSinParteTab";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
-
 const ROL_LABELS: Record<string, string> = {
   maquinista: 'Maquinista',
   chofer: 'Chofer',
@@ -88,6 +90,10 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const { partes, isLoading, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
+  
+  // Get today's date for the "sin parte hoy" KPI
+  const today = format(new Date(), "yyyy-MM-dd");
+  const { empleadosSinParte } = useEmpleadosSinParte(today);
 
   // Filter partes by search term (employee name)
   const filteredPartes = useMemo(() => {
@@ -203,7 +209,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="listado" className="gap-2">
               <List className="h-4 w-4" />
               Listado
@@ -211,6 +217,10 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
             <TabsTrigger value="rendimiento" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Rendimiento
+            </TabsTrigger>
+            <TabsTrigger value="faltantes" className="gap-2">
+              <UserX className="h-4 w-4" />
+              Faltantes
             </TabsTrigger>
           </TabsList>
 
@@ -222,6 +232,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
               completados={kpis.completados}
               borradores={kpis.borradores}
               empleadosUnicos={kpis.empleadosUnicos}
+              sinParteHoy={empleadosSinParte.length}
             />
 
             <Card>
@@ -467,6 +478,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
           {/* Rendimiento Tab */}
           <TabsContent value="rendimiento" className="mt-4">
             <ParteDiarioRendimientoTab personal={personal} />
+          </TabsContent>
+
+          {/* Faltantes Tab */}
+          <TabsContent value="faltantes" className="mt-4">
+            <EmpleadosSinParteTab />
           </TabsContent>
         </Tabs>
       </div>
