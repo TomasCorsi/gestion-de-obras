@@ -139,6 +139,10 @@ export function CombustibleDataGrid({
 
   const [data, setData] = useState<GridRow[]>(initialData);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Snapshot system: freeze filtered data during editing to prevent row jumping
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingSnapshot, setEditingSnapshot] = useState<GridRow[] | null>(null);
 
   // Filter configurations for ALL columns
   const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
@@ -630,8 +634,37 @@ export function CombustibleDataGrid({
     }
   }, [data, onSave, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
+  // Callback when cell becomes active - capture snapshot
+  const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
+    if (cell && !isEditing && (globalSearch || activeFilterCount > 0)) {
+      setIsEditing(true);
+      setEditingSnapshot(searchFilteredData);
+    }
+  }, [isEditing, globalSearch, activeFilterCount, searchFilteredData]);
+
+  // Callback when grid loses focus - release snapshot
+  const handleBlur = useCallback(() => {
+    setIsEditing(false);
+    setEditingSnapshot(null);
+  }, []);
+
   // Get the data to display (filtered if there are filters/search)
-  const displayData = globalSearch || activeFilterCount > 0 ? searchFilteredData : data;
+  // During editing with filters, use snapshot but with updated values
+  const displayData = useMemo(() => {
+    if (!globalSearch && activeFilterCount === 0) {
+      return data;
+    }
+    
+    if (isEditing && editingSnapshot) {
+      // Update values in snapshot with current data values
+      return editingSnapshot.map(snapRow => {
+        const currentRow = data.find(r => r.id === snapRow.id);
+        return currentRow || snapRow;
+      });
+    }
+    
+    return searchFilteredData;
+  }, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
 
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
@@ -714,6 +747,8 @@ export function CombustibleDataGrid({
           columns={columns}
           createRow={createRow}
           height={gridHeight}
+          onActiveCellChange={handleActiveCellChange}
+          onBlur={handleBlur}
           rowClassName={({ rowData }) => {
             if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
             if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
