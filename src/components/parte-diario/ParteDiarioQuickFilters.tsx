@@ -18,7 +18,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { ParteDiarioAdminFilters } from "@/hooks/useParteDiarioAdmin";
 
-type DatePreset = 'hoy' | 'ayer' | 'semana' | 'mes' | 'custom' | '';
+type DatePreset = 'hoy' | 'ayer' | 'semana' | 'mes' | 'custom' | 'all';
 
 interface Obra {
   id: string;
@@ -39,7 +39,7 @@ export function ParteDiarioQuickFilters({
   const today = new Date();
   
   const getDatePreset = (): DatePreset => {
-    if (!filters.fechaDesde && !filters.fechaHasta) return '';
+    if (!filters.fechaDesde && !filters.fechaHasta) return 'all';
     
     const todayStr = format(today, 'yyyy-MM-dd');
     const yesterdayStr = format(subDays(today, 1), 'yyyy-MM-dd');
@@ -75,6 +75,7 @@ export function ParteDiarioQuickFilters({
         fechaDesde = format(startOfMonth(today), 'yyyy-MM-dd');
         fechaHasta = format(endOfMonth(today), 'yyyy-MM-dd');
         break;
+      case 'all':
       default:
         fechaDesde = undefined;
         fechaHasta = undefined;
@@ -113,13 +114,13 @@ export function ParteDiarioQuickFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Date Preset Selector */}
-      <Select value={currentPreset} onValueChange={handleDatePresetChange}>
+      <Select value={currentPreset || 'all'} onValueChange={handleDatePresetChange}>
         <SelectTrigger className="w-[130px] h-9">
           <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
           <SelectValue placeholder="Fecha" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Todas</SelectItem>
+          <SelectItem value="all">Todas</SelectItem>
           <SelectItem value="hoy">Hoy</SelectItem>
           <SelectItem value="ayer">Ayer</SelectItem>
           <SelectItem value="semana">Esta semana</SelectItem>
