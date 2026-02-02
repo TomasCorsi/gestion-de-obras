@@ -1,162 +1,128 @@
 
-# Plan: Mejora de la Vista Administrativa de Partes Diarios
+## Plan: Corregir edición de grilla con filtros activos
 
-## Resumen
-Rediseñar la vista administrativa para que sea mas simple, clara y rapida de consultar. Se agregarán indicadores visuales, una vista de resumen por día, filtros mas accesibles y exportación a Excel.
+### Problema identificado
+Cuando se filtra la grilla de combustible y se edita una fila, las filas se mueven y desaparecen porque:
+1. El `displayData` (datos mostrados) es un `useMemo` que se recalcula cada vez que `data` cambia
+2. Al escribir en una celda, el estado `data` se actualiza inmediatamente
+3. Si la edición cambia un valor que afecta al filtro, la fila puede dejar de cumplir el criterio y desaparece
+4. Además, react-datasheet-grid pierde la referencia a la fila actual cuando los índices cambian
 
-## Cambios Propuestos
+### Solución propuesta
+Implementar un sistema de "snapshot" que congele los datos filtrados mientras el usuario está editando activamente, y solo actualice el filtrado cuando termine de editar o haga clic fuera de la grilla.
 
-### 1. Panel de Resumen Rápido (KPIs del Día/Período)
-Agregar cards con métricas clave en la parte superior:
+### Cambios técnicos
 
-```text
-+-------------------+-------------------+-------------------+-------------------+
-|   📋 Total        |  ✅ Completados   |   ⏳ Borradores   |   👷 Empleados    |
-|      45           |      38           |        7          |       12          |
-|   partes          |   (84%)           |    pendientes     |   activos hoy     |
-+-------------------+-------------------+-------------------+-------------------+
-```
+**1. Agregar estado para congelar los datos filtrados durante edición**
 
-### 2. Vista por Tarjetas (Card View) como opción alternativa
-Agregar toggle para cambiar entre vista de tabla y vista de tarjetas:
-
-```text
-[ Tabla ] [ Tarjetas ]
-
-+----------------------------------------+----------------------------------------+
-| 📅 Hoy - 02/02/2026                    | 📅 Hoy - 02/02/2026                    |
-| Edgar Zacarías · Maquinista            | Hugo Carrizo · Chofer                  |
-| 🏗️ Pte. FIGUEROA ALCORTA              | 🏗️ Ruta Nacional 9                    |
-| ⏰ 07:00 - 17:00                       | ⏰ 06:30 - 16:00                       |
-| 🚜 Pala 02 (ABC123)                    | 🚚 Camión 04 (XYZ789)                  |
-| [✅ Completado]              [👁️] [🗑️]  | [⏳ Borrador]                  [👁️] [🗑️]  |
-+----------------------------------------+----------------------------------------+
-```
-
-### 3. Filtros Más Accesibles
-Mover los filtros principales fuera del popover para acceso rápido:
-
-```text
-+----------------------------------------------------------+
-| 🔍 Buscar empleado...  | Hoy ▼ | Todas las obras ▼ | Estado ▼ | ⚙️ Más filtros | 📥 Excel |
-+----------------------------------------------------------+
-```
-
-### 4. Agrupación por Fecha
-Agregar opción para ver los partes agrupados por día con contadores:
-
-```text
-📅 Hoy - Domingo 02/02/2026                           [12 partes - 10 completados]
-├─ Edgar Zacarías (Maquinista) · Pte. FIGUEROA ALCORTA · ✅
-├─ Hugo Carrizo (Chofer) · Ruta Nacional 9 · ✅
-└─ Alan Wertz (Maquinista) · Obra Norte · ⏳ Borrador
-
-📅 Ayer - Sábado 01/02/2026                           [15 partes - 15 completados]
-├─ ...
-```
-
-### 5. Tabla Compacta y Optimizada
-Simplificar la tabla actual combinando columnas:
-
-```text
-| Fecha/Empleado          | Ubicación              | Horario           | Estado        | ⚡ |
-|-------------------------|------------------------|-------------------|---------------|---|
-| 02/02 - Edgar Zacarías  | FIGUEROA · Pala 02     | 07:00 → 17:00    | ✅ Completado | 👁️ 🗑️ |
-| Maquinista              |                        |                   |               |    |
-```
-
-### 6. Exportación a Excel
-Agregar botón para descargar el listado filtrado en formato Excel.
-
-### 7. Paginación
-Agregar paginación para manejar grandes cantidades de datos (25/50/100 por página).
-
-## Archivos a Modificar
-
-### `src/components/parte-diario/ParteDiarioAdminView.tsx`
-- Agregar panel de KPIs con métricas calculadas
-- Implementar toggle para cambiar entre vista tabla y tarjetas
-- Mover filtros principales a la barra de herramientas
-- Agregar botón de exportación Excel
-- Implementar paginación
-- Optimizar diseño de la tabla actual
-
-### `src/components/parte-diario/ParteDiarioQuickFilters.tsx` (nuevo)
-Componente para los filtros de acceso rápido en la barra de herramientas:
-- Selector de fecha (Hoy, Esta semana, Este mes, Personalizado)
-- Selector de obra
-- Selector de estado
-
-### `src/components/parte-diario/ParteDiarioCardView.tsx` (nuevo)
-Vista alternativa en formato de tarjetas:
-- Cards agrupadas por fecha
-- Información condensada y visual
-- Acciones rápidas (ver, eliminar)
-
-### `src/components/parte-diario/ParteDiarioKPIs.tsx` (nuevo)
-Panel de métricas rápidas:
-- Total de partes en el período
-- Porcentaje completados vs borradores
-- Empleados activos
-- Horas totales trabajadas (opcional)
-
-## Flujo de Implementación
-
-1. Crear componente de KPIs con métricas del período filtrado
-2. Crear filtros rápidos accesibles en la barra de herramientas
-3. Implementar vista de tarjetas como alternativa
-4. Agregar toggle para cambiar entre vistas
-5. Implementar exportación a Excel
-6. Agregar paginación
-7. Optimizar la tabla compactando información
-
-## Detalles Técnicos
-
-### Cálculo de KPIs
 ```typescript
-const kpis = useMemo(() => ({
-  total: filteredPartes.length,
-  completados: filteredPartes.filter(p => p.estado === 'completado').length,
-  borradores: filteredPartes.filter(p => p.estado === 'borrador').length,
-  empleadosUnicos: new Set(filteredPartes.map(p => p.personal_id)).size,
-}), [filteredPartes]);
+// Nuevo estado para snapshot de datos durante edición
+const [isEditing, setIsEditing] = useState(false);
+const [editingSnapshot, setEditingSnapshot] = useState<GridRow[] | null>(null);
+
+// IDs de filas en el snapshot para mapeo consistente
+const snapshotRowIds = useRef<Set<string>>(new Set());
 ```
 
-### Agrupación por Fecha
+**2. Capturar snapshot cuando comienza la edición**
+
+Detectar cuando el usuario hace foco en una celda y guardar el estado actual de los datos filtrados:
+
 ```typescript
-const partesPorFecha = useMemo(() => {
-  return filteredPartes.reduce((acc, parte) => {
-    const fecha = parte.fecha;
-    if (!acc[fecha]) acc[fecha] = [];
-    acc[fecha].push(parte);
-    return acc;
-  }, {} as Record<string, ParteDiario[]>);
-}, [filteredPartes]);
+// Cuando empieza la edición, congela el snapshot
+const handleActiveCellChange = useCallback(({ cell }) => {
+  if (cell && !isEditing) {
+    setIsEditing(true);
+    // Guardar snapshot de los datos filtrados actuales
+    const currentFiltered = globalSearch || activeFilterCount > 0 
+      ? searchFilteredData 
+      : data;
+    setEditingSnapshot(currentFiltered);
+    snapshotRowIds.current = new Set(currentFiltered.map(r => r.id!));
+  }
+}, [isEditing, globalSearch, activeFilterCount, searchFilteredData, data]);
 ```
 
-### Exportación Excel
+**3. Liberar snapshot cuando termina la edición**
+
 ```typescript
-const handleExportExcel = () => {
-  const data = filteredPartes.map(p => ({
-    Fecha: format(parseISO(p.fecha), 'dd/MM/yyyy'),
-    Empleado: `${p.personal?.nombre} ${p.personal?.apellido}`,
-    Rol: p.personal?.rol,
-    Obra: p.obras?.nombre,
-    Máquina: p.maquinarias?.codigo,
-    Entrada: p.hora_entrada,
-    Salida: p.hora_salida,
-    Estado: p.estado,
-    // ... más campos
-  }));
-  // Usar xlsx para generar archivo
-};
+// Cuando termina la edición (blur o cambio de filtros), liberar snapshot
+const handleBlur = useCallback(() => {
+  setIsEditing(false);
+  setEditingSnapshot(null);
+  snapshotRowIds.current.clear();
+}, []);
 ```
 
-## Resultado Esperado
-Una interfaz administrativa que permite:
-- Ver de un vistazo el estado general de los partes del día/período
-- Filtrar rápidamente sin abrir popovers
-- Cambiar entre vista detallada (tabla) y vista rápida (tarjetas)
-- Exportar datos a Excel para análisis
-- Navegar eficientemente con paginación
-- Identificar rápidamente partes pendientes (borradores)
+**4. Usar snapshot durante edición, datos frescos fuera de edición**
+
+```typescript
+// Si hay filtros activos y estamos editando, usar el snapshot
+// Pero actualizando los valores de las filas que coinciden
+const displayData = useMemo(() => {
+  if (!globalSearch && activeFilterCount === 0) {
+    return data;
+  }
+  
+  if (isEditing && editingSnapshot) {
+    // Actualizar los valores en el snapshot con los datos actuales
+    return editingSnapshot.map(snapRow => {
+      const currentRow = data.find(r => r.id === snapRow.id);
+      return currentRow || snapRow;
+    });
+  }
+  
+  return searchFilteredData;
+}, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
+```
+
+**5. Modificar onChange para trabajar con el snapshot**
+
+```typescript
+onChange={(newData, ops) => {
+  if (globalSearch || activeFilterCount > 0) {
+    const fullData = [...data];
+    
+    for (const op of ops) {
+      if (op.type === 'UPDATE') {
+        for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+          const editedRow = newData[i];
+          // Buscar por ID, no por índice
+          const originalIndex = data.findIndex(r => r.id === editedRow.id);
+          if (originalIndex !== -1) {
+            fullData[originalIndex] = editedRow;
+          }
+        }
+      }
+    }
+    
+    handleChange(fullData, ops.map(op => {
+      // Transformar índices del snapshot a índices del array completo
+      if (op.type === 'UPDATE') {
+        const rows = [];
+        for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+          const editedRow = newData[i];
+          const originalIndex = data.findIndex(r => r.id === editedRow.id);
+          if (originalIndex !== -1) {
+            rows.push({ from: originalIndex, to: originalIndex + 1 });
+          }
+        }
+        return rows.map(r => ({ type: 'UPDATE', fromRowIndex: r.from, toRowIndex: r.to }));
+      }
+      return op;
+    }).flat());
+  } else {
+    handleChange(newData, ops);
+  }
+}}
+```
+
+### Archivos a modificar
+- `src/components/combustible/CombustibleDataGrid.tsx`
+- `src/components/remitos/RemitosDataGrid.tsx` (mismo fix)
+
+### Comportamiento esperado
+- Al filtrar y editar, las filas permanecen visibles mientras escribís
+- Los cambios se aplican correctamente al array de datos completo
+- Cuando terminás de editar (blur), el filtro se actualiza mostrando solo las filas que coinciden
+- No hay saltos ni desapariciones inesperadas durante la edición
