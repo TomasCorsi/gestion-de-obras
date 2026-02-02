@@ -1,4 +1,4 @@
-import { ClipboardList, CheckCircle, AlertCircle, Users } from "lucide-react";
+import { ClipboardList, CheckCircle, AlertCircle, Users, UserX } from "lucide-react";
 import { KPICard } from "@/components/dashboard/KPICard";
 
 interface ParteDiarioKPIsProps {
@@ -6,13 +6,20 @@ interface ParteDiarioKPIsProps {
   completados: number;
   borradores: number;
   empleadosUnicos: number;
+  sinParteHoy?: number;
 }
 
-export function ParteDiarioKPIs({ total, completados, borradores, empleadosUnicos }: ParteDiarioKPIsProps) {
+export function ParteDiarioKPIs({ 
+  total, 
+  completados, 
+  borradores, 
+  empleadosUnicos,
+  sinParteHoy 
+}: ParteDiarioKPIsProps) {
   const porcentajeCompletados = total > 0 ? Math.round((completados / total) * 100) : 0;
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
       <KPICard
         title="Total Partes"
         value={total}
@@ -41,6 +48,15 @@ export function ParteDiarioKPIs({ total, completados, borradores, empleadosUnico
         icon={Users}
         variant="default"
       />
+      {sinParteHoy !== undefined && (
+        <KPICard
+          title="Sin Parte Hoy"
+          value={sinParteHoy}
+          subtitle="empleados faltantes"
+          icon={UserX}
+          variant="warning"
+        />
+      )}
     </div>
   );
 }
