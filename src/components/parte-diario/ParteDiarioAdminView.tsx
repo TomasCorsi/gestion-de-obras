@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { 
   Loader2, 
@@ -10,10 +10,12 @@ import {
   ArrowLeft,
   BarChart3,
   List,
-  Trash2
+  Trash2,
+  Search
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -54,10 +56,22 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const [selectedParte, setSelectedParte] = useState<ParteDiario | null>(null);
   const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
   const [activeTab, setActiveTab] = useState<string>("listado");
+  const [searchTerm, setSearchTerm] = useState("");
   
   const { partes, isLoading, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
+
+  // Filter partes by search term (employee name)
+  const filteredPartes = useMemo(() => {
+    if (!searchTerm.trim()) return partes;
+    const term = searchTerm.toLowerCase();
+    return partes.filter((parte) => {
+      const nombre = parte.personal?.nombre?.toLowerCase() || "";
+      const apellido = parte.personal?.apellido?.toLowerCase() || "";
+      return nombre.includes(term) || apellido.includes(term) || `${nombre} ${apellido}`.includes(term);
+    });
+  }, [partes, searchTerm]);
 
   const formatTime = (time: string | null) => {
     if (!time) return "-";
@@ -122,18 +136,29 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
           <TabsContent value="listado" className="mt-4">
             <Card>
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <CardTitle className="text-base">Listado de Partes</CardTitle>
-                  <FilterComponent
-                    filters={filters}
-                    onFiltersChange={setFilters}
-                    empleados={personal}
-                    obras={obras}
-                  />
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:flex-none sm:w-64">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar por nombre..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <FilterComponent
+                      filters={filters}
+                      onFiltersChange={setFilters}
+                      empleados={personal}
+                      obras={obras}
+                    />
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {partes.length === 0 ? (
+                {filteredPartes.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                     <p>No hay partes diarios que coincidan con los filtros</p>
@@ -154,7 +179,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {partes.map((parte) => (
+                        {filteredPartes.map((parte) => (
                           <TableRow 
                             key={parte.id}
                             className="cursor-pointer hover:bg-muted/50"
@@ -226,9 +251,10 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                   </div>
                 )}
                 
-                {partes.length > 0 && (
+                {filteredPartes.length > 0 && (
                   <p className="text-sm text-muted-foreground mt-4">
-                    Mostrando {partes.length} parte{partes.length !== 1 ? 's' : ''} diario{partes.length !== 1 ? 's' : ''}
+                    Mostrando {filteredPartes.length} parte{filteredPartes.length !== 1 ? 's' : ''} diario{filteredPartes.length !== 1 ? 's' : ''}
+                    {searchTerm && ` (filtrado de ${partes.length})`}
                   </p>
                 )}
               </CardContent>
