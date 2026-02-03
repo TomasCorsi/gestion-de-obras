@@ -70,11 +70,35 @@ export function usePersonal() {
     queryFn: fetchPersonalFromDB,
   });
 
+  // Helper to clean form data - converts empty strings to null for date fields
+  const cleanFormData = (persona: PersonalForm): Record<string, unknown> => {
+    const cleanedData: Record<string, unknown> = {};
+    const dateFields = ['fecha_ingreso', 'vencimiento_licencia'];
+    
+    Object.entries(persona).forEach(([key, value]) => {
+      if (value === undefined) return;
+      
+      // Convert empty strings to null for date fields
+      if (dateFields.includes(key) && value === "") {
+        cleanedData[key] = null;
+      } else if (value === "" && key !== "nombre" && key !== "apellido") {
+        // Convert other empty strings to null for optional fields
+        cleanedData[key] = null;
+      } else {
+        cleanedData[key] = value;
+      }
+    });
+    
+    return cleanedData;
+  };
+
   const createMutation = useMutation({
     mutationFn: async (persona: PersonalForm) => {
+      const cleanedData = cleanFormData(persona);
+      
       const { data, error } = await supabase
         .from("personal")
-        .insert([persona])
+        .insert([cleanedData])
         .select()
         .single();
 
@@ -94,17 +118,20 @@ export function usePersonal() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, persona }: { id: string; persona: Partial<PersonalForm> }) => {
-      // Clean up the data - remove undefined values and ensure proper types
+      // Use the same cleaning logic for updates
       const cleanedData: Record<string, unknown> = {};
+      const dateFields = ['fecha_ingreso', 'vencimiento_licencia'];
       
       Object.entries(persona).forEach(([key, value]) => {
-        if (value !== undefined) {
-          // Convert empty strings to null for optional fields
-          if (value === "" && key !== "nombre" && key !== "apellido") {
-            cleanedData[key] = null;
-          } else {
-            cleanedData[key] = value;
-          }
+        if (value === undefined) return;
+        
+        // Convert empty strings to null for date fields
+        if (dateFields.includes(key) && value === "") {
+          cleanedData[key] = null;
+        } else if (value === "" && key !== "nombre" && key !== "apellido") {
+          cleanedData[key] = null;
+        } else {
+          cleanedData[key] = value;
         }
       });
 
