@@ -179,15 +179,23 @@ export default function Personal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
-    if (isEditing && selectedPersona) {
-      await updatePersonal(selectedPersona.id, formData);
-    } else {
-      await createPersonal(formData);
+
+    try {
+      let success = false;
+
+      if (isEditing && selectedPersona) {
+        success = await updatePersonal(selectedPersona.id, formData);
+      } else {
+        const created = await createPersonal(formData);
+        success = !!created;
+      }
+
+      if (success) {
+        setFormOpen(false);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
-    setFormOpen(false);
   };
 
   if (loading) {

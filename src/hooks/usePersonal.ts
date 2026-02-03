@@ -48,6 +48,45 @@ export interface PersonalForm {
   numero_cuenta?: string;
 }
 
+const DATE_FIELDS = new Set(["fecha_ingreso", "vencimiento_licencia"]);
+const NUMERIC_FIELDS = new Set(["sueldo", "sueldo_negro"]);
+
+// Normalize payload before sending to DB:
+// - remove undefined
+// - convert empty strings to null (or 0 for numeric fields)
+// - convert empty date strings to null
+const normalizePersonalPayload = (payload: Record<string, unknown>): Record<string, unknown> => {
+  const cleaned: Record<string, unknown> = {};
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value === undefined) return;
+
+    if (value === "") {
+      if (key === "nombre" || key === "apellido") {
+        cleaned[key] = "";
+        return;
+      }
+
+      if (DATE_FIELDS.has(key)) {
+        cleaned[key] = null;
+        return;
+      }
+
+      if (NUMERIC_FIELDS.has(key)) {
+        cleaned[key] = 0;
+        return;
+      }
+
+      cleaned[key] = null;
+      return;
+    }
+
+    cleaned[key] = value;
+  });
+
+  return cleaned;
+};
+
 const fetchPersonalFromDB = async (): Promise<PersonalDB[]> => {
   const { data, error } = await supabase
     .from("personal")
@@ -98,7 +137,7 @@ export function usePersonal() {
       
       const { data, error } = await supabase
         .from("personal")
-        .insert([cleanedData])
+        .insert([normalizePersonalPayload(cleanedData as Record<string, unknown>)])
         .select()
         .single();
 
