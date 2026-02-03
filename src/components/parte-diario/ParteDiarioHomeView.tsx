@@ -1,4 +1,4 @@
-import { Plus, ClipboardList, AlertCircle, Trash2 } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
@@ -7,23 +7,27 @@ import type { ParteDiario } from "@/hooks/useParteDiario";
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
+  parteCompletadoHoy: ParteDiario | null;
   nombreEmpleado: string;
   rolLabel: string;
   onNewParte: () => void;
   onViewList: () => void;
   onContinueDraft: () => void;
   onDiscardDraft: () => void;
+  onEditCompletado: () => void;
   isDiscarding?: boolean;
 }
 
 export const ParteDiarioHomeView = ({
   borradorHoy,
+  parteCompletadoHoy,
   nombreEmpleado,
   rolLabel,
   onNewParte,
   onViewList,
   onContinueDraft,
   onDiscardDraft,
+  onEditCompletado,
   isDiscarding = false,
 }: ParteDiarioHomeViewProps) => {
   return (
@@ -56,6 +60,28 @@ export const ParteDiarioHomeView = ({
           <span className="font-semibold">Ver Mis Partes</span>
         </Button>
       </div>
+
+      {/* Completed parte alert */}
+      {parteCompletadoHoy && !borradorHoy && (
+        <Alert className="bg-green-500/10 border-green-500/50">
+          <CheckCircle2 className="h-5 w-5 text-green-500" />
+          <AlertDescription className="ml-2">
+            <div className="space-y-3">
+              <div>
+                <p className="font-semibold text-foreground">Ya completaste tu parte de hoy ✓</p>
+                <p className="text-sm text-muted-foreground">
+                  {parteCompletadoHoy.obras && `Obra: ${parteCompletadoHoy.obras.nombre}`}
+                  {parteCompletadoHoy.hora_entrada && parteCompletadoHoy.hora_salida && 
+                    ` • ${parteCompletadoHoy.hora_entrada} - ${parteCompletadoHoy.hora_salida}`}
+                </p>
+              </div>
+              <Button size="sm" variant="outline" onClick={onEditCompletado} className="w-full">
+                Editar parte de hoy
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Draft alert */}
       {borradorHoy && (

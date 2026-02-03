@@ -249,6 +249,9 @@ export const ParteDiarioFormView = ({
   };
 
   const handleSaveDraft = async () => {
+    // Prevent double-click: if already saving, ignore
+    if (savingType !== null || isSaving) return;
+    
     setSavingType('draft');
     try {
       await onSaveDraft(buildParteData());
@@ -258,6 +261,9 @@ export const ParteDiarioFormView = ({
   };
 
   const handleComplete = async () => {
+    // Prevent double-click: if already saving, ignore
+    if (savingType !== null || isSaving) return;
+    
     if (!validateForComplete()) return;
     setSavingType('complete');
     try {

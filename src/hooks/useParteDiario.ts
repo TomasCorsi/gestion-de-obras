@@ -105,9 +105,10 @@ export function useParteDiario() {
     },
   });
 
-  // Fetch today's draft
-  const { data: borradorHoy = null, isLoading: isLoadingBorrador } = useQuery({
-    queryKey: ['parte_borrador', empleado?.id, fechaHoy],
+  // Fetch today's parte (any state - draft OR completed)
+  // This prevents creating duplicates when user re-enters after completing
+  const { data: parteHoy = null, isLoading: isLoadingParteHoy } = useQuery({
+    queryKey: ['parte_hoy', empleado?.id, fechaHoy],
     enabled: !!empleado?.id,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -120,13 +121,20 @@ export function useParteDiario() {
         `)
         .eq('personal_id', empleado!.id)
         .eq('fecha', fechaHoy)
-        .eq('estado', 'borrador')
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) throw error;
       return data as ParteDiario | null;
     },
   });
+
+  // Derived: check if today's parte is a draft
+  const borradorHoy = parteHoy?.estado === 'borrador' ? parteHoy : null;
+  
+  // Derived: check if today's parte is completed
+  const parteCompletadoHoy = parteHoy?.estado === 'completado' ? parteHoy : null;
 
   // Create new parte
   const createMutation = useMutation({
@@ -198,23 +206,25 @@ export function useParteDiario() {
     },
   });
 
-  // Save as draft
+  // Save as draft - uses parteHoy to prevent duplicates
   const saveDraft = async (data: ParteDiarioInsert) => {
     const parteData = { ...data, estado: 'borrador' as const };
     
-    if (borradorHoy) {
-      await updateMutation.mutateAsync({ id: borradorHoy.id, ...parteData });
+    // If there's any parte today (draft OR completed), update it
+    if (parteHoy) {
+      await updateMutation.mutateAsync({ id: parteHoy.id, ...parteData });
     } else {
       await createMutation.mutateAsync(parteData);
     }
   };
 
-  // Complete parte
+  // Complete parte - uses parteHoy to prevent duplicates
   const completeParte = async (data: ParteDiarioInsert) => {
     const parteData = { ...data, estado: 'completado' as const };
     
-    if (borradorHoy) {
-      await updateMutation.mutateAsync({ id: borradorHoy.id, ...parteData });
+    // If there's any parte today (draft OR completed), update it
+    if (parteHoy) {
+      await updateMutation.mutateAsync({ id: parteHoy.id, ...parteData });
     } else {
       await createMutation.mutateAsync(parteData);
     }
@@ -229,9 +239,11 @@ export function useParteDiario() {
 
   return {
     partes,
+    parteHoy,
     borradorHoy,
+    parteCompletadoHoy,
     isLoading,
-    isLoadingBorrador,
+    isLoadingParteHoy,
     error,
     createParte: createMutation.mutateAsync,
     updateParte: updateMutation.mutateAsync,

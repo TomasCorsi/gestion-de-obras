@@ -33,7 +33,9 @@ const ParteDiario = () => {
   const { empleado, rolPersonal, loading: loadingEmpleado } = useEmpleadoProfile();
   const { 
     partes = [], 
+    parteHoy,
     borradorHoy,
+    parteCompletadoHoy,
     saveDraft, 
     completeParte, 
     discardDraft,
@@ -93,9 +95,9 @@ const ParteDiario = () => {
   }
 
   const handleNewParte = () => {
-    // If there's a draft, load it; otherwise start fresh
-    if (borradorHoy) {
-      setEditingParte(borradorHoy);
+    // If there's any parte today (draft or completed), load it for editing
+    if (parteHoy) {
+      setEditingParte(parteHoy);
     } else {
       setEditingParte(null);
     }
@@ -104,6 +106,11 @@ const ParteDiario = () => {
 
   const handleContinueDraft = () => {
     setEditingParte(borradorHoy);
+    setView('form');
+  };
+
+  const handleEditCompletado = () => {
+    setEditingParte(parteCompletadoHoy);
     setView('form');
   };
 
@@ -143,12 +150,14 @@ const ParteDiario = () => {
         {view === 'home' && (
           <ParteDiarioHomeView
             borradorHoy={borradorHoy}
+            parteCompletadoHoy={parteCompletadoHoy}
             nombreEmpleado={empleado.nombreCompleto}
             rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
             onNewParte={handleNewParte}
             onViewList={handleViewList}
             onContinueDraft={handleContinueDraft}
             onDiscardDraft={handleDiscardDraft}
+            onEditCompletado={handleEditCompletado}
             isDiscarding={isDeleting}
           />
         )}
