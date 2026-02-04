@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import * as XLSX from "xlsx";
+import { useUrlTab, useUrlSearch, useUrlFilters, useUrlState } from "@/hooks/useUrlState";
 import { 
   Loader2, 
   Eye, 
@@ -78,14 +79,41 @@ interface ParteDiarioAdminViewProps {
 }
 
 export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
-  const [filters, setFilters] = useState<ParteDiarioAdminFilters>({});
+  // Persistent state (URL + sessionStorage)
+  const [activeTab, setActiveTab] = useUrlTab("listado");
+  const [searchTerm, setSearchTerm] = useUrlSearch("");
+  const [viewMode, setViewMode] = useUrlState<"tabla" | "tarjetas">({
+    key: "vista",
+    defaultValue: "tabla",
+    serialize: (v) => v,
+    deserialize: (v) => v as "tabla" | "tarjetas",
+  });
+  const [urlFilters, setUrlFilters] = useUrlFilters({});
+  
+  // Local state (not persisted)
   const [selectedParte, setSelectedParte] = useState<ParteDiario | null>(null);
   const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("listado");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"tabla" | "tarjetas">("tabla");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  
+  // Convert URL filters to ParteDiarioAdminFilters format
+  const filters: ParteDiarioAdminFilters = useMemo(() => ({
+    fechaDesde: urlFilters.fechaDesde,
+    fechaHasta: urlFilters.fechaHasta,
+    obraId: urlFilters.obraId,
+    estado: (urlFilters.estado as 'borrador' | 'completado' | '') || '',
+  }), [urlFilters]);
+  
+  // Wrapper to convert ParteDiarioAdminFilters back to UrlFilterState
+  const handleFiltersChange = useCallback((newFilters: ParteDiarioAdminFilters) => {
+    setUrlFilters({
+      fechaDesde: newFilters.fechaDesde,
+      fechaHasta: newFilters.fechaHasta,
+      obraId: newFilters.obraId,
+      estado: newFilters.estado || undefined,
+    });
+    setCurrentPage(1); // Reset page on filter change
+  }, [setUrlFilters]);
   
   const { partes, isLoading, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
   const { personal = [] } = usePersonal();
@@ -121,10 +149,10 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return filteredPartes.slice(start, start + pageSize);
   }, [filteredPartes, currentPage, pageSize]);
 
-  // Reset page when filters change
+  // Reset page when search changes
   useMemo(() => {
     setCurrentPage(1);
-  }, [filters, searchTerm, pageSize]);
+  }, [searchTerm, pageSize]);
 
   const formatTime = (time: string | null) => {
     if (!time) return "-";
@@ -283,7 +311,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                     </div>
                     <ParteDiarioQuickFilters
                       filters={filters}
-                      onFiltersChange={setFilters}
+                      onFiltersChange={handleFiltersChange}
                       obras={obras}
                     />
                   </div>
