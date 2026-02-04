@@ -53,8 +53,8 @@ const ParteDiario = () => {
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
 
-  // Loading state
-  if (loadingAuth || loadingEmpleado) {
+  // Loading state (evitar "flicker" en admin y en refreshes silenciosos)
+  if (loadingAuth) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -70,6 +70,15 @@ const ParteDiario = () => {
         <main className="container mx-auto px-4 py-4">
           <ParteDiarioAdminView />
         </main>
+      </div>
+    );
+  }
+
+  // Para roles no-admin, esperamos el perfil de empleado solo si aún no existe
+  if (loadingEmpleado && !empleado) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
