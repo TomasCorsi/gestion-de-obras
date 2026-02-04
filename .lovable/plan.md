@@ -1,102 +1,93 @@
 
 
-## Plan: Agregar vista "Sin Vacaciones" en el módulo de Vacaciones
+## Plan: Persistir filtros de Parte Diario Admin en URL
 
-### Resumen
-Agregar una nueva pestaña o filtro en la sección de vacaciones que muestre rápidamente los empleados activos que **no tienen ninguna vacación cargada en el año actual**, permitiendo identificar quién falta por tomar sus vacaciones.
+### Problema identificado
 
-### Opciones de implementación
+Los filtros de la vista administrativa de **Parte Diario** (`/parte-diario`) se pierden cuando:
+1. Cambias de pestaña/app y vuelves (React Query hace refetch con `refetchOnWindowFocus: true`)
+2. Cualquier re-render del componente (los `useState` locales se reinician)
 
-**Opción A: Nueva pestaña "Sin Vacaciones"**
-Agregar una cuarta pestaña junto a Solicitudes, Calendario y Saldo.
+Los estados afectados en `ParteDiarioAdminView.tsx`:
+- `filters` (fecha desde/hasta, obra, empleado, estado)
+- `activeTab` (listado/rendimiento/faltantes)  
+- `searchTerm` (búsqueda por nombre)
+- `viewMode` (tabla/tarjetas)
+- `currentPage` y `pageSize`
 
-**Opción B: Filtro rápido en la pestaña "Saldo por Empleado"** (Recomendada)
-Agregar un filtro/toggle en la tabla existente que permita ver solo los empleados con 0 días usados.
+### Solución
 
-Voy a implementar la **Opción B** ya que aprovecha la infraestructura existente y es más rápida de usar.
+Integrar los hooks de persistencia existentes (`useUrlState`, `useUrlTab`, `useUrlFilters`) que ya funcionan en otras páginas (Personal, Combustible, etc.) a la vista admin de Parte Diario.
 
 ### Cambios a realizar
 
-**1. Modificar `SaldoVacacionesTable.tsx`**
-- Agregar un filtro toggle: "Mostrar solo sin vacaciones"
-- Agregar KPIs rápidos arriba de la tabla mostrando:
-  - Total empleados activos
-  - Con vacaciones cargadas
-  - Sin vacaciones cargadas (destacado)
-- Ordenar por defecto mostrando primero los que no tienen vacaciones
+**1. Modificar `src/components/parte-diario/ParteDiarioAdminView.tsx`**
 
-**2. Diseño de la interfaz mejorada**
+Reemplazar los `useState` por hooks de persistencia:
 
 ```text
-+---------------------------------------------------------------+
-| Saldo por Empleado                                             |
-+---------------------------------------------------------------+
-| [Buscar empleado...]                                          |
-+---------------------------------------------------------------+
-| KPIs:                                                          |
-| Total: 71  |  Con vacaciones: 18  |  SIN VACACIONES: 53       |
-+---------------------------------------------------------------+
-| Filtros:                                                       |
-| [x] Mostrar solo sin vacaciones    [ ] Ordenar por apellido   |
-+---------------------------------------------------------------+
-| Empleado         | Antigüedad | Base | Usados | Disponibles   |
-+------------------+------------+------+--------+---------------+
-| ADAMS, LUIN      | 2 años     | 14   | 0      | 14           |
-| ALBORNOZ, GUILL. | 3 años     | 14   | 0      | 14           |
-| ...              |            |      |        |               |
-+---------------------------------------------------------------+
+// ANTES (volátil)
+const [filters, setFilters] = useState<ParteDiarioAdminFilters>({});
+const [activeTab, setActiveTab] = useState<string>("listado");
+const [searchTerm, setSearchTerm] = useState("");
+const [viewMode, setViewMode] = useState<"tabla" | "tarjetas">("tabla");
+
+// DESPUÉS (persistente en URL)
+const [activeTab, setActiveTab] = useUrlTab("listado");
+const [searchTerm, setSearchTerm] = useUrlSearch("");
+const [viewMode, setViewMode] = useUrlState({ key: "vista", defaultValue: "tabla", serialize: v => v, deserialize: v => v as "tabla" | "tarjetas" });
+const [urlFilters, setUrlFilters] = useUrlFilters({});
+
+// Adaptar urlFilters al formato ParteDiarioAdminFilters
+const filters: ParteDiarioAdminFilters = useMemo(() => ({
+  fechaDesde: urlFilters.fechaDesde,
+  fechaHasta: urlFilters.fechaHasta,
+  obraId: urlFilters.obraId,
+}), [urlFilters]);
 ```
 
-### Archivos a modificar
-- `src/components/personal/SaldoVacacionesTable.tsx`
-  - Agregar estado `showSinVacaciones`
-  - Agregar cálculo de estadísticas (total, con vacaciones, sin vacaciones)
-  - Agregar UI de filtros y KPIs
-  - Modificar `filteredSaldos` para aplicar el filtro
+**2. Extender `useUrlFilters` para soportar `estado`**
 
-### Detalles tecnicos
+Agregar soporte para el campo `estado` en el hook existente:
 
 ```typescript
-// Estadísticas
-const stats = useMemo(() => {
-  const total = saldos.length;
-  const sinVacaciones = saldos.filter(s => s.diasUsados === 0).length;
-  const conVacaciones = total - sinVacaciones;
-  return { total, conVacaciones, sinVacaciones };
-}, [saldos]);
+// En useUrlFilters (src/hooks/useUrlState.ts)
+export interface UrlFilterState {
+  fechaDesde?: string;
+  fechaHasta?: string;
+  mes?: string;
+  year?: number;
+  obraId?: string;
+  estado?: string;  // NUEVO
+}
 
-// Filtro
-const [showSinVacaciones, setShowSinVacaciones] = useState(false);
-
-const filteredSaldos = useMemo(() => {
-  let result = saldos;
-  
-  // Filtro de búsqueda
-  if (searchTerm) {
-    const term = searchTerm.toLowerCase();
-    result = result.filter(s =>
-      s.nombre.toLowerCase().includes(term) ||
-      s.apellido.toLowerCase().includes(term)
-    );
-  }
-  
-  // Filtro sin vacaciones
-  if (showSinVacaciones) {
-    result = result.filter(s => s.diasUsados === 0);
-  }
-  
-  // Ordenar: sin vacaciones primero
-  return result.sort((a, b) => {
-    if (a.diasUsados === 0 && b.diasUsados > 0) return -1;
-    if (a.diasUsados > 0 && b.diasUsados === 0) return 1;
-    return a.apellido.localeCompare(b.apellido);
-  });
-}, [saldos, searchTerm, showSinVacaciones]);
+// Agregar en setFilters:
+if (newFilters.estado) newParams.set("estado", newFilters.estado);
 ```
 
-### Comportamiento esperado
-- Al abrir la pestaña "Saldo por Empleado", se ve el total y cuántos no tienen vacaciones
-- Un checkbox permite filtrar solo los que no tienen vacaciones cargadas
-- Por defecto, la tabla ordena mostrando primero los empleados sin vacaciones
-- Se puede combinar con la búsqueda por nombre
+**3. Actualizar `ParteDiarioQuickFilters.tsx`**
+
+Asegurar que los cambios de filtros usen el setter de URL en lugar de modificar estado local.
+
+### Resultado esperado
+
+- Al aplicar filtros (ej: fecha "Hoy", obra "San Martín", estado "Completados"), la URL cambiará a:
+  `/parte-diario?tab=listado&desde=2026-02-04&hasta=2026-02-04&obra=xxx&estado=completado`
+
+- Al cambiar de pestaña del navegador y volver, los filtros se mantienen
+
+- Al refrescar (F5), los filtros se restauran desde la URL
+
+- Si la URL no tiene filtros, se recuperan de `sessionStorage` como fallback
+
+### Archivos a modificar
+
+1. `src/components/parte-diario/ParteDiarioAdminView.tsx` - Integrar hooks de persistencia
+2. `src/hooks/useUrlState.ts` - Agregar campo `estado` a `UrlFilterState`
+
+### Notas técnicas
+
+- La paginación (`currentPage`) se reseteará al cambiar filtros (comportamiento esperado)
+- El `pageSize` también se puede persistir si es necesario, pero tiene menor prioridad
+- Los filtros de sub-componentes (`EmpleadosSinParteTab`, `ParteDiarioResumenGeneral`) podrían persistirse en una segunda iteración si es necesario
 
