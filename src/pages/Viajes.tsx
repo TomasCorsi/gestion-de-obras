@@ -47,6 +47,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { useUrlSearch } from "@/hooks/useUrlState";
 import { useViajes, ViajeWithRelations, ViajeForm, EstadoViaje } from "@/hooks/useViajes";
 import { useObras } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
@@ -66,7 +67,7 @@ export default function Viajes() {
   const { personal } = usePersonal();
   const { maquinarias } = useMaquinarias();
   
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,

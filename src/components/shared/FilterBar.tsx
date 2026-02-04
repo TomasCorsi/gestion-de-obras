@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar as CalendarIcon, X, Filter } from "lucide-react";
@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { useUrlFilters, UrlFilterState } from "@/hooks/useUrlState";
 
 interface Obra {
   id: string;
@@ -27,6 +28,7 @@ interface FilterBarProps {
   obras: Obra[];
   onFilterChange: (filters: FilterState) => void;
   showObraFilter?: boolean;
+  persistKey?: string; // Para diferenciar entre páginas si se necesita
 }
 
 export interface FilterState {
@@ -52,12 +54,8 @@ const MESES = [
 ];
 
 export function FilterBar({ obras, onFilterChange, showObraFilter = true }: FilterBarProps) {
-  const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
-  const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
-  const [mes, setMes] = useState<string | undefined>();
-  const [obraId, setObraId] = useState<string | undefined>();
-
   const currentYear = new Date().getFullYear();
+  
   const years = useMemo(() => {
     const result = [];
     for (let y = currentYear; y >= currentYear - 5; y--) {
@@ -66,13 +64,43 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
     return result;
   }, [currentYear]);
 
-  const [selectedYear, setSelectedYear] = useState<number>(currentYear);
+  // Usar hook de URL para persistir filtros
+  const [urlFilters, setUrlFilters] = useUrlFilters({
+    year: currentYear,
+  });
+  
+  // Estados locales derivados de URL
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>(() => 
+    urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined
+  );
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(() =>
+    urlFilters.fechaHasta ? parseISO(urlFilters.fechaHasta) : undefined
+  );
+  const [mes, setMes] = useState<string | undefined>(urlFilters.mes);
+  const [obraId, setObraId] = useState<string | undefined>(urlFilters.obraId);
+  const [selectedYear, setSelectedYear] = useState<number>(urlFilters.year || currentYear);
+  
+  // Sincronizar estado inicial con el callback
+  useEffect(() => {
+    // Solo al montar, sincronizar filtros persistidos
+    if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId) {
+      onFilterChange({
+        fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
+        fechaHasta: urlFilters.fechaHasta ? parseISO(urlFilters.fechaHasta) : undefined,
+        mes: urlFilters.mes,
+        obraId: urlFilters.obraId,
+      });
+    }
+  // Solo ejecutar al montar
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleMesChange = (value: string) => {
     if (value === "none") {
       setMes(undefined);
       setFechaDesde(undefined);
       setFechaHasta(undefined);
+      setUrlFilters({ mes: undefined, fechaDesde: undefined, fechaHasta: undefined });
       onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId });
     } else {
       setMes(value);
@@ -81,6 +109,12 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
       const hasta = endOfMonth(monthDate);
       setFechaDesde(desde);
       setFechaHasta(hasta);
+      setUrlFilters({ 
+        mes: value, 
+        year: selectedYear,
+        fechaDesde: desde.toISOString().split("T")[0],
+        fechaHasta: hasta.toISOString().split("T")[0],
+      });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId });
     }
   };
@@ -88,12 +122,19 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
   const handleYearChange = (value: string) => {
     const year = parseInt(value);
     setSelectedYear(year);
+    setUrlFilters({ year });
     if (mes) {
       const monthDate = parseISO(`${year}-${mes}-01`);
       const desde = startOfMonth(monthDate);
       const hasta = endOfMonth(monthDate);
       setFechaDesde(desde);
       setFechaHasta(hasta);
+      setUrlFilters({ 
+        year, 
+        mes,
+        fechaDesde: desde.toISOString().split("T")[0],
+        fechaHasta: hasta.toISOString().split("T")[0],
+      });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId });
     }
   };
@@ -101,18 +142,27 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
   const handleFechaDesdeChange = (date: Date | undefined) => {
     setFechaDesde(date);
     setMes(undefined);
+    setUrlFilters({ 
+      fechaDesde: date ? date.toISOString().split("T")[0] : undefined,
+      mes: undefined,
+    });
     onFilterChange({ fechaDesde: date, fechaHasta, mes: undefined, obraId });
   };
 
   const handleFechaHastaChange = (date: Date | undefined) => {
     setFechaHasta(date);
     setMes(undefined);
+    setUrlFilters({ 
+      fechaHasta: date ? date.toISOString().split("T")[0] : undefined,
+      mes: undefined,
+    });
     onFilterChange({ fechaDesde, fechaHasta: date, mes: undefined, obraId });
   };
 
   const handleObraChange = (value: string) => {
     const newObraId = value === "none" ? undefined : value;
     setObraId(newObraId);
+    setUrlFilters({ obraId: newObraId });
     onFilterChange({ fechaDesde, fechaHasta, mes, obraId: newObraId });
   };
 
@@ -121,6 +171,13 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
     setFechaHasta(undefined);
     setMes(undefined);
     setObraId(undefined);
+    setUrlFilters({ 
+      fechaDesde: undefined, 
+      fechaHasta: undefined, 
+      mes: undefined, 
+      obraId: undefined,
+      year: currentYear,
+    });
     onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined });
   };
 

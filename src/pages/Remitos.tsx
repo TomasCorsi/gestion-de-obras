@@ -40,6 +40,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -71,7 +72,7 @@ export default function Remitos() {
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,

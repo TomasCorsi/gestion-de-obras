@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUrlTab, useUrlSearch } from "@/hooks/useUrlState";
 import {
   Select,
   SelectContent,
@@ -71,7 +72,8 @@ const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
 
 export default function Personal() {
   const { personal, loading, createPersonal, updatePersonal, deletePersonal, fetchPersonal } = usePersonal();
-  const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useUrlTab("empleados");
+  const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [rolFilter, setRolFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -211,7 +213,7 @@ export default function Personal() {
 
   return (
     <MainLayout title="Personal" subtitle="Gestión de empleados y roles">
-      <Tabs defaultValue="empleados" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-card border border-border">
           <TabsTrigger value="empleados" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Users className="w-4 h-4 mr-2" />
