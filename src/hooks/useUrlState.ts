@@ -92,6 +92,7 @@ export interface UrlFilterState {
   mes?: string;
   year?: number;
   obraId?: string;
+  estado?: string;
 }
 
 export function useUrlFilters(defaultFilters: UrlFilterState = {}): [UrlFilterState, (filters: Partial<UrlFilterState>) => void] {
@@ -109,12 +110,14 @@ export function useUrlFilters(defaultFilters: UrlFilterState = {}): [UrlFilterSt
     const mes = searchParams.get("mes");
     const year = searchParams.get("year");
     const obraId = searchParams.get("obra");
+    const estado = searchParams.get("estado");
     
     if (fechaDesde) urlFilters.fechaDesde = fechaDesde;
     if (fechaHasta) urlFilters.fechaHasta = fechaHasta;
     if (mes) urlFilters.mes = mes;
     if (year) urlFilters.year = parseInt(year);
     if (obraId) urlFilters.obraId = obraId;
+    if (estado) urlFilters.estado = estado;
     
     // Si hay algo en URL, usar eso
     if (Object.keys(urlFilters).length > 0) {
@@ -150,6 +153,7 @@ export function useUrlFilters(defaultFilters: UrlFilterState = {}): [UrlFilterSt
       newParams.delete("mes");
       newParams.delete("year");
       newParams.delete("obra");
+      newParams.delete("estado");
       
       // Agregar nuevos
       if (newFilters.fechaDesde) newParams.set("desde", newFilters.fechaDesde);
@@ -157,6 +161,7 @@ export function useUrlFilters(defaultFilters: UrlFilterState = {}): [UrlFilterSt
       if (newFilters.mes) newParams.set("mes", newFilters.mes);
       if (newFilters.year) newParams.set("year", newFilters.year.toString());
       if (newFilters.obraId) newParams.set("obra", newFilters.obraId);
+      if (newFilters.estado) newParams.set("estado", newFilters.estado);
       
       return newParams;
     }, { replace: true });
