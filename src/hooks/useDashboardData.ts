@@ -172,6 +172,7 @@ export function useDashboardData() {
   } = useQuery({
     queryKey: ['dashboard'],
     queryFn: fetchDashboardDataFromDB,
+    refetchOnWindowFocus: true, // Dashboard sí recarga al volver (datos críticos)
   });
 
   return {

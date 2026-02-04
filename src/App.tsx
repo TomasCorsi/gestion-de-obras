@@ -38,10 +38,10 @@ const Configuracion = lazy(() => import("./pages/Configuracion"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: true,
-      staleTime: 30 * 1000, // 30 seconds
+      refetchOnWindowFocus: false, // No recargar al volver a la pestaña
+      staleTime: 5 * 60 * 1000, // 5 minutos - datos frescos más tiempo
       retry: 1,
-      refetchOnReconnect: true,
+      refetchOnReconnect: true, // Sí recargar al reconectar internet
     },
   },
 });
