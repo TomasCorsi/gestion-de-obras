@@ -1,6 +1,8 @@
 import { useState, useMemo } from "react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -15,7 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Search, User, AlertTriangle, CheckCircle } from "lucide-react";
+import { Search, User, AlertTriangle, CheckCircle, Users, UserCheck, UserX } from "lucide-react";
 import {
   VacacionDB,
   calcularAntiguedad,
@@ -43,6 +45,7 @@ interface SaldoEmpleado {
 
 export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTableProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [showSinVacaciones, setShowSinVacaciones] = useState(false);
 
   const saldos = useMemo((): SaldoEmpleado[] => {
     return personal
@@ -66,15 +69,39 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
       });
   }, [personal, vacaciones]);
 
+  // Estadísticas
+  const stats = useMemo(() => {
+    const total = saldos.length;
+    const sinVacaciones = saldos.filter(s => s.diasUsados === 0).length;
+    const conVacaciones = total - sinVacaciones;
+    return { total, conVacaciones, sinVacaciones };
+  }, [saldos]);
+
   const filteredSaldos = useMemo(() => {
-    if (!searchTerm) return saldos;
-    const term = searchTerm.toLowerCase();
-    return saldos.filter(
-      s =>
-        s.nombre.toLowerCase().includes(term) ||
-        s.apellido.toLowerCase().includes(term)
-    );
-  }, [saldos, searchTerm]);
+    let result = saldos;
+    
+    // Filtro de búsqueda
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(
+        s =>
+          s.nombre.toLowerCase().includes(term) ||
+          s.apellido.toLowerCase().includes(term)
+      );
+    }
+    
+    // Filtro sin vacaciones
+    if (showSinVacaciones) {
+      result = result.filter(s => s.diasUsados === 0);
+    }
+    
+    // Ordenar: sin vacaciones primero, luego por apellido
+    return result.sort((a, b) => {
+      if (a.diasUsados === 0 && b.diasUsados > 0) return -1;
+      if (a.diasUsados > 0 && b.diasUsados === 0) return 1;
+      return a.apellido.localeCompare(b.apellido);
+    });
+  }, [saldos, searchTerm, showSinVacaciones]);
 
   const formatAntiguedad = (antiguedad: number | null): string => {
     if (antiguedad === null) return "N/A";
@@ -107,15 +134,58 @@ export function SaldoVacacionesTable({ vacaciones, personal }: SaldoVacacionesTa
 
   return (
     <div className="space-y-4">
-      {/* Buscador */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Buscar empleado..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-9 bg-card border-border"
-        />
+      {/* KPIs */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="card-industrial p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+            <Users className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+            <p className="text-sm text-muted-foreground">Total activos</p>
+          </div>
+        </div>
+        <div className="card-industrial p-4 flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+            <UserCheck className="w-5 h-5 text-green-400" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-green-400">{stats.conVacaciones}</p>
+            <p className="text-sm text-muted-foreground">Con vacaciones</p>
+          </div>
+        </div>
+        <div className="card-industrial p-4 flex items-center gap-3 border-destructive/50">
+          <div className="w-10 h-10 rounded-lg bg-destructive/20 flex items-center justify-center">
+            <UserX className="w-5 h-5 text-destructive" />
+          </div>
+          <div>
+            <p className="text-2xl font-bold text-destructive">{stats.sinVacaciones}</p>
+            <p className="text-sm text-muted-foreground">Sin vacaciones</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Buscador y filtros */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar empleado..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 bg-card border-border"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="sinVacaciones"
+            checked={showSinVacaciones}
+            onCheckedChange={(checked) => setShowSinVacaciones(checked === true)}
+          />
+          <Label htmlFor="sinVacaciones" className="text-sm text-muted-foreground cursor-pointer">
+            Solo sin vacaciones cargadas
+          </Label>
+        </div>
       </div>
 
       {/* Info de reglas */}
