@@ -96,6 +96,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
+
+        // Evitar “flicker”/recargas visuales: en refresh de token solo actualizamos el session.
+        // Mantener el mismo objeto `user` evita que hooks dependientes (ej: useEmpleadoProfile)
+        // se re-ejecuten al volver a enfocar la pestaña.
+        if ((event as unknown as string) === 'TOKEN_REFRESHED') {
+          setSession(session);
+          return;
+        }
         
         // Log silencioso para debugging
         if (event === 'TOKEN_REFRESHED') {

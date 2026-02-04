@@ -16,8 +16,11 @@ export function useEmpleadoProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const userId = user?.id ?? null;
+  const legajo = user?.user_metadata?.legajo ? String(user.user_metadata.legajo).trim() : null;
+
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setEmpleado(null);
       setLoading(false);
       return;
@@ -32,7 +35,7 @@ export function useEmpleadoProfile() {
         let { data, error: fetchError } = await supabase
           .from('personal')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .maybeSingle();
 
         if (fetchError) {
@@ -44,8 +47,6 @@ export function useEmpleadoProfile() {
 
         // If not found by user_id, try to auto-link using legajo from user metadata
         if (!data) {
-          const legajo = user.user_metadata?.legajo;
-          
           if (legajo) {
             console.log('Attempting auto-link for legajo:', legajo, 'user_id:', user.id);
             
@@ -53,7 +54,7 @@ export function useEmpleadoProfile() {
             const { data: linkResult, error: linkError } = await supabase
               .rpc('link_personal_to_user', {
                 p_legajo: String(legajo).trim(),
-                p_user_id: user.id
+                p_user_id: userId
               });
 
             console.log('Link result:', linkResult, 'Error:', linkError);
@@ -65,7 +66,7 @@ export function useEmpleadoProfile() {
               const { data: linkedData } = await supabase
                 .from('personal')
                 .select('*')
-                .eq('user_id', user.id)
+                 .eq('user_id', userId)
                 .maybeSingle();
               
               data = linkedData;
@@ -96,7 +97,7 @@ export function useEmpleadoProfile() {
     };
 
     fetchAndLinkEmpleado();
-  }, [user]);
+  }, [userId, legajo]);
 
   const rolPersonal: RolPersonal | null = empleado?.rol || null;
 

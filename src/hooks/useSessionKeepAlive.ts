@@ -9,6 +9,11 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
   const lastActivity = useRef(Date.now());
   const refreshIntervalRef = useRef<ReturnType<typeof setInterval>>();
   const isRefreshing = useRef(false);
+  const lastRefreshAt = useRef(0);
+
+  // Evita refrescar en cada "focus" de pestaña (causa re-renders visibles).
+  // Si el usuario vuelve en menos de este umbral, no forzamos refresh.
+  const VISIBILITY_REFRESH_MIN_INTERVAL = 10 * 60 * 1000; // 10 minutos
 
   // Registrar actividad del usuario silenciosamente
   const updateActivity = useCallback(() => {
@@ -18,6 +23,11 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
   // Renovar sesión silenciosamente
   const silentRefresh = useCallback(async () => {
     if (!isAuthenticated || isRefreshing.current) return;
+
+    // Throttle extra refreshes (ej: al volver a enfocar pestaña)
+    if (lastRefreshAt.current && Date.now() - lastRefreshAt.current < VISIBILITY_REFRESH_MIN_INTERVAL) {
+      return;
+    }
 
     const isActive = Date.now() - lastActivity.current < ACTIVITY_TIMEOUT;
     
@@ -48,6 +58,7 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
         }, RETRY_DELAY);
       } else if (data.session) {
         console.debug('[Session] Token refreshed silently');
+        lastRefreshAt.current = Date.now();
       }
     } catch (e) {
       console.warn('[Session] Silent refresh error:', e);
@@ -72,7 +83,7 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         updateActivity();
-        // Pequeño delay para evitar conflictos
+        // Pequeño delay para evitar conflictos, con throttle
         setTimeout(silentRefresh, 1000);
       }
     };
