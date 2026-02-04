@@ -1,93 +1,83 @@
 
 
-## Plan: Persistir filtros de Parte Diario Admin en URL
+## Plan: Evitar recargas al cambiar de pestaña del navegador
 
-### Problema identificado
+### Problema actual
 
-Los filtros de la vista administrativa de **Parte Diario** (`/parte-diario`) se pierden cuando:
-1. Cambias de pestaña/app y vuelves (React Query hace refetch con `refetchOnWindowFocus: true`)
-2. Cualquier re-render del componente (los `useState` locales se reinician)
+La configuración global de React Query tiene `refetchOnWindowFocus: true`, lo que significa que:
+1. Cada vez que volvés a la pestaña del navegador, se disparan consultas a la base de datos
+2. Esto causa un breve estado de "loading" (spinner) mientras se re-cargan los datos
+3. Aunque los filtros ahora se mantienen en la URL, el efecto visual es de "recarga"
 
-Los estados afectados en `ParteDiarioAdminView.tsx`:
-- `filters` (fecha desde/hasta, obra, empleado, estado)
-- `activeTab` (listado/rendimiento/faltantes)  
-- `searchTerm` (búsqueda por nombre)
-- `viewMode` (tabla/tarjetas)
-- `currentPage` y `pageSize`
+### Solución propuesta
 
-### Solución
-
-Integrar los hooks de persistencia existentes (`useUrlState`, `useUrlTab`, `useUrlFilters`) que ya funcionan en otras páginas (Personal, Combustible, etc.) a la vista admin de Parte Diario.
+Desactivar `refetchOnWindowFocus` globalmente y activarlo solo en casos específicos donde tenga sentido (ej: Dashboard donde querés datos actualizados al volver).
 
 ### Cambios a realizar
 
-**1. Modificar `src/components/parte-diario/ParteDiarioAdminView.tsx`**
+**1. Modificar `src/App.tsx`**
 
-Reemplazar los `useState` por hooks de persistencia:
-
-```text
-// ANTES (volátil)
-const [filters, setFilters] = useState<ParteDiarioAdminFilters>({});
-const [activeTab, setActiveTab] = useState<string>("listado");
-const [searchTerm, setSearchTerm] = useState("");
-const [viewMode, setViewMode] = useState<"tabla" | "tarjetas">("tabla");
-
-// DESPUÉS (persistente en URL)
-const [activeTab, setActiveTab] = useUrlTab("listado");
-const [searchTerm, setSearchTerm] = useUrlSearch("");
-const [viewMode, setViewMode] = useUrlState({ key: "vista", defaultValue: "tabla", serialize: v => v, deserialize: v => v as "tabla" | "tarjetas" });
-const [urlFilters, setUrlFilters] = useUrlFilters({});
-
-// Adaptar urlFilters al formato ParteDiarioAdminFilters
-const filters: ParteDiarioAdminFilters = useMemo(() => ({
-  fechaDesde: urlFilters.fechaDesde,
-  fechaHasta: urlFilters.fechaHasta,
-  obraId: urlFilters.obraId,
-}), [urlFilters]);
-```
-
-**2. Extender `useUrlFilters` para soportar `estado`**
-
-Agregar soporte para el campo `estado` en el hook existente:
+Cambiar la configuración global de React Query:
 
 ```typescript
-// En useUrlFilters (src/hooks/useUrlState.ts)
-export interface UrlFilterState {
-  fechaDesde?: string;
-  fechaHasta?: string;
-  mes?: string;
-  year?: number;
-  obraId?: string;
-  estado?: string;  // NUEVO
-}
+// ANTES
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: true,  // Recarga SIEMPRE
+      staleTime: 30 * 1000,
+      retry: 1,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
-// Agregar en setFilters:
-if (newFilters.estado) newParams.set("estado", newFilters.estado);
+// DESPUÉS
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,  // NO recargar al volver
+      staleTime: 5 * 60 * 1000,     // 5 minutos (datos "frescos" más tiempo)
+      retry: 1,
+      refetchOnReconnect: true,     // SÍ recargar al reconectar internet
+    },
+  },
+});
 ```
 
-**3. Actualizar `ParteDiarioQuickFilters.tsx`**
+**2. (Opcional) Activar refetch en páginas específicas**
 
-Asegurar que los cambios de filtros usen el setter de URL en lugar de modificar estado local.
+Si querés que el Dashboard o ciertas páginas críticas sí recarguen al volver, se puede configurar por query individual:
+
+```typescript
+// En useDashboardData.ts o similar
+const { data } = useQuery({
+  queryKey: ['dashboard'],
+  queryFn: fetchDashboardData,
+  refetchOnWindowFocus: true,  // Solo este query recarga al volver
+});
+```
 
 ### Resultado esperado
 
-- Al aplicar filtros (ej: fecha "Hoy", obra "San Martín", estado "Completados"), la URL cambiará a:
-  `/parte-diario?tab=listado&desde=2026-02-04&hasta=2026-02-04&obra=xxx&estado=completado`
+- Al cambiar de pestaña y volver, la app **no recarga datos automáticamente**
+- Los datos se mantienen en caché por 5 minutos (staleTime)
+- Los filtros se mantienen en la URL (ya implementado)
+- La experiencia es fluida sin spinners innecesarios
+- Los datos se recargan si el usuario navega a otra sección y vuelve
+- Si se desconecta y reconecta internet, ahí sí recarga (`refetchOnReconnect: true`)
 
-- Al cambiar de pestaña del navegador y volver, los filtros se mantienen
+### Trade-off
 
-- Al refrescar (F5), los filtros se restauran desde la URL
+**Ventaja**: Experiencia más fluida, sin interrupciones al cambiar de pestaña
+**Desventaja**: Los datos podrían estar ligeramente desactualizados si otro usuario hizo cambios mientras estabas en otra pestaña
 
-- Si la URL no tiene filtros, se recuperan de `sessionStorage` como fallback
+Para mitigar esto, el usuario puede:
+- Usar el botón de refrescar del navegador
+- Cambiar filtros (dispara nueva consulta)
+- Navegar a otra sección y volver
 
 ### Archivos a modificar
 
-1. `src/components/parte-diario/ParteDiarioAdminView.tsx` - Integrar hooks de persistencia
-2. `src/hooks/useUrlState.ts` - Agregar campo `estado` a `UrlFilterState`
-
-### Notas técnicas
-
-- La paginación (`currentPage`) se reseteará al cambiar filtros (comportamiento esperado)
-- El `pageSize` también se puede persistir si es necesario, pero tiene menor prioridad
-- Los filtros de sub-componentes (`EmpleadosSinParteTab`, `ParteDiarioResumenGeneral`) podrían persistirse en una segunda iteración si es necesario
+1. `src/App.tsx` - Cambiar configuración de React Query
 
