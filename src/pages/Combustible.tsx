@@ -50,6 +50,7 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { useUrlSearch } from "@/hooks/useUrlState";
 import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -73,7 +74,7 @@ export default function Combustible() {
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
   
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
