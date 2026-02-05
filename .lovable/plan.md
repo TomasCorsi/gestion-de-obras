@@ -1,124 +1,209 @@
 
-## Plan: Agregar botón de edición de Partes Diarios para Administradores
 
-### Situación actual
+## Plan: Crear rol "Repartidor Calecita" con tabla de cargas separada
 
-- La vista admin (`ParteDiarioAdminView.tsx`) tiene botones de **Ver** (ojo) y **Eliminar** (papelera) para cada parte
-- El formulario de edición (`ParteDiarioFormView.tsx`) está diseñado para que el empleado edite su propio parte
-- No existe funcionalidad para que el admin edite partes de otros empleados
+### Resumen
 
-### Solución propuesta
+El "Repartidor Calecita" es un rol especial que distribuye combustible a las máquinas en las obras. Sus registros de carga de combustible serán almacenados en una **tabla completamente separada** de `cargas_combustible` (que se usa para remitos físicos).
 
-Agregar un botón de **Editar** (lápiz) que abra un dialog modal con el formulario de edición, permitiendo al admin modificar cualquier parte diario.
+---
 
-### Cambios a realizar
+### Cambios en Base de Datos
 
-**1. Crear componente `ParteDiarioEditDialog.tsx`**
+**1. Agregar rol al enum `rol_personal`**
 
-Un dialog modal que contenga el formulario de edición adaptado para uso administrativo:
+```sql
+ALTER TYPE rol_personal ADD VALUE 'repartidor_calecita';
+```
+
+**2. Crear nueva tabla `cargas_combustible_repartidor`**
+
+Esta tabla es independiente de `cargas_combustible` y almacena las cargas registradas por el repartidor:
+
+```sql
+CREATE TABLE public.cargas_combustible_repartidor (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  parte_diario_id uuid REFERENCES partes_diarios(id) ON DELETE CASCADE NOT NULL,
+  fecha date NOT NULL,
+  operador_id uuid REFERENCES personal(id) ON DELETE SET NULL,
+  maquinaria_id uuid REFERENCES maquinarias(id) ON DELETE SET NULL,
+  obra_id uuid REFERENCES obras(id) ON DELETE SET NULL,
+  litros numeric NOT NULL DEFAULT 0,
+  horas numeric DEFAULT 0,
+  km numeric DEFAULT 0,
+  observaciones text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- Enable RLS
+ALTER TABLE public.cargas_combustible_repartidor ENABLE ROW LEVEL SECURITY;
+
+-- Trigger for updated_at
+CREATE TRIGGER update_cargas_combustible_repartidor_updated_at
+  BEFORE UPDATE ON public.cargas_combustible_repartidor
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+**3. Crear políticas RLS**
+
+```sql
+-- Admins y capataces pueden gestionar todas las cargas
+CREATE POLICY "Admins and capataces can manage cargas_repartidor"
+ON public.cargas_combustible_repartidor FOR ALL
+USING (
+  has_role(auth.uid(), 'admin'::app_role) OR 
+  has_role(auth.uid(), 'capataz'::app_role)
+)
+WITH CHECK (
+  has_role(auth.uid(), 'admin'::app_role) OR 
+  has_role(auth.uid(), 'capataz'::app_role)
+);
+
+-- Repartidor puede gestionar las cargas de sus propios partes
+CREATE POLICY "Repartidor can manage own cargas"
+ON public.cargas_combustible_repartidor FOR ALL
+USING (
+  parte_diario_id IN (
+    SELECT id FROM partes_diarios 
+    WHERE personal_id IN (
+      SELECT id FROM personal WHERE user_id = auth.uid()
+    )
+  )
+)
+WITH CHECK (
+  parte_diario_id IN (
+    SELECT id FROM partes_diarios 
+    WHERE personal_id IN (
+      SELECT id FROM personal WHERE user_id = auth.uid()
+    )
+  )
+);
+
+-- Maquinistas pueden ver las cargas (solo lectura)
+CREATE POLICY "Maquinistas can view cargas_repartidor"
+ON public.cargas_combustible_repartidor FOR SELECT
+USING (has_role(auth.uid(), 'maquinista'::app_role));
+```
+
+---
+
+### Cambios en Frontend
+
+**1. Actualizar tipos y constantes de roles**
+
+Agregar `repartidor_calecita` en:
+- `src/components/parte-diario/ParteDiarioFormView.tsx` (ROL_LABELS y lógica de visibilidad)
+- `src/pages/ParteDiario.tsx` (ROL_LABELS)
+
+**2. Crear hook `useCargasRepartidor.ts`**
+
+Nuevo hook para gestionar las cargas del repartidor:
 
 ```typescript
-// src/components/parte-diario/ParteDiarioEditDialog.tsx
-interface ParteDiarioEditDialogProps {
-  parte: ParteDiario | null;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSave: () => void;
+// src/hooks/useCargasRepartidor.ts
+interface CargaRepartidor {
+  id: string;
+  parte_diario_id: string;
+  fecha: string;
+  operador_id: string | null;
+  maquinaria_id: string | null;
+  obra_id: string | null;
+  litros: number;
+  horas: number;
+  km: number;
+  observaciones: string | null;
+  // Relations
+  operador?: { nombre: string; apellido: string };
+  maquinaria?: { codigo: string; tipo: string };
+  obra?: { nombre: string };
 }
 ```
 
-El formulario incluirá todos los campos del parte y permitirá modificar:
-- Fecha, hora entrada/salida
-- Obra y maquinaria asignada
-- Horómetros, combustible, viajes
-- Estado de máquina y checklist
-- Campos específicos por rol (novedades, tareas, ausencias)
-- Estado (borrador/completado)
+**3. Crear componente `CargaCombustibleRepartidorDialog.tsx`**
 
-**2. Actualizar `useParteDiarioAdmin.ts`**
+Modal para agregar/editar cada carga con los campos:
+- Fecha (default: fecha del parte)
+- Operador (Combobox conectado a `personal`)
+- Maquinaria (Combobox conectado a `maquinarias`)
+- Litros (numérico, requerido)
+- Horas (horómetro)
+- Km
+- Obra/Ubicación (Combobox conectado a `obras`)
+- Observaciones
 
-Agregar mutación para actualizar partes:
+**4. Crear componente `CargasCombustibleRepartidorList.tsx`**
 
-```typescript
-const updateMutation = useMutation({
-  mutationFn: async ({ id, data }: { id: string; data: Partial<ParteDiario> }) => {
-    const { error } = await supabase
-      .from('partes_diarios')
-      .update(data)
-      .eq('id', id);
-    if (error) throw error;
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ['partes_diarios_admin'] });
-    toast.success('Parte diario actualizado');
-  },
-});
+Tabla que muestra las cargas agregadas con:
+- Columnas: Fecha, Operador, Máquina, Litros, Horas, Km, Obra, Observaciones
+- Botones de editar/eliminar por fila
+- Totales al final (suma de litros)
+
+**5. Modificar `ParteDiarioFormView.tsx`**
+
+Agregar sección especial para rol `repartidor_calecita`:
+- Detectar si `rol === 'repartidor_calecita'`
+- Mostrar campos: Fecha, Rol, Horario entrada/salida
+- Botón "Agregar Carga de Combustible"
+- Listado de cargas (`CargasCombustibleRepartidorList`)
+- Campo Novedades (textarea)
+- Campo Observaciones/Inconvenientes (textarea)
+
+---
+
+### Flujo de Usuario
+
+```text
+1. Repartidor inicia sesión y abre Parte Diario
+2. Sistema detecta rol = 'repartidor_calecita'
+3. Muestra formulario especializado con:
+   - Fecha (auto)
+   - Rol: "Repartidor Calecita"
+   - Horario entrada/salida
+   - Botón [+ Agregar Carga de Combustible]
+   - Lista de cargas agregadas
+   - Novedades
+   - Observaciones/Inconvenientes
+
+4. Al hacer clic en "Agregar Carga":
+   - Abre modal con formulario
+   - Completa: operador, máquina, litros, horas, km, obra, obs
+   - Guarda -> carga aparece en lista
+
+5. Puede agregar múltiples cargas, editarlas o eliminarlas
+
+6. Al guardar borrador o completar:
+   - Se guarda/actualiza el parte diario
+   - Las cargas se persisten en `cargas_combustible_repartidor`
+   - Cada carga queda vinculada al parte_diario_id
 ```
 
-**3. Modificar `ParteDiarioAdminView.tsx`**
+---
 
-Agregar el botón de edición en la columna de acciones de la tabla (líneas 388-411):
+### Archivos a Crear
 
-```tsx
-// Después del botón Eye, antes del Trash2
-<Button
-  variant="ghost"
-  size="sm"
-  onClick={(e) => {
-    e.stopPropagation();
-    setParteToEdit(parte);
-  }}
->
-  <Pencil className="w-4 h-4" />
-</Button>
-```
+| Archivo | Descripcion |
+|---------|-------------|
+| `src/hooks/useCargasRepartidor.ts` | Hook para CRUD de cargas del repartidor |
+| `src/components/parte-diario/CargaCombustibleRepartidorDialog.tsx` | Modal para agregar/editar carga individual |
+| `src/components/parte-diario/CargasCombustibleRepartidorList.tsx` | Tabla con listado de cargas y acciones |
 
-Agregar el estado y el dialog:
+### Archivos a Modificar
 
-```tsx
-const [parteToEdit, setParteToEdit] = useState<ParteDiario | null>(null);
+| Archivo | Cambio |
+|---------|--------|
+| Base de datos | Crear tabla y RLS |
+| `src/components/parte-diario/ParteDiarioFormView.tsx` | Agregar seccion especializada para repartidor |
+| `src/pages/ParteDiario.tsx` | Agregar rol a ROL_LABELS |
+| `src/hooks/useEmpleadoProfile.ts` | Agregar `isRepartidorCalecita` (opcional) |
 
-// En el JSX
-<ParteDiarioEditDialog
-  parte={parteToEdit}
-  open={!!parteToEdit}
-  onOpenChange={(open) => !open && setParteToEdit(null)}
-  onSave={() => setParteToEdit(null)}
-/>
-```
+---
 
-**4. Modificar `ParteDiarioCardView.tsx`**
+### Consideraciones Tecnicas
 
-Agregar el mismo botón de edición en la vista de tarjetas (líneas 178-200):
+- Las cargas se guardan directamente en la BD cuando el usuario las agrega en el modal
+- Si el parte es borrador, las cargas quedan asociadas al parte_diario_id
+- Si el usuario elimina el parte, las cargas se eliminan en cascada (ON DELETE CASCADE)
+- La tabla `cargas_combustible` existente NO se modifica
+- Admin puede ver todas las cargas en el detalle del parte diario
 
-```tsx
-// Props: agregar onEdit
-interface ParteDiarioCardViewProps {
-  partes: ParteDiario[];
-  onView: (parte: ParteDiario) => void;
-  onEdit: (parte: ParteDiario) => void;  // NUEVO
-  onDelete: (parte: ParteDiario) => void;
-}
-
-// En el JSX, entre Eye y Trash2
-<Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(parte); }}>
-  <Pencil className="w-4 h-4" />
-</Button>
-```
-
-### Archivos a crear
-
-1. `src/components/parte-diario/ParteDiarioEditDialog.tsx` - Dialog modal con formulario de edición
-
-### Archivos a modificar
-
-1. `src/hooks/useParteDiarioAdmin.ts` - Agregar mutación `updateParte`
-2. `src/components/parte-diario/ParteDiarioAdminView.tsx` - Agregar botón editar y dialog
-3. `src/components/parte-diario/ParteDiarioCardView.tsx` - Agregar botón editar
-
-### Resultado esperado
-
-- El admin verá un ícono de lápiz (editar) al lado del ojo (ver) y la papelera (eliminar)
-- Al hacer clic, se abre un modal con todos los campos del parte editables
-- Los cambios se guardan en la base de datos y la lista se actualiza automáticamente
-- El admin puede cambiar el estado entre borrador y completado
