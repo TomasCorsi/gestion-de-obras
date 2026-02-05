@@ -13,6 +13,7 @@ import {
   BarChart3,
   List,
   Trash2,
+  Pencil,
   Search,
   LayoutGrid,
   Table as TableIcon,
@@ -60,6 +61,7 @@ import { ParteDiarioQuickFilters } from "./ParteDiarioQuickFilters";
 import { ParteDiarioCardView } from "./ParteDiarioCardView";
 import { EmpleadosSinParteTab } from "./EmpleadosSinParteTab";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { ParteDiarioEditDialog } from "./ParteDiarioEditDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 const ROL_LABELS: Record<string, string> = {
   maquinista: 'Maquinista',
@@ -92,6 +94,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   
   // Local state (not persisted)
   const [selectedParte, setSelectedParte] = useState<ParteDiario | null>(null);
+  const [parteToEdit, setParteToEdit] = useState<ParteDiario | null>(null);
   const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -115,7 +118,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     setCurrentPage(1); // Reset page on filter change
   }, [setUrlFilters]);
   
-  const { partes, isLoading, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
+  const { partes, isLoading, updateParte, isUpdating, deleteParte, isDeleting } = useParteDiarioAdmin(filters);
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
   
@@ -400,6 +403,16 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                                     <Button
                                       variant="ghost"
                                       size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setParteToEdit(parte);
+                                      }}
+                                    >
+                                      <Pencil className="w-4 h-4" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
                                       className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -421,6 +434,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                   <ParteDiarioCardView
                     partes={filteredPartes}
                     onView={setSelectedParte}
+                    onEdit={setParteToEdit}
                     onDelete={setParteToDelete}
                   />
                 )}
@@ -521,6 +535,17 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
         onOpenChange={(open) => !open && setSelectedParte(null)}
         showEmpleado
         personalList={personal}
+      />
+
+      <ParteDiarioEditDialog
+        parte={parteToEdit}
+        open={!!parteToEdit}
+        onOpenChange={(open) => !open && setParteToEdit(null)}
+        onSave={async (id, data) => {
+          await updateParte({ id, data });
+          setParteToEdit(null);
+        }}
+        isSaving={isUpdating}
       />
 
       <DeleteConfirmDialog

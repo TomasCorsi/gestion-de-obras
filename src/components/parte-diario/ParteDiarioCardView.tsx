@@ -4,6 +4,7 @@ import { es } from "date-fns/locale";
 import { 
   Clock, 
   Eye, 
+  Pencil,
   Trash2, 
   CheckCircle, 
   AlertCircle,
@@ -36,10 +37,11 @@ const ROL_LABELS: Record<string, string> = {
 interface ParteDiarioCardViewProps {
   partes: ParteDiario[];
   onView: (parte: ParteDiario) => void;
+  onEdit: (parte: ParteDiario) => void;
   onDelete: (parte: ParteDiario) => void;
 }
 
-export function ParteDiarioCardView({ partes, onView, onDelete }: ParteDiarioCardViewProps) {
+export function ParteDiarioCardView({ partes, onView, onEdit, onDelete }: ParteDiarioCardViewProps) {
   // Group partes by date
   const partesByDate = useMemo(() => {
     const grouped = partes.reduce((acc, parte) => {
@@ -185,6 +187,16 @@ export function ParteDiarioCardView({ partes, onView, onDelete }: ParteDiarioCar
                         }}
                       >
                         <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEdit(parte);
+                        }}
+                      >
+                        <Pencil className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
