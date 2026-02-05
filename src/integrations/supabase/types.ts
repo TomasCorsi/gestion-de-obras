@@ -188,6 +188,87 @@ export type Database = {
           },
         ]
       }
+      cargas_combustible_repartidor: {
+        Row: {
+          created_at: string | null
+          fecha: string
+          horas: number | null
+          id: string
+          km: number | null
+          litros: number
+          maquinaria_id: string | null
+          obra_id: string | null
+          observaciones: string | null
+          operador_id: string | null
+          parte_diario_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          fecha: string
+          horas?: number | null
+          id?: string
+          km?: number | null
+          litros?: number
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          observaciones?: string | null
+          operador_id?: string | null
+          parte_diario_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          fecha?: string
+          horas?: number | null
+          id?: string
+          km?: number | null
+          litros?: number
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          observaciones?: string | null
+          operador_id?: string | null
+          parte_diario_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cargas_combustible_repartidor_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_parte_diario_id_fkey"
+            columns: ["parte_diario_id"]
+            isOneToOne: false
+            referencedRelation: "partes_diarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotizacion_categorias: {
         Row: {
           cotizacion_id: string
@@ -1436,6 +1517,7 @@ export type Database = {
         | "sereno"
         | "mecanico"
         | "topografo"
+        | "repartidor_calecita"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
         | "cargadora"
@@ -1617,6 +1699,7 @@ export const Constants = {
         "sereno",
         "mecanico",
         "topografo",
+        "repartidor_calecita",
       ],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [

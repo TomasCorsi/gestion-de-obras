@@ -119,5 +119,6 @@ export function useEmpleadoProfile() {
     isTopografo: rolPersonal === 'topografo',
     isAyudante: rolPersonal === 'ayudante',
     isAdministrativo: rolPersonal === 'administrativo',
+    isRepartidorCalecita: rolPersonal === 'repartidor_calecita',
   };
 }
