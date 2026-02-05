@@ -13,7 +13,7 @@ import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListVi
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
 import { ParteDiarioAdminView } from "@/components/parte-diario/ParteDiarioAdminView";
 
-type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo';
+type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
 const ROL_LABELS: Record<RolPersonal, string> = {
   maquinista: 'Maquinista',
@@ -24,6 +24,7 @@ const ROL_LABELS: Record<RolPersonal, string> = {
   topografo: 'Topógrafo',
   ayudante: 'Ayudante',
   administrativo: 'Administrativo',
+  repartidor_calecita: 'Repartidor Calecita',
 };
 
 type ViewMode = 'home' | 'form' | 'list';
