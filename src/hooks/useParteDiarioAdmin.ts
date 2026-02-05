@@ -52,6 +52,27 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
     },
   });
 
+  // Update parte mutation
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<ParteDiario> }) => {
+      const { error } = await supabase
+        .from('partes_diarios')
+        .update(data)
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['partes_diarios_admin'] });
+      queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
+      toast.success('Parte diario actualizado');
+    },
+    onError: (error: Error) => {
+      console.error('Error updating parte:', error);
+      toast.error('Error al actualizar el parte diario');
+    },
+  });
+
   // Delete parte mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -77,6 +98,8 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
     partes,
     isLoading,
     error,
+    updateParte: updateMutation.mutateAsync,
+    isUpdating: updateMutation.isPending,
     deleteParte: deleteMutation.mutateAsync,
     isDeleting: deleteMutation.isPending,
   };
