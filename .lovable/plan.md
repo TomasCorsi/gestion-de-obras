@@ -1,83 +1,124 @@
 
+## Plan: Agregar botón de edición de Partes Diarios para Administradores
 
-## Plan: Evitar recargas al cambiar de pestaña del navegador
+### Situación actual
 
-### Problema actual
-
-La configuración global de React Query tiene `refetchOnWindowFocus: true`, lo que significa que:
-1. Cada vez que volvés a la pestaña del navegador, se disparan consultas a la base de datos
-2. Esto causa un breve estado de "loading" (spinner) mientras se re-cargan los datos
-3. Aunque los filtros ahora se mantienen en la URL, el efecto visual es de "recarga"
+- La vista admin (`ParteDiarioAdminView.tsx`) tiene botones de **Ver** (ojo) y **Eliminar** (papelera) para cada parte
+- El formulario de edición (`ParteDiarioFormView.tsx`) está diseñado para que el empleado edite su propio parte
+- No existe funcionalidad para que el admin edite partes de otros empleados
 
 ### Solución propuesta
 
-Desactivar `refetchOnWindowFocus` globalmente y activarlo solo en casos específicos donde tenga sentido (ej: Dashboard donde querés datos actualizados al volver).
+Agregar un botón de **Editar** (lápiz) que abra un dialog modal con el formulario de edición, permitiendo al admin modificar cualquier parte diario.
 
 ### Cambios a realizar
 
-**1. Modificar `src/App.tsx`**
+**1. Crear componente `ParteDiarioEditDialog.tsx`**
 
-Cambiar la configuración global de React Query:
+Un dialog modal que contenga el formulario de edición adaptado para uso administrativo:
 
 ```typescript
-// ANTES
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: true,  // Recarga SIEMPRE
-      staleTime: 30 * 1000,
-      retry: 1,
-      refetchOnReconnect: true,
-    },
-  },
-});
+// src/components/parte-diario/ParteDiarioEditDialog.tsx
+interface ParteDiarioEditDialogProps {
+  parte: ParteDiario | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: () => void;
+}
+```
 
-// DESPUÉS
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,  // NO recargar al volver
-      staleTime: 5 * 60 * 1000,     // 5 minutos (datos "frescos" más tiempo)
-      retry: 1,
-      refetchOnReconnect: true,     // SÍ recargar al reconectar internet
-    },
+El formulario incluirá todos los campos del parte y permitirá modificar:
+- Fecha, hora entrada/salida
+- Obra y maquinaria asignada
+- Horómetros, combustible, viajes
+- Estado de máquina y checklist
+- Campos específicos por rol (novedades, tareas, ausencias)
+- Estado (borrador/completado)
+
+**2. Actualizar `useParteDiarioAdmin.ts`**
+
+Agregar mutación para actualizar partes:
+
+```typescript
+const updateMutation = useMutation({
+  mutationFn: async ({ id, data }: { id: string; data: Partial<ParteDiario> }) => {
+    const { error } = await supabase
+      .from('partes_diarios')
+      .update(data)
+      .eq('id', id);
+    if (error) throw error;
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ['partes_diarios_admin'] });
+    toast.success('Parte diario actualizado');
   },
 });
 ```
 
-**2. (Opcional) Activar refetch en páginas específicas**
+**3. Modificar `ParteDiarioAdminView.tsx`**
 
-Si querés que el Dashboard o ciertas páginas críticas sí recarguen al volver, se puede configurar por query individual:
+Agregar el botón de edición en la columna de acciones de la tabla (líneas 388-411):
 
-```typescript
-// En useDashboardData.ts o similar
-const { data } = useQuery({
-  queryKey: ['dashboard'],
-  queryFn: fetchDashboardData,
-  refetchOnWindowFocus: true,  // Solo este query recarga al volver
-});
+```tsx
+// Después del botón Eye, antes del Trash2
+<Button
+  variant="ghost"
+  size="sm"
+  onClick={(e) => {
+    e.stopPropagation();
+    setParteToEdit(parte);
+  }}
+>
+  <Pencil className="w-4 h-4" />
+</Button>
 ```
 
-### Resultado esperado
+Agregar el estado y el dialog:
 
-- Al cambiar de pestaña y volver, la app **no recarga datos automáticamente**
-- Los datos se mantienen en caché por 5 minutos (staleTime)
-- Los filtros se mantienen en la URL (ya implementado)
-- La experiencia es fluida sin spinners innecesarios
-- Los datos se recargan si el usuario navega a otra sección y vuelve
-- Si se desconecta y reconecta internet, ahí sí recarga (`refetchOnReconnect: true`)
+```tsx
+const [parteToEdit, setParteToEdit] = useState<ParteDiario | null>(null);
 
-### Trade-off
+// En el JSX
+<ParteDiarioEditDialog
+  parte={parteToEdit}
+  open={!!parteToEdit}
+  onOpenChange={(open) => !open && setParteToEdit(null)}
+  onSave={() => setParteToEdit(null)}
+/>
+```
 
-**Ventaja**: Experiencia más fluida, sin interrupciones al cambiar de pestaña
-**Desventaja**: Los datos podrían estar ligeramente desactualizados si otro usuario hizo cambios mientras estabas en otra pestaña
+**4. Modificar `ParteDiarioCardView.tsx`**
 
-Para mitigar esto, el usuario puede:
-- Usar el botón de refrescar del navegador
-- Cambiar filtros (dispara nueva consulta)
-- Navegar a otra sección y volver
+Agregar el mismo botón de edición en la vista de tarjetas (líneas 178-200):
+
+```tsx
+// Props: agregar onEdit
+interface ParteDiarioCardViewProps {
+  partes: ParteDiario[];
+  onView: (parte: ParteDiario) => void;
+  onEdit: (parte: ParteDiario) => void;  // NUEVO
+  onDelete: (parte: ParteDiario) => void;
+}
+
+// En el JSX, entre Eye y Trash2
+<Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(parte); }}>
+  <Pencil className="w-4 h-4" />
+</Button>
+```
+
+### Archivos a crear
+
+1. `src/components/parte-diario/ParteDiarioEditDialog.tsx` - Dialog modal con formulario de edición
 
 ### Archivos a modificar
 
-1. `src/App.tsx` - Cambiar configuración de React Query
+1. `src/hooks/useParteDiarioAdmin.ts` - Agregar mutación `updateParte`
+2. `src/components/parte-diario/ParteDiarioAdminView.tsx` - Agregar botón editar y dialog
+3. `src/components/parte-diario/ParteDiarioCardView.tsx` - Agregar botón editar
 
+### Resultado esperado
+
+- El admin verá un ícono de lápiz (editar) al lado del ojo (ver) y la papelera (eliminar)
+- Al hacer clic, se abre un modal con todos los campos del parte editables
+- Los cambios se guardan en la base de datos y la lista se actualiza automáticamente
+- El admin puede cambiar el estado entre borrador y completado
