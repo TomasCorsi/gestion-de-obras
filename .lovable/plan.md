@@ -1,68 +1,54 @@
 
 
-## Plan: Corregir perdida de filas al editar columnas filtradas en grilla de Combustible
+## Plan: Agregar columnas faltantes a la exportacion Excel de Partes Diarios
 
-### Problema real
+### Problema
 
-El problema de fondo es que cuando hay filtros activos, la grilla muestra un **subconjunto** de filas (el snapshot). Al editar, `onChange` recibe ese subconjunto modificado como `newData`, y luego `setData(processedData)` **reemplaza todo el dataset** con ese subconjunto, perdiendo las filas que no estaban visibles.
+La funcion `handleExportExcel` en `ParteDiarioAdminView.tsx` solo incluye un subconjunto de campos. Faltan columnas importantes como:
 
-Ademas, para las operaciones DELETE, se usa `data.slice(operation.fromRowIndex, ...)` con indices que corresponden a `displayData`, no a `data`, lo cual tambien es incorrecto.
+- Observacion de la maquina (`observacion_maquina`)
+- Estado de la maquina (`estado_maquina`)
+- Observaciones/Inconvenientes (`observaciones_inconvenientes`)
+- Movimiento interno (`cantidad_movimiento_interno`)
+- Ausencias (`ausencias`)
+- Checklist (filtro aire, aceite motor, aceite hidraulico, liquido refrigerante, uria)
 
 ### Solucion
 
-Modificar `handleChange` para que, cuando haya filtros activos (snapshot activo), en lugar de reemplazar `data` con `newData`, **mapee los cambios de vuelta al dataset completo** usando IDs:
+Agregar las columnas faltantes al objeto de exportacion en `handleExportExcel`.
 
-1. **UPDATE**: Buscar cada fila modificada por ID en `data` y actualizarla ahi
-2. **DELETE**: Buscar la fila a borrar por ID en `displayData` (no por indice de `data`)
-3. **CREATE**: Agregar las filas nuevas al final de `data`
+### Cambios en `src/components/parte-diario/ParteDiarioAdminView.tsx`
 
-### Cambios en `src/components/combustible/CombustibleDataGrid.tsx`
-
-En `handleChange`:
+Ampliar el mapeo en `handleExportExcel` para incluir:
 
 ```
-// Cuando hay snapshot activo, mapear cambios al dataset completo
-if (editingSnapshot) {
-  let fullData = [...data];
-
-  for (const operation of operations) {
-    if (operation.type === 'UPDATE') {
-      for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
-        const updatedRow = newData[i];
-        if (!updatedRow?.id) continue;
-        const fullIdx = fullData.findIndex(r => r.id === updatedRow.id);
-        if (fullIdx !== -1) {
-          // Aplicar cambio en dataset completo
-          fullData[fullIdx] = { ...updatedRow, costo_total: ... };
-          // Track modificacion
-        }
-      }
-    }
-    // DELETE y CREATE similares, usando IDs
-  }
-
-  setData(fullData);
-  // Actualizar snapshot para reflejar cambios
-  setEditingSnapshot(prev => prev.map(row => {
-    const updated = fullData.find(r => r.id === row.id);
-    return updated || row;
-  }));
-  return;
-}
-
-// Flujo original sin filtros (sin cambios)
-...
+const exportData = filteredPartes.map((p) => ({
+  // ... columnas existentes ...
+  "Mov. Interno": p.cantidad_movimiento_interno || "-",
+  "Estado Máquina": p.estado_maquina || "-",
+  "Obs. Máquina": p.observacion_maquina || "-",
+  // Checklist
+  "Filtro Aire": p.check_filtro_aire ? "Si" : "No",
+  "Aceite Motor": p.check_aceite_motor ? "Si" : "No",
+  "Aceite Hidráulico": p.check_aceite_hidraulico ? "Si" : "No",
+  "Líq. Refrigerante": p.check_liquido_refrigerante ? "Si" : "No",
+  "Uría": p.check_uria ? "Si" : "No",
+  // Campos por rol (ya estan Novedades y Tareas)
+  "Ausencias": p.ausencias?.length
+    ? p.ausencias.map(id => {
+        const emp = personal.find(e => e.id === id);
+        return emp ? `${emp.apellido}, ${emp.nombre}` : id;
+      }).join("; ")
+    : "-",
+  "Obs./Inconvenientes": p.observaciones_inconvenientes || "-",
+}));
 ```
 
-Esto garantiza que:
-- Las filas no visibles se mantienen intactas
-- Los cambios en columnas filtradas no hacen desaparecer filas
-- El snapshot se actualiza con los valores editados
-- Al guardar o limpiar filtros, todo el dataset esta completo y correcto
+Las ausencias se resuelven a nombres usando la lista de `personal` que ya esta disponible en el componente.
 
 ### Archivo a modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/combustible/CombustibleDataGrid.tsx` | Modificar `handleChange` para mapear cambios por ID al dataset completo cuando hay snapshot activo |
+| `src/components/parte-diario/ParteDiarioAdminView.tsx` | Agregar columnas faltantes al mapeo de exportacion Excel |
 
