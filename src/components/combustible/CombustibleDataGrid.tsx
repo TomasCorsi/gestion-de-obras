@@ -140,8 +140,10 @@ export function CombustibleDataGrid({
   const [data, setData] = useState<GridRow[]>(initialData);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Snapshot system: freeze filtered data during editing to prevent row jumping
-  const [editingSnapshot, setEditingSnapshot] = useState<GridRow[] | null>(null);
+  // Frozen row IDs: when filters are active, freeze which rows are displayed
+  // so edits don't cause rows to disappear due to re-filtering
+  const frozenRowIds = useRef<string[] | null>(null);
+  const lastFilterKey = useRef<string>('');
 
   // Filter configurations for ALL columns
   const filterConfigs: ColumnFilterConfig[] = useMemo(() => [
@@ -490,17 +492,11 @@ export function CombustibleDataGrid({
 
   const handleChange = useCallback(
     (newData: GridRow[], operations: Operation[]) => {
-      console.log('[CombGrid] handleChange called', {
-        newDataLen: newData.length,
-        dataLen: data.length,
-        hasSnapshot: !!editingSnapshot,
-        snapshotLen: editingSnapshot?.length,
-        operations: operations.map(o => `${o.type}[${o.fromRowIndex}-${o.toRowIndex}]`),
-      });
+      const filtersActive = !!(globalSearch || activeFilterCount > 0);
       
-      // When snapshot is active, newData corresponds to displayData (filtered subset).
+      // When filters are active, newData corresponds to displayData (filtered subset).
       // We must map changes back to the full dataset by ID.
-      if (editingSnapshot) {
+      if (filtersActive && frozenRowIds.current) {
         let fullData = [...data];
 
         for (const operation of operations) {
@@ -522,15 +518,17 @@ export function CombustibleDataGrid({
           }
 
           if (operation.type === 'DELETE') {
-            // Indices refer to displayData (snapshot), get rows by ID
+            // Get the deleted rows from the frozen display before deletion
+            const frozenDisplay = frozenRowIds.current!
+              .map(id => data.find(r => r.id === id))
+              .filter(Boolean) as GridRow[];
+            
             for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
-              // The row was removed from newData, find it in the snapshot
-              const snapRow = editingSnapshot[i];
+              const snapRow = frozenDisplay[i];
               if (!snapRow?.id) continue;
               if (!snapRow.id.startsWith('temp_')) {
                 deletedRowIds.add(snapRow.id);
                 updatedRowIds.delete(snapRow.id);
-                // Mark as deleted in fullData
                 const fullIdx = fullData.findIndex(r => r.id === snapRow.id);
                 if (fullIdx !== -1) {
                   fullData[fullIdx] = { ...fullData[fullIdx], _isDeleted: true };
@@ -540,6 +538,8 @@ export function CombustibleDataGrid({
                 fullData = fullData.filter(r => r.id !== snapRow.id);
               }
             }
+            // Update frozen IDs to remove deleted rows
+            frozenRowIds.current = frozenRowIds.current!.filter(id => !deletedRowIds.has(id) && fullData.some(r => r.id === id));
           }
 
           if (operation.type === 'CREATE') {
@@ -550,32 +550,14 @@ export function CombustibleDataGrid({
                 const created = calcCosto({ ...newRow, id: tempId, _isNew: true });
                 createdRowIds.add(tempId);
                 fullData.push(created);
+                // Add to frozen IDs so it's visible
+                frozenRowIds.current = [...(frozenRowIds.current || []), tempId];
               }
             }
           }
         }
 
         setData(fullData);
-        // Update snapshot to reflect changes (keep same rows, updated values)
-        setEditingSnapshot(prev => {
-          if (!prev) return prev;
-          let updated = prev
-            .filter(row => !row._isDeleted && !(row.id && deletedRowIds.has(row.id)))
-            .map(snapRow => {
-              const currentRow = fullData.find(r => r.id === snapRow.id);
-              return currentRow || snapRow;
-            });
-          // Add any newly created rows
-          for (const op of operations) {
-            if (op.type === 'CREATE') {
-              for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-                const newRow = fullData.find(r => r._isNew && !updated.some(u => u.id === r.id));
-                if (newRow) updated.push(newRow);
-              }
-            }
-          }
-          return updated;
-        });
         forceUpdate(n => n + 1);
         return;
       }
@@ -625,7 +607,7 @@ export function CombustibleDataGrid({
       setData(processedData);
       forceUpdate(n => n + 1);
     },
-    [data, initialData, editingSnapshot, checkIsModified, createdRowIds, deletedRowIds, updatedRowIds]
+    [data, globalSearch, activeFilterCount, checkIsModified, createdRowIds, deletedRowIds, updatedRowIds]
   );
 
   const createRow = useCallback((): GridRow => {
@@ -661,7 +643,8 @@ export function CombustibleDataGrid({
     updatedRowIds.clear();
     clearDraft();
     clearAllFilters();
-    setEditingSnapshot(null);
+    frozenRowIds.current = null;
+    lastFilterKey.current = '';
     forceUpdate(n => n + 1);
   }, [initialData, clearDraft, clearAllFilters, createdRowIds, deletedRowIds, updatedRowIds]);
 
@@ -711,7 +694,8 @@ export function CombustibleDataGrid({
       deletedRowIds.clear();
       updatedRowIds.clear();
       clearDraft();
-      setEditingSnapshot(null);
+      frozenRowIds.current = null;
+      lastFilterKey.current = '';
       forceUpdate(n => n + 1);
     } catch (error) {
       console.error("Error saving:", error);
@@ -721,37 +705,35 @@ export function CombustibleDataGrid({
     }
   }, [data, onSave, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
-  // Capture snapshot when editing starts with active filters
-  const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
-    if (cell && !editingSnapshot && (globalSearch || activeFilterCount > 0)) {
-      setEditingSnapshot(searchFilteredData);
-    }
-  }, [editingSnapshot, globalSearch, activeFilterCount, searchFilteredData]);
-
-  // Release snapshot when all filters are cleared
-  useEffect(() => {
-    if (!globalSearch && activeFilterCount === 0) {
-      setEditingSnapshot(null);
-    }
-  }, [globalSearch, activeFilterCount]);
-
-  // Get the data to display (filtered if there are filters/search)
-  // During editing with filters, use snapshot but with updated values
+  // displayData: when filters active, freeze which rows are shown using frozenRowIds ref.
+  // This prevents rows from disappearing when editing values in filtered columns.
   const displayData = useMemo(() => {
     if (!globalSearch && activeFilterCount === 0) {
+      frozenRowIds.current = null;
+      lastFilterKey.current = '';
       return data;
     }
     
-    if (editingSnapshot) {
-      // Update values in snapshot with current data values
-      return editingSnapshot.map(snapRow => {
-        const currentRow = data.find(r => r.id === snapRow.id);
-        return currentRow || snapRow;
-      });
+    // Build a key from the current filter configuration
+    const filterKey = JSON.stringify({ globalSearch, columnFilters });
+    
+    // If filters changed, reset frozen IDs to recompute
+    if (filterKey !== lastFilterKey.current) {
+      frozenRowIds.current = null;
+      lastFilterKey.current = filterKey;
     }
     
+    if (frozenRowIds.current) {
+      // Show the same frozen rows but with current values from data
+      return frozenRowIds.current
+        .map(id => data.find(r => r.id === id))
+        .filter(Boolean) as GridRow[];
+    }
+    
+    // First time with these filters - freeze the row IDs
+    frozenRowIds.current = searchFilteredData.map(r => r.id!).filter(Boolean);
     return searchFilteredData;
-  }, [data, globalSearch, activeFilterCount, editingSnapshot, searchFilteredData]);
+  }, [data, globalSearch, activeFilterCount, columnFilters, searchFilteredData]);
 
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
@@ -804,7 +786,6 @@ export function CombustibleDataGrid({
           columns={columns}
           createRow={createRow}
           height={gridHeight}
-          onActiveCellChange={handleActiveCellChange}
           rowClassName={({ rowData }) => {
             if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
             if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
