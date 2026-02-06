@@ -467,20 +467,121 @@ export function CombustibleDataGrid({
     [activeObras, maquinarias, obraOptions, maquinariaOptions, operadorOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
   );
 
+  // Helper to check if a row was modified vs original
+  const checkIsModified = useCallback((row: GridRow) => {
+    const orig = initialData.find((r) => r.id === row.id);
+    if (!orig) return false;
+    return row.fecha !== orig.fecha || 
+      row.obra_id !== orig.obra_id || 
+      row.maquinaria_id !== orig.maquinaria_id || 
+      row.operador !== orig.operador ||
+      row.litros !== orig.litros || 
+      row.precio_litro !== orig.precio_litro || 
+      row.horas_maquina !== orig.horas_maquina ||
+      row.estacion !== orig.estacion ||
+      row.comprobante !== orig.comprobante;
+  }, [initialData]);
+
+  // Auto-calc costo_total
+  const calcCosto = (row: GridRow): GridRow => ({
+    ...row,
+    costo_total: (row.litros || 0) * (row.precio_litro || 0),
+  });
+
   const handleChange = useCallback(
     (newData: GridRow[], operations: Operation[]) => {
+      // When snapshot is active, newData corresponds to displayData (filtered subset).
+      // We must map changes back to the full dataset by ID.
+      if (editingSnapshot) {
+        let fullData = [...data];
+
+        for (const operation of operations) {
+          if (operation.type === 'UPDATE') {
+            for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+              const updatedRow = newData[i];
+              if (!updatedRow?.id) continue;
+              const fullIdx = fullData.findIndex(r => r.id === updatedRow.id);
+              if (fullIdx !== -1) {
+                const withCosto = calcCosto(updatedRow);
+                const isModified = checkIsModified(withCosto);
+                if (withCosto.id && !withCosto.id.startsWith('temp_') && !deletedRowIds.has(withCosto.id)) {
+                  if (isModified) updatedRowIds.add(withCosto.id);
+                  else updatedRowIds.delete(withCosto.id);
+                }
+                fullData[fullIdx] = { ...withCosto, _isModified: isModified };
+              }
+            }
+          }
+
+          if (operation.type === 'DELETE') {
+            // Indices refer to displayData (snapshot), get rows by ID
+            for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+              // The row was removed from newData, find it in the snapshot
+              const snapRow = editingSnapshot[i];
+              if (!snapRow?.id) continue;
+              if (!snapRow.id.startsWith('temp_')) {
+                deletedRowIds.add(snapRow.id);
+                updatedRowIds.delete(snapRow.id);
+                // Mark as deleted in fullData
+                const fullIdx = fullData.findIndex(r => r.id === snapRow.id);
+                if (fullIdx !== -1) {
+                  fullData[fullIdx] = { ...fullData[fullIdx], _isDeleted: true };
+                }
+              } else {
+                createdRowIds.delete(snapRow.id);
+                fullData = fullData.filter(r => r.id !== snapRow.id);
+              }
+            }
+          }
+
+          if (operation.type === 'CREATE') {
+            for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+              const newRow = newData[i];
+              if (newRow && !newRow.id) {
+                const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                const created = calcCosto({ ...newRow, id: tempId, _isNew: true });
+                createdRowIds.add(tempId);
+                fullData.push(created);
+              }
+            }
+          }
+        }
+
+        setData(fullData);
+        // Update snapshot to reflect changes (keep same rows, updated values)
+        setEditingSnapshot(prev => {
+          if (!prev) return prev;
+          let updated = prev
+            .filter(row => !row._isDeleted && !(row.id && deletedRowIds.has(row.id)))
+            .map(snapRow => {
+              const currentRow = fullData.find(r => r.id === snapRow.id);
+              return currentRow || snapRow;
+            });
+          // Add any newly created rows
+          for (const op of operations) {
+            if (op.type === 'CREATE') {
+              for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
+                const newRow = fullData.find(r => r._isNew && !updated.some(u => u.id === r.id));
+                if (newRow) updated.push(newRow);
+              }
+            }
+          }
+          return updated;
+        });
+        forceUpdate(n => n + 1);
+        return;
+      }
+
+      // Standard flow (no filters active)
       let processedData = [...newData];
       
       for (const operation of operations) {
         if (operation.type === 'DELETE') {
-          // For delete, we need to find the actual rows by ID since indices may not match
           const deletedRows = data.slice(operation.fromRowIndex, operation.toRowIndex);
-          
           for (const row of deletedRows) {
             if (row.id && !row.id.startsWith('temp_')) {
               deletedRowIds.add(row.id);
               updatedRowIds.delete(row.id);
-              
               const deletedRow = { ...row, _isDeleted: true };
               processedData.splice(operation.fromRowIndex, 0, deletedRow);
             } else if (row.id && row.id.startsWith('temp_')) {
@@ -503,43 +604,20 @@ export function CombustibleDataGrid({
           for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
             const row = processedData[i];
             if (row && row.id && !row.id.startsWith('temp_') && !deletedRowIds.has(row.id)) {
-              const orig = initialData.find((r) => r.id === row.id);
-              if (orig) {
-                const isModified = 
-                  row.fecha !== orig.fecha || 
-                  row.obra_id !== orig.obra_id || 
-                  row.maquinaria_id !== orig.maquinaria_id || 
-                  row.operador !== orig.operador ||
-                  row.litros !== orig.litros || 
-                  row.precio_litro !== orig.precio_litro || 
-                  row.horas_maquina !== orig.horas_maquina ||
-                  row.estacion !== orig.estacion ||
-                  row.comprobante !== orig.comprobante;
-                
-                if (isModified) {
-                  updatedRowIds.add(row.id);
-                } else {
-                  updatedRowIds.delete(row.id);
-                }
-                processedData[i] = { ...row, _isModified: isModified };
-              }
+              const isModified = checkIsModified(row);
+              if (isModified) updatedRowIds.add(row.id);
+              else updatedRowIds.delete(row.id);
+              processedData[i] = { ...row, _isModified: isModified };
             }
           }
         }
       }
       
-      // Auto-calculate costo_total for all rows
-      processedData = processedData.map((row) => {
-        const litros = row.litros || 0;
-        const precio = row.precio_litro || 0;
-        const calculatedTotal = litros * precio;
-        return { ...row, costo_total: calculatedTotal };
-      });
-      
+      processedData = processedData.map(calcCosto);
       setData(processedData);
       forceUpdate(n => n + 1);
     },
-    [data, initialData, createdRowIds, deletedRowIds, updatedRowIds]
+    [data, initialData, editingSnapshot, checkIsModified, createdRowIds, deletedRowIds, updatedRowIds]
   );
 
   const createRow = useCallback((): GridRow => {
@@ -714,37 +792,7 @@ export function CombustibleDataGrid({
       <div className={`combustible-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? 'flex-1' : ''}`}>
         <DataSheetGrid
           value={displayData}
-          onChange={(newData, ops) => {
-            // Map changes back to full data array when filtering is active
-            if (globalSearch || activeFilterCount > 0) {
-              const fullData = [...data];
-              const transformedOps: Operation[] = [];
-              
-              for (const op of ops) {
-                if (op.type === 'UPDATE') {
-                  for (let i = op.fromRowIndex; i < op.toRowIndex; i++) {
-                    const filteredRow = newData[i];
-                    const originalIndex = data.findIndex(r => r.id === filteredRow.id);
-                    if (originalIndex !== -1) {
-                      fullData[originalIndex] = filteredRow;
-                      // Create transformed operation with correct index in full array
-                      transformedOps.push({
-                        type: 'UPDATE',
-                        fromRowIndex: originalIndex,
-                        toRowIndex: originalIndex + 1,
-                      });
-                    }
-                  }
-                } else {
-                  // For CREATE/DELETE, just pass through (these shouldn't happen while filtering)
-                  transformedOps.push(op);
-                }
-              }
-              handleChange(fullData, transformedOps);
-            } else {
-              handleChange(newData, ops);
-            }
-          }}
+          onChange={handleChange}
           columns={columns}
           createRow={createRow}
           height={gridHeight}
