@@ -141,7 +141,6 @@ export function CombustibleDataGrid({
   const [isSaving, setIsSaving] = useState(false);
   
   // Snapshot system: freeze filtered data during editing to prevent row jumping
-  const [isEditing, setIsEditing] = useState(false);
   const [editingSnapshot, setEditingSnapshot] = useState<GridRow[] | null>(null);
 
   // Filter configurations for ALL columns
@@ -576,6 +575,7 @@ export function CombustibleDataGrid({
     updatedRowIds.clear();
     clearDraft();
     clearAllFilters();
+    setEditingSnapshot(null);
     forceUpdate(n => n + 1);
   }, [initialData, clearDraft, clearAllFilters, createdRowIds, deletedRowIds, updatedRowIds]);
 
@@ -625,6 +625,7 @@ export function CombustibleDataGrid({
       deletedRowIds.clear();
       updatedRowIds.clear();
       clearDraft();
+      setEditingSnapshot(null);
       forceUpdate(n => n + 1);
     } catch (error) {
       console.error("Error saving:", error);
@@ -634,19 +635,19 @@ export function CombustibleDataGrid({
     }
   }, [data, onSave, clearDraft, createdRowIds, deletedRowIds, updatedRowIds]);
 
-  // Callback when cell becomes active - capture snapshot
+  // Capture snapshot when editing starts with active filters
   const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
-    if (cell && !isEditing && (globalSearch || activeFilterCount > 0)) {
-      setIsEditing(true);
+    if (cell && !editingSnapshot && (globalSearch || activeFilterCount > 0)) {
       setEditingSnapshot(searchFilteredData);
     }
-  }, [isEditing, globalSearch, activeFilterCount, searchFilteredData]);
+  }, [editingSnapshot, globalSearch, activeFilterCount, searchFilteredData]);
 
-  // Callback when grid loses focus - release snapshot
-  const handleBlur = useCallback(() => {
-    setIsEditing(false);
-    setEditingSnapshot(null);
-  }, []);
+  // Release snapshot when all filters are cleared
+  useEffect(() => {
+    if (!globalSearch && activeFilterCount === 0) {
+      setEditingSnapshot(null);
+    }
+  }, [globalSearch, activeFilterCount]);
 
   // Get the data to display (filtered if there are filters/search)
   // During editing with filters, use snapshot but with updated values
@@ -655,7 +656,7 @@ export function CombustibleDataGrid({
       return data;
     }
     
-    if (isEditing && editingSnapshot) {
+    if (editingSnapshot) {
       // Update values in snapshot with current data values
       return editingSnapshot.map(snapRow => {
         const currentRow = data.find(r => r.id === snapRow.id);
@@ -664,7 +665,7 @@ export function CombustibleDataGrid({
     }
     
     return searchFilteredData;
-  }, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
+  }, [data, globalSearch, activeFilterCount, editingSnapshot, searchFilteredData]);
 
   return (
     <div className={`flex flex-col ${fullScreen ? 'h-full' : 'space-y-4'}`}>
@@ -748,7 +749,6 @@ export function CombustibleDataGrid({
           createRow={createRow}
           height={gridHeight}
           onActiveCellChange={handleActiveCellChange}
-          onBlur={handleBlur}
           rowClassName={({ rowData }) => {
             if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
             if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
