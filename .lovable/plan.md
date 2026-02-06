@@ -1,60 +1,68 @@
 
 
-## Plan: Corregir desaparicion de filas al editar datos filtrados en grilla de Combustible
+## Plan: Corregir perdida de filas al editar columnas filtradas en grilla de Combustible
 
-### Problema
+### Problema real
 
-Cuando hay un filtro activo y se edita una celda, al escribir se "borra" una fila. Esto pasa porque:
+El problema de fondo es que cuando hay filtros activos, la grilla muestra un **subconjunto** de filas (el snapshot). Al editar, `onChange` recibe ese subconjunto modificado como `newData`, y luego `setData(processedData)` **reemplaza todo el dataset** con ese subconjunto, perdiendo las filas que no estaban visibles.
 
-1. El sistema de snapshot captura los datos filtrados al hacer clic en una celda
-2. Al escribir, el grid puede disparar `onBlur` brevemente entre teclas
-3. El `handleBlur` libera el snapshot (`editingSnapshot = null`)
-4. Sin snapshot, `displayData` recalcula los filtros y la fila editada desaparece si su nuevo valor ya no coincide con el filtro
+Ademas, para las operaciones DELETE, se usa `data.slice(operation.fromRowIndex, ...)` con indices que corresponden a `displayData`, no a `data`, lo cual tambien es incorrecto.
 
 ### Solucion
 
-Reemplazar el mecanismo de snapshot basado en blur/focus por uno mas robusto: mantener el snapshot mientras haya cambios pendientes y filtros activos. Solo liberar el snapshot cuando el usuario limpia los filtros o guarda/descarta cambios.
+Modificar `handleChange` para que, cuando haya filtros activos (snapshot activo), en lugar de reemplazar `data` con `newData`, **mapee los cambios de vuelta al dataset completo** usando IDs:
+
+1. **UPDATE**: Buscar cada fila modificada por ID en `data` y actualizarla ahi
+2. **DELETE**: Buscar la fila a borrar por ID en `displayData` (no por indice de `data`)
+3. **CREATE**: Agregar las filas nuevas al final de `data`
 
 ### Cambios en `src/components/combustible/CombustibleDataGrid.tsx`
 
-1. **Eliminar `handleBlur`** - No usar blur para liberar el snapshot, es poco confiable en grillas
-2. **Capturar snapshot al primer cambio con filtros activos** en lugar de al hacer clic
-3. **Liberar snapshot automaticamente** cuando:
-   - Se limpian todos los filtros (`activeFilterCount === 0 && !globalSearch`)
-   - Se guardan o descartan los cambios (en `handleReset` y `handleSave`)
-4. **Actualizar `handleActiveCellChange`** para solo capturar snapshot si no hay uno ya activo
-5. **Remover `onBlur` del DataSheetGrid** ya que no se necesita mas
-
-### Detalles tecnicos
-
-La logica de `displayData` se mantiene igual, pero el snapshot se controla de forma mas estable:
+En `handleChange`:
 
 ```
-// Capturar snapshot cuando se empieza a editar con filtros activos
-// (en handleActiveCellChange o al primer cambio)
-if (filtersActive && !editingSnapshot) {
-  setEditingSnapshot(searchFilteredData);
+// Cuando hay snapshot activo, mapear cambios al dataset completo
+if (editingSnapshot) {
+  let fullData = [...data];
+
+  for (const operation of operations) {
+    if (operation.type === 'UPDATE') {
+      for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
+        const updatedRow = newData[i];
+        if (!updatedRow?.id) continue;
+        const fullIdx = fullData.findIndex(r => r.id === updatedRow.id);
+        if (fullIdx !== -1) {
+          // Aplicar cambio en dataset completo
+          fullData[fullIdx] = { ...updatedRow, costo_total: ... };
+          // Track modificacion
+        }
+      }
+    }
+    // DELETE y CREATE similares, usando IDs
+  }
+
+  setData(fullData);
+  // Actualizar snapshot para reflejar cambios
+  setEditingSnapshot(prev => prev.map(row => {
+    const updated = fullData.find(r => r.id === row.id);
+    return updated || row;
+  }));
+  return;
 }
 
-// Liberar snapshot cuando ya no hay filtros
-useEffect(() => {
-  if (!globalSearch && activeFilterCount === 0) {
-    setEditingSnapshot(null);
-  }
-}, [globalSearch, activeFilterCount]);
-
-// Liberar en reset y save
-const handleReset = () => {
-  ...
-  setEditingSnapshot(null);
-};
+// Flujo original sin filtros (sin cambios)
+...
 ```
 
-Se elimina el estado `isEditing` (ya no es necesario) y se usa directamente `editingSnapshot !== null` como indicador de que hay un snapshot activo.
+Esto garantiza que:
+- Las filas no visibles se mantienen intactas
+- Los cambios en columnas filtradas no hacen desaparecer filas
+- El snapshot se actualiza con los valores editados
+- Al guardar o limpiar filtros, todo el dataset esta completo y correcto
 
-### Archivos a modificar
+### Archivo a modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/combustible/CombustibleDataGrid.tsx` | Reemplazar mecanismo blur/focus por snapshot persistente basado en estado de filtros |
+| `src/components/combustible/CombustibleDataGrid.tsx` | Modificar `handleChange` para mapear cambios por ID al dataset completo cuando hay snapshot activo |
 
