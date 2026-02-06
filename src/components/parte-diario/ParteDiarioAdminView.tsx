@@ -189,13 +189,28 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
       Máquina: getMaquinariaLabel(p),
       "Hora Entrada": p.hora_entrada || "-",
       "Hora Salida": p.hora_salida || "-",
-      "Horómetro Inicio": p.horometro_inicio || "-",
-      "Horómetro Fin": p.horometro_fin || "-",
-      Combustible: p.combustible || "-",
-      "Cantidad Viajes": p.cantidad_viajes || "-",
+      "Horómetro Inicio": p.horometro_inicio ?? "-",
+      "Horómetro Fin": p.horometro_fin ?? "-",
+      Combustible: p.combustible ?? "-",
+      "Cantidad Viajes": p.cantidad_viajes ?? "-",
+      "Mov. Interno": p.cantidad_movimiento_interno ?? "-",
+      "Estado Máquina": p.estado_maquina || "-",
+      "Obs. Máquina": p.observacion_maquina || "-",
+      "Filtro Aire": p.check_filtro_aire ? "Si" : "No",
+      "Aceite Motor": p.check_aceite_motor ? "Si" : "No",
+      "Aceite Hidráulico": p.check_aceite_hidraulico ? "Si" : "No",
+      "Líq. Refrigerante": p.check_liquido_refrigerante ? "Si" : "No",
+      "Uría": p.check_uria ? "Si" : "No",
       Estado: p.estado === 'completado' ? 'Completado' : 'Borrador',
       Novedades: p.novedades || "-",
       Tareas: p.tareas || "-",
+      "Ausencias": p.ausencias?.length
+        ? p.ausencias.map(id => {
+            const emp = personal.find(e => e.id === id);
+            return emp ? `${emp.apellido}, ${emp.nombre}` : id;
+          }).join("; ")
+        : "-",
+      "Obs./Inconvenientes": p.observaciones_inconvenientes || "-",
     }));
 
     const ws = XLSX.utils.json_to_sheet(exportData);
