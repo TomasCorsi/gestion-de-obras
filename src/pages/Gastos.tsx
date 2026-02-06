@@ -106,6 +106,7 @@ export default function Gastos() {
     fechaHasta: undefined,
     mes: undefined,
     obraId: undefined,
+    maquinariaId: undefined,
   });
   const [formOpenComb, setFormOpenComb] = useState(false);
   const [detailOpenComb, setDetailOpenComb] = useState(false);
@@ -206,7 +207,7 @@ export default function Gastos() {
   // Filter combustible
   const filteredCargas = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
-      cargas.map(c => ({ ...c, fecha: c.fecha, obra_id: c.obra_id })),
+      cargas.map(c => ({ ...c, fecha: c.fecha, obra_id: c.obra_id, maquinaria_id: c.maquinaria_id })),
       filtersComb
     );
     
@@ -589,7 +590,7 @@ export default function Gastos() {
         {/* Tab: Combustible */}
         <TabsContent value="combustible">
           <div className="mb-4">
-            <FilterBar obras={obras} onFilterChange={setFiltersComb} />
+            <FilterBar obras={obras} maquinarias={maquinarias} onFilterChange={setFiltersComb} showMaquinariaFilter />
           </div>
 
           <div className="flex flex-col md:flex-row gap-4 mb-6">

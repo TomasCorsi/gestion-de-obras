@@ -176,13 +176,11 @@ export default function Combustible() {
   const activeObras = obras.filter(o => o.estado !== "finalizada");
 
   const filteredCargas = useMemo(() => {
-    // Apply date and obra filters first
     const dateFiltered = filterByDateAndObra(
-      cargas.map(c => ({ ...c, fecha: c.fecha, obra_id: c.obra_id })),
+      cargas.map(c => ({ ...c, fecha: c.fecha, obra_id: c.obra_id, maquinaria_id: c.maquinaria_id })),
       filters
     );
     
-    // Then apply search filter
     return dateFiltered.filter((c) =>
       c.maquinaria?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.operador?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -319,7 +317,7 @@ export default function Combustible() {
     <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
       {/* Filter Bar */}
       <div className="mb-4">
-        <FilterBar obras={obras} onFilterChange={setFilters} />
+        <FilterBar obras={obras} maquinarias={maquinarias} onFilterChange={setFilters} showMaquinariaFilter />
       </div>
 
       {/* Actions Bar */}

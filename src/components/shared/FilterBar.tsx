@@ -24,11 +24,21 @@ interface Obra {
   nombre: string;
 }
 
+interface Maquinaria {
+  id: string;
+  codigo: string | null;
+  nombre: string | null;
+  tipo: string;
+  patente: string | null;
+}
+
 interface FilterBarProps {
   obras: Obra[];
+  maquinarias?: Maquinaria[];
   onFilterChange: (filters: FilterState) => void;
   showObraFilter?: boolean;
-  persistKey?: string; // Para diferenciar entre páginas si se necesita
+  showMaquinariaFilter?: boolean;
+  persistKey?: string;
 }
 
 export interface FilterState {
@@ -36,6 +46,7 @@ export interface FilterState {
   fechaHasta: Date | undefined;
   mes: string | undefined;
   obraId: string | undefined;
+  maquinariaId?: string | undefined;
 }
 
 const MESES = [
@@ -53,7 +64,7 @@ const MESES = [
   { value: "12", label: "Diciembre" },
 ];
 
-export function FilterBar({ obras, onFilterChange, showObraFilter = true }: FilterBarProps) {
+export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter = true, showMaquinariaFilter = false }: FilterBarProps) {
   const currentYear = new Date().getFullYear();
   
   const years = useMemo(() => {
@@ -78,17 +89,19 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
   );
   const [mes, setMes] = useState<string | undefined>(urlFilters.mes);
   const [obraId, setObraId] = useState<string | undefined>(urlFilters.obraId);
+  const [maquinariaId, setMaquinariaId] = useState<string | undefined>(urlFilters.maquinariaId);
   const [selectedYear, setSelectedYear] = useState<number>(urlFilters.year || currentYear);
   
   // Sincronizar estado inicial con el callback
   useEffect(() => {
     // Solo al montar, sincronizar filtros persistidos
-    if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId) {
+    if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
       onFilterChange({
         fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
         fechaHasta: urlFilters.fechaHasta ? parseISO(urlFilters.fechaHasta) : undefined,
         mes: urlFilters.mes,
         obraId: urlFilters.obraId,
+        maquinariaId: urlFilters.maquinariaId,
       });
     }
   // Solo ejecutar al montar
@@ -101,7 +114,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
       setFechaDesde(undefined);
       setFechaHasta(undefined);
       setUrlFilters({ mes: undefined, fechaDesde: undefined, fechaHasta: undefined });
-      onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId });
+      onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId, maquinariaId });
     } else {
       setMes(value);
       const monthDate = parseISO(`${selectedYear}-${value}-01`);
@@ -115,7 +128,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
         fechaDesde: desde.toISOString().split("T")[0],
         fechaHasta: hasta.toISOString().split("T")[0],
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
     }
   };
 
@@ -135,7 +148,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
         fechaDesde: desde.toISOString().split("T")[0],
         fechaHasta: hasta.toISOString().split("T")[0],
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
     }
   };
 
@@ -146,7 +159,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
       fechaDesde: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde: date, fechaHasta, mes: undefined, obraId });
+    onFilterChange({ fechaDesde: date, fechaHasta, mes: undefined, obraId, maquinariaId });
   };
 
   const handleFechaHastaChange = (date: Date | undefined) => {
@@ -156,14 +169,21 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
       fechaHasta: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde, fechaHasta: date, mes: undefined, obraId });
+    onFilterChange({ fechaDesde, fechaHasta: date, mes: undefined, obraId, maquinariaId });
   };
 
   const handleObraChange = (value: string) => {
     const newObraId = value === "none" ? undefined : value;
     setObraId(newObraId);
     setUrlFilters({ obraId: newObraId });
-    onFilterChange({ fechaDesde, fechaHasta, mes, obraId: newObraId });
+    onFilterChange({ fechaDesde, fechaHasta, mes, obraId: newObraId, maquinariaId });
+  };
+
+  const handleMaquinariaChange = (value: string) => {
+    const newMaquinariaId = value === "none" ? undefined : value;
+    setMaquinariaId(newMaquinariaId);
+    setUrlFilters({ maquinariaId: newMaquinariaId });
+    onFilterChange({ fechaDesde, fechaHasta, mes, obraId, maquinariaId: newMaquinariaId });
   };
 
   const clearFilters = () => {
@@ -171,17 +191,30 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
     setFechaHasta(undefined);
     setMes(undefined);
     setObraId(undefined);
+    setMaquinariaId(undefined);
     setUrlFilters({ 
       fechaDesde: undefined, 
       fechaHasta: undefined, 
       mes: undefined, 
       obraId: undefined,
+      maquinariaId: undefined,
       year: currentYear,
     });
-    onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined });
+    onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined, maquinariaId: undefined });
   };
 
-  const hasActiveFilters = fechaDesde || fechaHasta || mes || obraId;
+  const hasActiveFilters = fechaDesde || fechaHasta || mes || obraId || maquinariaId;
+
+  // Build maquinaria options for the select
+  const maquinariaOptions = useMemo(() => {
+    if (!maquinarias) return [];
+    return maquinarias
+      .map(m => ({
+        id: m.id,
+        label: [m.codigo, m.nombre || m.tipo, m.patente].filter(Boolean).join(' - '),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [maquinarias]);
 
   return (
     <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border border-border/50">
@@ -289,6 +322,27 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
         </>
       )}
 
+      {showMaquinariaFilter && maquinarias && maquinarias.length > 0 && (
+        <>
+          <div className="h-6 w-px bg-border mx-1" />
+
+          {/* Maquinaria Selector */}
+          <Select value={maquinariaId || "none"} onValueChange={handleMaquinariaChange}>
+            <SelectTrigger className="w-[220px] h-9">
+              <SelectValue placeholder="Maquinaria" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Todas las maquinarias</SelectItem>
+              {maquinariaOptions.map((m) => (
+                <SelectItem key={m.id} value={m.id}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </>
+      )}
+
       {hasActiveFilters && (
         <Button
           variant="ghost"
@@ -305,7 +359,7 @@ export function FilterBar({ obras, onFilterChange, showObraFilter = true }: Filt
 }
 
 // Helper function to filter data by date range and obra
-export function filterByDateAndObra<T extends { fecha?: string | null; obra_id?: string | null }>(
+export function filterByDateAndObra<T extends { fecha?: string | null; obra_id?: string | null; maquinaria_id?: string | null }>(
   data: T[],
   filters: FilterState
 ): T[] {
@@ -321,6 +375,11 @@ export function filterByDateAndObra<T extends { fecha?: string | null; obra_id?:
 
     // Filter by obra
     if (filters.obraId && item.obra_id !== filters.obraId) {
+      return false;
+    }
+
+    // Filter by maquinaria
+    if (filters.maquinariaId && item.maquinaria_id !== filters.maquinariaId) {
       return false;
     }
 
