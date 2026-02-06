@@ -490,6 +490,14 @@ export function CombustibleDataGrid({
 
   const handleChange = useCallback(
     (newData: GridRow[], operations: Operation[]) => {
+      console.log('[CombGrid] handleChange called', {
+        newDataLen: newData.length,
+        dataLen: data.length,
+        hasSnapshot: !!editingSnapshot,
+        snapshotLen: editingSnapshot?.length,
+        operations: operations.map(o => `${o.type}[${o.fromRowIndex}-${o.toRowIndex}]`),
+      });
+      
       // When snapshot is active, newData corresponds to displayData (filtered subset).
       // We must map changes back to the full dataset by ID.
       if (editingSnapshot) {
