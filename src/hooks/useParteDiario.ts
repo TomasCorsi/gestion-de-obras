@@ -150,7 +150,7 @@ export function useParteDiario() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      queryClient.invalidateQueries({ queryKey: ['parte_hoy'] });
       const isComplete = variables.estado === 'completado';
       toast.success(isComplete ? 'Parte completado exitosamente' : 'Borrador guardado');
     },
@@ -175,7 +175,7 @@ export function useParteDiario() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      queryClient.invalidateQueries({ queryKey: ['parte_hoy'] });
       const isComplete = variables.estado === 'completado';
       toast.success(isComplete ? 'Parte completado exitosamente' : 'Borrador actualizado');
     },
@@ -197,7 +197,7 @@ export function useParteDiario() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-      queryClient.invalidateQueries({ queryKey: ['parte_borrador'] });
+      queryClient.invalidateQueries({ queryKey: ['parte_hoy'] });
       toast.success('Parte eliminado');
     },
     onError: (error: Error) => {
