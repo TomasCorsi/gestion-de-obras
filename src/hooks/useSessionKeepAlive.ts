@@ -20,11 +20,10 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     lastActivity.current = Date.now();
   }, []);
 
-  // Renovar sesión silenciosamente
+  // Renovar sesión silenciosamente (para el intervalo periódico)
   const silentRefresh = useCallback(async () => {
     if (!isAuthenticated || isRefreshing.current) return;
 
-    // Throttle extra refreshes (ej: al volver a enfocar pestaña)
     if (lastRefreshAt.current && Date.now() - lastRefreshAt.current < VISIBILITY_REFRESH_MIN_INTERVAL) {
       return;
     }
@@ -32,7 +31,7 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     const isActive = Date.now() - lastActivity.current < ACTIVITY_TIMEOUT;
     
     if (!isActive) {
-      console.debug('[Session] User inactive, skipping refresh');
+      console.debug('[Session] User inactive, skipping periodic refresh');
       return;
     }
 
@@ -43,7 +42,6 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
       
       if (error) {
         console.warn('[Session] Refresh failed, retrying...', error.message);
-        // Reintentar una vez después de un delay
         setTimeout(async () => {
           try {
             const { error: retryError } = await supabase.auth.refreshSession();
@@ -67,6 +65,25 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     }
   }, [isAuthenticated]);
 
+  // Refresh forzado al reabrir la PWA (sin chequeo de actividad)
+  const forceRefreshOnWake = useCallback(async () => {
+    if (!isAuthenticated || isRefreshing.current) return;
+    if (lastRefreshAt.current && Date.now() - lastRefreshAt.current < VISIBILITY_REFRESH_MIN_INTERVAL) return;
+
+    isRefreshing.current = true;
+    try {
+      const { data } = await supabase.auth.refreshSession();
+      if (data.session) {
+        console.debug('[Session] Token refreshed on wake');
+        lastRefreshAt.current = Date.now();
+      }
+    } catch (e) {
+      console.warn('[Session] Wake refresh error:', e);
+    } finally {
+      isRefreshing.current = false;
+    }
+  }, [isAuthenticated]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -79,15 +96,21 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     // Renovar periódicamente
     refreshIntervalRef.current = setInterval(silentRefresh, REFRESH_INTERVAL);
 
-    // Renovar también cuando la pestaña vuelve a estar visible
+    // Renovar cuando la pestaña vuelve a estar visible (PWA wake-up)
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         updateActivity();
-        // Pequeño delay para evitar conflictos, con throttle
-        setTimeout(silentRefresh, 1000);
+        setTimeout(forceRefreshOnWake, 1000);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
+
+    // Listener de focus como respaldo para dispositivos móviles
+    const handleFocus = () => {
+      updateActivity();
+      setTimeout(forceRefreshOnWake, 500);
+    };
+    window.addEventListener('focus', handleFocus);
 
     // Renovar al montar si el usuario está autenticado
     silentRefresh();
@@ -97,9 +120,10 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
         window.removeEventListener(event, updateActivity)
       );
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [isAuthenticated, updateActivity, silentRefresh]);
+  }, [isAuthenticated, updateActivity, silentRefresh, forceRefreshOnWake]);
 }
