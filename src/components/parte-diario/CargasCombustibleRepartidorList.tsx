@@ -49,6 +49,7 @@ export function CargasCombustibleRepartidorList({
               <TableRow>
                 <TableHead className="w-24">Fecha</TableHead>
                 <TableHead>Operador</TableHead>
+                <TableHead>Tipo</TableHead>
                 <TableHead>Máquina</TableHead>
                 <TableHead className="text-right">Litros</TableHead>
                 <TableHead className="text-right">Horas</TableHead>
@@ -67,6 +68,9 @@ export function CargasCombustibleRepartidorList({
                     {carga.operador 
                       ? `${carga.operador.apellido || ''}, ${carga.operador.nombre?.charAt(0) || ''}.`
                       : '-'}
+                  </TableCell>
+                  <TableCell className="text-sm capitalize">
+                    {carga.tipo_operador || 'interno'}
                   </TableCell>
                   <TableCell className="text-sm">
                     {carga.maquinaria?.codigo || carga.maquinaria?.tipo || '-'}
@@ -108,7 +112,7 @@ export function CargasCombustibleRepartidorList({
               ))}
               {/* Totals row */}
               <TableRow className="bg-muted/50 font-medium">
-                <TableCell colSpan={3} className="text-right">
+                <TableCell colSpan={4} className="text-right">
                   Total:
                 </TableCell>
                 <TableCell className="text-right text-primary">

@@ -99,6 +99,7 @@ export function CombustibleRepartidorTab() {
       Fecha: formatDate(c.fecha),
       Repartidor: formatOperador(c.parte_diario?.personal),
       Operador: formatOperador(c.operador),
+      Tipo: (c.tipo_operador || 'interno').charAt(0).toUpperCase() + (c.tipo_operador || 'interno').slice(1),
       Máquina: c.maquinaria?.codigo || c.maquinaria?.tipo || "-",
       Obra: c.obra?.nombre || "-",
       Litros: c.litros,
@@ -204,6 +205,7 @@ export function CombustibleRepartidorTab() {
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
               <TableHead className="text-muted-foreground font-medium">Repartidor</TableHead>
               <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Tipo</TableHead>
               <TableHead className="text-muted-foreground font-medium">Máquina</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Litros</TableHead>
@@ -214,7 +216,7 @@ export function CombustibleRepartidorTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   <Fuel className="w-10 h-10 mx-auto mb-2 opacity-40" />
                   <p>No hay cargas de repartidor registradas</p>
                 </TableCell>
@@ -227,6 +229,7 @@ export function CombustibleRepartidorTab() {
                     {formatOperador(carga.parte_diario?.personal)}
                   </TableCell>
                   <TableCell className="text-foreground">{formatOperador(carga.operador)}</TableCell>
+                  <TableCell className="text-foreground capitalize">{carga.tipo_operador || 'interno'}</TableCell>
                   <TableCell className="text-foreground">
                     {carga.maquinaria?.codigo || carga.maquinaria?.tipo || "-"}
                   </TableCell>
