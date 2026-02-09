@@ -64,6 +64,7 @@ import { AsignacionesMaquinariaObra } from "@/components/maquinarias/Asignacione
 import { AsignacionesPersonalObra } from "@/components/personal/AsignacionesPersonalObra";
 import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDialog";
 import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
+import { CombustibleRepartidorTab } from "@/components/gastos/CombustibleRepartidorTab";
 import { cn, formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -549,6 +550,10 @@ export default function Gastos() {
             <Fuel className="w-4 h-4" />
             Combustible
           </TabsTrigger>
+          <TabsTrigger value="repartidor" className="flex items-center gap-2">
+            <Droplets className="w-4 h-4" />
+            Repartidor
+          </TabsTrigger>
           <TabsTrigger value="otros" className="flex items-center gap-2">
             <Receipt className="w-4 h-4" />
             Otros
@@ -769,6 +774,11 @@ export default function Gastos() {
               onSave={handleGridSaveComb}
             />
           )}
+        </TabsContent>
+
+        {/* Tab: Repartidor Calecita */}
+        <TabsContent value="repartidor">
+          <CombustibleRepartidorTab />
         </TabsContent>
 
         {/* Tab: Otros Gastos */}
