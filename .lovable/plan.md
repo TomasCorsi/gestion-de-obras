@@ -1,28 +1,54 @@
 
 
-## Plan: Corregir actualización instantánea del borrador en Parte Diario
+## Plan: Agregar columnas faltantes a la exportacion Excel de Partes Diarios
 
 ### Problema
 
-Cuando el empleado guarda un borrador y vuelve al "home", no se muestra el alerta de borrador porque la query `parte_hoy` nunca se refresca. Las mutaciones invalidan `['partes_diarios']` y `['parte_borrador']`, pero la query que alimenta `borradorHoy` usa la key `['parte_hoy', empleadoId, fecha]`, que no está incluida en las invalidaciones.
+La funcion `handleExportExcel` en `ParteDiarioAdminView.tsx` solo incluye un subconjunto de campos. Faltan columnas importantes como:
 
-### Solución
+- Observacion de la maquina (`observacion_maquina`)
+- Estado de la maquina (`estado_maquina`)
+- Observaciones/Inconvenientes (`observaciones_inconvenientes`)
+- Movimiento interno (`cantidad_movimiento_interno`)
+- Ausencias (`ausencias`)
+- Checklist (filtro aire, aceite motor, aceite hidraulico, liquido refrigerante, uria)
 
-Agregar `queryClient.invalidateQueries({ queryKey: ['parte_hoy'] })` en los callbacks `onSuccess` de las tres mutaciones (create, update, delete) en `useParteDiario.ts`.
+### Solucion
 
-### Cambio técnico
+Agregar las columnas faltantes al objeto de exportacion en `handleExportExcel`.
 
-**Archivo: `src/hooks/useParteDiario.ts`**
+### Cambios en `src/components/parte-diario/ParteDiarioAdminView.tsx`
 
-En las tres mutaciones (`createMutation`, `updateMutation`, `deleteMutation`), agregar la invalidación de `['parte_hoy']` junto a las existentes:
+Ampliar el mapeo en `handleExportExcel` para incluir:
 
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-  queryClient.invalidateQueries({ queryKey: ['parte_hoy'] });
-  // ... resto del callback
-},
+```
+const exportData = filteredPartes.map((p) => ({
+  // ... columnas existentes ...
+  "Mov. Interno": p.cantidad_movimiento_interno || "-",
+  "Estado Máquina": p.estado_maquina || "-",
+  "Obs. Máquina": p.observacion_maquina || "-",
+  // Checklist
+  "Filtro Aire": p.check_filtro_aire ? "Si" : "No",
+  "Aceite Motor": p.check_aceite_motor ? "Si" : "No",
+  "Aceite Hidráulico": p.check_aceite_hidraulico ? "Si" : "No",
+  "Líq. Refrigerante": p.check_liquido_refrigerante ? "Si" : "No",
+  "Uría": p.check_uria ? "Si" : "No",
+  // Campos por rol (ya estan Novedades y Tareas)
+  "Ausencias": p.ausencias?.length
+    ? p.ausencias.map(id => {
+        const emp = personal.find(e => e.id === id);
+        return emp ? `${emp.apellido}, ${emp.nombre}` : id;
+      }).join("; ")
+    : "-",
+  "Obs./Inconvenientes": p.observaciones_inconvenientes || "-",
+}));
 ```
 
-Esto garantiza que al volver a la vista "home" después de guardar, la query de `parteHoy` se refresque y muestre el alerta de borrador (o de completado) inmediatamente.
+Las ausencias se resuelven a nombres usando la lista de `personal` que ya esta disponible en el componente.
+
+### Archivo a modificar
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/parte-diario/ParteDiarioAdminView.tsx` | Agregar columnas faltantes al mapeo de exportacion Excel |
 
