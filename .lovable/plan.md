@@ -1,28 +1,73 @@
 
 
-## Plan: Corregir actualización instantánea del borrador en Parte Diario
+## Plan: Permitir al admin cargar datos en el tab Repartidor de Gastos
 
-### Problema
+### Problema actual
 
-Cuando el empleado guarda un borrador y vuelve al "home", no se muestra el alerta de borrador porque la query `parte_hoy` nunca se refresca. Las mutaciones invalidan `['partes_diarios']` y `['parte_borrador']`, pero la query que alimenta `borradorHoy` usa la key `['parte_hoy', empleadoId, fecha]`, que no está incluida en las invalidaciones.
+El tab "Repartidor" en Gastos es solo de lectura. El admin no puede agregar, editar ni eliminar cargas de combustible del repartidor desde esta vista.
 
-### Solución
+### Complicacion tecnica
 
-Agregar `queryClient.invalidateQueries({ queryKey: ['parte_hoy'] })` en los callbacks `onSuccess` de las tres mutaciones (create, update, delete) en `useParteDiario.ts`.
+La tabla `cargas_combustible_repartidor` requiere un `parte_diario_id` (NOT NULL). Cuando el repartidor carga desde su parte diario, este campo se llena automaticamente. Para que el admin pueda cargar sin un parte diario, hay dos opciones:
 
-### Cambio técnico
+1. Hacer `parte_diario_id` nullable (requiere migracion)
+2. Hacer que el admin seleccione un parte diario existente del repartidor
 
-**Archivo: `src/hooks/useParteDiario.ts`**
+Se recomienda la **opcion 1** (hacer nullable) ya que es mas practico para el admin no depender de que exista un parte diario previo.
 
-En las tres mutaciones (`createMutation`, `updateMutation`, `deleteMutation`), agregar la invalidación de `['parte_hoy']` junto a las existentes:
+### Cambios
 
-```typescript
-onSuccess: () => {
-  queryClient.invalidateQueries({ queryKey: ['partes_diarios'] });
-  queryClient.invalidateQueries({ queryKey: ['parte_hoy'] });
-  // ... resto del callback
-},
+#### 1. Migracion SQL
+
+- Hacer `parte_diario_id` nullable en `cargas_combustible_repartidor`
+
+```sql
+ALTER TABLE cargas_combustible_repartidor 
+ALTER COLUMN parte_diario_id DROP NOT NULL;
 ```
 
-Esto garantiza que al volver a la vista "home" después de guardar, la query de `parteHoy` se refresque y muestre el alerta de borrador (o de completado) inmediatamente.
+#### 2. Hook `useCargasRepartidorAll.ts`
+
+Agregar mutaciones de create, update y delete (similar al patron de `useCargasRepartidor.ts`):
+
+- `createCarga`: inserta un registro sin `parte_diario_id`
+- `updateCarga`: actualiza un registro existente
+- `deleteCarga`: elimina un registro
+- Invalidar la query `cargas_combustible_repartidor_all` en cada mutacion
+
+#### 3. Nuevo componente: `CargaRepartidorAdminDialog.tsx`
+
+Un dialog adaptado para el admin con los campos:
+
+- Fecha (date input)
+- Operador (Combobox con lista de personal)
+- Maquinaria (Combobox con lista de maquinarias)
+- Obra (Combobox con obras activas)
+- Litros (requerido)
+- Horas y Km (opcionales)
+- Observaciones
+
+Reutiliza la misma estructura del `CargaCombustibleRepartidorDialog` existente pero sin requerir `parte_diario_id`.
+
+#### 4. Actualizar `CombustibleRepartidorTab.tsx`
+
+- Agregar boton "Nueva Carga" en la barra de filtros
+- Agregar columna de acciones (editar/eliminar) en cada fila de la tabla
+- Integrar el dialog de creacion/edicion
+- Integrar dialog de confirmacion de eliminacion
+- Recibir `personal`, `maquinarias` y `obras` como props (ya disponibles en `Gastos.tsx`)
+
+#### 5. Actualizar `Gastos.tsx`
+
+- Pasar `personal`, `maquinarias` y `obras` como props al `CombustibleRepartidorTab`
+
+### Archivos a modificar/crear
+
+| Archivo | Cambio |
+|---------|--------|
+| Migracion SQL | Hacer `parte_diario_id` nullable |
+| `src/hooks/useCargasRepartidorAll.ts` | Agregar mutaciones CRUD |
+| `src/components/gastos/CargaRepartidorAdminDialog.tsx` | Nuevo dialog para crear/editar |
+| `src/components/gastos/CombustibleRepartidorTab.tsx` | Agregar botones de accion, integrar dialog |
+| `src/pages/Gastos.tsx` | Pasar props al tab |
 
