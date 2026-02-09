@@ -3,6 +3,13 @@ import { Search, Fuel, Droplets, Download } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -11,13 +18,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FilterBar, FilterState } from "@/components/shared/FilterBar";
 import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
-import { useObras } from "@/hooks/useObras";
-import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+
+const meses = [
+  { value: "01", label: "Enero" },
+  { value: "02", label: "Febrero" },
+  { value: "03", label: "Marzo" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Mayo" },
+  { value: "06", label: "Junio" },
+  { value: "07", label: "Julio" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Septiembre" },
+  { value: "10", label: "Octubre" },
+  { value: "11", label: "Noviembre" },
+  { value: "12", label: "Diciembre" },
+];
 
 function formatOperador(op: { nombre: string | null; apellido: string | null } | null | undefined): string {
   if (!op) return "-";
@@ -26,34 +47,32 @@ function formatOperador(op: { nombre: string | null; apellido: string | null } |
 
 export function CombustibleRepartidorTab() {
   const { cargas, isLoading } = useCargasRepartidorAll();
-  const { obras } = useObras();
-  const { maquinarias } = useMaquinarias();
+
+  const currentYear = new Date().getFullYear();
+  const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState<FilterState>({
-    fechaDesde: undefined,
-    fechaHasta: undefined,
-    mes: undefined,
-    obraId: undefined,
-    maquinariaId: undefined,
-  });
+  const [mes, setMes] = useState<string | undefined>(undefined);
+  const [year, setYear] = useState(currentYear);
+
+  const years = useMemo(() => {
+    const result = [];
+    for (let y = currentYear; y >= currentYear - 5; y--) result.push(y);
+    return result;
+  }, [currentYear]);
 
   const filtered = useMemo(() => {
     let result = [...cargas];
 
-    if (filters.fechaDesde) {
-      const desde = filters.fechaDesde instanceof Date
-        ? filters.fechaDesde.toISOString().split("T")[0]
-        : filters.fechaDesde;
-      result = result.filter((c) => c.fecha >= desde);
-    }
-    if (filters.fechaHasta) {
-      const hasta = filters.fechaHasta instanceof Date
-        ? filters.fechaHasta.toISOString().split("T")[0]
-        : filters.fechaHasta;
-      result = result.filter((c) => c.fecha <= hasta);
+    // Month + year filter
+    if (mes) {
+      const monthDate = parseISO(`${year}-${mes}-01`);
+      const desde = format(startOfMonth(monthDate), "yyyy-MM-dd");
+      const hasta = format(endOfMonth(monthDate), "yyyy-MM-dd");
+      result = result.filter((c) => c.fecha >= desde && c.fecha <= hasta);
     }
 
+    // Search
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -67,7 +86,7 @@ export function CombustibleRepartidorTab() {
     }
 
     return result;
-  }, [cargas, filters, searchTerm]);
+  }, [cargas, mes, year, searchTerm]);
 
   const totalLitros = filtered.reduce((sum, c) => sum + (c.litros || 0), 0);
 
@@ -110,11 +129,8 @@ export function CombustibleRepartidorTab() {
 
   return (
     <div className="space-y-4">
-      <div className="mb-4">
-        <FilterBar obras={obras} maquinarias={maquinarias} onFilterChange={setFilters} showMaquinariaFilter />
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -124,14 +140,37 @@ export function CombustibleRepartidorTab() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <Button variant="outline" onClick={handleExport} className="border-border">
-          <Download className="w-4 h-4 mr-2" />
-          Excel
-        </Button>
+        <div className="flex gap-2">
+          <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
+            <SelectTrigger className="w-24 bg-card border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((y) => (
+                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={mes || "all"} onValueChange={(v) => setMes(v === "all" ? undefined : v)}>
+            <SelectTrigger className="w-36 bg-card border-border">
+              <SelectValue placeholder="Todos los meses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {meses.map((m) => (
+                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={handleExport} className="border-border">
+            <Download className="w-4 h-4 mr-2" />
+            Excel
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
             <p className="text-2xl font-bold text-foreground">{filtered.length}</p>
