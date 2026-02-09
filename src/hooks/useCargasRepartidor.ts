@@ -12,6 +12,7 @@ export interface CargaRepartidor {
   litros: number;
   horas: number | null;
   km: number | null;
+  tipo_operador: string | null;
   observaciones: string | null;
   created_at: string;
   updated_at: string;
@@ -30,6 +31,7 @@ export interface CargaRepartidorInsert {
   litros: number;
   horas?: number | null;
   km?: number | null;
+  tipo_operador?: string | null;
   observaciones?: string | null;
 }
 

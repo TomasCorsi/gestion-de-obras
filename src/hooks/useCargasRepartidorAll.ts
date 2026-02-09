@@ -8,6 +8,7 @@ export interface CargaRepartidorFull {
   litros: number;
   horas: number | null;
   km: number | null;
+  tipo_operador: string | null;
   observaciones: string | null;
   created_at: string;
   operador?: { nombre: string | null; apellido: string | null } | null;

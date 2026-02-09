@@ -201,6 +201,7 @@ export type Database = {
           observaciones: string | null
           operador_id: string | null
           parte_diario_id: string
+          tipo_operador: string | null
           updated_at: string | null
         }
         Insert: {
@@ -215,6 +216,7 @@ export type Database = {
           observaciones?: string | null
           operador_id?: string | null
           parte_diario_id: string
+          tipo_operador?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -229,6 +231,7 @@ export type Database = {
           observaciones?: string | null
           operador_id?: string | null
           parte_diario_id?: string
+          tipo_operador?: string | null
           updated_at?: string | null
         }
         Relationships: [

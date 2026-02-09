@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 
@@ -44,6 +45,7 @@ interface CargaCombustibleRepartidorDialogProps {
     litros: number;
     horas: number | null;
     km: number | null;
+    tipo_operador: string;
     observaciones: string | null;
   }) => Promise<void>;
   isSaving: boolean;
@@ -68,6 +70,7 @@ export function CargaCombustibleRepartidorDialog({
     litros: '',
     horas: '',
     km: '',
+    tipo_operador: 'interno',
     observaciones: '',
   });
 
@@ -83,6 +86,7 @@ export function CargaCombustibleRepartidorDialog({
           litros: carga.litros?.toString() || '',
           horas: carga.horas?.toString() || '',
           km: carga.km?.toString() || '',
+          tipo_operador: carga.tipo_operador || 'interno',
           observaciones: carga.observaciones || '',
         });
       } else {
@@ -94,6 +98,7 @@ export function CargaCombustibleRepartidorDialog({
           litros: '',
           horas: '',
           km: '',
+          tipo_operador: 'interno',
           observaciones: '',
         });
       }
@@ -145,6 +150,7 @@ export function CargaCombustibleRepartidorDialog({
       litros,
       horas: formData.horas ? parseFloat(formData.horas) : null,
       km: formData.km ? parseFloat(formData.km) : null,
+      tipo_operador: formData.tipo_operador,
       observaciones: formData.observaciones || null,
     });
 
@@ -183,6 +189,21 @@ export function CargaCombustibleRepartidorDialog({
               searchPlaceholder="Buscar operador..."
               emptyText="No se encontró operador"
             />
+          </div>
+
+          {/* Tipo Operador */}
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select value={formData.tipo_operador} onValueChange={(v) => handleChange('tipo_operador', v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar tipo..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="interno">Interno</SelectItem>
+                <SelectItem value="externo">Externo</SelectItem>
+                <SelectItem value="fletero">Fletero</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Maquinaria */}
