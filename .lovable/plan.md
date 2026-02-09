@@ -1,73 +1,55 @@
 
 
-## Plan: Permitir al admin cargar datos en el tab Repartidor de Gastos
+## Plan: Agregar campo "Tipo de Operador" (Interno / Externo / Fletero) a cargas del repartidor
 
-### Problema actual
+### Que se agrega
 
-El tab "Repartidor" en Gastos es solo de lectura. El admin no puede agregar, editar ni eliminar cargas de combustible del repartidor desde esta vista.
-
-### Complicacion tecnica
-
-La tabla `cargas_combustible_repartidor` requiere un `parte_diario_id` (NOT NULL). Cuando el repartidor carga desde su parte diario, este campo se llena automaticamente. Para que el admin pueda cargar sin un parte diario, hay dos opciones:
-
-1. Hacer `parte_diario_id` nullable (requiere migracion)
-2. Hacer que el admin seleccione un parte diario existente del repartidor
-
-Se recomienda la **opcion 1** (hacer nullable) ya que es mas practico para el admin no depender de que exista un parte diario previo.
+Un nuevo campo `tipo_operador` en la carga de combustible del repartidor con tres opciones: **Interno**, **Externo** y **Fletero**. Este campo se muestra en el formulario de carga, en la lista del parte diario y en la tabla de Gastos > Repartidor.
 
 ### Cambios
 
 #### 1. Migracion SQL
 
-- Hacer `parte_diario_id` nullable en `cargas_combustible_repartidor`
+Agregar columna `tipo_operador` a la tabla `cargas_combustible_repartidor`:
 
 ```sql
 ALTER TABLE cargas_combustible_repartidor 
-ALTER COLUMN parte_diario_id DROP NOT NULL;
+ADD COLUMN tipo_operador text DEFAULT 'interno';
 ```
 
-#### 2. Hook `useCargasRepartidorAll.ts`
+Se usa `text` con default `'interno'` para no romper registros existentes.
 
-Agregar mutaciones de create, update y delete (similar al patron de `useCargasRepartidor.ts`):
+#### 2. Dialog de carga (`CargaCombustibleRepartidorDialog.tsx`)
 
-- `createCarga`: inserta un registro sin `parte_diario_id`
-- `updateCarga`: actualiza un registro existente
-- `deleteCarga`: elimina un registro
-- Invalidar la query `cargas_combustible_repartidor_all` en cada mutacion
+- Agregar campo `tipo_operador` al estado del formulario (default: `'interno'`)
+- Agregar un Select con las opciones: Interno, Externo, Fletero
+- Incluir `tipo_operador` en el objeto que se envia al `onSave`
+- Ubicarlo entre Operador y Maquinaria en el formulario
 
-#### 3. Nuevo componente: `CargaRepartidorAdminDialog.tsx`
+#### 3. Interfaces y hooks
 
-Un dialog adaptado para el admin con los campos:
+- Agregar `tipo_operador` a la interfaz `CargaRepartidor` en `useCargasRepartidor.ts`
+- Agregar `tipo_operador` a `CargaRepartidorInsert`
+- Agregar `tipo_operador` a `CargaRepartidorFull` en `useCargasRepartidorAll.ts`
+- Actualizar la interfaz `onSave` del dialog para incluir `tipo_operador`
 
-- Fecha (date input)
-- Operador (Combobox con lista de personal)
-- Maquinaria (Combobox con lista de maquinarias)
-- Obra (Combobox con obras activas)
-- Litros (requerido)
-- Horas y Km (opcionales)
-- Observaciones
+#### 4. Lista del parte diario (`CargasCombustibleRepartidorList.tsx`)
 
-Reutiliza la misma estructura del `CargaCombustibleRepartidorDialog` existente pero sin requerir `parte_diario_id`.
+- Agregar columna "Tipo" en la tabla que muestra las cargas dentro del parte diario
 
-#### 4. Actualizar `CombustibleRepartidorTab.tsx`
+#### 5. Tab Repartidor en Gastos (`CombustibleRepartidorTab.tsx`)
 
-- Agregar boton "Nueva Carga" en la barra de filtros
-- Agregar columna de acciones (editar/eliminar) en cada fila de la tabla
-- Integrar el dialog de creacion/edicion
-- Integrar dialog de confirmacion de eliminacion
-- Recibir `personal`, `maquinarias` y `obras` como props (ya disponibles en `Gastos.tsx`)
+- Agregar columna "Tipo" en la tabla
+- Incluir `tipo_operador` en la exportacion Excel
 
-#### 5. Actualizar `Gastos.tsx`
-
-- Pasar `personal`, `maquinarias` y `obras` como props al `CombustibleRepartidorTab`
-
-### Archivos a modificar/crear
+### Archivos a modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| Migracion SQL | Hacer `parte_diario_id` nullable |
-| `src/hooks/useCargasRepartidorAll.ts` | Agregar mutaciones CRUD |
-| `src/components/gastos/CargaRepartidorAdminDialog.tsx` | Nuevo dialog para crear/editar |
-| `src/components/gastos/CombustibleRepartidorTab.tsx` | Agregar botones de accion, integrar dialog |
-| `src/pages/Gastos.tsx` | Pasar props al tab |
+| Migracion SQL | Agregar columna `tipo_operador` |
+| `src/hooks/useCargasRepartidor.ts` | Agregar campo a interfaces |
+| `src/hooks/useCargasRepartidorAll.ts` | Agregar campo a interfaz |
+| `src/components/parte-diario/CargaCombustibleRepartidorDialog.tsx` | Agregar Select de tipo |
+| `src/components/parte-diario/CargasCombustibleRepartidorList.tsx` | Agregar columna Tipo |
+| `src/components/gastos/CombustibleRepartidorTab.tsx` | Agregar columna Tipo + exportacion |
 
