@@ -68,7 +68,7 @@ const tipoTransporteOptions = [
 ];
 
 export default function Remitos() {
-  const { remitos, loading, createRemito, updateRemito, deleteRemito, batchSave } = useRemitos();
+  const { remitos, loading, createRemito, updateRemito, deleteRemito, batchSave, updateRowColor } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   
@@ -327,6 +327,7 @@ export default function Remitos() {
             onSave={handleGridSave}
             generateNumero={generateNumero}
             fullScreen
+            onColorChange={updateRowColor}
           />
         </div>
 

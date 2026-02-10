@@ -1168,6 +1168,7 @@ export type Database = {
           recibido_por: string
           remito_local: string | null
           remito_tercero: string | null
+          row_color: string | null
           tipo_material: string | null
           tipo_transporte: string | null
           unidad: string
@@ -1194,6 +1195,7 @@ export type Database = {
           recibido_por: string
           remito_local?: string | null
           remito_tercero?: string | null
+          row_color?: string | null
           tipo_material?: string | null
           tipo_transporte?: string | null
           unidad: string
@@ -1220,6 +1222,7 @@ export type Database = {
           recibido_por?: string
           remito_local?: string | null
           remito_tercero?: string | null
+          row_color?: string | null
           tipo_material?: string | null
           tipo_transporte?: string | null
           unidad?: string
