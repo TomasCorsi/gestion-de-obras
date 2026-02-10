@@ -86,7 +86,14 @@ export function CargasCombustibleRepartidorList({
                 </div>
               </div>
 
-              {/* Row 2: Operator + type */}
+              {/* Row 2: Repartidor */}
+              {carga.repartidor && (
+                <p className="text-xs text-muted-foreground truncate">
+                  Repartidor: {carga.repartidor.apellido || ""}, {carga.repartidor.nombre?.charAt(0) || ""}.
+                </p>
+              )}
+
+              {/* Row 3: Operator + type */}
               <p className="text-xs text-muted-foreground truncate">
                 {operador} · <span className="capitalize">{carga.tipo_operador || "interno"}</span>
               </p>
