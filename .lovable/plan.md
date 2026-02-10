@@ -1,48 +1,42 @@
 
-## Plan: Historial de entregas del Repartidor en la pantalla principal
+## Plan: Adaptar entregas del repartidor a formato card para movil
 
-### Problema actual
-
-El hook `useCargasRepartidor` solo consulta cargas por `parte_diario_id`. Como ahora las cargas se crean sin parte diario (directamente desde el home), al pasar `null` el hook devuelve un array vacio. El repartidor no puede ver nada de lo que cargo.
+### Problema
+La tabla actual tiene 10 columnas y genera scroll horizontal en iPhone, haciendo la vista ilegible y dificil de usar con una mano.
 
 ### Solucion
+Reemplazar la tabla por un layout de **tarjetas compactas** (cards) optimizado para pantallas pequenas. Cada entrega se muestra como una card individual con la informacion organizada en filas, sin necesidad de scroll horizontal.
 
-Agregar una vista de historial de entregas del dia en la pantalla home del repartidor, usando el hook modificado para que cuando no reciba `parteDiarioId` pero si un `repartidorId`, consulte las cargas de ese repartidor. Ademas, permitir editar y eliminar desde ahi.
+### Diseno de cada card
 
-### Cambios
+Cada entrega se mostrara asi:
 
-#### 1. Modificar `useCargasRepartidor.ts`
-
-Cambiar la firma para aceptar un segundo parametro opcional `repartidorId`. Cuando `parteDiarioId` es null pero `repartidorId` tiene valor, la query filtra por `repartidor_id` en lugar de `parte_diario_id`. Esto permite reutilizar el mismo hook sin crear uno nuevo.
-
+```text
++------------------------------------------+
+| Combustible · 50 L          [edit] [del] |
+| ADAMS, L. · Interno                      |
+| Maq: CAT-320 · Obra: Ruta 40            |
+| Hs: 1200 · Km: -                        |
++------------------------------------------+
 ```
-useCargasRepartidor(parteDiarioId: string | null, repartidorId?: string | null)
-```
 
-- Si `parteDiarioId` existe: filtra por `parte_diario_id` (comportamiento actual)
-- Si `repartidorId` existe y `parteDiarioId` es null: filtra por `repartidor_id`
-- Si ambos son null: retorna vacio
+- **Linea 1**: Tipo de producto (badge), cantidad con unidad, y botones de accion alineados a la derecha
+- **Linea 2**: Operador y tipo de operador
+- **Linea 3**: Maquina y obra
+- **Linea 4**: Horas y km (solo si tienen valor)
 
-#### 2. Modificar `ParteDiario.tsx`
+Al final, un resumen con el total.
 
-- Pasar `empleado.id` como `repartidorId` al hook para obtener las cargas del repartidor
-- Pasar las cargas, funciones de editar/eliminar y el dialog de edicion al home view
-- Agregar estado para manejar la edicion de cargas existentes
+### Cambios tecnicos
 
-#### 3. Modificar `ParteDiarioHomeView.tsx`
+#### Archivo: `src/components/parte-diario/CargasCombustibleRepartidorList.tsx`
 
-- Recibir las cargas del dia como prop
-- Mostrar debajo de los botones principales una lista compacta con las entregas de hoy usando el componente `CargasCombustibleRepartidorList` existente
-- Incluir botones de editar y eliminar en cada fila
+Reemplazar completamente el contenido:
+- Eliminar la tabla (Table, TableBody, TableHeader, etc.)
+- Usar un `div` con `space-y-3` que renderiza cada carga como una Card compacta
+- Cada card usa un layout de flexbox con texto truncado
+- Agregar Badge para el tipo de producto con colores diferenciados
+- Mantener la misma interfaz de props (no se rompe nada externo)
+- El total se muestra en una barra inferior con fondo muted
 
-#### 4. Confirmar dialog de eliminacion
-
-Agregar `DeleteConfirmDialog` para confirmar antes de borrar una entrega.
-
-### Archivos a modificar
-
-| Archivo | Cambio |
-|---------|--------|
-| `src/hooks/useCargasRepartidor.ts` | Agregar parametro `repartidorId` para query alternativa |
-| `src/pages/ParteDiario.tsx` | Conectar cargas del repartidor con el home view, manejar edicion |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Mostrar lista de entregas del dia con edicion/eliminacion |
+No se requieren cambios en otros archivos ya que la interfaz de props se mantiene identica.
