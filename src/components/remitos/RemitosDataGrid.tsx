@@ -683,11 +683,13 @@ export function RemitosDataGrid({
   const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
   
   // Callback when cell becomes active - capture snapshot
-  // Track active row for color painting
+  // Track active row for color painting - use ref to survive blur
+  const lastActiveRowRef = useRef<number | null>(null);
   const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
 
   const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
     setActiveRowIndex(cell ? cell.row : null);
+    if (cell) lastActiveRowRef.current = cell.row;
     if (cell && !isEditing && (globalSearch || activeFilterCount > 0)) {
       setIsEditing(true);
       setEditingSnapshot(searchFilteredData);
@@ -719,8 +721,9 @@ export function RemitosDataGrid({
   }, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
 
   const handleColorSelect = useCallback(async (color: string | null) => {
-    if (activeRowIndex === null || !onColorChange) return;
-    const rowData = displayData[activeRowIndex];
+    const rowIdx = activeRowIndex ?? lastActiveRowRef.current;
+    if (rowIdx === null || !onColorChange) return;
+    const rowData = displayData[rowIdx];
     if (!rowData?.id || rowData.id.startsWith('temp_')) {
       toast.error("Seleccioná una fila guardada para pintar");
       return;
