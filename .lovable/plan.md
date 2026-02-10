@@ -1,42 +1,37 @@
 
-## Plan: Adaptar entregas del repartidor a formato card para movil
 
-### Problema
-La tabla actual tiene 10 columnas y genera scroll horizontal en iPhone, haciendo la vista ilegible y dificil de usar con una mano.
+## Plan: Corregir nombre del repartidor y total de litros del dia
 
-### Solucion
-Reemplazar la tabla por un layout de **tarjetas compactas** (cards) optimizado para pantallas pequenas. Cada entrega se muestra como una card individual con la informacion organizada en filas, sin necesidad de scroll horizontal.
+### Problemas identificados
 
-### Diseno de cada card
+1. **Nombre del repartidor vacio**: El hook `useCargasRepartidor` no incluye la relacion `repartidor` en la query de Supabase, por lo que no se trae el nombre de quien cargo. La interfaz `CargaRepartidor` tampoco tiene ese campo.
 
-Cada entrega se mostrara asi:
+2. **Total de litros incorrecto**: El hook calcula `totalLitros` sumando TODAS las cargas del repartidor (de todas las fechas). Pero en `ParteDiario.tsx` se filtra `cargasHoy` solo por fecha de hoy, y sin embargo se pasa el `totalLitros` completo como `totalLitrosHoy`. El total no coincide con las cargas mostradas.
 
-```text
-+------------------------------------------+
-| Combustible · 50 L          [edit] [del] |
-| ADAMS, L. · Interno                      |
-| Maq: CAT-320 · Obra: Ruta 40            |
-| Hs: 1200 · Km: -                        |
-+------------------------------------------+
-```
+### Cambios
 
-- **Linea 1**: Tipo de producto (badge), cantidad con unidad, y botones de accion alineados a la derecha
-- **Linea 2**: Operador y tipo de operador
-- **Linea 3**: Maquina y obra
-- **Linea 4**: Horas y km (solo si tienen valor)
+#### 1. `src/hooks/useCargasRepartidor.ts`
+- Agregar la relacion `repartidor` al select de la query (igual que ya se hace en `useCargasRepartidorAll.ts`):
+  ```
+  repartidor:personal!cargas_combustible_repartidor_repartidor_id_fkey(nombre, apellido)
+  ```
+- Agregar el campo `repartidor` a la interfaz `CargaRepartidor`
 
-Al final, un resumen con el total.
+#### 2. `src/pages/ParteDiario.tsx`
+- Calcular `totalLitrosHoy` a partir de `cargasHoy` en lugar de usar el `totalLitros` general:
+  ```
+  const totalLitrosHoy = cargasHoy.reduce((sum, c) => sum + (c.litros || 0), 0);
+  ```
+- Pasar este valor correcto al componente `ParteDiarioHomeView`
 
-### Cambios tecnicos
+#### 3. `src/components/parte-diario/CargasCombustibleRepartidorList.tsx`
+- Mostrar el nombre del repartidor en cada tarjeta (una linea adicional con "Repartidor: Apellido, N.")
 
-#### Archivo: `src/components/parte-diario/CargasCombustibleRepartidorList.tsx`
+### Archivos a modificar
 
-Reemplazar completamente el contenido:
-- Eliminar la tabla (Table, TableBody, TableHeader, etc.)
-- Usar un `div` con `space-y-3` que renderiza cada carga como una Card compacta
-- Cada card usa un layout de flexbox con texto truncado
-- Agregar Badge para el tipo de producto con colores diferenciados
-- Mantener la misma interfaz de props (no se rompe nada externo)
-- El total se muestra en una barra inferior con fondo muted
+| Archivo | Cambio |
+|---------|--------|
+| `src/hooks/useCargasRepartidor.ts` | Agregar join de `repartidor` y campo en interfaz |
+| `src/pages/ParteDiario.tsx` | Calcular totalLitrosHoy desde cargasHoy |
+| `src/components/parte-diario/CargasCombustibleRepartidorList.tsx` | Mostrar nombre del repartidor |
 
-No se requieren cambios en otros archivos ya que la interfaz de props se mantiene identica.
