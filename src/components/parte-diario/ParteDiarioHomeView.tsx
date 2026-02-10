@@ -1,4 +1,4 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2 } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
@@ -10,11 +10,14 @@ interface ParteDiarioHomeViewProps {
   parteCompletadoHoy: ParteDiario | null;
   nombreEmpleado: string;
   rolLabel: string;
+  isRepartidor?: boolean;
+  entregasHoyCount?: number;
   onNewParte: () => void;
   onViewList: () => void;
   onContinueDraft: () => void;
   onDiscardDraft: () => void;
   onEditCompletado: () => void;
+  onRegistrarEntrega?: () => void;
   isDiscarding?: boolean;
 }
 
@@ -23,11 +26,14 @@ export const ParteDiarioHomeView = ({
   parteCompletadoHoy,
   nombreEmpleado,
   rolLabel,
+  isRepartidor = false,
+  entregasHoyCount = 0,
   onNewParte,
   onViewList,
   onContinueDraft,
   onDiscardDraft,
   onEditCompletado,
+  onRegistrarEntrega,
   isDiscarding = false,
 }: ParteDiarioHomeViewProps) => {
   return (
@@ -41,7 +47,7 @@ export const ParteDiarioHomeView = ({
       </div>
 
       {/* Main buttons */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className={`grid ${isRepartidor ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
         <Button 
           onClick={onNewParte} 
           className="h-28 flex-col gap-3 text-lg"
@@ -59,7 +65,27 @@ export const ParteDiarioHomeView = ({
           <ClipboardList className="w-10 h-10" />
           <span className="font-semibold">Ver Mis Partes</span>
         </Button>
+        {isRepartidor && onRegistrarEntrega && (
+          <Button 
+            onClick={onRegistrarEntrega} 
+            variant="secondary"
+            className="h-28 flex-col gap-3 text-lg"
+            size="lg"
+          >
+            <Fuel className="w-10 h-10" />
+            <span className="font-semibold text-sm">Registrar Entrega</span>
+          </Button>
+        )}
       </div>
+
+      {/* Entregas hoy summary for repartidor */}
+      {isRepartidor && entregasHoyCount > 0 && (
+        <div className="bg-muted/50 rounded-lg p-3 text-center">
+          <p className="text-sm text-muted-foreground">
+            Hoy registraste <span className="font-semibold text-foreground">{entregasHoyCount}</span> entrega{entregasHoyCount !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
 
       {/* Completed parte alert */}
       {parteCompletadoHoy && !borradorHoy && (

@@ -46,6 +46,7 @@ interface CargaCombustibleRepartidorDialogProps {
     horas: number | null;
     km: number | null;
     tipo_operador: string;
+    tipo_producto: string;
     observaciones: string | null;
   }) => Promise<void>;
   isSaving: boolean;
@@ -71,6 +72,7 @@ export function CargaCombustibleRepartidorDialog({
     horas: '',
     km: '',
     tipo_operador: 'interno',
+    tipo_producto: 'combustible',
     observaciones: '',
   });
 
@@ -87,6 +89,7 @@ export function CargaCombustibleRepartidorDialog({
           horas: carga.horas?.toString() || '',
           km: carga.km?.toString() || '',
           tipo_operador: carga.tipo_operador || 'interno',
+          tipo_producto: carga.tipo_producto || 'combustible',
           observaciones: carga.observaciones || '',
         });
       } else {
@@ -99,6 +102,7 @@ export function CargaCombustibleRepartidorDialog({
           horas: '',
           km: '',
           tipo_operador: 'interno',
+          tipo_producto: 'combustible',
           observaciones: '',
         });
       }
@@ -151,6 +155,7 @@ export function CargaCombustibleRepartidorDialog({
       horas: formData.horas ? parseFloat(formData.horas) : null,
       km: formData.km ? parseFloat(formData.km) : null,
       tipo_operador: formData.tipo_operador,
+      tipo_producto: formData.tipo_producto,
       observaciones: formData.observaciones || null,
     });
 
@@ -162,7 +167,7 @@ export function CargaCombustibleRepartidorDialog({
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            {carga ? 'Editar Carga de Combustible' : 'Nueva Carga de Combustible'}
+            {carga ? 'Editar Entrega' : 'Nueva Entrega'}
           </DialogTitle>
         </DialogHeader>
 
@@ -176,6 +181,22 @@ export function CargaCombustibleRepartidorDialog({
               value={formData.fecha}
               onChange={(e) => handleChange('fecha', e.target.value)}
             />
+          </div>
+
+          {/* Tipo de Producto */}
+          <div className="space-y-2">
+            <Label>Producto *</Label>
+            <Select value={formData.tipo_producto} onValueChange={(v) => handleChange('tipo_producto', v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar producto..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="combustible">🛢️ Combustible</SelectItem>
+                <SelectItem value="grasa">🧴 Grasa</SelectItem>
+                <SelectItem value="aceite">🫗 Aceite</SelectItem>
+                <SelectItem value="uria">💧 Urea</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Operador */}
@@ -193,7 +214,7 @@ export function CargaCombustibleRepartidorDialog({
 
           {/* Tipo Operador */}
           <div className="space-y-2">
-            <Label>Tipo</Label>
+            <Label>Tipo Operador</Label>
             <Select value={formData.tipo_operador} onValueChange={(v) => handleChange('tipo_operador', v)}>
               <SelectTrigger>
                 <SelectValue placeholder="Seleccionar tipo..." />
@@ -219,9 +240,11 @@ export function CargaCombustibleRepartidorDialog({
             />
           </div>
 
-          {/* Litros */}
+          {/* Cantidad */}
           <div className="space-y-2">
-            <Label htmlFor="litros">Litros *</Label>
+            <Label htmlFor="litros">
+              {formData.tipo_producto === 'grasa' ? 'Cantidad (Kg) *' : 'Cantidad (Litros) *'}
+            </Label>
             <Input
               id="litros"
               type="number"
