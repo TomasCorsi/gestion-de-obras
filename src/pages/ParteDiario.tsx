@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopNavbar } from "@/components/layout/TopNavbar";
@@ -14,6 +14,7 @@ import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListVi
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
 import { ParteDiarioAdminView } from "@/components/parte-diario/ParteDiarioAdminView";
 import { CargaCombustibleRepartidorDialog } from "@/components/parte-diario/CargaCombustibleRepartidorDialog";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -53,20 +54,30 @@ const ParteDiario = () => {
   const [view, setView] = useState<ViewMode>('home');
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
   const [showEntregaDialog, setShowEntregaDialog] = useState(false);
+  const [editingCarga, setEditingCarga] = useState<any>(null);
+  const [deletingCarga, setDeletingCarga] = useState<any>(null);
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
   const isRepartidor = rol === 'repartidor_calecita';
 
-  // For repartidor: direct cargas (no parte_diario_id needed)
-  const { cargas: cargasDirectas, createCarga, isCreating: isCreatingCarga } = useCargasRepartidor(null);
+  // For repartidor: query by repartidor_id to get all their loads
+  const { 
+    cargas: cargasRepartidor, 
+    totalLitros,
+    createCarga, 
+    updateCarga,
+    deleteCarga,
+    isCreating: isCreatingCarga,
+    isUpdating: isUpdatingCarga,
+    isDeleting: isDeletingCarga,
+  } = useCargasRepartidor(null, isRepartidor ? empleado?.id : null);
 
-  // Count today's deliveries for repartidor
+  // Filter today's deliveries
   const todayStr = new Date().toISOString().split('T')[0];
-  const entregasHoyCount = useMemo(() => {
-    if (!isRepartidor) return 0;
-    return cargasDirectas.filter(c => c.fecha === todayStr).length;
-  }, [cargasDirectas, todayStr, isRepartidor]);
+  const cargasHoy = useMemo(() => {
+    return cargasRepartidor.filter(c => c.fecha === todayStr);
+  }, [cargasRepartidor, todayStr]);
 
   // Loading state (evitar "flicker" en admin y en refreshes silenciosos)
   if (loadingAuth) {
@@ -179,32 +190,55 @@ const ParteDiario = () => {
               nombreEmpleado={empleado.nombreCompleto}
               rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
               isRepartidor={isRepartidor}
-              entregasHoyCount={entregasHoyCount}
+              entregasHoyCount={cargasHoy.length}
+              cargasHoy={cargasHoy}
+              totalLitrosHoy={totalLitros}
+              isDeletingCarga={isDeletingCarga}
               onNewParte={handleNewParte}
               onViewList={handleViewList}
               onContinueDraft={handleContinueDraft}
               onDiscardDraft={handleDiscardDraft}
               onEditCompletado={handleEditCompletado}
-              onRegistrarEntrega={() => setShowEntregaDialog(true)}
+              onRegistrarEntrega={() => { setEditingCarga(null); setShowEntregaDialog(true); }}
+              onEditCarga={(carga) => { setEditingCarga(carga); setShowEntregaDialog(true); }}
+              onDeleteCarga={(carga) => setDeletingCarga(carga)}
               isDiscarding={isDeleting}
             />
             {isRepartidor && (
-              <CargaCombustibleRepartidorDialog
-                open={showEntregaDialog}
-                onOpenChange={setShowEntregaDialog}
-                carga={null}
-                fechaParte={todayStr}
-                personal={personal}
-                maquinarias={maquinarias}
-                obras={obras}
-                onSave={async (data) => {
-                  await createCarga({
-                    ...data,
-                    repartidor_id: empleado.id,
-                  });
-                }}
-                isSaving={isCreatingCarga}
-              />
+              <>
+                <CargaCombustibleRepartidorDialog
+                  open={showEntregaDialog}
+                  onOpenChange={setShowEntregaDialog}
+                  carga={editingCarga}
+                  fechaParte={todayStr}
+                  personal={personal}
+                  maquinarias={maquinarias}
+                  obras={obras}
+                  onSave={async (data) => {
+                    if (editingCarga) {
+                      await updateCarga({ id: editingCarga.id, ...data });
+                    } else {
+                      await createCarga({
+                        ...data,
+                        repartidor_id: empleado.id,
+                      });
+                    }
+                  }}
+                  isSaving={isCreatingCarga || isUpdatingCarga}
+                />
+                <DeleteConfirmDialog
+                  open={!!deletingCarga}
+                  onOpenChange={(open) => { if (!open) setDeletingCarga(null); }}
+                  onConfirm={async () => {
+                    if (deletingCarga) {
+                      await deleteCarga(deletingCarga.id);
+                      setDeletingCarga(null);
+                    }
+                  }}
+                  title="¿Eliminar entrega?"
+                  description="Se eliminará permanentemente esta entrega de combustible."
+                />
+              </>
             )}
           </>
         )}
