@@ -61,7 +61,8 @@ import {
 const unidadOptions = ["TN", "KG", "M3", "M2", "U"];
 const tipoMaterialOptions = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
-  "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado", "Cubiertas", "Frezado"
+  "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado", "Cubiertas", "Frezado",
+  "Cobertura de basura"
 ];
 const tipoTransporteOptions = [
   "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu", "Patan"

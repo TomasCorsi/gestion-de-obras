@@ -98,6 +98,7 @@ const tipoMaterialOptions = [
   { value: "Traslado", label: "Traslado" },
   { value: "Cubiertas", label: "Cubiertas" },
   { value: "Frezado", label: "Frezado" },
+  { value: "Cobertura de basura", label: "Cobertura de basura" },
 ];
 
 const tipoTransporteOptions = [
