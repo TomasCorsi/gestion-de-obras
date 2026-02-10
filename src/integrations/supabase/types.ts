@@ -200,8 +200,10 @@ export type Database = {
           obra_id: string | null
           observaciones: string | null
           operador_id: string | null
-          parte_diario_id: string
+          parte_diario_id: string | null
+          repartidor_id: string | null
           tipo_operador: string | null
+          tipo_producto: string | null
           updated_at: string | null
         }
         Insert: {
@@ -215,8 +217,10 @@ export type Database = {
           obra_id?: string | null
           observaciones?: string | null
           operador_id?: string | null
-          parte_diario_id: string
+          parte_diario_id?: string | null
+          repartidor_id?: string | null
           tipo_operador?: string | null
+          tipo_producto?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -230,8 +234,10 @@ export type Database = {
           obra_id?: string | null
           observaciones?: string | null
           operador_id?: string | null
-          parte_diario_id?: string
+          parte_diario_id?: string | null
+          repartidor_id?: string | null
           tipo_operador?: string | null
+          tipo_producto?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -268,6 +274,20 @@ export type Database = {
             columns: ["parte_diario_id"]
             isOneToOne: false
             referencedRelation: "partes_diarios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_repartidor_id_fkey"
+            columns: ["repartidor_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_repartidor_id_fkey"
+            columns: ["repartidor_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
         ]

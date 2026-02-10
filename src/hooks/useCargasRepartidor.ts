@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 
 export interface CargaRepartidor {
   id: string;
-  parte_diario_id: string;
+  parte_diario_id: string | null;
   fecha: string;
   operador_id: string | null;
   maquinaria_id: string | null;
@@ -13,6 +13,8 @@ export interface CargaRepartidor {
   horas: number | null;
   km: number | null;
   tipo_operador: string | null;
+  tipo_producto: string | null;
+  repartidor_id: string | null;
   observaciones: string | null;
   created_at: string;
   updated_at: string;
@@ -23,7 +25,7 @@ export interface CargaRepartidor {
 }
 
 export interface CargaRepartidorInsert {
-  parte_diario_id: string;
+  parte_diario_id?: string | null;
   fecha: string;
   operador_id?: string | null;
   maquinaria_id?: string | null;
@@ -32,6 +34,8 @@ export interface CargaRepartidorInsert {
   horas?: number | null;
   km?: number | null;
   tipo_operador?: string | null;
+  tipo_producto?: string | null;
+  repartidor_id?: string | null;
   observaciones?: string | null;
 }
 
@@ -82,11 +86,12 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
-      toast.success('Carga registrada');
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
+      toast.success('Entrega registrada');
     },
     onError: (error) => {
       console.error('Error creating carga:', error);
-      toast.error('Error al registrar carga');
+      toast.error('Error al registrar entrega');
     },
   });
 
@@ -109,7 +114,8 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
-      toast.success('Carga actualizada');
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
+      toast.success('Entrega actualizada');
     },
     onError: (error) => {
       console.error('Error updating carga:', error);
@@ -128,7 +134,8 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
-      toast.success('Carga eliminada');
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
+      toast.success('Entrega eliminada');
     },
     onError: (error) => {
       console.error('Error deleting carga:', error);

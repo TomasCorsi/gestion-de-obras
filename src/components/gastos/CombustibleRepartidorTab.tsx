@@ -100,12 +100,14 @@ export function CombustibleRepartidorTab() {
     }
     const exportData = filtered.map((c) => ({
       Fecha: formatDate(c.fecha),
-      Repartidor: formatOperador(c.parte_diario?.personal),
+      Producto: (c.tipo_producto || 'combustible').charAt(0).toUpperCase() + (c.tipo_producto || 'combustible').slice(1),
+      Repartidor: c.repartidor ? formatOperador(c.repartidor) : formatOperador(c.parte_diario?.personal),
       Operador: formatOperador(c.operador),
-      Tipo: (c.tipo_operador || 'interno').charAt(0).toUpperCase() + (c.tipo_operador || 'interno').slice(1),
+      "Tipo Operador": (c.tipo_operador || 'interno').charAt(0).toUpperCase() + (c.tipo_operador || 'interno').slice(1),
       Máquina: c.maquinaria?.codigo || c.maquinaria?.tipo || "-",
       Obra: c.obra?.nombre || "-",
-      Litros: c.litros,
+      Cantidad: c.litros,
+      Unidad: c.tipo_producto === 'grasa' ? 'Kg' : 'L',
       Horas: c.horas || "-",
       Km: c.km || "-",
       Observaciones: c.observaciones || "-",
@@ -233,12 +235,13 @@ export function CombustibleRepartidorTab() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Producto</TableHead>
               <TableHead className="text-muted-foreground font-medium">Repartidor</TableHead>
               <TableHead className="text-muted-foreground font-medium">Operador</TableHead>
-              <TableHead className="text-muted-foreground font-medium">Tipo</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Tipo Op.</TableHead>
               <TableHead className="text-muted-foreground font-medium">Máquina</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-              <TableHead className="text-muted-foreground font-medium text-right">Litros</TableHead>
+              <TableHead className="text-muted-foreground font-medium text-right">Cantidad</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Horas</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
             </TableRow>
@@ -246,17 +249,18 @@ export function CombustibleRepartidorTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+              <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                   <Fuel className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                  <p>No hay cargas de repartidor registradas</p>
+                  <p>No hay entregas de repartidor registradas</p>
                 </TableCell>
               </TableRow>
             ) : (
               filtered.map((carga) => (
                 <TableRow key={carga.id} className="border-border hover:bg-muted/50">
                   <TableCell className="text-foreground">{formatDate(carga.fecha)}</TableCell>
+                  <TableCell className="text-foreground capitalize">{carga.tipo_producto || 'combustible'}</TableCell>
                   <TableCell className="text-foreground">
-                    {formatOperador(carga.parte_diario?.personal)}
+                    {carga.repartidor ? formatOperador(carga.repartidor) : formatOperador(carga.parte_diario?.personal)}
                   </TableCell>
                   <TableCell className="text-foreground">{formatOperador(carga.operador)}</TableCell>
                   <TableCell className="text-foreground capitalize">{carga.tipo_operador || 'interno'}</TableCell>
@@ -264,7 +268,9 @@ export function CombustibleRepartidorTab() {
                     {carga.maquinaria?.codigo || carga.maquinaria?.tipo || "-"}
                   </TableCell>
                   <TableCell className="text-foreground">{carga.obra?.nombre || "-"}</TableCell>
-                  <TableCell className="text-right font-medium text-primary">{carga.litros}</TableCell>
+                  <TableCell className="text-right font-medium text-primary">
+                    {carga.litros} {carga.tipo_producto === 'grasa' ? 'Kg' : 'L'}
+                  </TableCell>
                   <TableCell className="text-right text-muted-foreground">{carga.horas || "-"}</TableCell>
                   <TableCell className="text-right text-muted-foreground">{carga.km || "-"}</TableCell>
                 </TableRow>

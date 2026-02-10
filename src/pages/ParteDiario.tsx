@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopNavbar } from "@/components/layout/TopNavbar";
@@ -8,10 +8,12 @@ import { useParteDiario, type ParteDiario as ParteDiarioType } from "@/hooks/use
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal } from "@/hooks/usePersonal";
+import { useCargasRepartidor } from "@/hooks/useCargasRepartidor";
 import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeView";
 import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListView";
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
 import { ParteDiarioAdminView } from "@/components/parte-diario/ParteDiarioAdminView";
+import { CargaCombustibleRepartidorDialog } from "@/components/parte-diario/CargaCombustibleRepartidorDialog";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -50,9 +52,21 @@ const ParteDiario = () => {
   
   const [view, setView] = useState<ViewMode>('home');
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
+  const [showEntregaDialog, setShowEntregaDialog] = useState(false);
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
+  const isRepartidor = rol === 'repartidor_calecita';
+
+  // For repartidor: direct cargas (no parte_diario_id needed)
+  const { cargas: cargasDirectas, createCarga, isCreating: isCreatingCarga } = useCargasRepartidor(null);
+
+  // Count today's deliveries for repartidor
+  const todayStr = new Date().toISOString().split('T')[0];
+  const entregasHoyCount = useMemo(() => {
+    if (!isRepartidor) return 0;
+    return cargasDirectas.filter(c => c.fecha === todayStr).length;
+  }, [cargasDirectas, todayStr, isRepartidor]);
 
   // Loading state (evitar "flicker" en admin y en refreshes silenciosos)
   if (loadingAuth) {
@@ -158,18 +172,41 @@ const ParteDiario = () => {
       
       <main className="container mx-auto px-4 py-4 max-w-lg">
         {view === 'home' && (
-          <ParteDiarioHomeView
-            borradorHoy={borradorHoy}
-            parteCompletadoHoy={parteCompletadoHoy}
-            nombreEmpleado={empleado.nombreCompleto}
-            rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
-            onNewParte={handleNewParte}
-            onViewList={handleViewList}
-            onContinueDraft={handleContinueDraft}
-            onDiscardDraft={handleDiscardDraft}
-            onEditCompletado={handleEditCompletado}
-            isDiscarding={isDeleting}
-          />
+          <>
+            <ParteDiarioHomeView
+              borradorHoy={borradorHoy}
+              parteCompletadoHoy={parteCompletadoHoy}
+              nombreEmpleado={empleado.nombreCompleto}
+              rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
+              isRepartidor={isRepartidor}
+              entregasHoyCount={entregasHoyCount}
+              onNewParte={handleNewParte}
+              onViewList={handleViewList}
+              onContinueDraft={handleContinueDraft}
+              onDiscardDraft={handleDiscardDraft}
+              onEditCompletado={handleEditCompletado}
+              onRegistrarEntrega={() => setShowEntregaDialog(true)}
+              isDiscarding={isDeleting}
+            />
+            {isRepartidor && (
+              <CargaCombustibleRepartidorDialog
+                open={showEntregaDialog}
+                onOpenChange={setShowEntregaDialog}
+                carga={null}
+                fechaParte={todayStr}
+                personal={personal}
+                maquinarias={maquinarias}
+                obras={obras}
+                onSave={async (data) => {
+                  await createCarga({
+                    ...data,
+                    repartidor_id: empleado.id,
+                  });
+                }}
+                isSaving={isCreatingCarga}
+              />
+            )}
+          </>
         )}
 
         {view === 'list' && (
