@@ -79,6 +79,10 @@ const ParteDiario = () => {
     return cargasRepartidor.filter(c => c.fecha === todayStr);
   }, [cargasRepartidor, todayStr]);
 
+  const totalLitrosHoy = useMemo(() => {
+    return cargasHoy.reduce((sum, c) => sum + (c.litros || 0), 0);
+  }, [cargasHoy]);
+
   // Loading state (evitar "flicker" en admin y en refreshes silenciosos)
   if (loadingAuth) {
     return (
@@ -192,7 +196,7 @@ const ParteDiario = () => {
               isRepartidor={isRepartidor}
               entregasHoyCount={cargasHoy.length}
               cargasHoy={cargasHoy}
-              totalLitrosHoy={totalLitros}
+              totalLitrosHoy={totalLitrosHoy}
               isDeletingCarga={isDeletingCarga}
               onNewParte={handleNewParte}
               onViewList={handleViewList}

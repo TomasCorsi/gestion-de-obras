@@ -22,6 +22,7 @@ export interface CargaRepartidor {
   operador?: { nombre: string | null; apellido: string | null } | null;
   maquinaria?: { codigo: string | null; tipo: string } | null;
   obra?: { nombre: string } | null;
+  repartidor?: { nombre: string | null; apellido: string | null } | null;
 }
 
 export interface CargaRepartidorInsert {
@@ -39,6 +40,14 @@ export interface CargaRepartidorInsert {
   observaciones?: string | null;
 }
 
+const SELECT_QUERY = `
+  *,
+  operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
+  maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo),
+  obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre),
+  repartidor:personal!cargas_combustible_repartidor_repartidor_id_fkey(nombre, apellido)
+`;
+
 export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?: string | null) {
   const queryClient = useQueryClient();
   const queryMode = parteDiarioId ? 'parte' : repartidorId ? 'repartidor' : 'none';
@@ -49,12 +58,7 @@ export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?:
     queryFn: async () => {
       let query = supabase
         .from('cargas_combustible_repartidor')
-        .select(`
-          *,
-          operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
-          maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo),
-          obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre)
-        `);
+        .select(SELECT_QUERY);
 
       if (parteDiarioId) {
         query = query.eq('parte_diario_id', parteDiarioId);
@@ -79,12 +83,7 @@ export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?:
       const { data, error } = await supabase
         .from('cargas_combustible_repartidor')
         .insert(carga)
-        .select(`
-          *,
-          operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
-          maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo),
-          obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre)
-        `)
+        .select(SELECT_QUERY)
         .single();
 
       if (error) throw error;
@@ -107,12 +106,7 @@ export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?:
         .from('cargas_combustible_repartidor')
         .update(data)
         .eq('id', id)
-        .select(`
-          *,
-          operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
-          maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo),
-          obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre)
-        `)
+        .select(SELECT_QUERY)
         .single();
 
       if (error) throw error;
