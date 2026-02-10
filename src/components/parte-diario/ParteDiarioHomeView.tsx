@@ -4,6 +4,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ParteDiario } from "@/hooks/useParteDiario";
+import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
+import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
@@ -12,12 +14,17 @@ interface ParteDiarioHomeViewProps {
   rolLabel: string;
   isRepartidor?: boolean;
   entregasHoyCount?: number;
+  cargasHoy?: CargaRepartidor[];
+  totalLitrosHoy?: number;
+  isDeletingCarga?: boolean;
   onNewParte: () => void;
   onViewList: () => void;
   onContinueDraft: () => void;
   onDiscardDraft: () => void;
   onEditCompletado: () => void;
   onRegistrarEntrega?: () => void;
+  onEditCarga?: (carga: CargaRepartidor) => void;
+  onDeleteCarga?: (carga: CargaRepartidor) => void;
   isDiscarding?: boolean;
 }
 
@@ -28,12 +35,17 @@ export const ParteDiarioHomeView = ({
   rolLabel,
   isRepartidor = false,
   entregasHoyCount = 0,
+  cargasHoy = [],
+  totalLitrosHoy = 0,
+  isDeletingCarga = false,
   onNewParte,
   onViewList,
   onContinueDraft,
   onDiscardDraft,
   onEditCompletado,
   onRegistrarEntrega,
+  onEditCarga,
+  onDeleteCarga,
   isDiscarding = false,
 }: ParteDiarioHomeViewProps) => {
   return (
@@ -78,11 +90,27 @@ export const ParteDiarioHomeView = ({
         )}
       </div>
 
-      {/* Entregas hoy summary for repartidor */}
-      {isRepartidor && entregasHoyCount > 0 && (
+      {/* Entregas hoy list for repartidor */}
+      {isRepartidor && cargasHoy.length > 0 && onEditCarga && onDeleteCarga && (
+        <div className="space-y-2">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Entregas de hoy ({entregasHoyCount})
+          </h2>
+          <CargasCombustibleRepartidorList
+            cargas={cargasHoy}
+            totalLitros={totalLitrosHoy}
+            onEdit={onEditCarga}
+            onDelete={onDeleteCarga}
+            isDeleting={isDeletingCarga}
+          />
+        </div>
+      )}
+
+      {/* Entregas hoy summary when no cargas */}
+      {isRepartidor && cargasHoy.length === 0 && (
         <div className="bg-muted/50 rounded-lg p-3 text-center">
           <p className="text-sm text-muted-foreground">
-            Hoy registraste <span className="font-semibold text-foreground">{entregasHoyCount}</span> entrega{entregasHoyCount !== 1 ? 's' : ''}
+            No registraste entregas hoy
           </p>
         </div>
       )}

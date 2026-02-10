@@ -39,24 +39,30 @@ export interface CargaRepartidorInsert {
   observaciones?: string | null;
 }
 
-export function useCargasRepartidor(parteDiarioId: string | null) {
+export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?: string | null) {
   const queryClient = useQueryClient();
+  const queryMode = parteDiarioId ? 'parte' : repartidorId ? 'repartidor' : 'none';
+  const queryId = parteDiarioId || repartidorId || 'none';
 
   const { data: cargas = [], isLoading } = useQuery({
-    queryKey: ['cargas_combustible_repartidor', parteDiarioId],
+    queryKey: ['cargas_combustible_repartidor', queryMode, queryId],
     queryFn: async () => {
-      if (!parteDiarioId) return [];
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from('cargas_combustible_repartidor')
         .select(`
           *,
           operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
           maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo),
           obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre)
-        `)
-        .eq('parte_diario_id', parteDiarioId)
-        .order('created_at', { ascending: true });
+        `);
+
+      if (parteDiarioId) {
+        query = query.eq('parte_diario_id', parteDiarioId);
+      } else if (repartidorId) {
+        query = query.eq('repartidor_id', repartidorId);
+      }
+
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching cargas repartidor:', error);
@@ -65,7 +71,7 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
 
       return data as CargaRepartidor[];
     },
-    enabled: !!parteDiarioId,
+    enabled: queryMode !== 'none',
   });
 
   const createMutation = useMutation({
@@ -85,7 +91,7 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor'] });
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
       toast.success('Entrega registrada');
     },
@@ -113,7 +119,7 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
       return updated;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor'] });
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
       toast.success('Entrega actualizada');
     },
@@ -133,7 +139,7 @@ export function useCargasRepartidor(parteDiarioId: string | null) {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor', parteDiarioId] });
+      queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor'] });
       queryClient.invalidateQueries({ queryKey: ['cargas_combustible_repartidor_all'] });
       toast.success('Entrega eliminada');
     },
