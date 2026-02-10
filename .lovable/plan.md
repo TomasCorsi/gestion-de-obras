@@ -1,97 +1,48 @@
 
+## Plan: Historial de entregas del Repartidor en la pantalla principal
 
-## Plan: Ampliar el registro del Repartidor con tipos de producto y acceso directo
+### Problema actual
 
-### Que cambia
+El hook `useCargasRepartidor` solo consulta cargas por `parte_diario_id`. Como ahora las cargas se crean sin parte diario (directamente desde el home), al pasar `null` el hook devuelve un array vacio. El repartidor no puede ver nada de lo que cargo.
 
-Actualmente el repartidor solo puede cargar combustible desde dentro del formulario de Parte Diario, y solo despues de guardar un borrador. Este plan hace dos cosas:
+### Solucion
 
-1. **Acceso directo desde el inicio**: Agrega un boton en la pantalla principal del Repartidor para registrar entregas sin necesidad de abrir el formulario completo del parte
-2. **Nuevos tipos de producto**: Ademas de Combustible, el repartidor podra registrar entregas de Grasa, Aceite y Uria
+Agregar una vista de historial de entregas del dia en la pantalla home del repartidor, usando el hook modificado para que cuando no reciba `parteDiarioId` pero si un `repartidorId`, consulte las cargas de ese repartidor. Ademas, permitir editar y eliminar desde ahi.
 
-### Flujo propuesto para el Repartidor
+### Cambios
 
-La pantalla principal (home) del repartidor tendra:
-- Los botones existentes (Nuevo Parte, Ver Mis Partes)
-- Un nuevo boton grande "Registrar Entrega" que abre directamente el dialog de carga
-- El historial rapido de entregas del dia actual
+#### 1. Modificar `useCargasRepartidor.ts`
 
-Desde el dialog de carga, el repartidor selecciona el tipo de producto y la cantidad, sin depender de un parte diario guardado.
+Cambiar la firma para aceptar un segundo parametro opcional `repartidorId`. Cuando `parteDiarioId` es null pero `repartidorId` tiene valor, la query filtra por `repartidor_id` en lugar de `parte_diario_id`. Esto permite reutilizar el mismo hook sin crear uno nuevo.
 
-### Cambios tecnicos
-
-#### 1. Migracion SQL (2 cambios)
-
-```sql
--- Permitir cargas sin parte diario vinculado
-ALTER TABLE cargas_combustible_repartidor 
-ALTER COLUMN parte_diario_id DROP NOT NULL;
-
--- Agregar tipo de producto
-ALTER TABLE cargas_combustible_repartidor 
-ADD COLUMN tipo_producto text DEFAULT 'combustible';
+```
+useCargasRepartidor(parteDiarioId: string | null, repartidorId?: string | null)
 ```
 
-Esto permite al repartidor (y al admin) crear registros independientes del parte diario y clasificar por tipo de insumo.
+- Si `parteDiarioId` existe: filtra por `parte_diario_id` (comportamiento actual)
+- Si `repartidorId` existe y `parteDiarioId` es null: filtra por `repartidor_id`
+- Si ambos son null: retorna vacio
 
-#### 2. Actualizar hook `useCargasRepartidor.ts`
+#### 2. Modificar `ParteDiario.tsx`
 
-- Agregar `tipo_producto` a las interfaces `CargaRepartidor` y `CargaRepartidorInsert`
-- Hacer `parte_diario_id` opcional en `CargaRepartidorInsert`
+- Pasar `empleado.id` como `repartidorId` al hook para obtener las cargas del repartidor
+- Pasar las cargas, funciones de editar/eliminar y el dialog de edicion al home view
+- Agregar estado para manejar la edicion de cargas existentes
 
-#### 3. Actualizar hook `useCargasRepartidorAll.ts`
+#### 3. Modificar `ParteDiarioHomeView.tsx`
 
-- Agregar `tipo_producto` a la interfaz `CargaRepartidorFull`
+- Recibir las cargas del dia como prop
+- Mostrar debajo de los botones principales una lista compacta con las entregas de hoy usando el componente `CargasCombustibleRepartidorList` existente
+- Incluir botones de editar y eliminar en cada fila
 
-#### 4. Nuevo hook: `useCargasRepartidorByEmpleado.ts`
+#### 4. Confirmar dialog de eliminacion
 
-Un hook liviano para que el repartidor pueda ver y crear cargas desde la home sin depender de un parte diario:
-- Query cargas del dia actual filtrando por `created_by` o `repartidor_id`
-- Mutaciones de create/update/delete con `parte_diario_id: null`
+Agregar `DeleteConfirmDialog` para confirmar antes de borrar una entrega.
 
-Alternativa: reutilizar el hook existente permitiendo `parteDiarioId = null` y agregando un filtro por fecha + empleado. Esto evita crear un hook nuevo.
-
-#### 5. Actualizar `CargaCombustibleRepartidorDialog.tsx`
-
-- Agregar campo Select "Tipo de Producto" con opciones: Combustible, Grasa, Aceite, Uria
-- Cambiar la etiqueta "Litros" dinamicamente segun el tipo (Litros para combustible, Kg para grasa, Litros para aceite/uria)
-- Hacer `parte_diario_id` opcional en la llamada a `onSave`
-- Incluir `tipo_producto` en los datos enviados
-
-#### 6. Actualizar `ParteDiarioHomeView.tsx`
-
-Solo para el rol repartidor_calecita:
-- Agregar un tercer boton "Registrar Entrega" con icono de combustible
-- Mostrar un resumen rapido de entregas del dia debajo de los botones
-- Recibir props adicionales: `onRegistrarEntrega`, `entregasHoy` (cantidad y litros totales)
-
-#### 7. Actualizar `ParteDiarioPage` (`ParteDiario.tsx`)
-
-- Para el repartidor, conectar el boton de "Registrar Entrega" con el dialog de carga
-- Gestionar el estado del dialog desde la pagina principal
-- Usar el hook de cargas independiente del parte diario
-
-#### 8. Actualizar `CargasCombustibleRepartidorList.tsx`
-
-- Agregar columna "Producto" en la tabla
-- Mostrar la unidad correcta segun el tipo (L, Kg)
-
-#### 9. Actualizar `CombustibleRepartidorTab.tsx` (Gastos)
-
-- Agregar columna "Producto" en la tabla
-- Incluir `tipo_producto` en la exportacion Excel
-- Actualizar estadisticas para desglosar por tipo de producto
-
-### Archivos a modificar/crear
+### Archivos a modificar
 
 | Archivo | Cambio |
 |---------|--------|
-| Migracion SQL | Nullable `parte_diario_id` + columna `tipo_producto` |
-| `src/hooks/useCargasRepartidor.ts` | Agregar `tipo_producto`, hacer `parte_diario_id` opcional |
-| `src/hooks/useCargasRepartidorAll.ts` | Agregar `tipo_producto` a interfaz |
-| `src/components/parte-diario/CargaCombustibleRepartidorDialog.tsx` | Agregar select de producto, unidad dinamica |
-| `src/components/parte-diario/CargasCombustibleRepartidorList.tsx` | Agregar columna Producto |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Boton "Registrar Entrega" para repartidor |
-| `src/pages/ParteDiario.tsx` | Dialog de carga desde home, hook independiente |
-| `src/components/gastos/CombustibleRepartidorTab.tsx` | Columna Producto + export |
-
+| `src/hooks/useCargasRepartidor.ts` | Agregar parametro `repartidorId` para query alternativa |
+| `src/pages/ParteDiario.tsx` | Conectar cargas del repartidor con el home view, manejar edicion |
+| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Mostrar lista de entregas del dia con edicion/eliminacion |
