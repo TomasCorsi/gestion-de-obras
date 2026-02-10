@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Fuel, Droplets, Download } from "lucide-react";
+import { Search, Fuel, Droplets, Download, CalendarDays, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +54,7 @@ export function CombustibleRepartidorTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [mes, setMes] = useState<string | undefined>(undefined);
   const [year, setYear] = useState(currentYear);
+  const [fechaFiltro, setFechaFiltro] = useState<string>("");
 
   const years = useMemo(() => {
     const result = [];
@@ -64,8 +65,10 @@ export function CombustibleRepartidorTab() {
   const filtered = useMemo(() => {
     let result = [...cargas];
 
-    // Month + year filter
-    if (mes) {
+    // Specific day filter (takes priority over month)
+    if (fechaFiltro) {
+      result = result.filter((c) => c.fecha === fechaFiltro);
+    } else if (mes) {
       const monthDate = parseISO(`${year}-${mes}-01`);
       const desde = format(startOfMonth(monthDate), "yyyy-MM-dd");
       const hasta = format(endOfMonth(monthDate), "yyyy-MM-dd");
@@ -86,7 +89,7 @@ export function CombustibleRepartidorTab() {
     }
 
     return result;
-  }, [cargas, mes, year, searchTerm]);
+  }, [cargas, mes, year, searchTerm, fechaFiltro]);
 
   const totalLitros = filtered.reduce((sum, c) => sum + (c.litros || 0), 0);
 
@@ -141,7 +144,27 @@ export function CombustibleRepartidorTab() {
             className="pl-9 bg-card border-border"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <div className="relative">
+            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="date"
+              value={fechaFiltro}
+              onChange={(e) => {
+                setFechaFiltro(e.target.value);
+                if (e.target.value) setMes(undefined);
+              }}
+              className="pl-9 w-40 bg-card border-border"
+            />
+            {fechaFiltro && (
+              <button
+                onClick={() => setFechaFiltro("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
             <SelectTrigger className="w-24 bg-card border-border">
               <SelectValue />
@@ -152,7 +175,14 @@ export function CombustibleRepartidorTab() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={mes || "all"} onValueChange={(v) => setMes(v === "all" ? undefined : v)}>
+          <Select
+            value={fechaFiltro ? "all" : (mes || "all")}
+            onValueChange={(v) => {
+              setMes(v === "all" ? undefined : v);
+              setFechaFiltro("");
+            }}
+            disabled={!!fechaFiltro}
+          >
             <SelectTrigger className="w-36 bg-card border-border">
               <SelectValue placeholder="Todos los meses" />
             </SelectTrigger>
