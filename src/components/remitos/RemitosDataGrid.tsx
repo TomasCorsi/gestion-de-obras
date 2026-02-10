@@ -683,7 +683,11 @@ export function RemitosDataGrid({
   const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
   
   // Callback when cell becomes active - capture snapshot
+  // Track active row for color painting
+  const [activeRowIndex, setActiveRowIndex] = useState<number | null>(null);
+
   const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
+    setActiveRowIndex(cell ? cell.row : null);
     if (cell && !isEditing && (globalSearch || activeFilterCount > 0)) {
       setIsEditing(true);
       setEditingSnapshot(searchFilteredData);
@@ -698,8 +702,6 @@ export function RemitosDataGrid({
 
   // Get the data to display (filtered if there are filters/search)
   // During editing with filters, use snapshot but with updated values
-  // Context menu state for row coloring
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; rowId: string; currentColor: string | null } | null>(null);
 
   const displayData = useMemo(() => {
     if (!globalSearch && activeFilterCount === 0) {
@@ -707,7 +709,6 @@ export function RemitosDataGrid({
     }
     
     if (isEditing && editingSnapshot) {
-      // Update values in snapshot with current data values
       return editingSnapshot.map(snapRow => {
         const currentRow = data.find(r => r.id === snapRow.id);
         return currentRow || snapRow;
@@ -717,45 +718,20 @@ export function RemitosDataGrid({
     return searchFilteredData;
   }, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
 
-  const handleContextMenu = useCallback((e: React.MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const row = target.closest('.dsg-row');
-    if (!row) return;
-    
-    const rowIndex = Array.from(row.parentElement?.children || []).indexOf(row);
-    const dataIndex = rowIndex - 1;
-    if (dataIndex < 0 || dataIndex >= displayData.length) return;
-    
-    const rowData = displayData[dataIndex];
-    if (!rowData?.id || rowData.id.startsWith('temp_')) return;
-    
-    e.preventDefault();
-    setContextMenu({
-      x: e.clientX,
-      y: e.clientY,
-      rowId: rowData.id,
-      currentColor: rowData.row_color,
-    });
-  }, [displayData]);
-
   const handleColorSelect = useCallback(async (color: string | null) => {
-    if (!contextMenu || !onColorChange) return;
-    
-    const success = await onColorChange(contextMenu.rowId, color);
+    if (activeRowIndex === null || !onColorChange) return;
+    const rowData = displayData[activeRowIndex];
+    if (!rowData?.id || rowData.id.startsWith('temp_')) {
+      toast.error("Seleccioná una fila guardada para pintar");
+      return;
+    }
+    const success = await onColorChange(rowData.id, color);
     if (success) {
       setData(prev => prev.map(row => 
-        row.id === contextMenu.rowId ? { ...row, row_color: color } : row
+        row.id === rowData.id ? { ...row, row_color: color } : row
       ));
     }
-    setContextMenu(null);
-  }, [contextMenu, onColorChange]);
-
-  useEffect(() => {
-    if (!contextMenu) return;
-    const handler = () => setContextMenu(null);
-    window.addEventListener('click', handler);
-    return () => window.removeEventListener('click', handler);
-  }, [contextMenu]);
+  }, [activeRowIndex, displayData, onColorChange]);
 
   return (
     <div className={fullScreen ? "flex flex-col h-full" : "space-y-4"}>
@@ -786,6 +762,25 @@ export function RemitosDataGrid({
             </Button>
           )}
         </GridFilterToolbar>
+        {/* Color painting buttons */}
+        <div className="flex items-center gap-1 border border-border rounded-md px-2 py-1">
+          <span className="text-xs text-muted-foreground mr-1">Pintar:</span>
+          {ROW_COLORS.map((c) => (
+            <button
+              key={c.value}
+              title={c.label}
+              className={`w-5 h-5 rounded-full ${c.css} hover:scale-110 transition-transform`}
+              onClick={() => handleColorSelect(c.value)}
+            />
+          ))}
+          <button
+            title="Quitar color"
+            className="w-5 h-5 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+            onClick={() => handleColorSelect(null)}
+          >
+            <XCircle className="w-3 h-3 text-muted-foreground" />
+          </button>
+        </div>
         <Button onClick={handleSave} disabled={!hasChanges || isSaving} size="sm" className="h-8 bg-primary hover:bg-primary/90">
           {isSaving ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1" />}
           Guardar
@@ -794,37 +789,7 @@ export function RemitosDataGrid({
       <p className="text-xs text-muted-foreground mb-2">
         💡 Usá los iconos de filtro en cada columna para filtrar. Tab para navegar. Escribí para buscar en los selectores.
       </p>
-      <div 
-        className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}
-        onContextMenu={handleContextMenu}
-      >
-        {/* Color picker context menu */}
-        {contextMenu && (
-          <div 
-            className="fixed z-[9999] bg-popover border border-border rounded-lg shadow-lg p-3"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-xs text-muted-foreground mb-2 font-medium">Pintar fila</p>
-            <div className="flex items-center gap-1.5">
-              {ROW_COLORS.map((c) => (
-                <button
-                  key={c.value}
-                  title={c.label}
-                  className={`w-6 h-6 rounded-full ${c.css} hover:scale-110 transition-transform ${contextMenu.currentColor === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-popover" : ""}`}
-                  onClick={() => handleColorSelect(c.value)}
-                />
-              ))}
-              <button
-                title="Quitar color"
-                className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
-                onClick={() => handleColorSelect(null)}
-              >
-                <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
-              </button>
-            </div>
-          </div>
-        )}
+      <div className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}>
         <DataSheetGrid
           key={`remitos-grid-${obrasOptions.length}-${vehiculoOptions.length}`}
           value={displayData}
