@@ -17,6 +17,7 @@ export interface RemitoDB {
   observaciones: string | null;
   created_at: string;
   updated_at: string;
+  row_color: string | null;
   // New columns
   remito_tercero: string | null;
   remito_local: string | null;
@@ -59,6 +60,7 @@ export interface RemitoForm {
   tipo_transporte?: string;
   maquinaria_id?: string;
   patente_tercero?: string;
+  row_color?: string | null;
 }
 
 const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
@@ -254,6 +256,19 @@ export function useRemitos() {
       deleted: string[];
     }) => {
       return await batchSaveMutation.mutateAsync(changes);
+    },
+    updateRowColor: async (id: string, color: string | null) => {
+      const { error } = await supabase
+        .from("remitos")
+        .update({ row_color: color } as Record<string, unknown>)
+        .eq("id", id);
+      if (error) {
+        console.error("Error updating row color:", error);
+        toast.error("Error al cambiar color");
+        return false;
+      }
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      return true;
     },
   };
 }

@@ -9,8 +9,9 @@ import {
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
-import { Save, Plus, Loader2, RotateCcw } from "lucide-react";
+import { Save, Plus, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ObraWithRelations } from "@/hooks/useObras";
@@ -42,6 +43,7 @@ interface GridRow {
   tipo_transporte: string;
   maquinaria_id: string;
   patente_tercero: string;
+  row_color: string | null;
   _isNew?: boolean;
   _isModified?: boolean;
   _isDeleted?: boolean;
@@ -58,7 +60,17 @@ interface RemitosDataGridProps {
   }) => Promise<void>;
   generateNumero: () => string;
   fullScreen?: boolean;
+  onColorChange?: (id: string, color: string | null) => Promise<boolean>;
 }
+
+const ROW_COLORS = [
+  { value: "yellow", label: "Amarillo", css: "bg-yellow-400" },
+  { value: "green", label: "Verde", css: "bg-green-500" },
+  { value: "blue", label: "Azul", css: "bg-blue-500" },
+  { value: "orange", label: "Naranja", css: "bg-orange-500" },
+  { value: "red", label: "Rojo", css: "bg-red-500" },
+  { value: "violet", label: "Violeta", css: "bg-violet-500" },
+];
 
 const STORAGE_KEY = "remitos-grid-draft";
 
@@ -106,6 +118,7 @@ export function RemitosDataGrid({
   onSave,
   generateNumero,
   fullScreen = false,
+  onColorChange,
 }: RemitosDataGridProps) {
   const createdRowIds = useRef(new Set<string>()).current;
   const deletedRowIds = useRef(new Set<string>()).current;
@@ -162,6 +175,7 @@ export function RemitosDataGrid({
         tipo_transporte: r.tipo_transporte || "",
         maquinaria_id: r.maquinaria_id || "",
         patente_tercero: r.patente_tercero || "",
+        row_color: r.row_color || null,
         _isNew: false,
         _isModified: false,
         _isDeleted: false,
@@ -554,6 +568,7 @@ export function RemitosDataGrid({
         tipo_transporte: "",
         maquinaria_id: "",
         patente_tercero: "",
+        row_color: null,
         _isNew: true,
         _isModified: false,
         _isDeleted: false,
@@ -657,6 +672,7 @@ export function RemitosDataGrid({
       tipo_transporte: "",
       maquinaria_id: "",
       patente_tercero: "",
+      row_color: null,
       _isNew: true,
       _isModified: false,
       _isDeleted: false,
@@ -681,6 +697,9 @@ export function RemitosDataGrid({
 
   // Get the data to display (filtered if there are filters/search)
   // During editing with filters, use snapshot but with updated values
+  // Context menu state for row coloring
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; rowId: string; currentColor: string | null } | null>(null);
+
   const displayData = useMemo(() => {
     if (!globalSearch && activeFilterCount === 0) {
       return data;
@@ -696,6 +715,46 @@ export function RemitosDataGrid({
     
     return searchFilteredData;
   }, [data, globalSearch, activeFilterCount, isEditing, editingSnapshot, searchFilteredData]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const row = target.closest('.dsg-row');
+    if (!row) return;
+    
+    const rowIndex = Array.from(row.parentElement?.children || []).indexOf(row);
+    const dataIndex = rowIndex - 1;
+    if (dataIndex < 0 || dataIndex >= displayData.length) return;
+    
+    const rowData = displayData[dataIndex];
+    if (!rowData?.id || rowData.id.startsWith('temp_')) return;
+    
+    e.preventDefault();
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      rowId: rowData.id,
+      currentColor: rowData.row_color,
+    });
+  }, [displayData]);
+
+  const handleColorSelect = useCallback(async (color: string | null) => {
+    if (!contextMenu || !onColorChange) return;
+    
+    const success = await onColorChange(contextMenu.rowId, color);
+    if (success) {
+      setData(prev => prev.map(row => 
+        row.id === contextMenu.rowId ? { ...row, row_color: color } : row
+      ));
+    }
+    setContextMenu(null);
+  }, [contextMenu, onColorChange]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const handler = () => setContextMenu(null);
+    window.addEventListener('click', handler);
+    return () => window.removeEventListener('click', handler);
+  }, [contextMenu]);
 
   return (
     <div className={fullScreen ? "flex flex-col h-full" : "space-y-4"}>
@@ -734,7 +793,37 @@ export function RemitosDataGrid({
       <p className="text-xs text-muted-foreground mb-2">
         💡 Usá los iconos de filtro en cada columna para filtrar. Tab para navegar. Escribí para buscar en los selectores.
       </p>
-      <div className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}>
+      <div 
+        className={`remitos-grid-container rounded-lg overflow-hidden border border-border ${fullScreen ? "flex-1" : ""}`}
+        onContextMenu={handleContextMenu}
+      >
+        {/* Color picker context menu */}
+        {contextMenu && (
+          <div 
+            className="fixed z-[9999] bg-popover border border-border rounded-lg shadow-lg p-3"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-xs text-muted-foreground mb-2 font-medium">Pintar fila</p>
+            <div className="flex items-center gap-1.5">
+              {ROW_COLORS.map((c) => (
+                <button
+                  key={c.value}
+                  title={c.label}
+                  className={`w-6 h-6 rounded-full ${c.css} hover:scale-110 transition-transform ${contextMenu.currentColor === c.value ? "ring-2 ring-foreground ring-offset-2 ring-offset-popover" : ""}`}
+                  onClick={() => handleColorSelect(c.value)}
+                />
+              ))}
+              <button
+                title="Quitar color"
+                className="w-6 h-6 rounded-full border border-border flex items-center justify-center hover:bg-muted transition-colors"
+                onClick={() => handleColorSelect(null)}
+              >
+                <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        )}
         <DataSheetGrid
           key={`remitos-grid-${obrasOptions.length}-${vehiculoOptions.length}`}
           value={displayData}
@@ -764,10 +853,12 @@ export function RemitosDataGrid({
           onActiveCellChange={handleActiveCellChange}
           onBlur={handleBlur}
           rowClassName={({ rowData }) => {
+            const classes: string[] = [];
             if (rowData._isDeleted || (rowData.id && deletedRowIds.has(rowData.id))) return "row-deleted";
-            if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) return "row-new";
-            if (rowData._isModified || (rowData.id && updatedRowIds.has(rowData.id))) return "row-modified";
-            return "";
+            if (rowData._isNew || (rowData.id && createdRowIds.has(rowData.id))) classes.push("row-new");
+            else if (rowData._isModified || (rowData.id && updatedRowIds.has(rowData.id))) classes.push("row-modified");
+            if (rowData.row_color) classes.push(`row-color-${rowData.row_color}`);
+            return classes.join(" ");
           }}
         />
       </div>
