@@ -14,9 +14,6 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ParteDiario, ParteDiarioInsert } from "@/hooks/useParteDiario";
-import { useCargasRepartidor, type CargaRepartidor } from "@/hooks/useCargasRepartidor";
-import { CargaCombustibleRepartidorDialog } from "./CargaCombustibleRepartidorDialog";
-import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -66,8 +63,6 @@ export const ParteDiarioFormView = ({
 }: ParteDiarioFormViewProps) => {
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
   const [searchAusencia, setSearchAusencia] = useState('');
-  const [cargaDialogOpen, setCargaDialogOpen] = useState(false);
-  const [editingCarga, setEditingCarga] = useState<CargaRepartidor | null>(null);
   const [formData, setFormData] = useState({
     fecha: format(new Date(), 'yyyy-MM-dd'),
     obra_id: '',
@@ -132,16 +127,8 @@ export const ParteDiarioFormView = ({
   const isRepartidorCalecita = rol === 'repartidor_calecita';
 
   // Hook for repartidor fuel loads - always called but only used when needed
-  const {
-    cargas,
-    totalLitros,
-    createCarga,
-    updateCarga,
-    deleteCarga,
-    isCreating,
-    isUpdating,
-    isDeleting,
-  } = useCargasRepartidor(parte?.id || null);
+
+
 
   // Fields visibility
   const showObraField = isMaquinista || isCapataz || isMecanicoAyudante || isSerenoTopografo;
@@ -154,7 +141,6 @@ export const ParteDiarioFormView = ({
   const showNovedades = isCapataz || isRepartidorCalecita;
   const showAusencias = isCapataz;
   const showTareas = isMecanicoAyudante;
-  const showCargasCombustible = isRepartidorCalecita;
 
   const checklistItems = [
     { id: 'check_filtro_aire', label: 'Revisión filtro de aire', roles: ['maquinista'] },
@@ -724,49 +710,6 @@ export const ParteDiarioFormView = ({
           </Card>
         )}
 
-        {/* Cargas de Combustible (Repartidor Calecita only) */}
-        {showCargasCombustible && (
-          <Card>
-            <CardContent className="pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Fuel className="w-5 h-5 text-primary" />
-                  <Label className="text-sm text-muted-foreground">Cargas de Combustible</Label>
-                </div>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setEditingCarga(null);
-                    setCargaDialogOpen(true);
-                  }}
-                  disabled={!parte?.id}
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Agregar
-                </Button>
-              </div>
-              
-              {!parte?.id ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Guarde el parte como borrador primero para agregar cargas de combustible
-                </p>
-              ) : (
-                <CargasCombustibleRepartidorList
-                  cargas={cargas}
-                  totalLitros={totalLitros}
-                  onEdit={(carga) => {
-                    setEditingCarga(carga);
-                    setCargaDialogOpen(true);
-                  }}
-                  onDelete={(carga) => deleteCarga(carga.id)}
-                  isDeleting={isDeleting}
-                />
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Observaciones/Inconvenientes (TODOS) */}
         <Card>
           <CardContent className="pt-4">
@@ -816,26 +759,6 @@ export const ParteDiarioFormView = ({
         </div>
       </div>
 
-      {/* Dialog for Repartidor fuel loads */}
-      {isRepartidorCalecita && (
-        <CargaCombustibleRepartidorDialog
-          open={cargaDialogOpen}
-          onOpenChange={setCargaDialogOpen}
-          carga={editingCarga}
-          fechaParte={formData.fecha}
-          personal={personal}
-          maquinarias={maquinarias}
-          obras={obras}
-          onSave={async (data) => {
-            if (editingCarga) {
-              await updateCarga({ id: editingCarga.id, ...data });
-            } else if (parte?.id) {
-              await createCarga({ parte_diario_id: parte.id, ...data });
-            }
-          }}
-          isSaving={isCreating || isUpdating}
-        />
-      )}
     </div>
   );
 };
