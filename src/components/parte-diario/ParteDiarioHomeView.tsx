@@ -59,33 +59,33 @@ export const ParteDiarioHomeView = ({
       </div>
 
       {/* Main buttons */}
-      <div className={`grid ${isRepartidor ? 'grid-cols-3' : 'grid-cols-2'} gap-4`}>
+      <div className={`grid ${isRepartidor ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
         <Button 
           onClick={onNewParte} 
-          className="h-28 flex-col gap-3 text-lg"
+          className="h-24 flex-col gap-2 px-2"
           size="lg"
         >
-          <Plus className="w-10 h-10" />
-          <span className="font-semibold">Nuevo Parte</span>
+          <Plus className="w-8 h-8" />
+          <span className="font-semibold text-xs leading-tight text-center">Nuevo Parte</span>
         </Button>
         <Button 
           onClick={onViewList} 
           variant="outline" 
-          className="h-28 flex-col gap-3 text-lg"
+          className="h-24 flex-col gap-2 px-2"
           size="lg"
         >
-          <ClipboardList className="w-10 h-10" />
-          <span className="font-semibold">Ver Mis Partes</span>
+          <ClipboardList className="w-8 h-8" />
+          <span className="font-semibold text-xs leading-tight text-center">Mis Partes</span>
         </Button>
         {isRepartidor && onRegistrarEntrega && (
           <Button 
             onClick={onRegistrarEntrega} 
             variant="secondary"
-            className="h-28 flex-col gap-3 text-lg"
+            className="h-24 flex-col gap-2 px-2"
             size="lg"
           >
-            <Fuel className="w-10 h-10" />
-            <span className="font-semibold text-sm">Registrar Entrega</span>
+            <Fuel className="w-8 h-8" />
+            <span className="font-semibold text-xs leading-tight text-center">Entrega</span>
           </Button>
         )}
       </div>
