@@ -1,4 +1,5 @@
 import { useServiceWorker } from '@/hooks/useServiceWorker';
+import { hasAnyParteDiarioDraft } from '@/hooks/useFormDraftPersistence';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X, Wifi } from 'lucide-react';
 
@@ -11,7 +12,10 @@ export function UpdatePrompt() {
     dismissOfflineReady 
   } = useServiceWorker();
 
-  if (needRefresh) {
+  // Defer update if an employee has unsaved form data
+  const hasDraft = needRefresh ? hasAnyParteDiarioDraft() : false;
+
+  if (needRefresh && !hasDraft) {
     return (
       <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-50 animate-in slide-in-from-bottom-4 duration-300">
         <div className="bg-card border border-border rounded-lg shadow-lg p-4">
