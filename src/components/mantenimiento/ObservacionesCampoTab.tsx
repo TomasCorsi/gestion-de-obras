@@ -36,6 +36,7 @@ export function ObservacionesCampoTab() {
 
   const [filtro, setFiltro] = useState<"pendientes" | "atendidas" | "todas">("pendientes");
   const [searchTerm, setSearchTerm] = useState("");
+  const [fechaFiltro, setFechaFiltro] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [resolucionData, setResolucionData] = useState<Record<string, { atendida_por: string; notas: string }>>({});
 
@@ -66,6 +67,10 @@ export function ObservacionesCampoTab() {
     if (filtro === "pendientes") list = pendientes;
     else if (filtro === "atendidas") list = atendidas;
 
+    if (fechaFiltro) {
+      list = list.filter((o) => o.fecha_reporte === fechaFiltro);
+    }
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       list = list.filter(
@@ -76,7 +81,7 @@ export function ObservacionesCampoTab() {
       );
     }
     return list;
-  }, [observaciones, pendientes, atendidas, filtro, searchTerm]);
+  }, [observaciones, pendientes, atendidas, filtro, searchTerm, fechaFiltro]);
 
   // KPIs
   const atendidasHoy = atendidas.filter(
@@ -165,6 +170,12 @@ export function ObservacionesCampoTab() {
             className="pl-9 bg-card border-border"
           />
         </div>
+        <Input
+          type="date"
+          value={fechaFiltro}
+          onChange={(e) => setFechaFiltro(e.target.value)}
+          className="w-full sm:w-44 bg-card border-border"
+        />
         <Select value={filtro} onValueChange={(v) => setFiltro(v as typeof filtro)}>
           <SelectTrigger className="w-full sm:w-44 bg-card border-border">
             <SelectValue />
