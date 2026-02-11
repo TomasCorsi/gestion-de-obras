@@ -5,6 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ObservacionesCampoTab } from "@/components/mantenimiento/ObservacionesCampoTab";
+import { useObservacionesMaquina } from "@/hooks/useObservacionesMaquina";
 import {
   Select,
   SelectContent,
@@ -72,6 +75,7 @@ function formatCurrency(value: number): string {
 
 export default function MantenimientoPage() {
   const { mantenimientos, loading, createMantenimiento, updateMantenimiento, deleteMantenimiento } = useMantenimientos();
+  const { pendientes: obsPendientes } = useObservacionesMaquina();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
   
@@ -221,6 +225,20 @@ export default function MantenimientoPage() {
 
   return (
     <MainLayout title="Mantenimiento" subtitle="Gestión de mantenimiento de equipos">
+      <Tabs defaultValue="mantenimientos" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="mantenimientos">Mantenimientos</TabsTrigger>
+          <TabsTrigger value="reportes" className="relative">
+            Reportes de Campo
+            {obsPendientes.length > 0 && (
+              <Badge className="ml-2 h-5 min-w-[20px] px-1.5 text-xs bg-destructive text-destructive-foreground">
+                {obsPendientes.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="mantenimientos">
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar obras={obras} onFilterChange={setFilters} showObraFilter={false} />
@@ -609,6 +627,12 @@ export default function MantenimientoPage() {
         title="Eliminar Mantenimiento"
         description={`¿Estás seguro de eliminar este registro de mantenimiento? Esta acción no se puede deshacer.`}
       />
+        </TabsContent>
+
+        <TabsContent value="reportes">
+          <ObservacionesCampoTab />
+        </TabsContent>
+      </Tabs>
     </MainLayout>
   );
 }

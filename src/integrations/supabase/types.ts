@@ -789,6 +789,60 @@ export type Database = {
           },
         ]
       }
+      observaciones_maquina_estado: {
+        Row: {
+          atendida: boolean
+          atendida_por: string | null
+          created_at: string
+          fecha_atencion: string | null
+          fecha_reporte: string
+          id: string
+          maquinaria_id: string | null
+          notas_resolucion: string | null
+          observacion: string
+          parte_diario_id: string
+        }
+        Insert: {
+          atendida?: boolean
+          atendida_por?: string | null
+          created_at?: string
+          fecha_atencion?: string | null
+          fecha_reporte: string
+          id?: string
+          maquinaria_id?: string | null
+          notas_resolucion?: string | null
+          observacion?: string
+          parte_diario_id: string
+        }
+        Update: {
+          atendida?: boolean
+          atendida_por?: string | null
+          created_at?: string
+          fecha_atencion?: string | null
+          fecha_reporte?: string
+          id?: string
+          maquinaria_id?: string | null
+          notas_resolucion?: string | null
+          observacion?: string
+          parte_diario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observaciones_maquina_estado_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observaciones_maquina_estado_parte_diario_id_fkey"
+            columns: ["parte_diario_id"]
+            isOneToOne: true
+            referencedRelation: "partes_diarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otros_gastos: {
         Row: {
           categoria: string
