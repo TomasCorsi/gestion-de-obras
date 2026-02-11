@@ -1,22 +1,36 @@
 
 
-## Fix: Operador no aparece en entregas del Repartidor
+## Mostrar datos completos en cards de Reportes de Campo
 
-### Causa
-Al proteger los datos sensibles de la tabla `personal`, se elimino la politica que permitia a todos los usuarios autenticados ver la lista completa. Ahora el repartidor solo puede ver su propio registro, por lo que el selector de operador queda vacio.
+### Cambios necesarios
 
-### Solucion
-Cambiar la pagina `ParteDiario.tsx` para que obtenga la lista de personal desde la vista segura `personal_selector` (que solo expone nombre, apellido, rol, legajo) en lugar de la tabla completa `personal`.
+**1. Hook `src/hooks/useObservacionesMaquina.ts`**
+- Agregar `patente` al select del join de maquinaria: `maquinaria:maquinaria_id(codigo, nombre, tipo, patente)`
+- Actualizar la interfaz `ObservacionMaquina` para incluir `patente` en el tipo de `maquinaria`
 
-### Cambios
+**2. Componente `src/components/mantenimiento/ObservacionesCampoTab.tsx`**
+- Reorganizar el contenido de cada card para mostrar claramente:
+  - **Nombre de maquinaria** (ya existe, se mantiene como titulo)
+  - **Patente** (nuevo, se agrega debajo del nombre)
+  - **Fecha** del reporte (ya existe)
+  - **Quien cargo la observacion** (operador del parte diario, ya existe)
+  - **Detalle** de la observacion (ya existe)
+- Se elimina el codigo de maquinaria del titulo y se deja solo el nombre
+- La patente se muestra como dato adicional junto a fecha y operador
+
+### Datos en la card (resultado final)
+
+```
+[ ] Nombre Maquinaria          [Pendiente]
+    Patente: ABC-123
+    Fecha: 30/01/2026 | Operador: Juan Perez
+    
+    Detalle de la observacion aqui...
+```
+
+### Detalle tecnico
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/ParteDiario.tsx` | Reemplazar `usePersonal()` por una query directa a `personal_selector` que devuelve solo los campos necesarios para los selectores |
-
-### Detalle tecnico
-- Se reemplaza la llamada a `usePersonal()` (que hace `select("*")` en la tabla `personal`) por un `useQuery` que consulta la vista `personal_selector`
-- La vista `personal_selector` ya esta accesible para todos los usuarios autenticados y solo expone: `id`, `nombre`, `apellido`, `rol`, `activo`, `legajo`, `user_id`
-- El componente `CargaCombustibleRepartidorDialog` solo necesita `id`, `nombre`, `apellido` y `legajo`, asi que la vista es suficiente
-- No se requieren cambios en la base de datos
-
+| `src/hooks/useObservacionesMaquina.ts` | Agregar `patente` al select del join y al tipo de la interfaz |
+| `src/components/mantenimiento/ObservacionesCampoTab.tsx` | Reorganizar card para mostrar nombre, patente, fecha, operador y detalle |
