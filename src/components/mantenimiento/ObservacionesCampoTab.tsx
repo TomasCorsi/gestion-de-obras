@@ -1,9 +1,12 @@
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useObservacionesMaquina, ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Combobox, ComboboxOption } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -35,6 +38,28 @@ export function ObservacionesCampoTab() {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [resolucionData, setResolucionData] = useState<Record<string, { atendida_por: string; notas: string }>>({});
+
+  const { data: tecnicosOptions = [] } = useQuery({
+    queryKey: ["personal_tecnicos"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personal")
+        .select("id, nombre, apellido, rol")
+        .in("rol", ["mecanico", "ayudante"])
+        .eq("activo", true)
+        .order("apellido");
+      if (error) throw error;
+      return (data || []).map((p): ComboboxOption => {
+        const fullName = `${p.apellido || ""} ${p.nombre || ""}`.trim();
+        const rolLabel = p.rol === "mecanico" ? "Mecánico" : "Ayudante";
+        return {
+          value: `${p.nombre || ""} ${p.apellido || ""}`.trim(),
+          label: `${fullName} (${rolLabel})`,
+          searchValue: fullName,
+        };
+      });
+    },
+  });
 
   const filtered = useMemo(() => {
     let list = observaciones;
@@ -238,15 +263,18 @@ export function ObservacionesCampoTab() {
                     <div className="ml-8 space-y-3 p-3 bg-muted/30 rounded-lg border border-border">
                       <div className="space-y-1">
                         <Label className="text-xs">Atendida por</Label>
-                        <Input
-                          placeholder="Nombre del técnico..."
+                        <Combobox
+                          options={tecnicosOptions}
                           value={resolucionData[obs.id]?.atendida_por || ""}
-                          onChange={(e) =>
+                          onValueChange={(val) =>
                             setResolucionData((prev) => ({
                               ...prev,
-                              [obs.id]: { ...prev[obs.id], atendida_por: e.target.value },
+                              [obs.id]: { ...prev[obs.id], atendida_por: val },
                             }))
                           }
+                          placeholder="Seleccionar técnico..."
+                          searchPlaceholder="Buscar mecánico o ayudante..."
+                          emptyText="No se encontraron técnicos."
                           className="bg-card border-border h-9 text-sm"
                         />
                       </div>
