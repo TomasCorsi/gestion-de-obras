@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { TopNavbar } from "@/components/layout/TopNavbar";
@@ -7,7 +8,7 @@ import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 import { useParteDiario, type ParteDiario as ParteDiarioType } from "@/hooks/useParteDiario";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
-import { usePersonal } from "@/hooks/usePersonal";
+import { supabase } from "@/integrations/supabase/client";
 import { useCargasRepartidor } from "@/hooks/useCargasRepartidor";
 import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeView";
 import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListView";
@@ -49,8 +50,18 @@ const ParteDiario = () => {
   } = useParteDiario();
   const { obras = [] } = useObras();
   const { maquinarias = [] } = useMaquinarias();
-  const { personal = [] } = usePersonal();
-  
+  const { data: personal = [] } = useQuery({
+    queryKey: ['personal_selector'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("personal_selector" as any)
+        .select("id, nombre, apellido, legajo, rol")
+        .eq("activo", true)
+        .order("apellido");
+      if (error) throw error;
+      return (data || []) as unknown as { id: string; nombre: string | null; apellido: string | null; legajo: string | null; rol: string | null }[];
+    },
+  });
   const [view, setView] = useState<ViewMode>('home');
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
   const [showEntregaDialog, setShowEntregaDialog] = useState(false);
