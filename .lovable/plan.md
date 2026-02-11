@@ -1,36 +1,46 @@
 
 
-## Mostrar datos completos en cards de Reportes de Campo
+## Mejoras al Sistema de Reportes de Campo
 
-### Cambios necesarios
+### Estado actual
+El sistema permite ver observaciones reportadas desde los partes diarios, filtrarlas por estado/fecha/busqueda, y marcarlas como atendidas con tecnico y notas de resolucion.
 
-**1. Hook `src/hooks/useObservacionesMaquina.ts`**
-- Agregar `patente` al select del join de maquinaria: `maquinaria:maquinaria_id(codigo, nombre, tipo, patente)`
-- Actualizar la interfaz `ObservacionMaquina` para incluir `patente` en el tipo de `maquinaria`
+### Mejoras propuestas
 
-**2. Componente `src/components/mantenimiento/ObservacionesCampoTab.tsx`**
-- Reorganizar el contenido de cada card para mostrar claramente:
-  - **Nombre de maquinaria** (ya existe, se mantiene como titulo)
-  - **Patente** (nuevo, se agrega debajo del nombre)
-  - **Fecha** del reporte (ya existe)
-  - **Quien cargo la observacion** (operador del parte diario, ya existe)
-  - **Detalle** de la observacion (ya existe)
-- Se elimina el codigo de maquinaria del titulo y se deja solo el nombre
-- La patente se muestra como dato adicional junto a fecha y operador
+**1. Filtro por Maquinaria**
+Agregar un selector de maquinaria en la barra de filtros para ver solo los reportes de una maquina especifica. Muy util cuando el mecanico quiere enfocarse en una sola unidad.
 
-### Datos en la card (resultado final)
+**2. Filtro por Obra**
+Agregar selector de obra para filtrar reportes segun donde esta trabajando la maquina. Permite al equipo de mantenimiento priorizar por ubicacion.
 
-```
-[ ] Nombre Maquinaria          [Pendiente]
-    Patente: ABC-123
-    Fecha: 30/01/2026 | Operador: Juan Perez
-    
-    Detalle de la observacion aqui...
-```
+**3. Agrupar por Maquinaria**
+Opcion para agrupar las cards por maquinaria en lugar de verlas todas sueltas. Asi el mecanico ve todas las observaciones pendientes de cada unidad juntas, como un "expediente" por maquina.
+
+**4. Indicador de Antiguedad**
+Resaltar visualmente los reportes que llevan muchos dias sin atender (ej: mas de 3 dias en amarillo, mas de 7 dias en rojo). Esto ayuda a priorizar lo urgente.
+
+**5. Vincular con Mantenimiento**
+Boton "Crear Mantenimiento" directamente desde un reporte de campo. Al presionarlo, se abre el formulario de nuevo mantenimiento con la maquinaria ya preseleccionada y la descripcion del reporte como referencia.
+
+**6. Contador por Maquinaria en KPIs**
+Agregar un KPI que muestre cuantas maquinas distintas tienen reportes pendientes, no solo el total de reportes.
 
 ### Detalle tecnico
 
-| Archivo | Cambio |
-|---|---|
-| `src/hooks/useObservacionesMaquina.ts` | Agregar `patente` al select del join y al tipo de la interfaz |
-| `src/components/mantenimiento/ObservacionesCampoTab.tsx` | Reorganizar card para mostrar nombre, patente, fecha, operador y detalle |
+| Mejora | Archivos afectados | Complejidad |
+|---|---|---|
+| Filtro por maquinaria | `ObservacionesCampoTab.tsx` | Baja |
+| Filtro por obra | `ObservacionesCampoTab.tsx`, `useObservacionesMaquina.ts` (agregar join obra) | Baja |
+| Agrupar por maquinaria | `ObservacionesCampoTab.tsx` (logica de agrupacion + UI collapsible) | Media |
+| Indicador de antiguedad | `ObservacionesCampoTab.tsx` (calculo de dias + badge visual) | Baja |
+| Vincular con mantenimiento | `ObservacionesCampoTab.tsx`, `MantenimientoPage.tsx` (estado compartido o navegacion con params) | Media |
+| KPI maquinas afectadas | `ObservacionesCampoTab.tsx` (useMemo adicional) | Baja |
+
+### Orden de implementacion sugerido
+
+1. Filtro por maquinaria + filtro por obra (rapido, alto impacto)
+2. Indicador de antiguedad (visual, facil)
+3. KPI maquinas afectadas (rapido)
+4. Agrupar por maquinaria (organizacion visual)
+5. Vincular con mantenimiento (funcionalidad avanzada)
+
