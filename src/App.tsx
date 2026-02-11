@@ -34,6 +34,7 @@ const ParteDiario = lazy(() => import("./pages/ParteDiario"));
 const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
+const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -139,6 +140,13 @@ const App = () => (
               <Route path="/parte-diario" element={
                 <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
                   <ParteDiario />
+                </ProtectedRoute>
+              } />
+
+              {/* Mi Perfil - accessible to all authenticated users */}
+              <Route path="/mi-perfil" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
+                  <MiPerfil />
                 </ProtectedRoute>
               } />
 

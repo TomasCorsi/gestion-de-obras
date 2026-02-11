@@ -18,21 +18,42 @@ import { AppLauncher } from "./AppLauncher";
 
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { toast } from "@/components/ui/sonner";
+import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 
 interface TopNavbarProps {
   title?: string;
   subtitle?: string;
 }
 
-const roleLabels: Record<string, string> = {
+const appRoleLabels: Record<string, string> = {
   admin: 'Administrador',
   capataz: 'Capataz',
   maquinista: 'Maquinista',
+  ayudante: 'Ayudante',
+};
+
+const personalRoleLabels: Record<string, string> = {
+  capataz: 'Capataz',
+  maquinista: 'Maquinista',
+  chofer: 'Chofer',
+  administrativo: 'Administrativo',
+  ayudante: 'Ayudante',
+  sereno: 'Sereno',
+  mecanico: 'Mecánico',
+  topografo: 'Topógrafo',
+  repartidor_calecita: 'Repartidor Calecita',
 };
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
   const { profile, role, signOut } = useAuth();
+  const { rolPersonal } = useEmpleadoProfile();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
+
+  const displayRoleLabel = rolPersonal
+    ? personalRoleLabels[rolPersonal] || rolPersonal
+    : role
+      ? appRoleLabels[role] || role
+      : '';
   const navigate = useNavigate();
 
   const handleCheckUpdates = async () => {
@@ -135,10 +156,10 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
                   {profile?.nombre_completo || 'Usuario'}
                 </span>
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
-                  {role && (
+                  {displayRoleLabel && (
                     <>
                       <Shield className="w-3 h-3" />
-                      {roleLabels[role] || role}
+                      {displayRoleLabel}
                     </>
                   )}
                 </span>
@@ -150,12 +171,15 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
               <div className="flex flex-col">
                 <span>{profile?.nombre_completo || 'Usuario'}</span>
                 <span className="text-xs font-normal text-muted-foreground">
-                  {role && roleLabels[role]}
+                  {displayRoleLabel}
                 </span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-border" />
-            <DropdownMenuItem className="text-foreground focus:bg-accent cursor-pointer">
+            <DropdownMenuItem
+              onClick={() => navigate('/mi-perfil')}
+              className="text-foreground focus:bg-accent cursor-pointer"
+            >
               <User className="w-4 h-4 mr-2" />
               Perfil
             </DropdownMenuItem>
