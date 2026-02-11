@@ -1,29 +1,41 @@
 
 
-## Plan: Cargar observaciones históricas faltantes
+## Plan: Selector de mecánicos y ayudantes en "Atendida por"
 
 ### Problema
-El trigger que sincroniza observaciones solo se activa cuando se crea o actualiza un parte diario **a partir de ahora**. Los 65 partes diarios anteriores con `estado_maquina = 'OBSERVACION'` nunca generaron registros en la tabla de seguimiento.
+Actualmente el campo "Atendida por" es un input de texto libre. Se necesita reemplazarlo por un selector (Combobox) que muestre solo los empleados con rol **mecánico** o **ayudante**.
 
-### Solución
-Ejecutar una migración SQL que inserte todos los registros históricos faltantes en `observaciones_maquina_estado`, tomándolos directamente de `partes_diarios`.
+### Cambios
 
-### Cambio único
+#### 1. Modificar `ObservacionesCampoTab.tsx`
+- Importar el componente `Combobox` ya existente en el proyecto
+- Agregar una query para traer el personal filtrado por rol `mecanico` y `ayudante` desde la tabla `personal`
+- Reemplazar el `<Input>` del campo "Atendida por" por un `<Combobox>` con las opciones de mecánicos/ayudantes
+- Guardar el nombre completo del empleado seleccionado (no el ID) en `atendida_por`, ya que la columna en la base de datos es de tipo texto
+- El Combobox permitirá buscar por nombre o apellido
 
-**Migración SQL** que ejecuta:
+#### 2. Detalle técnico
 
+| Archivo | Cambio |
+|---------|--------|
+| `src/components/mantenimiento/ObservacionesCampoTab.tsx` | Reemplazar input de texto por Combobox con personal filtrado por rol mecanico/ayudante |
+
+**Query para obtener mecánicos y ayudantes:**
 ```text
-INSERT INTO observaciones_maquina_estado (parte_diario_id, maquinaria_id, fecha_reporte, observacion)
-SELECT id, maquinaria_id, fecha, COALESCE(observacion_maquina, '')
-FROM partes_diarios
-WHERE estado_maquina = 'OBSERVACION'
-  AND maquinaria_id IS NOT NULL
-  AND id NOT IN (SELECT parte_diario_id FROM observaciones_maquina_estado);
+supabase
+  .from("personal")
+  .select("id, nombre, apellido, rol")
+  .in("rol", ["mecanico", "ayudante"])
+  .eq("activo", true)
+  .order("apellido")
 ```
 
-Esto insertará los ~65 registros faltantes como "Pendientes" (atendida = false por defecto), y aparecerán inmediatamente en la pestaña de Reportes de Campo.
+**Opciones del Combobox:**
+Cada opción mostrará "Apellido Nombre (Rol)" para fácil identificación, y el valor guardado será el nombre completo "Nombre Apellido".
 
 ### Resultado
-- Todas las observaciones históricas aparecerán en el listado de mantenimiento
-- No se duplicarán registros gracias al filtro `NOT IN`
-- A futuro, el trigger seguirá creando registros automáticamente para partes nuevos
+- El campo "Atendida por" muestra un selector con autocompletado
+- Solo aparecen mecánicos y ayudantes activos
+- Se puede buscar por nombre o apellido
+- No requiere cambios en la base de datos (la columna `atendida_por` sigue siendo texto)
+
