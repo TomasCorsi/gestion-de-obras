@@ -1,4 +1,4 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, parseISO } from "date-fns";
@@ -9,7 +9,7 @@ import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorLi
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
-  parteCompletadoHoy: ParteDiario | null;
+  partesCompletadosHoy: ParteDiario[];
   nombreEmpleado: string;
   rolLabel: string;
   isRepartidor?: boolean;
@@ -21,7 +21,7 @@ interface ParteDiarioHomeViewProps {
   onViewList: () => void;
   onContinueDraft: () => void;
   onDiscardDraft: () => void;
-  onEditCompletado: () => void;
+  onEditCompletado: (parte: ParteDiario) => void;
   onRegistrarEntrega?: () => void;
   onEditCarga?: (carga: CargaRepartidor) => void;
   onDeleteCarga?: (carga: CargaRepartidor) => void;
@@ -30,7 +30,7 @@ interface ParteDiarioHomeViewProps {
 
 export const ParteDiarioHomeView = ({
   borradorHoy,
-  parteCompletadoHoy,
+  partesCompletadosHoy,
   nombreEmpleado,
   rolLabel,
   isRepartidor = false,
@@ -115,23 +115,39 @@ export const ParteDiarioHomeView = ({
         </div>
       )}
 
-      {/* Completed parte alert */}
-      {parteCompletadoHoy && !borradorHoy && (
+      {/* Completed partes list */}
+      {partesCompletadosHoy.length > 0 && !borradorHoy && (
         <Alert className="bg-green-500/10 border-green-500/50">
           <CheckCircle2 className="h-5 w-5 text-green-500" />
           <AlertDescription className="ml-2">
             <div className="space-y-3">
-              <div>
-                <p className="font-semibold text-foreground">Ya completaste tu parte de hoy ✓</p>
-                <p className="text-sm text-muted-foreground">
-                  {parteCompletadoHoy.obras && `Obra: ${parteCompletadoHoy.obras.nombre}`}
-                  {parteCompletadoHoy.hora_entrada && parteCompletadoHoy.hora_salida && 
-                    ` • ${parteCompletadoHoy.hora_entrada} - ${parteCompletadoHoy.hora_salida}`}
-                </p>
+              <p className="font-semibold text-foreground">
+                {partesCompletadosHoy.length === 1 
+                  ? 'Ya completaste tu parte de hoy ✓'
+                  : `Completaste ${partesCompletadosHoy.length} partes hoy ✓`}
+              </p>
+              <div className="space-y-2">
+                {partesCompletadosHoy.map(parte => (
+                  <div key={parte.id} className="flex items-center justify-between bg-background/50 rounded-md p-2">
+                    <div className="text-sm">
+                      {parte.maquinarias 
+                        ? <span className="font-medium">{parte.maquinarias.codigo || parte.maquinarias.tipo}{parte.maquinarias.patente ? ` - ${parte.maquinarias.patente}` : ''}</span>
+                        : parte.obras 
+                          ? <span className="font-medium">{parte.obras.nombre}</span>
+                          : <span className="text-muted-foreground">Sin máquina</span>
+                      }
+                      {parte.hora_entrada && parte.hora_salida && (
+                        <span className="text-muted-foreground ml-2">
+                          {parte.hora_entrada} - {parte.hora_salida}
+                        </span>
+                      )}
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => onEditCompletado(parte)} className="h-8 w-8 p-0">
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-              <Button size="sm" variant="outline" onClick={onEditCompletado} className="w-full">
-                Editar parte de hoy
-              </Button>
             </div>
           </AlertDescription>
         </Alert>
@@ -148,6 +164,7 @@ export const ParteDiarioHomeView = ({
                 <p className="text-sm text-muted-foreground">
                   Fecha: {format(parseISO(borradorHoy.fecha), "d 'de' MMMM, yyyy", { locale: es })}
                   {borradorHoy.obras && ` • ${borradorHoy.obras.nombre}`}
+                  {borradorHoy.maquinarias && ` • ${borradorHoy.maquinarias.codigo || borradorHoy.maquinarias.tipo}`}
                 </p>
               </div>
               <div className="flex gap-2">

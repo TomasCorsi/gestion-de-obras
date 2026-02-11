@@ -37,9 +37,9 @@ const ParteDiario = () => {
   const { empleado, rolPersonal, loading: loadingEmpleado } = useEmpleadoProfile();
   const { 
     partes = [], 
-    parteHoy,
+    partesHoy = [],
     borradorHoy,
-    parteCompletadoHoy,
+    partesCompletadosHoy = [],
     saveDraft, 
     completeParte, 
     discardDraft,
@@ -134,12 +134,8 @@ const ParteDiario = () => {
   }
 
   const handleNewParte = () => {
-    // If there's any parte today (draft or completed), load it for editing
-    if (parteHoy) {
-      setEditingParte(parteHoy);
-    } else {
-      setEditingParte(null);
-    }
+    // Always open a blank form for new parte
+    setEditingParte(null);
     setView('form');
   };
 
@@ -148,8 +144,8 @@ const ParteDiario = () => {
     setView('form');
   };
 
-  const handleEditCompletado = () => {
-    setEditingParte(parteCompletadoHoy);
+  const handleEditCompletado = (parte: ParteDiarioType) => {
+    setEditingParte(parte);
     setView('form');
   };
 
@@ -172,12 +168,12 @@ const ParteDiario = () => {
   };
 
   const handleSaveDraft = async (data: any) => {
-    await saveDraft(data);
+    await saveDraft(data, editingParte?.id);
     handleBack();
   };
 
   const handleComplete = async (data: any) => {
-    await completeParte(data);
+    await completeParte(data, editingParte?.id);
     handleBack();
   };
 
@@ -190,7 +186,7 @@ const ParteDiario = () => {
           <>
             <ParteDiarioHomeView
               borradorHoy={borradorHoy}
-              parteCompletadoHoy={parteCompletadoHoy}
+              partesCompletadosHoy={partesCompletadosHoy}
               nombreEmpleado={empleado.nombreCompleto}
               rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
               isRepartidor={isRepartidor}
