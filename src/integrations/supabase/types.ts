@@ -270,6 +270,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "cargas_combustible_repartidor_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "cargas_combustible_repartidor_parte_diario_id_fkey"
             columns: ["parte_diario_id"]
             isOneToOne: false
@@ -288,6 +295,13 @@ export type Database = {
             columns: ["repartidor_id"]
             isOneToOne: false
             referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cargas_combustible_repartidor_repartidor_id_fkey"
+            columns: ["repartidor_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
             referencedColumns: ["id"]
           },
         ]
@@ -521,6 +535,13 @@ export type Database = {
             referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "horas_maquina_operador_id_fkey"
+            columns: ["operador_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
         ]
       }
       mantenimientos: {
@@ -656,6 +677,13 @@ export type Database = {
             referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "maquinarias_operador_asignado_id_fkey"
+            columns: ["operador_asignado_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
         ]
       }
       movimientos_stock: {
@@ -733,6 +761,13 @@ export type Database = {
             referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "movimientos_stock_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
         ]
       }
       obras: {
@@ -785,6 +820,13 @@ export type Database = {
             columns: ["responsable_id"]
             isOneToOne: false
             referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "obras_responsable_id_fkey"
+            columns: ["responsable_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
             referencedColumns: ["id"]
           },
         ]
@@ -1007,6 +1049,13 @@ export type Database = {
             referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "partes_diarios_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
         ]
       }
       personal: {
@@ -1179,6 +1228,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "registros_hh_capataz_id_fkey"
+            columns: ["capataz_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "registros_hh_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
@@ -1197,6 +1253,13 @@ export type Database = {
             columns: ["persona_id"]
             isOneToOne: false
             referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "registros_hh_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
             referencedColumns: ["id"]
           },
         ]
@@ -1434,6 +1497,13 @@ export type Database = {
             referencedRelation: "personal_legajo_lookup"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vacaciones_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
         ]
       }
       viajes: {
@@ -1514,6 +1584,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "viajes_chofer_id_fkey"
+            columns: ["chofer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "viajes_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
@@ -1542,6 +1619,36 @@ export type Database = {
           legajo?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"] | null
           ya_vinculado?: never
+        }
+        Relationships: []
+      }
+      personal_selector: {
+        Row: {
+          activo: boolean | null
+          apellido: string | null
+          id: string | null
+          legajo: string | null
+          nombre: string | null
+          rol: Database["public"]["Enums"]["rol_personal"] | null
+          user_id: string | null
+        }
+        Insert: {
+          activo?: boolean | null
+          apellido?: string | null
+          id?: string | null
+          legajo?: string | null
+          nombre?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"] | null
+          user_id?: string | null
+        }
+        Update: {
+          activo?: boolean | null
+          apellido?: string | null
+          id?: string | null
+          legajo?: string | null
+          nombre?: string | null
+          rol?: Database["public"]["Enums"]["rol_personal"] | null
+          user_id?: string | null
         }
         Relationships: []
       }
