@@ -26,10 +26,10 @@ export function useEmpleadosSinParte(fecha: string): UseEmpleadosSinParteResult 
     queryFn: async () => {
       // 1. Get all active employees
       const { data: empleadosActivos, error: errorEmpleados } = await supabase
-        .from("personal")
+        .from("personal_selector" as any)
         .select("id, nombre, apellido, legajo, rol, user_id")
         .eq("activo", true)
-        .order("apellido");
+        .order("apellido") as { data: { id: string; nombre: string | null; apellido: string | null; legajo: string | null; rol: RolPersonal; user_id: string | null }[] | null; error: any };
 
       if (errorEmpleados) throw errorEmpleados;
 

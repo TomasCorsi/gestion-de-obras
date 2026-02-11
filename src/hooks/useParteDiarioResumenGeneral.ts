@@ -67,10 +67,10 @@ export function useParteDiarioResumenGeneral(mes: number, anio: number) {
     queryFn: async () => {
       // Fetch all active employees
       const { data: empleadosData, error: empleadosError } = await supabase
-        .from('personal')
+        .from('personal_selector' as any)
         .select('id, nombre, apellido, rol, legajo')
         .eq('activo', true)
-        .order('apellido');
+        .order('apellido') as { data: { id: string; nombre: string | null; apellido: string | null; rol: string; legajo: string | null }[] | null; error: any };
       
       if (empleadosError) throw empleadosError;
       

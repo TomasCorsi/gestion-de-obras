@@ -106,9 +106,9 @@ const fetchDashboardDataFromDB = async (): Promise<DashboardData> => {
     
     // Personal activo
     supabase
-      .from("personal")
+      .from("personal_selector" as any)
       .select("id")
-      .eq("activo", true),
+      .eq("activo", true) as any,
     
     // Facturación del mes (cotizaciones aprobadas)
     supabase
