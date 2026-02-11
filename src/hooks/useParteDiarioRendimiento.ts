@@ -95,10 +95,10 @@ export function useParteDiarioRendimiento(
     queryFn: async () => {
       // Fetch employee data
       const { data: empleadoData, error: empleadoError } = await supabase
-        .from('personal')
+        .from('personal_selector' as any)
         .select('id, nombre, apellido, rol, legajo')
         .eq('id', empleadoId!)
-        .single();
+        .single() as { data: EmpleadoRendimiento | null; error: any };
       
       if (empleadoError) throw empleadoError;
       

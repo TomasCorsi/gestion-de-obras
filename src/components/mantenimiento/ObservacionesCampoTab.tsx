@@ -43,11 +43,11 @@ export function ObservacionesCampoTab() {
     queryKey: ["personal_tecnicos"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("personal")
+        .from("personal_selector" as any)
         .select("id, nombre, apellido, rol")
         .in("rol", ["mecanico", "ayudante"])
         .eq("activo", true)
-        .order("apellido");
+        .order("apellido") as { data: { id: string; nombre: string | null; apellido: string | null; rol: string }[] | null; error: any };
       if (error) throw error;
       return (data || []).map((p): ComboboxOption => {
         const fullName = `${p.apellido || ""} ${p.nombre || ""}`.trim();
