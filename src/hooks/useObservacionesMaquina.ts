@@ -17,7 +17,7 @@ export interface ObservacionMaquina {
   maquinaria?: { codigo: string | null; nombre: string | null; tipo: string; patente: string | null } | null;
   parte_diario?: {
     personal: { nombre: string | null; apellido: string | null } | null;
-    obra: { nombre: string } | null;
+    obra: { id: string; nombre: string } | null;
   } | null;
 }
 
@@ -34,7 +34,7 @@ export function useObservacionesMaquina() {
           maquinaria:maquinaria_id(codigo, nombre, tipo, patente),
           parte_diario:parte_diario_id(
             personal:personal_id(nombre, apellido),
-            obra:obra_id(nombre)
+            obra:obra_id(id, nombre)
           )
         `)
         .order("atendida", { ascending: true })

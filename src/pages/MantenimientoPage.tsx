@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,6 +81,7 @@ export default function MantenimientoPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
+  const [activeTab, setActiveTab] = useState("mantenimientos");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -93,6 +94,33 @@ export default function MantenimientoPage() {
   const [selectedMant, setSelectedMant] = useState<MantenimientoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Listen for "Crear Mantenimiento" from field reports
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setActiveTab("mantenimientos");
+      setIsEditing(false);
+      setFormData({
+        fecha: new Date().toISOString().split("T")[0],
+        maquinaria_id: detail.maquinaria_id || "",
+        tipo: detail.tipo || "correctivo",
+        descripcion: detail.descripcion || "",
+        repuestos: "",
+        costo_repuestos: 0,
+        costo_mano_obra: 0,
+        costo_total: 0,
+        horas_maquina: 0,
+        tecnico: "",
+        estado: "programado",
+        proximo_mantenimiento: "",
+        observaciones: "",
+      });
+      setFormOpen(true);
+    };
+    window.addEventListener("crear-mantenimiento-desde-reporte", handler);
+    return () => window.removeEventListener("crear-mantenimiento-desde-reporte", handler);
+  }, []);
 
   const [formData, setFormData] = useState<MantenimientoForm>({
     fecha: new Date().toISOString().split("T")[0],
@@ -225,7 +253,7 @@ export default function MantenimientoPage() {
 
   return (
     <MainLayout title="Mantenimiento" subtitle="Gestión de mantenimiento de equipos">
-      <Tabs defaultValue="mantenimientos" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="mantenimientos">Mantenimientos</TabsTrigger>
           <TabsTrigger value="reportes" className="relative">
