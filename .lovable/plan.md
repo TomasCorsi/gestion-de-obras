@@ -1,51 +1,73 @@
 
 
-## Plan: Mostrar rol correcto y pantalla de perfil
+## Plan: Conectar observaciones de partes diarios con Mantenimiento
 
-### Problema actual
-1. El rol que se muestra en la barra de navegacion viene de la tabla `user_roles` que solo tiene 4 valores posibles (admin, capataz, maquinista, ayudante). Para un repartidor, el trigger asigna "maquinista" por defecto, lo cual es incorrecto visualmente.
-2. El boton "Perfil" en el menu de usuario no hace nada.
+### Objetivo
+Crear una nueva pestana "Reportes de Campo" en la pagina de Mantenimiento que muestre automaticamente todas las observaciones que los operadores reportan sobre las maquinas en sus partes diarios (cuando marcan estado_maquina = 'OBSERVACION'). El equipo de mantenimiento podra ver estos reportes y marcarlos como atendidos mediante un checklist.
 
-### Solucion
+### Cambios
 
-#### 1. Mostrar el rol operativo real en la TopNavbar
-En lugar de usar solo el `role` de `useAuth()` (que es el app_role generico), usar el `rolPersonal` de `useEmpleadoProfile()` para mostrar el rol real del empleado en la barra. Para admins sin perfil de empleado, seguir mostrando "Administrador".
+#### 1. Nueva tabla `observaciones_maquina_estado` (migracion SQL)
+Tabla para rastrear el estado de atencion de cada observacion reportada:
 
-**Archivo: `src/components/layout/TopNavbar.tsx`**
-- Importar `useEmpleadoProfile`
-- Agregar un mapa completo de labels para todos los roles de personal (maquinista, chofer, capataz, mecanico, sereno, topografo, ayudante, administrativo, repartidor_calecita)
-- Priorizar `rolPersonal` sobre `role` para el label mostrado: si hay perfil de empleado, mostrar su rol real; si no (ej: admin puro), mostrar el app_role
+| Columna | Tipo | Descripcion |
+|---------|------|-------------|
+| id | uuid PK | Identificador |
+| parte_diario_id | uuid FK | Referencia al parte que origino la observacion |
+| maquinaria_id | uuid | Maquina reportada |
+| fecha_reporte | date | Fecha del reporte |
+| observacion | text | Texto de la observacion |
+| atendida | boolean | Si fue atendida o no (checklist) |
+| atendida_por | text | Quien la atendio |
+| fecha_atencion | timestamp | Cuando se marco como atendida |
+| notas_resolucion | text | Notas sobre como se resolvio |
+| created_at | timestamp | Fecha de creacion |
 
-#### 2. Crear pagina de Perfil del empleado
-Una pagina simple donde el usuario pueda ver sus datos personales (solo lectura).
+RLS: admins y capataces pueden gestionar; maquinistas pueden ver.
 
-**Archivo nuevo: `src/pages/MiPerfil.tsx`**
-- Usar `useEmpleadoProfile()` para obtener los datos
-- Mostrar en cards con los campos relevantes:
-  - Nombre completo, Legajo, DNI
-  - Rol, Situacion laboral
-  - Telefono, Email
-  - Fecha de ingreso
-  - Licencia y vencimiento (si aplica)
-  - Banco y cuenta (si aplica)
-- Solo lectura, sin edicion (para evitar problemas de seguridad)
-- Estilo mobile-first consistente con el resto de la app
+Ademas, un trigger que al insertar/actualizar un parte_diario con estado_maquina = 'OBSERVACION', cree automaticamente un registro en esta tabla (si no existe ya para ese parte_diario_id).
 
-**Archivo: `src/App.tsx`**
-- Agregar ruta `/mi-perfil` protegida
+#### 2. Nuevo hook `useObservacionesMaquina.ts`
+- Query para traer observaciones con datos de maquinaria y personal (via parte_diario)
+- Mutation para marcar como atendida (toggle checklist) con notas de resolucion
+- Filtros por estado (pendientes/atendidas) y por maquinaria
 
-**Archivo: `src/components/layout/TopNavbar.tsx`**
-- Conectar el boton "Perfil" del menu desplegable para navegar a `/mi-perfil`
+#### 3. Nuevo componente `ObservacionesCampoTab.tsx`
+Una pestana dentro de MantenimientoPage con:
+- **KPIs superiores**: Total observaciones pendientes, atendidas hoy, por maquina mas reportada
+- **Lista de observaciones** en formato card:
+  - Nombre y codigo de la maquina
+  - Fecha del reporte y nombre del operador
+  - Texto de la observacion
+  - Checkbox para marcar como "Atendida"
+  - Al marcar atendida, se despliega un campo para notas de resolucion y quien la atendio
+- **Filtros**: Pendientes / Atendidas / Todas, y buscador por maquina
+- Las pendientes se muestran primero, ordenadas por fecha (mas antiguas arriba para priorizar)
+
+#### 4. Modificar `MantenimientoPage.tsx`
+- Agregar sistema de tabs: "Mantenimientos" (contenido actual) y "Reportes de Campo" (nuevo)
+- El tab de Reportes de Campo muestra el componente ObservacionesCampoTab
+- Mostrar un badge con la cantidad de observaciones pendientes en el tab
 
 ### Detalle tecnico
 
 | Archivo | Cambio |
 |---------|--------|
-| `src/components/layout/TopNavbar.tsx` | Usar `useEmpleadoProfile` para mostrar rol real; navegar a /mi-perfil desde menu |
-| `src/pages/MiPerfil.tsx` (nuevo) | Pagina de perfil con datos del empleado en solo lectura |
-| `src/App.tsx` | Agregar ruta protegida `/mi-perfil` |
+| Migracion SQL | Nueva tabla `observaciones_maquina_estado` + trigger automatico |
+| `src/hooks/useObservacionesMaquina.ts` (nuevo) | Hook para CRUD de observaciones |
+| `src/components/mantenimiento/ObservacionesCampoTab.tsx` (nuevo) | UI del tab con checklist |
+| `src/pages/MantenimientoPage.tsx` | Agregar tabs y el nuevo componente |
+
+### Flujo de datos
+
+1. Operador completa parte diario y marca "OBSERVACION" con detalle
+2. Trigger en BD crea automaticamente un registro en `observaciones_maquina_estado` con atendida = false
+3. Equipo de mantenimiento abre la pestana "Reportes de Campo"
+4. Ve todas las observaciones pendientes, las va marcando como atendidas con notas
+5. Las atendidas pasan al filtro "Atendidas" para historial
 
 ### Resultado esperado
-- En la barra superior, "Sofia" vera "Repartidor Calecita" en vez de "Maquinista"
-- Al tocar "Perfil" en el menu, se abre una pagina con todos sus datos personales
-- Para admins sin perfil de empleado, se sigue mostrando "Administrador"
+- El equipo de mantenimiento ve en tiempo real todas las observaciones reportadas por los operadores
+- Pueden gestionar un checklist de problemas pendientes por resolver
+- Se mantiene un historial de que se resolvio, cuando y por quien
+
