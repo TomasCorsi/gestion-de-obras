@@ -1,41 +1,61 @@
 
 
-## Plan: Selector de mecánicos y ayudantes en "Atendida por"
+## Plan: Proteger datos sensibles de la tabla `personal`
 
 ### Problema
-Actualmente el campo "Atendida por" es un input de texto libre. Se necesita reemplazarlo por un selector (Combobox) que muestre solo los empleados con rol **mecánico** o **ayudante**.
+1. **Tabla `personal`**: La politica "Authenticated users can view personal for selectors" permite que CUALQUIER usuario autenticado lea TODAS las columnas, incluyendo DNI, sueldos, datos bancarios, etc.
+2. **Vista `personal_legajo_lookup`**: No tiene RLS, aunque solo expone campos minimos (id, legajo, rol, ya_vinculado). Se usa durante el registro de empleados.
 
-### Cambios
+### Solucion
 
-#### 1. Modificar `ObservacionesCampoTab.tsx`
-- Importar el componente `Combobox` ya existente en el proyecto
-- Agregar una query para traer el personal filtrado por rol `mecanico` y `ayudante` desde la tabla `personal`
-- Reemplazar el `<Input>` del campo "Atendida por" por un `<Combobox>` con las opciones de mecánicos/ayudantes
-- Guardar el nombre completo del empleado seleccionado (no el ID) en `atendida_por`, ya que la columna en la base de datos es de tipo texto
-- El Combobox permitirá buscar por nombre o apellido
+#### 1. Crear una vista segura `personal_selector` (migracion SQL)
+Una vista con SECURITY DEFINER que expone solo campos no sensibles para uso en selectores/comboboxes:
+- `id`, `nombre`, `apellido`, `rol`, `activo`, `legajo`, `user_id`
 
-#### 2. Detalle técnico
+Esto excluye: `dni`, `email`, `telefono`, `sueldo`, `sueldo_negro`, `banco`, `numero_cuenta`, `situacion_laboral`, `licencia`, `vencimiento_licencia`, `modalidad_pago`
 
-| Archivo | Cambio |
-|---------|--------|
-| `src/components/mantenimiento/ObservacionesCampoTab.tsx` | Reemplazar input de texto por Combobox con personal filtrado por rol mecanico/ayudante |
+#### 2. Eliminar la politica permisiva en `personal`
+Eliminar la politica `"Authenticated users can view personal for selectors"` que permite lectura completa a todos los autenticados.
 
-**Query para obtener mecánicos y ayudantes:**
+#### 3. Actualizar componentes para usar la vista segura
+Cambiar las queries de los componentes que solo necesitan datos de selector para que consulten `personal_selector` en lugar de `personal`:
+
+| Componente / Hook | Campos que usa | Cambio |
+|---|---|---|
+| `ObservacionesCampoTab.tsx` | id, nombre, apellido, rol | Usar `personal_selector` |
+| `useEmpleadosSinParte.ts` | id, nombre, apellido, legajo, rol, user_id | Usar `personal_selector` |
+| `useParteDiarioResumenGeneral.ts` | id, nombre, apellido, rol, legajo | Usar `personal_selector` |
+| `useParteDiarioRendimiento.ts` | id, nombre, apellido, rol, legajo | Usar `personal_selector` |
+| `useDashboardData.ts` | id (count) | Usar `personal_selector` |
+
+**No se cambian** (solo accesibles para admin/capataz por las politicas existentes):
+- `usePersonal.ts` (select `*` - usado en pagina de gestion de Personal, solo admin)
+- `UserManagement.tsx` (solo admin)
+- `useEmpleadoProfile.ts` (filtra por `user_id = auth.uid()`, accede al propio registro)
+
+#### 4. Proteger `personal_legajo_lookup`
+Agregar RLS a la vista con una politica que permita SELECT a usuarios anonimos (necesario para el flujo de registro) pero limitada a los campos ya expuestos.
+
+### Detalle tecnico - Migracion SQL
+
 ```text
-supabase
-  .from("personal")
-  .select("id, nombre, apellido, rol")
-  .in("rol", ["mecanico", "ayudante"])
-  .eq("activo", true)
-  .order("apellido")
+-- 1. Crear vista segura para selectores (sin datos sensibles)
+CREATE OR REPLACE VIEW public.personal_selector
+WITH (security_invoker = false)
+AS
+SELECT id, nombre, apellido, rol, activo, legajo, user_id
+FROM public.personal;
+
+-- 2. Dar acceso a la vista
+GRANT SELECT ON public.personal_selector TO authenticated;
+
+-- 3. Eliminar la politica permisiva
+DROP POLICY IF EXISTS "Authenticated users can view personal for selectors" ON public.personal;
 ```
 
-**Opciones del Combobox:**
-Cada opción mostrará "Apellido Nombre (Rol)" para fácil identificación, y el valor guardado será el nombre completo "Nombre Apellido".
-
 ### Resultado
-- El campo "Atendida por" muestra un selector con autocompletado
-- Solo aparecen mecánicos y ayudantes activos
-- Se puede buscar por nombre o apellido
-- No requiere cambios en la base de datos (la columna `atendida_por` sigue siendo texto)
+- Usuarios con rol maquinista/ayudante/etc solo podran ver nombre, apellido, rol y legajo via la vista segura
+- Los datos sensibles (DNI, sueldos, bancos) solo seran accesibles para admin, capataz, y el propio empleado
+- Los selectores/comboboxes seguiran funcionando normalmente
+- No se rompe ninguna funcionalidad existente
 
