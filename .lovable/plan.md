@@ -1,54 +1,51 @@
 
 
-## Plan: Permitir multiples partes diarios por maquinista (uno por maquina)
+## Plan: Mostrar rol correcto y pantalla de perfil
 
-### Contexto del problema
-Actualmente el sistema solo permite **un parte diario por empleado por dia**. Esto se refuerza con:
-1. Un indice unico en la base de datos (`unique_parte_completado_por_dia`) que impide mas de un parte completado por persona/fecha
-2. Logica en el hook `useParteDiario` que busca "el parte de hoy" y siempre lo actualiza en vez de crear uno nuevo
-3. La pantalla Home que muestra un solo alerta de "Ya completaste tu parte de hoy"
+### Problema actual
+1. El rol que se muestra en la barra de navegacion viene de la tabla `user_roles` que solo tiene 4 valores posibles (admin, capataz, maquinista, ayudante). Para un repartidor, el trigger asigna "maquinista" por defecto, lo cual es incorrecto visualmente.
+2. El boton "Perfil" en el menu de usuario no hace nada.
 
-Para maquinistas que usan varias maquinas en el dia, necesitamos permitir **un parte completado por cada maquina diferente**.
+### Solucion
 
-### Cambios
+#### 1. Mostrar el rol operativo real en la TopNavbar
+En lugar de usar solo el `role` de `useAuth()` (que es el app_role generico), usar el `rolPersonal` de `useEmpleadoProfile()` para mostrar el rol real del empleado en la barra. Para admins sin perfil de empleado, seguir mostrando "Administrador".
 
-#### 1. Migracion de base de datos
-- **Eliminar** el indice unico `unique_parte_completado_por_dia` (personal_id, fecha WHERE estado = 'completado')
-- **Crear** un nuevo indice unico `unique_parte_completado_por_dia_maquina` en (personal_id, fecha, maquinaria_id) WHERE estado = 'completado', para evitar duplicados de la misma maquina en el mismo dia
-- Esto permite multiples partes completados por dia siempre que sean de maquinas distintas
-- Los roles sin maquina (capataz, mecanico, etc.) siguen limitados a un parte por dia ya que su maquinaria_id sera NULL (y NULL es unico en el indice)
+**Archivo: `src/components/layout/TopNavbar.tsx`**
+- Importar `useEmpleadoProfile`
+- Agregar un mapa completo de labels para todos los roles de personal (maquinista, chofer, capataz, mecanico, sereno, topografo, ayudante, administrativo, repartidor_calecita)
+- Priorizar `rolPersonal` sobre `role` para el label mostrado: si hay perfil de empleado, mostrar su rol real; si no (ej: admin puro), mostrar el app_role
 
-#### 2. `src/hooks/useParteDiario.ts`
-- Cambiar la query `parte_hoy` para traer **todos** los partes del dia (no solo uno con `maybeSingle`)
-- Renombrar a `partesHoy` (array)
-- Derivar `borradorHoy` como el primer borrador encontrado (para seguir soportando "continuar borrador")
-- Agregar logica: al guardar/completar, buscar si ya existe un parte para esa maquina hoy (por maquinaria_id) y actualizarlo, o crear uno nuevo si es otra maquina
-- Exponer `partesCompletadosHoy` (array) para mostrar en el Home
+#### 2. Crear pagina de Perfil del empleado
+Una pagina simple donde el usuario pueda ver sus datos personales (solo lectura).
 
-#### 3. `src/components/parte-diario/ParteDiarioHomeView.tsx`
-- Cambiar la alerta de "Ya completaste tu parte de hoy" para mostrar una **lista** de partes completados hoy (uno por maquina), ej: "Completaste 2 partes hoy: Cargadora 102, Topador 205"
-- Cada parte completado tiene boton "Editar"
-- El boton "Nuevo Parte" sigue disponible siempre (para agregar otra maquina)
+**Archivo nuevo: `src/pages/MiPerfil.tsx`**
+- Usar `useEmpleadoProfile()` para obtener los datos
+- Mostrar en cards con los campos relevantes:
+  - Nombre completo, Legajo, DNI
+  - Rol, Situacion laboral
+  - Telefono, Email
+  - Fecha de ingreso
+  - Licencia y vencimiento (si aplica)
+  - Banco y cuenta (si aplica)
+- Solo lectura, sin edicion (para evitar problemas de seguridad)
+- Estilo mobile-first consistente con el resto de la app
 
-#### 4. `src/pages/ParteDiario.tsx`
-- Adaptar para recibir `partesHoy` como array
-- Actualizar `handleNewParte` para que no redirija a un parte existente automaticamente (ahora siempre abre formulario vacio)
-- Actualizar `handleEditCompletado` para recibir el parte especifico a editar
+**Archivo: `src/App.tsx`**
+- Agregar ruta `/mi-perfil` protegida
 
-#### 5. `src/components/parte-diario/ParteDiarioFormView.tsx`
-- Agregar validacion al completar: si el maquinista no selecciono maquina, mostrar error (la maquina es obligatoria para maquinistas)
+**Archivo: `src/components/layout/TopNavbar.tsx`**
+- Conectar el boton "Perfil" del menu desplegable para navegar a `/mi-perfil`
 
 ### Detalle tecnico
 
 | Archivo | Cambio |
 |---------|--------|
-| Migracion SQL | Reemplazar indice unico por uno que incluya maquinaria_id |
-| `src/hooks/useParteDiario.ts` | Traer array de partes hoy, logica de guardado por maquina |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Lista de partes completados con edicion individual |
-| `src/pages/ParteDiario.tsx` | Adaptar flujo para multiples partes |
-| `src/components/parte-diario/ParteDiarioFormView.tsx` | Validar maquina obligatoria para maquinistas |
+| `src/components/layout/TopNavbar.tsx` | Usar `useEmpleadoProfile` para mostrar rol real; navegar a /mi-perfil desde menu |
+| `src/pages/MiPerfil.tsx` (nuevo) | Pagina de perfil con datos del empleado en solo lectura |
+| `src/App.tsx` | Agregar ruta protegida `/mi-perfil` |
 
-### Comportamiento esperado
-- **Maquinista**: Puede crear N partes en el dia, uno por cada maquina diferente. Al tocar "Nuevo Parte", abre formulario vacio. En el Home ve la lista de partes ya cargados.
-- **Otros roles** (capataz, mecanico, chofer, etc.): Siguen con el comportamiento actual de un solo parte por dia, ya que su maquinaria_id sera NULL o siempre la misma.
-
+### Resultado esperado
+- En la barra superior, "Sofia" vera "Repartidor Calecita" en vez de "Maquinista"
+- Al tocar "Perfil" en el menu, se abre una pagina con todos sus datos personales
+- Para admins sin perfil de empleado, se sigue mostrando "Administrador"
