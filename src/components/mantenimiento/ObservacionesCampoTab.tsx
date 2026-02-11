@@ -214,7 +214,7 @@ export function ObservacionesCampoTab() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h4 className={cn("font-semibold text-foreground", obs.atendida && "line-through opacity-60")}>
-                          {obs.maquinaria?.codigo || ""} {obs.maquinaria?.nombre || "Sin máquina"}
+                          {obs.maquinaria?.nombre || "Sin máquina"}
                         </h4>
                         {obs.atendida ? (
                           <Badge className="status-badge status-active text-xs">Atendida</Badge>
@@ -222,6 +222,12 @@ export function ObservacionesCampoTab() {
                           <Badge className="status-badge status-pending text-xs">Pendiente</Badge>
                         )}
                       </div>
+
+                      {obs.maquinaria?.patente && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Patente: {obs.maquinaria.patente}
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -232,12 +238,6 @@ export function ObservacionesCampoTab() {
                           <User className="w-3 h-3" />
                           {operadorName}
                         </span>
-                        {obs.parte_diario?.obra && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {obs.parte_diario.obra.nombre}
-                          </span>
-                        )}
                       </div>
 
                       <p className="mt-2 text-sm text-foreground/80">{obs.observacion || "Sin detalle"}</p>

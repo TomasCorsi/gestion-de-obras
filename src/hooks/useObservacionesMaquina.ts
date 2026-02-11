@@ -14,7 +14,7 @@ export interface ObservacionMaquina {
   notas_resolucion: string | null;
   created_at: string;
   // Joined
-  maquinaria?: { codigo: string | null; nombre: string | null; tipo: string } | null;
+  maquinaria?: { codigo: string | null; nombre: string | null; tipo: string; patente: string | null } | null;
   parte_diario?: {
     personal: { nombre: string | null; apellido: string | null } | null;
     obra: { nombre: string } | null;
@@ -31,7 +31,7 @@ export function useObservacionesMaquina() {
         .from("observaciones_maquina_estado")
         .select(`
           *,
-          maquinaria:maquinaria_id(codigo, nombre, tipo),
+          maquinaria:maquinaria_id(codigo, nombre, tipo, patente),
           parte_diario:parte_diario_id(
             personal:personal_id(nombre, apellido),
             obra:obra_id(nombre)
