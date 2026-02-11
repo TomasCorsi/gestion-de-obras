@@ -76,7 +76,7 @@ export default function MiPerfil() {
                   <DetailRow label="Teléfono" value={empleado.telefono || '—'} />
                   <DetailRow label="Email" value={empleado.email || '—'} />
                   <DetailRow label="Fecha de Ingreso" value={formatDate(empleado.fecha_ingreso)} />
-                  <DetailRow label="Situación Laboral" value={empleado.situacion_laboral || '—'} />
+                  
                 </DetailSection>
               </CardContent>
             </Card>
