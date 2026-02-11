@@ -46,7 +46,6 @@ export interface ParteDiario {
   maquinarias?: {
     id: string;
     codigo: string | null;
-    nombre: string | null;
     tipo: string;
     patente: string | null;
   } | null;
@@ -95,7 +94,7 @@ export function useParteDiario() {
           *,
           personal:personal_id (id, nombre, apellido, rol),
           obras:obra_id (id, nombre),
-          maquinarias:maquinaria_id (id, codigo, nombre, tipo, patente)
+          maquinarias:maquinaria_id (id, codigo, tipo, patente)
         `)
         .eq('personal_id', empleado!.id)
         .order('fecha', { ascending: false })
@@ -117,7 +116,7 @@ export function useParteDiario() {
           *,
           personal:personal_id (id, nombre, apellido, rol),
           obras:obra_id (id, nombre),
-          maquinarias:maquinaria_id (id, codigo, nombre, tipo, patente)
+          maquinarias:maquinaria_id (id, codigo, tipo, patente)
         `)
         .eq('personal_id', empleado!.id)
         .eq('fecha', fechaHoy)
