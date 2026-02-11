@@ -105,9 +105,8 @@ export function useParteDiario() {
     },
   });
 
-  // Fetch today's parte (any state - draft OR completed)
-  // This prevents creating duplicates when user re-enters after completing
-  const { data: parteHoy = null, isLoading: isLoadingParteHoy } = useQuery({
+  // Fetch ALL of today's partes (supports multiple partes per day for maquinistas)
+  const { data: partesHoy = [], isLoading: isLoadingParteHoy } = useQuery({
     queryKey: ['parte_hoy', empleado?.id, fechaHoy],
     enabled: !!empleado?.id,
     queryFn: async () => {
@@ -121,20 +120,24 @@ export function useParteDiario() {
         `)
         .eq('personal_id', empleado!.id)
         .eq('fecha', fechaHoy)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as ParteDiario | null;
+      return data as unknown as ParteDiario[];
     },
   });
 
-  // Derived: check if today's parte is a draft
-  const borradorHoy = parteHoy?.estado === 'borrador' ? parteHoy : null;
+  // Derived: first draft found today (for "continue draft" flow)
+  const borradorHoy = partesHoy.find(p => p.estado === 'borrador') || null;
   
-  // Derived: check if today's parte is completed
-  const parteCompletadoHoy = parteHoy?.estado === 'completado' ? parteHoy : null;
+  // Derived: all completed partes today
+  const partesCompletadosHoy = partesHoy.filter(p => p.estado === 'completado');
+  
+  // Legacy compat: single parteHoy (first one)
+  const parteHoy = partesHoy.length > 0 ? partesHoy[0] : null;
+  
+  // Legacy compat
+  const parteCompletadoHoy = partesCompletadosHoy.length > 0 ? partesCompletadosHoy[0] : null;
 
   // Create new parte
   const createMutation = useMutation({
@@ -206,27 +209,44 @@ export function useParteDiario() {
     },
   });
 
-  // Save as draft - uses parteHoy to prevent duplicates
-  const saveDraft = async (data: ParteDiarioInsert) => {
+  // Find existing parte for a specific machine today
+  const findParteForMachine = (maquinariaId: string | null) => {
+    if (!maquinariaId) {
+      // For roles without machine, find any parte today
+      return partesHoy[0] || null;
+    }
+    return partesHoy.find(p => p.maquinaria_id === maquinariaId) || null;
+  };
+
+  // Save as draft - finds matching parte by machine to prevent duplicates
+  const saveDraft = async (data: ParteDiarioInsert, editingParteId?: string) => {
     const parteData = { ...data, estado: 'borrador' as const };
     
-    // If there's any parte today (draft OR completed), update it
-    if (parteHoy) {
-      await updateMutation.mutateAsync({ id: parteHoy.id, ...parteData });
+    if (editingParteId) {
+      await updateMutation.mutateAsync({ id: editingParteId, ...parteData });
     } else {
-      await createMutation.mutateAsync(parteData);
+      const existing = findParteForMachine(data.maquinaria_id || null);
+      if (existing) {
+        await updateMutation.mutateAsync({ id: existing.id, ...parteData });
+      } else {
+        await createMutation.mutateAsync(parteData);
+      }
     }
   };
 
-  // Complete parte - uses parteHoy to prevent duplicates
-  const completeParte = async (data: ParteDiarioInsert) => {
+  // Complete parte - finds matching parte by machine to prevent duplicates
+  const completeParte = async (data: ParteDiarioInsert, editingParteId?: string) => {
     const parteData = { ...data, estado: 'completado' as const };
     
-    // If there's any parte today (draft OR completed), update it
-    if (parteHoy) {
-      await updateMutation.mutateAsync({ id: parteHoy.id, ...parteData });
+    if (editingParteId) {
+      await updateMutation.mutateAsync({ id: editingParteId, ...parteData });
     } else {
-      await createMutation.mutateAsync(parteData);
+      const existing = findParteForMachine(data.maquinaria_id || null);
+      if (existing) {
+        await updateMutation.mutateAsync({ id: existing.id, ...parteData });
+      } else {
+        await createMutation.mutateAsync(parteData);
+      }
     }
   };
 
@@ -240,8 +260,10 @@ export function useParteDiario() {
   return {
     partes,
     parteHoy,
+    partesHoy,
     borradorHoy,
     parteCompletadoHoy,
+    partesCompletadosHoy,
     isLoading,
     isLoadingParteHoy,
     error,

@@ -243,6 +243,10 @@ export const ParteDiarioFormView = ({
   };
 
   const validateForComplete = (): boolean => {
+    if (isMaquinista && !formData.maquinaria_id) {
+      toast.error('Debes seleccionar una máquina para completar el parte');
+      return false;
+    }
     if (showHorometro) {
       const inicio = parseFloat(formData.horometro_inicio) || 0;
       const fin = parseFloat(formData.horometro_fin) || 0;
