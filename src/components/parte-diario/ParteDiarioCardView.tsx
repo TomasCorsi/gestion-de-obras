@@ -87,8 +87,9 @@ export function ParteDiarioCardView({ partes, onView, onEdit, onDelete }: ParteD
 
   const getMaquinariaLabel = (parte: ParteDiario) => {
     if (!parte.maquinarias) return null;
-    const { codigo, patente } = parte.maquinarias;
-    return codigo + (patente ? ` (${patente})` : "");
+    const { nombre, patente } = parte.maquinarias;
+    const label = nombre || parte.maquinarias.codigo;
+    return label + (patente ? ` - ${patente}` : "");
   };
 
   if (partes.length === 0) {
