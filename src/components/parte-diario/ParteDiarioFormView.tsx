@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { es } from "date-fns/locale";
 import { format, parseISO } from "date-fns";
+import { useFormDraftPersistence } from "@/hooks/useFormDraftPersistence";
 import { ArrowLeft, Calendar, Clock, Fuel, ClipboardCheck, FileEdit, CheckCircle, Loader2, Users, Search, X, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,8 @@ export const ParteDiarioFormView = ({
 }: ParteDiarioFormViewProps) => {
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
   const [searchAusencia, setSearchAusencia] = useState('');
-  const [formData, setFormData] = useState({
+  
+  const defaultFormData = useMemo(() => ({
     fecha: format(new Date(), 'yyyy-MM-dd'),
     obra_id: '',
     maquinaria_id: '',
@@ -81,11 +83,21 @@ export const ParteDiarioFormView = ({
     check_aceite_hidraulico: false,
     check_liquido_refrigerante: false,
     check_uria: false,
-    // New role-specific fields
     novedades: '',
     ausencias: [] as string[],
     tareas: '',
     observaciones_inconvenientes: '',
+  }), []);
+
+  const [formData, setFormData] = useState(defaultFormData);
+
+  // Draft persistence for new partes (auto-save to localStorage)
+  const { clearDraft } = useFormDraftPersistence({
+    empleadoId,
+    formData,
+    setFormData,
+    defaultData: defaultFormData,
+    isEditing: !!parte,
   });
 
   // Load existing parte data
@@ -259,25 +271,25 @@ export const ParteDiarioFormView = ({
   };
 
   const handleSaveDraft = async () => {
-    // Prevent double-click: if already saving, ignore
     if (savingType !== null || isSaving) return;
     
     setSavingType('draft');
     try {
       await onSaveDraft(buildParteData());
+      clearDraft();
     } finally {
       setSavingType(null);
     }
   };
 
   const handleComplete = async () => {
-    // Prevent double-click: if already saving, ignore
     if (savingType !== null || isSaving) return;
     
     if (!validateForComplete()) return;
     setSavingType('complete');
     try {
       await onComplete(buildParteData());
+      clearDraft();
     } finally {
       setSavingType(null);
     }
