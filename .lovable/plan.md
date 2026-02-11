@@ -1,47 +1,29 @@
 
 
-## Plan: Auto-guardado del formulario de Parte Diario
+## Plan: Cargar observaciones históricas faltantes
 
 ### Problema
-Cuando se publica una actualizacion de la app, la PWA se recarga automaticamente y los empleados pierden todo lo que tenian cargado en el formulario del parte diario.
+El trigger que sincroniza observaciones solo se activa cuando se crea o actualiza un parte diario **a partir de ahora**. Los 65 partes diarios anteriores con `estado_maquina = 'OBSERVACION'` nunca generaron registros en la tabla de seguimiento.
 
-### Solucion
-Implementar auto-guardado en localStorage del formulario, para que si la app se recarga (por actualizacion o cualquier motivo), al volver al formulario se restauren los datos automaticamente. Ademas, postergar la actualizacion de la PWA mientras el formulario esta abierto.
+### Solución
+Ejecutar una migración SQL que inserte todos los registros históricos faltantes en `observaciones_maquina_estado`, tomándolos directamente de `partes_diarios`.
 
-### Cambios
+### Cambio único
 
-#### 1. Nuevo hook `useFormDraftPersistence`
-Un hook liviano que:
-- Guarda el estado del formulario en localStorage cada vez que cambia (con debounce de 500ms para no saturar)
-- Al montar el componente, detecta si hay un borrador guardado y lo restaura automaticamente
-- Limpia el borrador al completar o guardar exitosamente
-- La clave de storage incluye el empleadoId para evitar conflictos entre usuarios
+**Migración SQL** que ejecuta:
 
-#### 2. Integrar en `ParteDiarioFormView`
-- Conectar el hook al estado `formData`
-- Restaurar automaticamente al abrir el formulario (sin prompt, directo)
-- Mostrar un aviso sutil cuando se restauran datos ("Se recuperaron datos de un formulario anterior")
-- Limpiar al guardar borrador o completar con exito
+```text
+INSERT INTO observaciones_maquina_estado (parte_diario_id, maquinaria_id, fecha_reporte, observacion)
+SELECT id, maquinaria_id, fecha, COALESCE(observacion_maquina, '')
+FROM partes_diarios
+WHERE estado_maquina = 'OBSERVACION'
+  AND maquinaria_id IS NOT NULL
+  AND id NOT IN (SELECT parte_diario_id FROM observaciones_maquina_estado);
+```
 
-#### 3. Postergar actualizacion PWA durante carga de formulario
-- Modificar `UpdatePrompt` para que NO muestre el banner de actualizacion cuando el usuario esta en la ruta `/parte-diario` con el formulario abierto
-- Alternativa mas simple: cambiar de `autoUpdate` a mostrar el prompt pero sin forzar la recarga, y agregar logica para que si hay datos en el draft del formulario, la actualizacion espere
+Esto insertará los ~65 registros faltantes como "Pendientes" (atendida = false por defecto), y aparecerán inmediatamente en la pestaña de Reportes de Campo.
 
-### Detalle tecnico
-
-| Archivo | Cambio |
-|---------|--------|
-| `src/hooks/useFormDraftPersistence.ts` (nuevo) | Hook para auto-guardar/restaurar formulario desde localStorage |
-| `src/components/parte-diario/ParteDiarioFormView.tsx` | Integrar auto-guardado con el hook |
-| `src/components/pwa/UpdatePrompt.tsx` | No forzar recarga si hay draft de formulario pendiente |
-
-### Flujo
-
-1. Empleado abre formulario y empieza a cargar datos
-2. Cada cambio se guarda automaticamente en localStorage (con debounce)
-3. Si la app se recarga (por actualizacion, cierre accidental, etc):
-   - Al volver al formulario, se restauran los datos automaticamente
-   - Se muestra un toast: "Se recuperaron datos del formulario anterior"
-4. Si el empleado guarda como borrador o completa exitosamente, se limpia el draft local
-5. Si hay una actualizacion de PWA pendiente y el formulario tiene datos, la actualizacion se posterga hasta que el usuario salga del formulario
-
+### Resultado
+- Todas las observaciones históricas aparecerán en el listado de mantenimiento
+- No se duplicarán registros gracias al filtro `NOT IN`
+- A futuro, el trigger seguirá creando registros automáticamente para partes nuevos
