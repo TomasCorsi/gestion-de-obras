@@ -17,6 +17,7 @@ import {
   ClipboardList,
   LayoutGrid,
   X,
+  ContactRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ const appCategories: AppCategory[] = [
     name: "Operaciones",
     apps: [
       { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin'] },
+      { icon: ContactRound, label: "Clientes", path: "/clientes", color: "bg-blue-700", roles: ['admin'] },
       { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin'] },
       { icon: Award, label: "Certificados", path: "/certificados", color: "bg-blue-400", roles: ['admin'] },
       { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin'] },

@@ -13,12 +13,14 @@ export interface ObraDB {
   fecha_inicio: string | null;
   fecha_fin_estimada: string | null;
   responsable_id: string | null;
+  cliente_id: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface ObraWithRelations extends ObraDB {
   responsable?: { nombre: string; apellido: string };
+  cliente?: { id: string; nombre: string; cuit: string | null } | null;
 }
 
 export interface ObraForm {
@@ -29,6 +31,7 @@ export interface ObraForm {
   fecha_inicio?: string;
   fecha_fin_estimada?: string;
   responsable_id?: string;
+  cliente_id?: string;
 }
 
 const fetchObrasFromDB = async (): Promise<ObraWithRelations[]> => {
@@ -36,7 +39,8 @@ const fetchObrasFromDB = async (): Promise<ObraWithRelations[]> => {
     .from("obras")
     .select(`
       *,
-      responsable:personal(nombre, apellido)
+      responsable:personal(nombre, apellido),
+      cliente:clientes(id, nombre, cuit)
     `)
     .order("created_at", { ascending: false });
 
@@ -66,6 +70,7 @@ export function useObras() {
         fecha_inicio: obra.fecha_inicio || null,
         fecha_fin_estimada: obra.fecha_fin_estimada || null,
         responsable_id: obra.responsable_id || null,
+        cliente_id: obra.cliente_id || null,
       };
 
       const { data, error } = await supabase

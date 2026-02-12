@@ -36,6 +36,7 @@ const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const MiPerfil = lazy(() => import("./pages/MiPerfil"));
+const Clientes = lazy(() => import("./pages/Clientes"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +85,11 @@ const App = () => (
               <Route path="/obras" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Obras />
+                </ProtectedRoute>
+              } />
+              <Route path="/clientes" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <Clientes />
                 </ProtectedRoute>
               } />
               <Route path="/viajes" element={
