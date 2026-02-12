@@ -1,33 +1,24 @@
 
 
-## Fix: Legajo Not Found During Employee Registration
+## Agregar Certificados al App Launcher
 
-### Problem
-The registration page queries the `personal_legajo_lookup` view to validate the legajo, but this view is configured with `security_invoker = on`. Since the user is not yet logged in (they're registering), the query runs as an anonymous user, which has no access to the underlying `personal` table due to RLS policies. This causes every legajo lookup to return empty, showing "Legajo no encontrado".
+### Problema
+El modulo "Certificados" existe en las rutas y en el sidebar, pero no fue agregado a la grilla del App Launcher, que es la pantalla principal de navegacion.
 
-### Solution
-Recreate the `personal_legajo_lookup` view with `security_invoker = off` so it acts as a SECURITY DEFINER view, bypassing RLS for this limited, non-sensitive data (only exposes `id`, `legajo`, `rol`, and whether it's already linked). Then grant SELECT access to the `anon` role so unauthenticated users can use it during registration.
+### Solucion
+Agregar la entrada de Certificados en el array `appCategories` dentro de `src/components/layout/AppLauncher.tsx`, en la categoria "Operaciones" (junto a Cotizaciones, que es donde tiene mas sentido).
 
-### Technical Details
+### Cambios
 
-**Database migration (single SQL statement):**
+**Archivo: `src/components/layout/AppLauncher.tsx`**
 
-```text
-DROP VIEW IF EXISTS public.personal_legajo_lookup;
+1. Importar el icono `Award` de lucide-react (el mismo que usa el sidebar para Certificados).
+2. Agregar un nuevo item en la categoria "Operaciones", despues de Cotizaciones:
+   - Label: "Certificados"
+   - Path: `/certificados`
+   - Color: `bg-blue-400` (variacion de azul para mantener coherencia con la categoria)
+   - Roles: `['admin']`
+   - Icono: `Award`
 
-CREATE VIEW public.personal_legajo_lookup
-WITH (security_invoker = off) AS
-SELECT 
-  id,
-  legajo,
-  rol,
-  (user_id IS NOT NULL) AS ya_vinculado
-FROM public.personal;
-
-GRANT SELECT ON public.personal_legajo_lookup TO anon;
-GRANT SELECT ON public.personal_legajo_lookup TO authenticated;
-```
-
-- **No code changes needed** -- the frontend already queries this view correctly.
-- **Security**: The view only exposes non-sensitive fields (id, legajo, rol, linked status). No PII like DNI, salary, or bank info is exposed.
+No se requieren otros cambios -- las rutas y permisos ya estan configurados correctamente.
 
