@@ -1,37 +1,37 @@
 
-## Vincular Mantenimiento completado con Reportes de Campo
 
-### Problema
-Cuando se crea un mantenimiento desde un reporte de campo y luego se marca como "completado", el reporte de campo queda pendiente. Deberian sincronizarse automaticamente.
+## Historial de entregas por dia para el Repartidor
 
-### Solucion
+### Idea
+Agregar un selector de fecha simple (flechas izquierda/derecha + fecha) arriba de la lista de entregas en la pantalla de inicio del repartidor. Por defecto muestra "Hoy", y con las flechas puede navegar a dias anteriores para consultar sus entregas pasadas.
 
-**1. Agregar columna `observacion_reporte_id` a la tabla `mantenimientos`**
-- Nueva columna nullable UUID que referencia a `observaciones_maquina_estado.id`
-- Permite saber que mantenimiento fue creado a partir de que reporte
+### Cambios
 
-**2. Crear trigger en la base de datos**
-- Cuando un mantenimiento cambia su estado a `completado`, el trigger automaticamente marca la observacion vinculada como `atendida`, registrando el tecnico y la fecha.
+**1. `src/pages/ParteDiario.tsx`**
+- Cambiar el filtro de `cargasHoy` para usar una fecha seleccionada (`selectedDate`) en lugar de siempre `todayStr`
+- Agregar estado `selectedDate` (default: hoy)
+- Pasar `selectedDate` y callbacks `onPrevDay`/`onNextDay` al `ParteDiarioHomeView`
 
-**3. Pasar el ID de la observacion al crear mantenimiento**
-- Modificar `ObservacionesCampoTab.tsx` para incluir `observacion_reporte_id` en el evento `crear-mantenimiento-desde-reporte`
-- Modificar `MantenimientoPage.tsx` para capturar ese ID y guardarlo en el formulario
-- Modificar `useMantenimientos.ts` para incluir `observacion_reporte_id` en el tipo `MantenimientoForm` y en las operaciones de insert
+**2. `src/components/parte-diario/ParteDiarioHomeView.tsx`**
+- Recibir nuevas props: `selectedDate`, `onPrevDay`, `onNextDay`
+- Reemplazar el titulo fijo "Entregas de hoy" por un mini-navegador de fecha:
+  ```
+  [<]  Mie 12 Feb 2026  [>]
+  ```
+  - Flecha izquierda: dia anterior
+  - Flecha derecha: dia siguiente (deshabilitada si ya es hoy)
+  - Si es hoy, mostrar "Hoy" junto a la fecha
+- Ajustar el mensaje vacio para reflejar la fecha seleccionada
+- El boton "Entrega" solo se habilita cuando la fecha es hoy
+
+### Flujo
+1. El repartidor abre la app y ve las entregas de hoy (comportamiento actual)
+2. Toca la flecha izquierda y ve las entregas de ayer
+3. Puede seguir retrocediendo para consultar dias anteriores
+4. La flecha derecha lo trae de vuelta hasta hoy
+5. Solo puede registrar nuevas entregas cuando esta viendo "Hoy"
 
 ### Detalle tecnico
-
-| Paso | Archivo / Recurso | Cambio |
-|---|---|---|
-| Migracion DB | SQL migration | `ALTER TABLE mantenimientos ADD COLUMN observacion_reporte_id UUID REFERENCES observaciones_maquina_estado(id)` |
-| Trigger DB | SQL migration | Trigger `on UPDATE` de mantenimientos: si `NEW.estado = 'completado'` y tiene `observacion_reporte_id`, actualiza la observacion como atendida |
-| Hook | `useMantenimientos.ts` | Agregar `observacion_reporte_id?` al tipo `MantenimientoForm` y a `MantenimientoDB` |
-| Evento | `ObservacionesCampoTab.tsx` | Incluir `observacion_id` en el dispatch del evento |
-| Formulario | `MantenimientoPage.tsx` | Capturar `observacion_reporte_id` del evento y pasarlo al crear |
-
-### Flujo resultante
-
-1. Operador reporta observacion en parte diario -> se crea en `observaciones_maquina_estado`
-2. Mecanico ve el reporte y presiona "Crear Mantenimiento" -> se abre formulario con `observacion_reporte_id` vinculado
-3. Se crea el mantenimiento con la referencia al reporte
-4. Cuando el mantenimiento se marca como "completado" -> el trigger marca automaticamente el reporte como atendido (con tecnico y fecha)
-5. La lista de reportes de campo se actualiza via invalidacion de cache de React Query
+- No se necesitan cambios en la base de datos
+- No se necesitan nuevos hooks: el `useCargasRepartidor` ya trae todas las cargas del repartidor, solo se filtra en frontend por la fecha seleccionada
+- Se usa `date-fns` (ya instalado) para formatear y navegar entre fechas
