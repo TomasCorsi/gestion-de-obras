@@ -14,7 +14,8 @@ import {
   Package, 
   ClipboardCheck, 
   BarChart3, 
-  Settings
+  Settings,
+  ContactRound,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -53,6 +54,15 @@ const apps: AppItem[] = [
     bgColor: "bg-blue-500/15",
     description: "Gestión de obras",
     roles: ['admin', 'capataz', 'maquinista']
+  },
+  { 
+    icon: ContactRound, 
+    label: "Clientes", 
+    path: "/clientes", 
+    iconColor: "text-blue-600",
+    bgColor: "bg-blue-600/15",
+    description: "Gestión de clientes",
+    roles: ['admin', 'capataz']
   },
   { 
     icon: FileText, 
