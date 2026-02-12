@@ -1015,75 +1015,154 @@ function ConceptoRow({
   onDelete,
 }: {
   concepto: { id: string; nombre: string; unidad: string; precio_unitario: number; activo: boolean; categoria: string };
-  onUpdate: (u: { precio_unitario?: number; activo?: boolean; categoria?: string }) => void;
+  onUpdate: (u: { precio_unitario?: number; activo?: boolean; categoria?: string; nombre?: string; unidad?: string }) => void;
   onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [precio, setPrecio] = useState(String(concepto.precio_unitario));
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nombre: concepto.nombre,
+    unidad: concepto.unidad,
+    precio_unitario: String(concepto.precio_unitario),
+    categoria: concepto.categoria,
+  });
 
-  const save = () => {
-    onUpdate({ precio_unitario: Number(precio) });
-    setEditing(false);
+  const handleSaveEdit = () => {
+    onUpdate({
+      nombre: editForm.nombre,
+      unidad: editForm.unidad,
+      precio_unitario: Number(editForm.precio_unitario),
+      categoria: editForm.categoria,
+    });
+    setEditDialogOpen(false);
   };
 
   return (
-    <TableRow className={!concepto.activo ? "opacity-50" : ""}>
-      <TableCell className="font-medium">{concepto.nombre}</TableCell>
-      <TableCell>{concepto.unidad}</TableCell>
-      <TableCell className="text-right">
-        {editing ? (
-          <Input
-            type="number"
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
-            onBlur={save}
-            onKeyDown={(e) => e.key === "Enter" && save()}
-            className="h-8 w-32 ml-auto"
-            autoFocus
-          />
-        ) : (
-          <span
-            className="cursor-pointer hover:underline"
-            onClick={() => setEditing(true)}
-          >
+    <>
+      <TableRow className={!concepto.activo ? "opacity-50" : ""}>
+        <TableCell className="font-medium">{concepto.nombre}</TableCell>
+        <TableCell>{concepto.unidad}</TableCell>
+        <TableCell className="text-right">
+          <span className="cursor-pointer hover:underline">
             {formatCurrency(concepto.precio_unitario)}
           </span>
-        )}
-      </TableCell>
-      <TableCell>
-        <Badge
-          variant="secondary"
-          className={
-            concepto.activo
-              ? "bg-green-500/15 text-green-700 dark:text-green-400 cursor-pointer"
-              : "bg-muted text-muted-foreground cursor-pointer"
-          }
-          onClick={() => onUpdate({ activo: !concepto.activo })}
-        >
-          {concepto.activo ? "Activo" : "Inactivo"}
-        </Badge>
-      </TableCell>
-      <TableCell className="text-right">
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="w-4 h-4 text-destructive" />
+        </TableCell>
+        <TableCell>
+          <Badge
+            variant="secondary"
+            className={
+              concepto.activo
+                ? "bg-green-500/15 text-green-700 dark:text-green-400 cursor-pointer"
+                : "bg-muted text-muted-foreground cursor-pointer"
+            }
+            onClick={() => onUpdate({ activo: !concepto.activo })}
+          >
+            {concepto.activo ? "Activo" : "Inactivo"}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-right">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
+                  <Pencil className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Editar concepto</TooltipContent>
+            </Tooltip>
+
+            <AlertDialog>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                </TooltipTrigger>
+                <TooltipContent>Eliminar</TooltipContent>
+              </Tooltip>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminar concepto</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    ¿Eliminar "{concepto.nombre}"? Esto no afecta certificados ya emitidos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </TooltipProvider>
+        </TableCell>
+      </TableRow>
+
+      {/* Edit Concepto Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Concepto</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nombre</Label>
+              <Input
+                value={editForm.nombre}
+                onChange={(e) => setEditForm((p) => ({ ...p, nombre: e.target.value }))}
+                placeholder="Ej: Horas Retro"
+              />
+            </div>
+            <div>
+              <Label>Categoría</Label>
+              <Select
+                value={editForm.categoria}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, categoria: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS_CERTIFICADO.map((cat) => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Unidad</Label>
+              <Select
+                value={editForm.unidad}
+                onValueChange={(v) => setEditForm((p) => ({ ...p, unidad: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar unidad" />
+                </SelectTrigger>
+                <SelectContent>
+                  {["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"].map((u) => (
+                    <SelectItem key={u} value={u}>{u}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Precio Unitario</Label>
+              <Input
+                type="number"
+                value={editForm.precio_unitario}
+                onChange={(e) => setEditForm((p) => ({ ...p, precio_unitario: e.target.value }))}
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdit} disabled={!editForm.nombre || !editForm.unidad}>
+              Guardar cambios
             </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar concepto</AlertDialogTitle>
-              <AlertDialogDescription>
-                ¿Eliminar "{concepto.nombre}"? Esto no afecta certificados ya emitidos.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={onDelete}>Eliminar</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </TableCell>
-    </TableRow>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
