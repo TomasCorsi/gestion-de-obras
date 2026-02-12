@@ -95,9 +95,19 @@ export function useObras() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, obra }: { id: string; obra: Partial<ObraForm> }) => {
+      const sanitized = {
+        ...obra,
+        fecha_inicio: obra.fecha_inicio || null,
+        fecha_fin_estimada: obra.fecha_fin_estimada || null,
+        ubicacion: obra.ubicacion || null,
+        descripcion: obra.descripcion || null,
+        responsable_id: obra.responsable_id || null,
+        cliente_id: obra.cliente_id || null,
+      };
+
       const { error } = await supabase
         .from("obras")
-        .update(obra)
+        .update(sanitized)
         .eq("id", id);
 
       if (error) throw error;
