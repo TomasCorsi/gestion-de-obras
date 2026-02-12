@@ -12,6 +12,7 @@ export interface CertificadoConcepto {
   precio_unitario: number;
   activo: boolean;
   orden: number;
+  categoria: string;
   created_at: string;
   updated_at: string;
 }
@@ -23,6 +24,7 @@ export interface ConceptoForm {
   precio_unitario: number;
   activo?: boolean;
   orden?: number;
+  categoria?: string;
 }
 
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
@@ -61,25 +63,36 @@ export interface CertificadoItemForm {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  categoria: string;
 }
+
+// ---- Categories ----
+
+export const CATEGORIAS_CERTIFICADO = [
+  "Alquiler de Maquinas",
+  "Materiales",
+  "Transporte",
+  "Servicios",
+  "General",
+];
 
 // ---- Predefined concepts ----
 
-export const CONCEPTOS_ESTANDAR: { nombre: string; unidad: string }[] = [
-  { nombre: "Horas Retroexcavadora", unidad: "HR" },
-  { nombre: "Horas Cargadora", unidad: "HR" },
-  { nombre: "Horas Topador", unidad: "HR" },
-  { nombre: "Horas Motoniveladora", unidad: "HR" },
-  { nombre: "Alquiler Máquina por día", unidad: "DIA" },
-  { nombre: "Gasoil", unidad: "LT" },
-  { nombre: "Tosca", unidad: "M3" },
-  { nombre: "Tierra", unidad: "M3" },
-  { nombre: "Cascote", unidad: "M3" },
-  { nombre: "Piedra", unidad: "M3" },
-  { nombre: "Fresado", unidad: "M3" },
-  { nombre: "Suelo Cemento", unidad: "M3" },
-  { nombre: "Cunetas", unidad: "ML" },
-  { nombre: "Viajes", unidad: "VJ" },
+export const CONCEPTOS_ESTANDAR: { nombre: string; unidad: string; categoria: string }[] = [
+  { nombre: "Horas Retroexcavadora", unidad: "HR", categoria: "Alquiler de Maquinas" },
+  { nombre: "Horas Cargadora", unidad: "HR", categoria: "Alquiler de Maquinas" },
+  { nombre: "Horas Topador", unidad: "HR", categoria: "Alquiler de Maquinas" },
+  { nombre: "Horas Motoniveladora", unidad: "HR", categoria: "Alquiler de Maquinas" },
+  { nombre: "Alquiler Máquina por día", unidad: "DIA", categoria: "Alquiler de Maquinas" },
+  { nombre: "Gasoil", unidad: "LT", categoria: "Servicios" },
+  { nombre: "Tosca", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Tierra", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Cascote", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Piedra", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Fresado", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Suelo Cemento", unidad: "M3", categoria: "Materiales" },
+  { nombre: "Cunetas", unidad: "ML", categoria: "Servicios" },
+  { nombre: "Viajes", unidad: "VJ", categoria: "Transporte" },
 ];
 
 // ---- Hook ----
@@ -98,7 +111,10 @@ export function useCertificados(obraId?: string) {
         .eq("obra_id", obraId)
         .order("orden", { ascending: true });
       if (error) throw error;
-      return data as CertificadoConcepto[];
+      return (data as any[]).map((d) => ({
+        ...d,
+        categoria: d.categoria || "General",
+      })) as CertificadoConcepto[];
     },
     enabled: !!obraId,
   });
