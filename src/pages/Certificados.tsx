@@ -4,10 +4,12 @@ import { useObras } from "@/hooks/useObras";
 import {
   useCertificados,
   CONCEPTOS_ESTANDAR,
+  CATEGORIAS_CERTIFICADO,
   type CertificadoItemForm,
   type CertificadoItem,
   type EstadoCertificado,
 } from "@/hooks/useCertificados";
+import { generateCertificadoPDF } from "@/utils/generateCertificadoPDF";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,6 +58,7 @@ import {
   Send,
   CheckCircle2,
   Zap,
+  Download,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -69,6 +72,26 @@ const ESTADO_COLORS: Record<EstadoCertificado, string> = {
   emitido: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
   cobrado: "bg-green-500/15 text-green-700 dark:text-green-400",
 };
+
+/** Group items by categoria, return sorted entries */
+function groupByCategoria<T extends { categoria?: string }>(
+  items: T[]
+): { categoria: string; items: T[] }[] {
+  const map = new Map<string, T[]>();
+  items.forEach((item) => {
+    const cat = item.categoria || "General";
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat)!.push(item);
+  });
+  // Sort by CATEGORIAS_CERTIFICADO order
+  return [...map.entries()]
+    .sort(([a], [b]) => {
+      const ia = CATEGORIAS_CERTIFICADO.indexOf(a);
+      const ib = CATEGORIAS_CERTIFICADO.indexOf(b);
+      return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    })
+    .map(([categoria, items]) => ({ categoria, items }));
+}
 
 export default function Certificados() {
   const { obras, loading: loadingObras } = useObras();
@@ -91,7 +114,12 @@ export default function Certificados() {
 
   // ---- Add concepto dialog ----
   const [addConceptoOpen, setAddConceptoOpen] = useState(false);
-  const [newConcepto, setNewConcepto] = useState({ nombre: "", unidad: "", precio_unitario: "" });
+  const [newConcepto, setNewConcepto] = useState({
+    nombre: "",
+    unidad: "",
+    precio_unitario: "",
+    categoria: "General",
+  });
 
   const handleAddConcepto = async () => {
     if (!selectedObraId || !newConcepto.nombre || !newConcepto.unidad) return;
@@ -101,12 +129,13 @@ export default function Certificados() {
       unidad: newConcepto.unidad,
       precio_unitario: Number(newConcepto.precio_unitario) || 0,
       orden: conceptos.length,
+      categoria: newConcepto.categoria,
     });
-    setNewConcepto({ nombre: "", unidad: "", precio_unitario: "" });
+    setNewConcepto({ nombre: "", unidad: "", precio_unitario: "", categoria: "General" });
     setAddConceptoOpen(false);
   };
 
-  const handleAddEstandar = async (e: { nombre: string; unidad: string }) => {
+  const handleAddEstandar = async (e: { nombre: string; unidad: string; categoria: string }) => {
     if (!selectedObraId) return;
     await createConcepto({
       obra_id: selectedObraId,
@@ -114,6 +143,7 @@ export default function Certificados() {
       unidad: e.unidad,
       precio_unitario: 0,
       orden: conceptos.length,
+      categoria: e.categoria,
     });
   };
 
@@ -132,6 +162,7 @@ export default function Certificados() {
         cantidad: 0,
         precio_unitario: c.precio_unitario,
         subtotal: 0,
+        categoria: c.categoria,
       }))
     );
     setCrearOpen(true);
@@ -180,9 +211,39 @@ export default function Certificados() {
     setLoadingItems(false);
   };
 
+  // Build categoriaMap for PDF (concepto_id -> categoria)
+  const categoriaMap: Record<string, string> = {};
+  conceptos.forEach((c) => {
+    categoriaMap[c.id] = c.categoria;
+  });
+
+  const handleDownloadPDF = async () => {
+    if (!viewCert) return;
+    await generateCertificadoPDF({
+      certificado: viewCert,
+      items: viewItems,
+      obraNombre: selectedObra?.nombre || "",
+      obraUbicacion: selectedObra?.ubicacion || undefined,
+      categoriaMap,
+    });
+  };
+
   const conceptosEstandarNoAgregados = CONCEPTOS_ESTANDAR.filter(
     (e) => !conceptos.some((c) => c.nombre === e.nombre)
   );
+
+  // Group conceptos by categoria for display
+  const conceptosGrouped = groupByCategoria(conceptos);
+
+  // Group draft items by categoria
+  const draftGrouped = groupByCategoria(itemsDraft);
+
+  // Group view items by categoria (using conceptos map)
+  const viewItemsWithCat = viewItems.map((item) => ({
+    ...item,
+    categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
+  }));
+  const viewGrouped = groupByCategoria(viewItemsWithCat);
 
   return (
     <MainLayout title="Certificados de Obra" subtitle="Gestión de certificaciones mensuales por obra">
@@ -398,6 +459,7 @@ export default function Certificados() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Concepto</TableHead>
+                        <TableHead>Categoría</TableHead>
                         <TableHead>Unidad</TableHead>
                         <TableHead className="text-right">Precio Unitario</TableHead>
                         <TableHead>Estado</TableHead>
@@ -405,13 +467,16 @@ export default function Certificados() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {conceptos.map((c) => (
-                        <ConceptoRow
-                          key={c.id}
-                          concepto={c}
-                          onUpdate={(updates) => updateConcepto({ id: c.id, ...updates })}
-                          onDelete={() => deleteConcepto(c.id)}
-                        />
+                      {conceptosGrouped.map((group) => (
+                        group.items.map((c, idx) => (
+                          <ConceptoRow
+                            key={c.id}
+                            concepto={c}
+                            showCategoryBadge
+                            onUpdate={(updates) => updateConcepto({ id: c.id, ...updates })}
+                            onDelete={() => deleteConcepto(c.id)}
+                          />
+                        ))
                       ))}
                     </TableBody>
                   </Table>
@@ -435,6 +500,22 @@ export default function Certificados() {
                   onChange={(e) => setNewConcepto((p) => ({ ...p, nombre: e.target.value }))}
                   placeholder="Ej: Horas Retro"
                 />
+              </div>
+              <div>
+                <Label>Categoría</Label>
+                <Select
+                  value={newConcepto.categoria}
+                  onValueChange={(v) => setNewConcepto((p) => ({ ...p, categoria: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIAS_CERTIFICADO.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div>
                 <Label>Unidad</Label>
@@ -486,60 +567,86 @@ export default function Certificados() {
                   onChange={(e) => setPeriodo(e.target.value)}
                 />
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Concepto</TableHead>
-                    <TableHead>Unidad</TableHead>
-                    <TableHead className="w-28">Cantidad</TableHead>
-                    <TableHead className="w-36">P. Unitario</TableHead>
-                    <TableHead className="text-right">Subtotal</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {itemsDraft.map((item, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>{item.descripcion}</TableCell>
-                      <TableCell>{item.unidad}</TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={item.cantidad || ""}
-                          onChange={(e) => updateItemCantidad(idx, Number(e.target.value))}
-                          className="h-8"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          value={item.precio_unitario || ""}
-                          onChange={(e) => updateItemPrecio(idx, Number(e.target.value))}
-                          className="h-8"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(item.subtotal)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right font-medium">Subtotal</TableCell>
-                    <TableCell className="text-right font-semibold">{formatCurrency(draftSubtotal)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right font-medium">IVA 21%</TableCell>
-                    <TableCell className="text-right">{formatCurrency(draftIva)}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-right font-bold text-lg">TOTAL</TableCell>
-                    <TableCell className="text-right font-bold text-lg">{formatCurrency(draftTotal)}</TableCell>
-                  </TableRow>
-                </TableFooter>
-              </Table>
+
+              {draftGrouped.map((group) => {
+                const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
+                return (
+                  <div key={group.categoria}>
+                    <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">
+                      {group.categoria}
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Concepto</TableHead>
+                          <TableHead>Unidad</TableHead>
+                          <TableHead className="w-28">Cantidad</TableHead>
+                          <TableHead className="w-36">P. Unitario</TableHead>
+                          <TableHead className="text-right">Subtotal</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {group.items.map((item) => {
+                          const globalIdx = itemsDraft.indexOf(item);
+                          return (
+                            <TableRow key={globalIdx}>
+                              <TableCell>{item.descripcion}</TableCell>
+                              <TableCell>{item.unidad}</TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={item.cantidad || ""}
+                                  onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))}
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  value={item.precio_unitario || ""}
+                                  onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))}
+                                  className="h-8"
+                                />
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(item.subtotal)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                      <TableFooter>
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-right text-sm font-medium">
+                            Subtotal {group.categoria}
+                          </TableCell>
+                          <TableCell className="text-right font-semibold">
+                            {formatCurrency(groupSubtotal)}
+                          </TableCell>
+                        </TableRow>
+                      </TableFooter>
+                    </Table>
+                  </div>
+                );
+              })}
+
+              {/* Totals */}
+              <div className="border-t pt-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span className="font-semibold">{formatCurrency(draftSubtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>IVA 21%</span>
+                  <span>{formatCurrency(draftIva)}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold">
+                  <span>TOTAL</span>
+                  <span>{formatCurrency(draftTotal)}</span>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCrearOpen(false)}>Cancelar</Button>
@@ -554,8 +661,14 @@ export default function Certificados() {
         <Dialog open={!!viewCertId} onOpenChange={() => setViewCertId(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>
-                {viewCert?.numero} — {selectedObra?.nombre}
+              <DialogTitle className="flex items-center justify-between">
+                <span>{viewCert?.numero} — {selectedObra?.nombre}</span>
+                {viewCert && (
+                  <Button size="sm" variant="outline" onClick={handleDownloadPDF}>
+                    <Download className="w-4 h-4 mr-2" />
+                    Descargar PDF
+                  </Button>
+                )}
               </DialogTitle>
             </DialogHeader>
             {viewCert && (
@@ -575,42 +688,66 @@ export default function Certificados() {
                 {loadingItems ? (
                   <Skeleton className="h-40 w-full" />
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Concepto</TableHead>
-                        <TableHead>Unidad</TableHead>
-                        <TableHead className="text-right">Cantidad</TableHead>
-                        <TableHead className="text-right">P. Unitario</TableHead>
-                        <TableHead className="text-right">Subtotal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {viewItems.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.descripcion}</TableCell>
-                          <TableCell>{item.unidad}</TableCell>
-                          <TableCell className="text-right">{item.cantidad}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    <TableFooter>
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-right font-medium">Subtotal</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(viewCert.subtotal)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-right font-medium">IVA 21%</TableCell>
-                        <TableCell className="text-right">{formatCurrency(viewCert.iva)}</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-right font-bold text-lg">TOTAL</TableCell>
-                        <TableCell className="text-right font-bold text-lg">{formatCurrency(viewCert.total)}</TableCell>
-                      </TableRow>
-                    </TableFooter>
-                  </Table>
+                  <>
+                    {viewGrouped.map((group) => {
+                      const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
+                      return (
+                        <div key={group.categoria}>
+                          <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">
+                            {group.categoria}
+                          </div>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead>Unidad</TableHead>
+                                <TableHead className="text-right">Cantidad</TableHead>
+                                <TableHead className="text-right">P. Unitario</TableHead>
+                                <TableHead className="text-right">Subtotal</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {group.items.map((item) => (
+                                <TableRow key={item.id}>
+                                  <TableCell>{item.descripcion}</TableCell>
+                                  <TableCell>{item.unidad}</TableCell>
+                                  <TableCell className="text-right">{item.cantidad}</TableCell>
+                                  <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                  <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                            <TableFooter>
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-right text-sm font-medium">
+                                  Subtotal {group.categoria}
+                                </TableCell>
+                                <TableCell className="text-right font-semibold">
+                                  {formatCurrency(groupSubtotal)}
+                                </TableCell>
+                              </TableRow>
+                            </TableFooter>
+                          </Table>
+                        </div>
+                      );
+                    })}
+
+                    {/* Totals */}
+                    <div className="border-t pt-3 space-y-1">
+                      <div className="flex justify-between text-sm">
+                        <span>Subtotal</span>
+                        <span className="font-semibold">{formatCurrency(viewCert.subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span>IVA 21%</span>
+                        <span>{formatCurrency(viewCert.iva)}</span>
+                      </div>
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>TOTAL</span>
+                        <span>{formatCurrency(viewCert.total)}</span>
+                      </div>
+                    </div>
+                  </>
                 )}
                 {viewCert.observaciones && (
                   <p className="text-sm text-muted-foreground">
@@ -630,11 +767,13 @@ export default function Certificados() {
 
 function ConceptoRow({
   concepto,
+  showCategoryBadge,
   onUpdate,
   onDelete,
 }: {
-  concepto: { id: string; nombre: string; unidad: string; precio_unitario: number; activo: boolean };
-  onUpdate: (u: { precio_unitario?: number; activo?: boolean }) => void;
+  concepto: { id: string; nombre: string; unidad: string; precio_unitario: number; activo: boolean; categoria: string };
+  showCategoryBadge?: boolean;
+  onUpdate: (u: { precio_unitario?: number; activo?: boolean; categoria?: string }) => void;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -648,6 +787,11 @@ function ConceptoRow({
   return (
     <TableRow className={!concepto.activo ? "opacity-50" : ""}>
       <TableCell className="font-medium">{concepto.nombre}</TableCell>
+      <TableCell>
+        <Badge variant="outline" className="text-xs">
+          {concepto.categoria}
+        </Badge>
+      </TableCell>
       <TableCell>{concepto.unidad}</TableCell>
       <TableCell className="text-right">
         {editing ? (

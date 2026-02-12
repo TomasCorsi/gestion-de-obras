@@ -309,6 +309,7 @@ export type Database = {
       certificado_conceptos: {
         Row: {
           activo: boolean
+          categoria: string
           created_at: string
           id: string
           nombre: string
@@ -320,6 +321,7 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          categoria?: string
           created_at?: string
           id?: string
           nombre: string
@@ -331,6 +333,7 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          categoria?: string
           created_at?: string
           id?: string
           nombre?: string
