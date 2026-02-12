@@ -44,6 +44,7 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useObras, ObraWithRelations, ObraForm, EstadoObra } from "@/hooks/useObras";
 import { usePersonal } from "@/hooks/usePersonal";
+import { useClientes } from "@/hooks/useClientes";
 import { cn, formatDate } from "@/lib/utils";
 
 const estadoConfig: Record<EstadoObra, { label: string; className: string }> = {
@@ -56,6 +57,7 @@ const estadoConfig: Record<EstadoObra, { label: string; className: string }> = {
 export default function Obras() {
   const { obras, loading, createObra, updateObra, deleteObra } = useObras();
   const { personal } = usePersonal();
+  const { clientes } = useClientes();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
@@ -74,6 +76,7 @@ export default function Obras() {
     fecha_inicio: "",
     responsable_id: undefined,
     fecha_fin_estimada: undefined,
+    cliente_id: undefined,
   });
 
   const responsables = personal.filter(p => 
@@ -98,6 +101,7 @@ export default function Obras() {
       fecha_inicio: "",
       responsable_id: undefined,
       fecha_fin_estimada: undefined,
+      cliente_id: undefined,
     });
     setFormOpen(true);
   };
@@ -113,6 +117,7 @@ export default function Obras() {
       fecha_inicio: obra.fecha_inicio || "",
       fecha_fin_estimada: obra.fecha_fin_estimada || undefined,
       responsable_id: obra.responsable_id || undefined,
+      cliente_id: obra.cliente_id || undefined,
     });
     setFormOpen(true);
   };
@@ -215,6 +220,7 @@ export default function Obras() {
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
               <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
               <TableHead className="text-muted-foreground font-medium">Responsable</TableHead>
               <TableHead className="text-muted-foreground font-medium">Ubicación</TableHead>
@@ -224,7 +230,7 @@ export default function Obras() {
           <TableBody>
             {filteredObras.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   {searchTerm || estadoFilter !== "todos" ? "No se encontraron obras" : "No hay obras registradas"}
                 </TableCell>
               </TableRow>
@@ -242,6 +248,9 @@ export default function Obras() {
                       </div>
                       <span className="font-medium text-foreground">{obra.nombre}</span>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {obra.cliente?.nombre || "-"}
                   </TableCell>
                   <TableCell>
                     <Badge className={cn("status-badge", estadoConfig[obra.estado].className)}>
@@ -341,6 +350,23 @@ export default function Obras() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente_id">Cliente</Label>
+              <Select
+                value={formData.cliente_id || "none"}
+                onValueChange={(value) => setFormData({ ...formData, cliente_id: value === "none" ? undefined : value })}
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Seleccionar cliente" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="none">Sin cliente</SelectItem>
+                  {clientes.filter(c => c.activo).map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="md:col-span-2 space-y-2">
               <Label htmlFor="ubicacion">Ubicación</Label>
               <Input
@@ -404,6 +430,7 @@ export default function Obras() {
           <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Obra" value={selectedObra.nombre} />
+              <DetailRow label="Cliente" value={selectedObra.cliente?.nombre || "-"} />
               <DetailRow label="Estado" value={estadoConfig[selectedObra.estado].label} />
               <DetailRow label="Responsable" value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} />
               <DetailRow label="Ubicación" value={selectedObra.ubicacion || "-"} />

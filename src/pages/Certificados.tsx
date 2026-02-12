@@ -324,6 +324,8 @@ export default function Certificados() {
       items: targetItems,
       obraNombre: selectedObra?.nombre || "",
       obraUbicacion: selectedObra?.ubicacion || undefined,
+      clienteNombre: selectedObra?.cliente?.nombre || undefined,
+      clienteCuit: selectedObra?.cliente?.cuit || undefined,
       categoriaMap,
     });
   };

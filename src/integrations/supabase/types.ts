@@ -457,6 +457,51 @@ export type Database = {
           },
         ]
       }
+      clientes: {
+        Row: {
+          activo: boolean
+          contacto: string | null
+          created_at: string
+          cuit: string | null
+          direccion: string | null
+          email: string | null
+          id: string
+          localidad: string | null
+          nombre: string
+          observaciones: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          cuit?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          nombre: string
+          observaciones?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          cuit?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          nombre?: string
+          observaciones?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cotizacion_categorias: {
         Row: {
           cotizacion_id: string
@@ -933,6 +978,7 @@ export type Database = {
       }
       obras: {
         Row: {
+          cliente_id: string | null
           created_at: string
           descripcion: string | null
           estado: Database["public"]["Enums"]["estado_obra"]
@@ -945,6 +991,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cliente_id?: string | null
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_obra"]
@@ -957,6 +1004,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cliente_id?: string | null
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_obra"]
@@ -969,6 +1017,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "obras_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "obras_responsable_id_fkey"
             columns: ["responsable_id"]

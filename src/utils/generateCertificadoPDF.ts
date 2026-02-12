@@ -59,6 +59,8 @@ interface CertificadoPDFData {
   items: CertificadoItem[];
   obraNombre: string;
   obraUbicacion?: string;
+  clienteNombre?: string;
+  clienteCuit?: string;
   /** Map of concepto_id -> categoria name */
   categoriaMap: Record<string, string>;
 }
@@ -68,6 +70,8 @@ export async function generateCertificadoPDF({
   items,
   obraNombre,
   obraUbicacion,
+  clienteNombre,
+  clienteCuit,
   categoriaMap,
 }: CertificadoPDFData): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
@@ -137,9 +141,10 @@ export async function generateCertificadoPDF({
   }
   yPos += 6;
 
-  // ============== OBRA INFO ==============
+  // ============== OBRA & CLIENT INFO ==============
+  const infoBoxHeight = (obraUbicacion ? 4 : 0) + (clienteNombre ? 4 : 0) + 10;
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos - 3, pageWidth - margin * 2, 10, "F");
+  doc.rect(margin, yPos - 3, pageWidth - margin * 2, infoBoxHeight, "F");
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
@@ -147,14 +152,26 @@ export async function generateCertificadoPDF({
   doc.setFont("helvetica", "normal");
   doc.text(obraNombre, margin + 14, yPos + 2);
 
+  let infoY = yPos + 2;
+
   if (obraUbicacion) {
+    infoY += 4;
     doc.setFont("helvetica", "bold");
-    doc.text("Ubicación:", margin + 2, yPos + 6);
+    doc.text("Ubicación:", margin + 2, infoY);
     doc.setFont("helvetica", "normal");
-    doc.text(obraUbicacion, margin + 22, yPos + 6);
+    doc.text(obraUbicacion, margin + 22, infoY);
   }
 
-  yPos += 12;
+  if (clienteNombre) {
+    infoY += 4;
+    doc.setFont("helvetica", "bold");
+    doc.text("Cliente:", margin + 2, infoY);
+    doc.setFont("helvetica", "normal");
+    const clienteText = clienteCuit ? `${clienteNombre} (CUIT: ${clienteCuit})` : clienteNombre;
+    doc.text(clienteText, margin + 17, infoY);
+  }
+
+  yPos += infoBoxHeight + 2;
 
   // ============== ITEMS TABLE GROUPED BY CATEGORY ==============
   // Group items by category
