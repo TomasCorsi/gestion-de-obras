@@ -8,6 +8,7 @@ import {
   HardHat,
   Wrench,
   Route,
+  Award,
   Receipt,
   Wallet,
   Settings,
@@ -50,6 +51,7 @@ const appCategories: AppCategory[] = [
     apps: [
       { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin'] },
       { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin'] },
+      { icon: Award, label: "Certificados", path: "/certificados", color: "bg-blue-400", roles: ['admin'] },
       { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin'] },
       { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin'] },
     ],

@@ -6,7 +6,8 @@ import {
   FileText, 
   HardHat, 
   Truck, 
-  Route, 
+  Route,
+  Award,
   Receipt, 
   Wallet, 
   Wrench, 
@@ -61,6 +62,15 @@ const apps: AppItem[] = [
     bgColor: "bg-sky-500/15",
     description: "Presupuestos y propuestas",
     roles: ['admin', 'capataz']
+  },
+  {
+    icon: Award,
+    label: "Certificados",
+    path: "/certificados",
+    iconColor: "text-blue-400",
+    bgColor: "bg-blue-400/15",
+    description: "Certificados de obra",
+    roles: ['admin']
   },
   { 
     icon: Route, 
