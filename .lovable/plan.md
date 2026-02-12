@@ -1,46 +1,37 @@
 
+## Vincular Mantenimiento completado con Reportes de Campo
 
-## Mejoras al Sistema de Reportes de Campo
+### Problema
+Cuando se crea un mantenimiento desde un reporte de campo y luego se marca como "completado", el reporte de campo queda pendiente. Deberian sincronizarse automaticamente.
 
-### Estado actual
-El sistema permite ver observaciones reportadas desde los partes diarios, filtrarlas por estado/fecha/busqueda, y marcarlas como atendidas con tecnico y notas de resolucion.
+### Solucion
 
-### Mejoras propuestas
+**1. Agregar columna `observacion_reporte_id` a la tabla `mantenimientos`**
+- Nueva columna nullable UUID que referencia a `observaciones_maquina_estado.id`
+- Permite saber que mantenimiento fue creado a partir de que reporte
 
-**1. Filtro por Maquinaria**
-Agregar un selector de maquinaria en la barra de filtros para ver solo los reportes de una maquina especifica. Muy util cuando el mecanico quiere enfocarse en una sola unidad.
+**2. Crear trigger en la base de datos**
+- Cuando un mantenimiento cambia su estado a `completado`, el trigger automaticamente marca la observacion vinculada como `atendida`, registrando el tecnico y la fecha.
 
-**2. Filtro por Obra**
-Agregar selector de obra para filtrar reportes segun donde esta trabajando la maquina. Permite al equipo de mantenimiento priorizar por ubicacion.
-
-**3. Agrupar por Maquinaria**
-Opcion para agrupar las cards por maquinaria en lugar de verlas todas sueltas. Asi el mecanico ve todas las observaciones pendientes de cada unidad juntas, como un "expediente" por maquina.
-
-**4. Indicador de Antiguedad**
-Resaltar visualmente los reportes que llevan muchos dias sin atender (ej: mas de 3 dias en amarillo, mas de 7 dias en rojo). Esto ayuda a priorizar lo urgente.
-
-**5. Vincular con Mantenimiento**
-Boton "Crear Mantenimiento" directamente desde un reporte de campo. Al presionarlo, se abre el formulario de nuevo mantenimiento con la maquinaria ya preseleccionada y la descripcion del reporte como referencia.
-
-**6. Contador por Maquinaria en KPIs**
-Agregar un KPI que muestre cuantas maquinas distintas tienen reportes pendientes, no solo el total de reportes.
+**3. Pasar el ID de la observacion al crear mantenimiento**
+- Modificar `ObservacionesCampoTab.tsx` para incluir `observacion_reporte_id` en el evento `crear-mantenimiento-desde-reporte`
+- Modificar `MantenimientoPage.tsx` para capturar ese ID y guardarlo en el formulario
+- Modificar `useMantenimientos.ts` para incluir `observacion_reporte_id` en el tipo `MantenimientoForm` y en las operaciones de insert
 
 ### Detalle tecnico
 
-| Mejora | Archivos afectados | Complejidad |
+| Paso | Archivo / Recurso | Cambio |
 |---|---|---|
-| Filtro por maquinaria | `ObservacionesCampoTab.tsx` | Baja |
-| Filtro por obra | `ObservacionesCampoTab.tsx`, `useObservacionesMaquina.ts` (agregar join obra) | Baja |
-| Agrupar por maquinaria | `ObservacionesCampoTab.tsx` (logica de agrupacion + UI collapsible) | Media |
-| Indicador de antiguedad | `ObservacionesCampoTab.tsx` (calculo de dias + badge visual) | Baja |
-| Vincular con mantenimiento | `ObservacionesCampoTab.tsx`, `MantenimientoPage.tsx` (estado compartido o navegacion con params) | Media |
-| KPI maquinas afectadas | `ObservacionesCampoTab.tsx` (useMemo adicional) | Baja |
+| Migracion DB | SQL migration | `ALTER TABLE mantenimientos ADD COLUMN observacion_reporte_id UUID REFERENCES observaciones_maquina_estado(id)` |
+| Trigger DB | SQL migration | Trigger `on UPDATE` de mantenimientos: si `NEW.estado = 'completado'` y tiene `observacion_reporte_id`, actualiza la observacion como atendida |
+| Hook | `useMantenimientos.ts` | Agregar `observacion_reporte_id?` al tipo `MantenimientoForm` y a `MantenimientoDB` |
+| Evento | `ObservacionesCampoTab.tsx` | Incluir `observacion_id` en el dispatch del evento |
+| Formulario | `MantenimientoPage.tsx` | Capturar `observacion_reporte_id` del evento y pasarlo al crear |
 
-### Orden de implementacion sugerido
+### Flujo resultante
 
-1. Filtro por maquinaria + filtro por obra (rapido, alto impacto)
-2. Indicador de antiguedad (visual, facil)
-3. KPI maquinas afectadas (rapido)
-4. Agrupar por maquinaria (organizacion visual)
-5. Vincular con mantenimiento (funcionalidad avanzada)
-
+1. Operador reporta observacion en parte diario -> se crea en `observaciones_maquina_estado`
+2. Mecanico ve el reporte y presiona "Crear Mantenimiento" -> se abre formulario con `observacion_reporte_id` vinculado
+3. Se crea el mantenimiento con la referencia al reporte
+4. Cuando el mantenimiento se marca como "completado" -> el trigger marca automaticamente el reporte como atendido (con tecnico y fecha)
+5. La lista de reportes de campo se actualiza via invalidacion de cache de React Query
