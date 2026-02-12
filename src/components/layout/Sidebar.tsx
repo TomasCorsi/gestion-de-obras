@@ -18,6 +18,7 @@ import {
   Package,
   ClipboardList,
   Menu,
+  Award,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ const menuItems: MenuItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: Building2, label: "Obras", path: "/obras", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", roles: ['admin', 'capataz'] },
+  { icon: Award, label: "Certificados", path: "/certificados", roles: ['admin'] },
   { icon: HardHat, label: "Personal", path: "/personal", roles: ['admin', 'capataz'] },
   { icon: Truck, label: "Maquinarias", path: "/maquinarias", roles: ['admin', 'capataz'] },
   { icon: Route, label: "Viajes", path: "/viajes", roles: ['admin', 'capataz', 'maquinista'] },

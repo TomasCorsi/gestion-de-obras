@@ -23,6 +23,7 @@ const Index = lazy(() => import("./pages/Index"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Obras = lazy(() => import("./pages/Obras"));
 const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
+const CertificadosPage = lazy(() => import("./pages/Certificados"));
 const Personal = lazy(() => import("./pages/Personal"));
 const Maquinarias = lazy(() => import("./pages/Maquinarias"));
 const Viajes = lazy(() => import("./pages/Viajes"));
@@ -113,6 +114,11 @@ const App = () => (
               <Route path="/cotizaciones" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Cotizaciones />
+                </ProtectedRoute>
+              } />
+              <Route path="/certificados" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <CertificadosPage />
                 </ProtectedRoute>
               } />
               <Route path="/personal" element={

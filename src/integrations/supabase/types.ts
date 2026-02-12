@@ -306,6 +306,154 @@ export type Database = {
           },
         ]
       }
+      certificado_conceptos: {
+        Row: {
+          activo: boolean
+          created_at: string
+          id: string
+          nombre: string
+          obra_id: string
+          orden: number
+          precio_unitario: number
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre: string
+          obra_id: string
+          orden?: number
+          precio_unitario?: number
+          unidad: string
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          id?: string
+          nombre?: string
+          obra_id?: string
+          orden?: number
+          precio_unitario?: number
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificado_conceptos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificado_items: {
+        Row: {
+          cantidad: number
+          certificado_id: string
+          concepto_id: string | null
+          created_at: string
+          descripcion: string
+          id: string
+          precio_unitario: number
+          subtotal: number
+          unidad: string
+        }
+        Insert: {
+          cantidad?: number
+          certificado_id: string
+          concepto_id?: string | null
+          created_at?: string
+          descripcion: string
+          id?: string
+          precio_unitario?: number
+          subtotal?: number
+          unidad: string
+        }
+        Update: {
+          cantidad?: number
+          certificado_id?: string
+          concepto_id?: string | null
+          created_at?: string
+          descripcion?: string
+          id?: string
+          precio_unitario?: number
+          subtotal?: number
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificado_items_certificado_id_fkey"
+            columns: ["certificado_id"]
+            isOneToOne: false
+            referencedRelation: "certificados"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "certificado_items_concepto_id_fkey"
+            columns: ["concepto_id"]
+            isOneToOne: false
+            referencedRelation: "certificado_conceptos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      certificados: {
+        Row: {
+          created_at: string
+          estado: Database["public"]["Enums"]["estado_certificado"]
+          fecha_emision: string | null
+          id: string
+          iva: number
+          numero: string
+          obra_id: string
+          observaciones: string | null
+          periodo: string
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          estado?: Database["public"]["Enums"]["estado_certificado"]
+          fecha_emision?: string | null
+          id?: string
+          iva?: number
+          numero: string
+          obra_id: string
+          observaciones?: string | null
+          periodo: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          estado?: Database["public"]["Enums"]["estado_certificado"]
+          fecha_emision?: string | null
+          id?: string
+          iva?: number
+          numero?: string
+          obra_id?: string
+          observaciones?: string | null
+          periodo?: string
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificados_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotizacion_categorias: {
         Row: {
           cotizacion_id: string
@@ -1689,6 +1837,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "capataz" | "maquinista" | "ayudante"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
+      estado_certificado: "borrador" | "emitido" | "cobrado"
       estado_cotizacion:
         | "borrador"
         | "enviada"
@@ -1869,6 +2018,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "capataz", "maquinista", "ayudante"],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
+      estado_certificado: ["borrador", "emitido", "cobrado"],
       estado_cotizacion: [
         "borrador",
         "enviada",
