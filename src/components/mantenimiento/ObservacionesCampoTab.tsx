@@ -388,6 +388,7 @@ export function ObservacionesCampoTab() {
         maquinaria_id: obs.maquinaria_id,
         descripcion: `Reporte de campo (${formatDate(obs.fecha_reporte)}): ${obs.observacion}`,
         tipo: "correctivo",
+        observacion_reporte_id: obs.id,
       },
     }));
   };

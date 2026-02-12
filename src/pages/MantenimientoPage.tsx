@@ -115,6 +115,7 @@ export default function MantenimientoPage() {
         estado: "programado",
         proximo_mantenimiento: "",
         observaciones: "",
+        observacion_reporte_id: detail.observacion_reporte_id || undefined,
       });
       setFormOpen(true);
     };

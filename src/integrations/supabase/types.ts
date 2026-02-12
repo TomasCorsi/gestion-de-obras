@@ -556,6 +556,7 @@ export type Database = {
           horas_maquina: number
           id: string
           maquinaria_id: string
+          observacion_reporte_id: string | null
           observaciones: string | null
           proximo_mantenimiento: string | null
           repuestos: string | null
@@ -574,6 +575,7 @@ export type Database = {
           horas_maquina: number
           id?: string
           maquinaria_id: string
+          observacion_reporte_id?: string | null
           observaciones?: string | null
           proximo_mantenimiento?: string | null
           repuestos?: string | null
@@ -592,6 +594,7 @@ export type Database = {
           horas_maquina?: number
           id?: string
           maquinaria_id?: string
+          observacion_reporte_id?: string | null
           observaciones?: string | null
           proximo_mantenimiento?: string | null
           repuestos?: string | null
@@ -605,6 +608,13 @@ export type Database = {
             columns: ["maquinaria_id"]
             isOneToOne: false
             referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_observacion_reporte_id_fkey"
+            columns: ["observacion_reporte_id"]
+            isOneToOne: false
+            referencedRelation: "observaciones_maquina_estado"
             referencedColumns: ["id"]
           },
         ]

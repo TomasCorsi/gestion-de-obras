@@ -20,6 +20,7 @@ export interface MantenimientoDB {
   estado: EstadoMantenimiento;
   proximo_mantenimiento: string | null;
   observaciones: string | null;
+  observacion_reporte_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -42,6 +43,7 @@ export interface MantenimientoForm {
   estado: EstadoMantenimiento;
   proximo_mantenimiento?: string;
   observaciones?: string;
+  observacion_reporte_id?: string;
 }
 
 const fetchMantenimientosFromDB = async (): Promise<MantenimientoWithRelations[]> => {
@@ -104,6 +106,7 @@ export function useMantenimientos() {
       toast.success("Mantenimiento actualizado correctamente");
       queryClient.invalidateQueries({ queryKey: ['mantenimientos'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['observaciones_maquina'] });
     },
     onError: (error) => {
       console.error("Error updating mantenimiento:", error);
