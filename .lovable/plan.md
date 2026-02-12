@@ -1,67 +1,131 @@
 
 
-## Mejoras de Interfaz y Usabilidad para Certificados
+## Clientes: Nueva seccion y asignacion a Obras
 
-### Problemas actuales (segun la captura)
-- La pagina se ve vacia y sin contexto visual -- no hay KPIs ni resumen
-- La tabla es funcional pero basica, sin indicadores rapidos
-- No hay forma de editar un certificado existente (solo ver/eliminar)
-- Falta un campo de observaciones al crear el certificado
-- No se puede duplicar un certificado del mes anterior como base
-- Los iconos de acciones no tienen tooltips, no queda claro que hacen
+### Resumen
+Se va a crear un modulo completo de **Clientes** con su propia seccion en el sidebar, y se va a vincular cada obra con un cliente. Esto permite que un mismo cliente tenga multiples obras en distintos lugares.
 
-### Mejoras propuestas
+---
 
-**1. KPIs en la parte superior (patron del resto de la app)**
-Agregar tarjetas de resumen arriba de la tabla con:
-- Total certificados de la obra
-- Monto total certificado (todos los estados)
-- Monto pendiente de cobro (emitidos)
-- Monto cobrado
+### Cambios en la base de datos
 
-**2. Cards visuales en lugar de tabla plana**
-Convertir cada certificado en una Card mas visual con:
-- Numero y periodo destacados
-- Badge de estado con colores claros
-- Montos principales visibles (subtotal, IVA, total)
-- Barra de acciones con tooltips descriptivos (Ver, Emitir, Cobrar, PDF, Eliminar)
-- Boton de descarga PDF directo desde la lista (sin entrar a ver detalle)
+**1. Crear tabla `clientes`:**
 
-**3. Observaciones al crear certificado**
-Agregar un campo de texto "Observaciones" en el dialog de creacion para incluir notas relevantes.
+```text
+CREATE TABLE public.clientes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  cuit text,
+  direccion text,
+  localidad text,
+  telefono text,
+  email text,
+  contacto text,
+  observaciones text,
+  activo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-**4. Duplicar certificado del mes anterior**
-Agregar boton "Duplicar ultimo" que pre-cargue las cantidades y precios del ultimo certificado como base para el nuevo mes. Esto ahorra mucho tiempo cuando los trabajos son similares mes a mes.
+-- Trigger para updated_at
+CREATE TRIGGER update_clientes_updated_at
+  BEFORE UPDATE ON public.clientes
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
 
-**5. Editar certificado en borrador**
-Permitir editar las cantidades y precios de un certificado que aun esta en estado "borrador". Actualmente solo se puede ver o eliminar.
+-- RLS
+ALTER TABLE public.clientes ENABLE ROW LEVEL SECURITY;
 
-**6. Tooltips en acciones**
-Envolver los botones de accion con Tooltip para que el usuario sepa que hace cada icono.
+CREATE POLICY "Admins and capataces can manage clientes"
+  ON public.clientes FOR ALL
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'capataz'));
 
-**7. Mejora visual del tab de Conceptos**
-Agrupar los conceptos por categoria con sub-encabezados visuales (similar a como se hace en el dialog de crear certificado) en lugar de una tabla plana con badge de categoria.
+CREATE POLICY "Maquinistas can view clientes"
+  ON public.clientes FOR SELECT
+  USING (has_role(auth.uid(), 'maquinista'));
+```
+
+**2. Agregar columna `cliente_id` a `obras`:**
+
+```text
+ALTER TABLE public.obras
+  ADD COLUMN cliente_id uuid REFERENCES public.clientes(id) ON DELETE SET NULL;
+```
+
+---
+
+### Nuevos archivos
+
+**1. `src/hooks/useClientes.ts`**
+Hook con CRUD completo para clientes, siguiendo el mismo patron de `useObras.ts`:
+- Tipos: `ClienteDB`, `ClienteForm`
+- Query: `fetchClientes` con react-query
+- Mutations: `createCliente`, `updateCliente`, `deleteCliente`
+
+**2. `src/pages/Clientes.tsx`**
+Pagina completa de gestion de clientes, siguiendo el mismo patron visual de `Obras.tsx`:
+- Barra de busqueda y filtro por estado (activo/inactivo)
+- Tabla con columnas: Nombre, CUIT, Contacto, Telefono, Email, Obras (cantidad)
+- Dialogs de crear/editar, ver detalle, y confirmar eliminacion
+- Campos del formulario: nombre*, CUIT, direccion, localidad, telefono, email, contacto (persona de referencia), observaciones
+
+---
+
+### Archivos a modificar
+
+**1. `src/hooks/useObras.ts`**
+- Agregar `cliente_id` a `ObraDB`, `ObraForm` y `ObraWithRelations`
+- Incluir join con `clientes` en la query: `cliente:clientes(id, nombre)`
+- Pasar `cliente_id` en create/update
+
+**2. `src/pages/Obras.tsx`**
+- Importar `useClientes` para obtener la lista de clientes
+- Agregar selector de cliente en el formulario de crear/editar obra
+- Mostrar nombre del cliente en la tabla y en el detalle de obra
+
+**3. `src/App.tsx`**
+- Agregar lazy import de `Clientes`
+- Agregar ruta `/clientes` protegida para rol admin
+
+**4. `src/components/layout/Sidebar.tsx`**
+- Agregar item "Clientes" al menu con icono `Users` (o `ContactRound`), ubicado debajo de "Obras"
+- Roles: admin, capataz
+
+**5. `src/utils/generateCertificadoPDF.ts`**
+- Incluir datos del cliente en el encabezado del PDF (nombre, CUIT) si la obra tiene cliente asignado
 
 ---
 
 ### Detalle tecnico
 
+**Estructura de la tabla clientes:**
+
+| Campo | Tipo | Requerido |
+|---|---|---|
+| nombre | text | Si |
+| cuit | text | No |
+| direccion | text | No |
+| localidad | text | No |
+| telefono | text | No |
+| email | text | No |
+| contacto | text | No |
+| observaciones | text | No |
+| activo | boolean | Si (default true) |
+
+**Relacion obras-clientes:**
+- Una obra tiene 0 o 1 cliente (`cliente_id` nullable)
+- Un cliente puede tener N obras
+- Si se elimina un cliente, las obras quedan con `cliente_id = NULL`
+
+**Archivos nuevos:**
+1. `src/hooks/useClientes.ts`
+2. `src/pages/Clientes.tsx`
+
 **Archivos a modificar:**
-- `src/pages/Certificados.tsx` -- todos los cambios de UI van aca
-
-**Cambios especificos:**
-
-1. **KPIs**: Usar el componente `KPICard` existente en un grid de 4 columnas arriba de los tabs
-2. **Cards de certificados**: Reemplazar la tabla de certificados por un grid de Cards con layout consistente
-3. **Campo observaciones**: Agregar `<Textarea>` al dialog de crear certificado, pasar observaciones al hook
-4. **Duplicar**: Agregar funcion `openDuplicarCertificado()` que carga items del ultimo certificado
-5. **Editar borrador**: Nuevo dialog similar al de crear pero que actualiza items existentes (requiere nueva mutation `updateCertificado` en el hook)
-6. **Tooltips**: Importar y usar `<Tooltip>` de shadcn en los botones de accion
-
-**Hook `useCertificados.ts`:**
-- Agregar mutation `updateCertificado` para editar items de un certificado borrador (elimina items existentes y re-inserta los nuevos)
-- Agregar `observaciones` al payload de `createCertificado`
-
-**Base de datos:**
-- No se necesitan cambios en la base de datos (la columna `observaciones` ya existe en la tabla `certificados`)
+1. `src/hooks/useObras.ts`
+2. `src/pages/Obras.tsx`
+3. `src/App.tsx`
+4. `src/components/layout/Sidebar.tsx`
+5. `src/utils/generateCertificadoPDF.ts`
+6. Migracion SQL
 
