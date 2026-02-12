@@ -1,118 +1,67 @@
 
 
-## Certificados: Categorias por tipo y exportacion PDF profesional
+## Mejoras de Interfaz y Usabilidad para Certificados
 
-### Resumen
-Se van a agregar dos mejoras al modulo de certificados:
-1. **Categorias**: Los conceptos se van a poder agrupar por tipo (ej: "Alquiler de Maquinas", "Materiales", "Servicios"), y en el certificado se van a mostrar separados por seccion con subtotales por categoria.
-2. **PDF profesional**: Se va a poder descargar un PDF detallado y con formato corporativo (logo, datos de empresa, tabla agrupada por categorias, totales, firma) listo para entregar al cliente.
+### Problemas actuales (segun la captura)
+- La pagina se ve vacia y sin contexto visual -- no hay KPIs ni resumen
+- La tabla es funcional pero basica, sin indicadores rapidos
+- No hay forma de editar un certificado existente (solo ver/eliminar)
+- Falta un campo de observaciones al crear el certificado
+- No se puede duplicar un certificado del mes anterior como base
+- Los iconos de acciones no tienen tooltips, no queda claro que hacen
 
----
+### Mejoras propuestas
 
-### Cambios en la base de datos
+**1. KPIs en la parte superior (patron del resto de la app)**
+Agregar tarjetas de resumen arriba de la tabla con:
+- Total certificados de la obra
+- Monto total certificado (todos los estados)
+- Monto pendiente de cobro (emitidos)
+- Monto cobrado
 
-**Agregar columna `categoria` a `certificado_conceptos`:**
+**2. Cards visuales en lugar de tabla plana**
+Convertir cada certificado en una Card mas visual con:
+- Numero y periodo destacados
+- Badge de estado con colores claros
+- Montos principales visibles (subtotal, IVA, total)
+- Barra de acciones con tooltips descriptivos (Ver, Emitir, Cobrar, PDF, Eliminar)
+- Boton de descarga PDF directo desde la lista (sin entrar a ver detalle)
 
-```text
-ALTER TABLE public.certificado_conceptos 
-  ADD COLUMN categoria text NOT NULL DEFAULT 'General';
-```
+**3. Observaciones al crear certificado**
+Agregar un campo de texto "Observaciones" en el dialog de creacion para incluir notas relevantes.
 
-Categorias predefinidas que se van a usar:
-- Alquiler de Maquinas
-- Materiales
-- Servicios
-- Transporte
-- General (default)
+**4. Duplicar certificado del mes anterior**
+Agregar boton "Duplicar ultimo" que pre-cargue las cantidades y precios del ultimo certificado como base para el nuevo mes. Esto ahorra mucho tiempo cuando los trabajos son similares mes a mes.
 
-No se necesita tabla nueva para categorias -- se usa texto libre con sugerencias predefinidas para mantener simplicidad.
+**5. Editar certificado en borrador**
+Permitir editar las cantidades y precios de un certificado que aun esta en estado "borrador". Actualmente solo se puede ver o eliminar.
 
----
+**6. Tooltips en acciones**
+Envolver los botones de accion con Tooltip para que el usuario sepa que hace cada icono.
 
-### Cambios en el frontend
-
-**1. Hook `useCertificados.ts`:**
-- Agregar `categoria` al tipo `CertificadoConcepto` y `ConceptoForm`
-- Agregar `categoria` al tipo `CertificadoItemForm` y `CertificadoItem`
-- Actualizar `CONCEPTOS_ESTANDAR` para incluir categoria sugerida por cada concepto (ej: "Horas Retroexcavadora" -> "Alquiler de Maquinas", "Tosca" -> "Materiales")
-
-**2. Pagina `Certificados.tsx`:**
-- En el tab de **Conceptos**: agregar selector de categoria al crear/editar un concepto, y mostrar la categoria en la tabla de conceptos
-- En el dialog de **Crear Certificado**: agrupar los items por categoria con sub-encabezados y subtotales por seccion
-- En el dialog de **Ver Certificado**: agrupar items por categoria igual que en la creacion, y agregar boton "Descargar PDF"
-
-**3. Nuevo archivo `src/utils/generateCertificadoPDF.ts`:**
-- Genera un PDF A4 profesional con jsPDF + jspdf-autotable (mismas librerias ya instaladas)
-- Estructura del PDF:
-  - Encabezado con logo de empresa, datos de la empresa y CUIT
-  - Titulo: "CERTIFICADO DE OBRA" con numero y periodo
-  - Datos de la obra (nombre, ubicacion)
-  - Tabla de items agrupados por categoria con sub-encabezados grises
-  - Subtotal por categoria
-  - Subtotal general, IVA 21%, y TOTAL destacado
-  - Observaciones (si las hay)
-  - Firma y datos del presidente
-- Reutiliza las mismas imagenes (logo y firma) y patrones del PDF de cotizaciones existente
+**7. Mejora visual del tab de Conceptos**
+Agrupar los conceptos por categoria con sub-encabezados visuales (similar a como se hace en el dialog de crear certificado) en lugar de una tabla plana con badge de categoria.
 
 ---
 
 ### Detalle tecnico
 
-**Categorias predefinidas (constante en el hook):**
+**Archivos a modificar:**
+- `src/pages/Certificados.tsx` -- todos los cambios de UI van aca
 
-```text
-CATEGORIAS_CERTIFICADO = [
-  "Alquiler de Maquinas",
-  "Materiales", 
-  "Transporte",
-  "Servicios",
-  "General"
-]
-```
+**Cambios especificos:**
 
-**Mapeo de conceptos estandar a categorias:**
+1. **KPIs**: Usar el componente `KPICard` existente en un grid de 4 columnas arriba de los tabs
+2. **Cards de certificados**: Reemplazar la tabla de certificados por un grid de Cards con layout consistente
+3. **Campo observaciones**: Agregar `<Textarea>` al dialog de crear certificado, pasar observaciones al hook
+4. **Duplicar**: Agregar funcion `openDuplicarCertificado()` que carga items del ultimo certificado
+5. **Editar borrador**: Nuevo dialog similar al de crear pero que actualiza items existentes (requiere nueva mutation `updateCertificado` en el hook)
+6. **Tooltips**: Importar y usar `<Tooltip>` de shadcn en los botones de accion
 
-| Concepto | Categoria |
-|---|---|
-| Horas Retroexcavadora, Horas Cargadora, Horas Topador, Horas Motoniveladora, Alquiler Maquina por dia | Alquiler de Maquinas |
-| Gasoil | Servicios |
-| Tosca, Tierra, Cascote, Piedra, Fresado, Suelo Cemento | Materiales |
-| Cunetas | Servicios |
-| Viajes | Transporte |
+**Hook `useCertificados.ts`:**
+- Agregar mutation `updateCertificado` para editar items de un certificado borrador (elimina items existentes y re-inserta los nuevos)
+- Agregar `observaciones` al payload de `createCertificado`
 
-**Estructura del PDF:**
-
-```text
-+------------------------------------------+
-| [LOGO]              CALAMINA SUR S.A.    |
-|                     CUIT / Direccion      |
-|------------------------------------------|
-| CERTIFICADO DE OBRA Nro: CERT-001        |
-| Periodo: Enero 2026                      |
-| Obra: [nombre]  |  Ubicacion: [ubicacion]|
-|------------------------------------------|
-| ALQUILER DE MAQUINAS                     |
-|  Concepto  | Un | Cant | P.U. | Subtotal |
-|  Hs Retro  | HR |  40  | $X   | $X       |
-|  Hs Carg   | HR |  20  | $X   | $X       |
-|             Subtotal Alquiler:    $X      |
-|------------------------------------------|
-| MATERIALES                               |
-|  Tosca     | M3 |  100 | $X   | $X       |
-|             Subtotal Materiales:  $X      |
-|------------------------------------------|
-|                        Subtotal:  $X      |
-|                        IVA 21%:   $X      |
-|                        TOTAL:     $X      |
-|------------------------------------------|
-| [Firma]                                  |
-| CALAMINA SUR S.A. - Gabriel Tognini      |
-+------------------------------------------+
-```
-
-### Archivos a modificar/crear
-1. **Migracion SQL** - agregar columna `categoria` a `certificado_conceptos`
-2. **`src/hooks/useCertificados.ts`** - tipos, constantes, categoria en forms
-3. **`src/pages/Certificados.tsx`** - UI con agrupacion por categoria + boton PDF
-4. **`src/utils/generateCertificadoPDF.ts`** - nuevo archivo para generar el PDF
+**Base de datos:**
+- No se necesitan cambios en la base de datos (la columna `observaciones` ya existe en la tabla `certificados`)
 
