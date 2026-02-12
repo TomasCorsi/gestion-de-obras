@@ -201,9 +201,11 @@ export function useCertificados(obraId?: string) {
     mutationFn: async ({
       periodo,
       items,
+      observaciones,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
+      observaciones?: string;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
@@ -217,7 +219,7 @@ export function useCertificados(obraId?: string) {
 
       const { data: cert, error } = await supabase
         .from("certificados")
-        .insert([{ obra_id: obraId, numero, periodo, subtotal, iva, total }])
+        .insert([{ obra_id: obraId, numero, periodo, subtotal, iva, total, observaciones: observaciones || null }])
         .select()
         .single();
       if (error) throw error;
@@ -279,6 +281,65 @@ export function useCertificados(obraId?: string) {
     onError: () => toast.error("Error al actualizar estado"),
   });
 
+  const updateCertificado = useMutation({
+    mutationFn: async ({
+      id,
+      periodo,
+      items,
+      observaciones,
+    }: {
+      id: string;
+      periodo: string;
+      items: CertificadoItemForm[];
+      observaciones?: string;
+    }) => {
+      const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
+      const iva = Math.round(subtotal * 0.21 * 100) / 100;
+      const total = subtotal + iva;
+
+      // Update certificado header
+      const { error } = await supabase
+        .from("certificados")
+        .update({ periodo, subtotal, iva, total, observaciones: observaciones || null })
+        .eq("id", id);
+      if (error) throw error;
+
+      // Delete existing items and re-insert
+      const { error: delError } = await supabase
+        .from("certificado_items")
+        .delete()
+        .eq("certificado_id", id);
+      if (delError) throw delError;
+
+      const itemsToInsert = items
+        .filter((i) => i.cantidad > 0)
+        .map((i) => ({
+          certificado_id: id,
+          concepto_id: i.concepto_id,
+          descripcion: i.descripcion,
+          unidad: i.unidad,
+          cantidad: i.cantidad,
+          precio_unitario: i.precio_unitario,
+          subtotal: i.subtotal,
+        }));
+
+      if (itemsToInsert.length > 0) {
+        const { error: itemsError } = await supabase
+          .from("certificado_items")
+          .insert(itemsToInsert);
+        if (itemsError) throw itemsError;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Certificado actualizado");
+      queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+    },
+    onError: (e) => {
+      console.error(e);
+      toast.error("Error al actualizar certificado");
+    },
+  });
+
   const deleteCertificado = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -304,6 +365,7 @@ export function useCertificados(obraId?: string) {
     updateConcepto: updateConcepto.mutateAsync,
     deleteConcepto: deleteConcepto.mutateAsync,
     createCertificado: createCertificado.mutateAsync,
+    updateCertificado: updateCertificado.mutateAsync,
     updateCertificadoEstado: updateCertificadoEstado.mutateAsync,
     deleteCertificado: deleteCertificado.mutateAsync,
   };
