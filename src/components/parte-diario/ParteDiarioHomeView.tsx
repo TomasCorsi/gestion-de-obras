@@ -1,7 +1,7 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, isToday as isDateToday } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
@@ -17,6 +17,10 @@ interface ParteDiarioHomeViewProps {
   cargasHoy?: CargaRepartidor[];
   totalLitrosHoy?: number;
   isDeletingCarga?: boolean;
+  selectedDate?: Date;
+  isToday?: boolean;
+  onPrevDay?: () => void;
+  onNextDay?: () => void;
   onNewParte: () => void;
   onViewList: () => void;
   onContinueDraft: () => void;
@@ -38,6 +42,10 @@ export const ParteDiarioHomeView = ({
   cargasHoy = [],
   totalLitrosHoy = 0,
   isDeletingCarga = false,
+  selectedDate = new Date(),
+  isToday: isTodayProp = true,
+  onPrevDay,
+  onNextDay,
   onNewParte,
   onViewList,
   onContinueDraft,
@@ -83,6 +91,7 @@ export const ParteDiarioHomeView = ({
             variant="secondary"
             className="h-24 flex-col gap-2 px-2"
             size="lg"
+            disabled={!isTodayProp}
           >
             <Fuel className="w-8 h-8" />
             <span className="font-semibold text-xs leading-tight text-center">Entrega</span>
@@ -90,28 +99,43 @@ export const ParteDiarioHomeView = ({
         )}
       </div>
 
-      {/* Entregas hoy list for repartidor */}
-      {isRepartidor && cargasHoy.length > 0 && onEditCarga && onDeleteCarga && (
+      {/* Date navigator + Entregas list for repartidor */}
+      {isRepartidor && (
         <div className="space-y-2">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Entregas de hoy ({entregasHoyCount})
-          </h2>
-          <CargasCombustibleRepartidorList
-            cargas={cargasHoy}
-            totalLitros={totalLitrosHoy}
-            onEdit={onEditCarga}
-            onDelete={onDeleteCarga}
-            isDeleting={isDeletingCarga}
-          />
-        </div>
-      )}
+          {/* Date navigator */}
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={onPrevDay} className="h-8 w-8">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <div className="text-center">
+              <span className="text-sm font-semibold">
+                {isTodayProp && <span className="text-primary mr-1">Hoy •</span>}
+                {format(selectedDate, "EEE d MMM yyyy", { locale: es })}
+              </span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onNextDay} className="h-8 w-8" disabled={isTodayProp}>
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
 
-      {/* Entregas hoy summary when no cargas */}
-      {isRepartidor && cargasHoy.length === 0 && (
-        <div className="bg-muted/50 rounded-lg p-3 text-center">
-          <p className="text-sm text-muted-foreground">
-            No registraste entregas hoy
-          </p>
+          {cargasHoy.length > 0 && onEditCarga && onDeleteCarga ? (
+            <>
+              <p className="text-xs text-muted-foreground text-center">{entregasHoyCount} entregas • {totalLitrosHoy.toFixed(0)} lts</p>
+              <CargasCombustibleRepartidorList
+                cargas={cargasHoy}
+                totalLitros={totalLitrosHoy}
+                onEdit={onEditCarga}
+                onDelete={onDeleteCarga}
+                isDeleting={isDeletingCarga}
+              />
+            </>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isTodayProp ? 'No registraste entregas hoy' : 'Sin entregas este día'}
+              </p>
+            </div>
+          )}
         </div>
       )}
 

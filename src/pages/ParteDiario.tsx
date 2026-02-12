@@ -67,6 +67,7 @@ const ParteDiario = () => {
   const [showEntregaDialog, setShowEntregaDialog] = useState(false);
   const [editingCarga, setEditingCarga] = useState<any>(null);
   const [deletingCarga, setDeletingCarga] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
@@ -84,15 +85,38 @@ const ParteDiario = () => {
     isDeleting: isDeletingCarga,
   } = useCargasRepartidor(null, isRepartidor ? empleado?.id : null);
 
-  // Filter today's deliveries
+  // Filter deliveries by selected date
   const todayStr = new Date().toISOString().split('T')[0];
-  const cargasHoy = useMemo(() => {
-    return cargasRepartidor.filter(c => c.fecha === todayStr);
-  }, [cargasRepartidor, todayStr]);
+  const selectedDateStr = useMemo(() => {
+    return selectedDate.toISOString().split('T')[0];
+  }, [selectedDate]);
+  const isToday = selectedDateStr === todayStr;
 
-  const totalLitrosHoy = useMemo(() => {
-    return cargasHoy.reduce((sum, c) => sum + (c.litros || 0), 0);
-  }, [cargasHoy]);
+  const cargasFiltered = useMemo(() => {
+    return cargasRepartidor.filter(c => c.fecha === selectedDateStr);
+  }, [cargasRepartidor, selectedDateStr]);
+
+  const totalLitrosFiltered = useMemo(() => {
+    return cargasFiltered.reduce((sum, c) => sum + (c.litros || 0), 0);
+  }, [cargasFiltered]);
+
+  const handlePrevDay = useCallback(() => {
+    setSelectedDate(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 1);
+      return d;
+    });
+  }, []);
+
+  const handleNextDay = useCallback(() => {
+    setSelectedDate(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 1);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d > today ? prev : d;
+    });
+  }, []);
 
   // Loading state (evitar "flicker" en admin y en refreshes silenciosos)
   if (loadingAuth) {
@@ -201,10 +225,14 @@ const ParteDiario = () => {
               nombreEmpleado={empleado.nombreCompleto}
               rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
               isRepartidor={isRepartidor}
-              entregasHoyCount={cargasHoy.length}
-              cargasHoy={cargasHoy}
-              totalLitrosHoy={totalLitrosHoy}
+              entregasHoyCount={cargasFiltered.length}
+              cargasHoy={cargasFiltered}
+              totalLitrosHoy={totalLitrosFiltered}
               isDeletingCarga={isDeletingCarga}
+              selectedDate={selectedDate}
+              isToday={isToday}
+              onPrevDay={handlePrevDay}
+              onNextDay={handleNextDay}
               onNewParte={handleNewParte}
               onViewList={handleViewList}
               onContinueDraft={handleContinueDraft}
