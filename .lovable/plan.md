@@ -1,28 +1,21 @@
 
 
-## Fix: Todas las categorías visibles con scroll funcional
+## Mejora del selector de Obra en Certificados
 
-### Problema raíz
+### Cambio propuesto
 
-El componente `ScrollArea` de Radix no funciona correctamente con `flex-1 min-h-0` en este contexto. El contenedor no recibe una altura concreta, por lo que renderiza todo el contenido a su tamaño natural y luego el diálogo lo recorta visualmente sin mostrar barra de scroll.
-
-### Solución
-
-Reemplazar el `ScrollArea` por un `div` nativo con `overflow-y-auto` y una altura máxima fija. Esto garantiza que el navegador muestre la barra de scroll del sistema cuando el contenido excede el espacio.
+Reemplazar el `Select` actual (que solo muestra un listado plano sin búsqueda) por el componente `Combobox` que ya existe en el proyecto (`src/components/ui/combobox.tsx`). Esto permite buscar obras por nombre, facilitando la selección cuando hay muchas obras cargadas.
 
 ### Detalle técnico
 
 **Archivo: `src/pages/Certificados.tsx`**
 
-Línea 751: Cambiar:
-```tsx
-<ScrollArea className="flex-1 min-h-0 pr-4">
-```
-Por:
-```tsx
-<div className="overflow-y-auto max-h-[50vh] pr-2">
-```
+1. Importar el componente `Combobox` desde `@/components/ui/combobox`.
+2. Reemplazar el bloque `<Select>` de selección de obra (líneas 463-480) por un `<Combobox>` configurado con:
+   - `options`: obras activas mapeadas a `{ value: id, label: nombre }`.
+   - `placeholder`: "Seleccionar obra..."
+   - `searchPlaceholder`: "Buscar obra..."
+   - `value` / `onValueChange`: vinculados a `selectedObraId` / `setSelectedObraId`.
+3. Mantener el filtro existente que solo muestra obras con estado "activa".
+4. Eliminar las importaciones de `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectItem` solo si ya no se usan en otro lugar del archivo (se usan en otros selects del mismo archivo, así que se mantienen).
 
-Y cerrar el tag correspondiente (cambiar `</ScrollArea>` por `</div>`).
-
-Esto aplica solo al diálogo de crear/editar certificado. El diálogo de ver certificado también se revisará para aplicar el mismo patrón si usa `ScrollArea`.
