@@ -20,7 +20,7 @@ export interface ObraDB {
 
 export interface ObraWithRelations extends ObraDB {
   responsable?: { nombre: string; apellido: string };
-  cliente?: { id: string; nombre: string; cuit: string | null } | null;
+  cliente?: { id: string; nombre: string; cuit: string | null; direccion: string | null; localidad: string | null; telefono: string | null; email: string | null } | null;
 }
 
 export interface ObraForm {
@@ -40,7 +40,7 @@ const fetchObrasFromDB = async (): Promise<ObraWithRelations[]> => {
     .select(`
       *,
       responsable:personal(nombre, apellido),
-      cliente:clientes(id, nombre, cuit)
+      cliente:clientes(id, nombre, cuit, direccion, localidad, telefono, email)
     `)
     .order("created_at", { ascending: false });
 

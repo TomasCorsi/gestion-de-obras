@@ -4,6 +4,13 @@ import logoCalamina from "@/assets/logo-calamina-sur.png";
 import firmaPresidente from "@/assets/firma-presidente.png";
 import type { Certificado, CertificadoItem, AcumuladoConcepto } from "@/hooks/useCertificados";
 
+// ─── Corporate Constants ────────────────────────────────────────
+const CORP_RED: [number, number, number] = [180, 0, 0];
+const CORP_DARK_RED: [number, number, number] = [139, 0, 0];
+const WHITE: [number, number, number] = [255, 255, 255];
+const LIGHT_BG: [number, number, number] = [248, 248, 248];
+const SUBTLE_BORDER: [number, number, number] = [200, 200, 200];
+
 const EMPRESA_INFO = {
   nombre: "CALAMINA SUR S.A.",
   cuit: "30-71457642-5",
@@ -15,6 +22,7 @@ const EMPRESA_INFO = {
   nombreFirma: "Gabriel Tognini",
 };
 
+// ─── Helpers ────────────────────────────────────────────────────
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
@@ -54,6 +62,7 @@ async function loadImageAsBase64(url: string): Promise<ImageData> {
   });
 }
 
+// ─── Types ──────────────────────────────────────────────────────
 interface CertificadoPDFData {
   certificado: Certificado;
   items: CertificadoItem[];
@@ -61,131 +70,295 @@ interface CertificadoPDFData {
   obraUbicacion?: string;
   clienteNombre?: string;
   clienteCuit?: string;
+  clienteDireccion?: string;
+  clienteLocalidad?: string;
+  clienteTelefono?: string;
+  clienteEmail?: string;
   categoriaMap: Record<string, string>;
   etapaMap?: Record<string, string>;
   cantidadTotalMap?: Record<string, number>;
   acumulados?: AcumuladoConcepto[];
 }
 
+// ─── Header ─────────────────────────────────────────────────────
 async function renderHeader(doc: jsPDF, margin: number, pageWidth: number): Promise<number> {
   let yPos = 8;
   let logoData: ImageData | null = null;
   try { logoData = await loadImageAsBase64(logoCalamina); } catch (e) { console.warn("Could not load logo:", e); }
 
   if (logoData) {
-    const logoWidth = 35;
+    const logoWidth = 40;
     const logoAspectRatio = logoData.height / logoData.width;
     doc.addImage(logoData.base64, "PNG", margin, yPos, logoWidth, logoWidth * logoAspectRatio);
   }
 
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 3, { align: "right" });
+  doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 4, { align: "right" });
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, pageWidth - margin, yPos + 7, { align: "right" });
-  doc.text(EMPRESA_INFO.direccion, pageWidth - margin, yPos + 11, { align: "right" });
-  doc.text(EMPRESA_INFO.localidad, pageWidth - margin, yPos + 15, { align: "right" });
-  doc.text(`Cel: ${EMPRESA_INFO.telefono} | ${EMPRESA_INFO.email}`, pageWidth - margin, yPos + 19, { align: "right" });
-  yPos += 24;
+  doc.setTextColor(80, 80, 80);
+  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, pageWidth - margin, yPos + 9, { align: "right" });
+  doc.text(EMPRESA_INFO.direccion, pageWidth - margin, yPos + 13, { align: "right" });
+  doc.text(EMPRESA_INFO.localidad, pageWidth - margin, yPos + 17, { align: "right" });
+  doc.text(`Cel: ${EMPRESA_INFO.telefono} | ${EMPRESA_INFO.email}`, pageWidth - margin, yPos + 21, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  yPos += 26;
 
-  doc.setDrawColor(180, 180, 180);
-  doc.setLineWidth(0.3);
+  // Corporate red accent line
+  doc.setDrawColor(...CORP_RED);
+  doc.setLineWidth(1);
   doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 5;
+  yPos += 6;
   return yPos;
 }
 
+// ─── Certificate Info Block ─────────────────────────────────────
 function renderCertInfo(
   doc: jsPDF, margin: number, pageWidth: number, yPos: number,
-  certificado: Certificado, obraNombre: string, obraUbicacion?: string, clienteNombre?: string, clienteCuit?: string
+  certificado: Certificado, obraNombre: string, obraUbicacion?: string,
+  clienteNombre?: string, clienteCuit?: string, clienteDireccion?: string,
+  clienteLocalidad?: string, clienteTelefono?: string, clienteEmail?: string
 ): number {
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(180, 0, 0);
-  doc.text(`CERTIFICADO DE OBRA Nº: ${certificado.numero}`, margin, yPos);
-  doc.setTextColor(0, 0, 0);
-  yPos += 6;
+  const contentWidth = pageWidth - margin * 2;
 
+  // Title bar with dark red background
+  const titleHeight = 9;
+  doc.setFillColor(...CORP_DARK_RED);
+  doc.rect(margin, yPos, contentWidth, titleHeight, "F");
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...WHITE);
+  doc.text(`CERTIFICADO DE OBRA  Nº ${certificado.numero}`, pageWidth / 2, yPos + 6.5, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+  yPos += titleHeight + 4;
+
+  // Period and date
   const periodoDate = new Date(certificado.periodo + "-01");
   const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const periodoLabel = `${meses[periodoDate.getMonth()]} ${periodoDate.getFullYear()}`;
 
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text(`Período: ${periodoLabel}`, margin, yPos);
   if (certificado.fecha_emision) {
-    doc.text(`Fecha emisión: ${certificado.fecha_emision}`, pageWidth - margin, yPos, { align: "right" });
+    doc.text(`Fecha de emisión: ${certificado.fecha_emision}`, pageWidth - margin, yPos, { align: "right" });
   }
   yPos += 6;
 
-  // Tipo badge
+  // Two-column info block with red left border
+  const colWidth = (contentWidth - 4) / 2;
+  const blockX = margin;
+
+  // Calculate block height
+  let leftLines = 1; // Obra name always
+  if (obraUbicacion) leftLines++;
+  let rightLines = 0;
+  if (clienteNombre) rightLines++;
+  if (clienteCuit) rightLines++;
+  if (clienteDireccion) rightLines++;
+  if (clienteLocalidad) rightLines++;
+  if (clienteTelefono || clienteEmail) rightLines++;
+  const maxLines = Math.max(leftLines, rightLines);
+  const blockHeight = Math.max(maxLines * 4.5 + 8, 18);
+
+  // Background
+  doc.setFillColor(...LIGHT_BG);
+  doc.rect(blockX, yPos, contentWidth, blockHeight, "F");
+
+  // Red left border
+  doc.setDrawColor(...CORP_RED);
+  doc.setLineWidth(1.5);
+  doc.line(blockX, yPos, blockX, yPos + blockHeight);
+
+  // Subtle outer border
+  doc.setDrawColor(...SUBTLE_BORDER);
+  doc.setLineWidth(0.3);
+  doc.rect(blockX, yPos, contentWidth, blockHeight, "S");
+
+  // Left column: Obra info
+  let leftY = yPos + 5;
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
-  const tipoLabel = certificado.tipo === "obra" ? "TIPO: OBRA (CON ACUMULADOS)" : "TIPO: SERVICIO";
-  doc.text(tipoLabel, margin, yPos);
-  yPos += 5;
+  doc.setTextColor(...CORP_DARK_RED);
+  doc.text("DATOS DE OBRA", blockX + 4, leftY);
+  doc.setTextColor(0, 0, 0);
+  leftY += 4.5;
 
-  const infoBoxHeight = (obraUbicacion ? 4 : 0) + (clienteNombre ? 4 : 0) + 10;
-  doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos - 3, pageWidth - margin * 2, infoBoxHeight, "F");
-
-  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("Obra:", margin + 2, yPos + 2);
+  doc.text("Obra:", blockX + 4, leftY);
   doc.setFont("helvetica", "normal");
-  doc.text(obraNombre, margin + 14, yPos + 2);
+  doc.text(obraNombre, blockX + 16, leftY);
+  leftY += 4.5;
 
-  let infoY = yPos + 2;
   if (obraUbicacion) {
-    infoY += 4;
     doc.setFont("helvetica", "bold");
-    doc.text("Ubicación:", margin + 2, infoY);
+    doc.text("Ubicación:", blockX + 4, leftY);
     doc.setFont("helvetica", "normal");
-    doc.text(obraUbicacion, margin + 22, infoY);
-  }
-  if (clienteNombre) {
-    infoY += 4;
-    doc.setFont("helvetica", "bold");
-    doc.text("Cliente:", margin + 2, infoY);
-    doc.setFont("helvetica", "normal");
-    const clienteText = clienteCuit ? `${clienteNombre} (CUIT: ${clienteCuit})` : clienteNombre;
-    doc.text(clienteText, margin + 17, infoY);
+    doc.text(obraUbicacion, blockX + 22, leftY);
   }
 
-  return yPos + infoBoxHeight + 2;
+  // Right column: Client info
+  const rightX = blockX + colWidth + 4;
+  let rightY = yPos + 5;
+
+  if (clienteNombre) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...CORP_DARK_RED);
+    doc.text("DATOS DEL CLIENTE", rightX, rightY);
+    doc.setTextColor(0, 0, 0);
+    rightY += 4.5;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Cliente:", rightX, rightY);
+    doc.setFont("helvetica", "normal");
+    doc.text(clienteNombre, rightX + 15, rightY);
+    rightY += 4.5;
+
+    if (clienteCuit) {
+      doc.setFont("helvetica", "bold");
+      doc.text("CUIT:", rightX, rightY);
+      doc.setFont("helvetica", "normal");
+      doc.text(clienteCuit, rightX + 12, rightY);
+      rightY += 4.5;
+    }
+
+    if (clienteDireccion) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Dirección:", rightX, rightY);
+      doc.setFont("helvetica", "normal");
+      doc.text(clienteDireccion, rightX + 20, rightY);
+      rightY += 4.5;
+    }
+
+    if (clienteLocalidad) {
+      doc.setFont("helvetica", "bold");
+      doc.text("Localidad:", rightX, rightY);
+      doc.setFont("helvetica", "normal");
+      doc.text(clienteLocalidad, rightX + 20, rightY);
+      rightY += 4.5;
+    }
+
+    if (clienteTelefono || clienteEmail) {
+      const contactParts: string[] = [];
+      if (clienteTelefono) contactParts.push(`Tel: ${clienteTelefono}`);
+      if (clienteEmail) contactParts.push(clienteEmail);
+      doc.setFont("helvetica", "normal");
+      doc.text(contactParts.join(" | "), rightX, rightY);
+    }
+  }
+
+  return yPos + blockHeight + 5;
 }
 
+// ─── Footer (page numbers + confidentiality) ────────────────────
+function addFooter(doc: jsPDF, margin: number) {
+  const pageCount = doc.getNumberOfPages();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+
+    // Thin red line
+    doc.setDrawColor(...CORP_RED);
+    doc.setLineWidth(0.5);
+    doc.line(margin, pageHeight - 12, pageWidth - margin, pageHeight - 12);
+
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      "Este documento es confidencial y propiedad de CALAMINA SUR S.A. Su reproducción no autorizada está prohibida.",
+      margin,
+      pageHeight - 8
+    );
+    doc.text(
+      `Página ${i} de ${pageCount}`,
+      pageWidth - margin,
+      pageHeight - 8,
+      { align: "right" }
+    );
+    doc.setTextColor(0, 0, 0);
+  }
+}
+
+// ─── Firma ──────────────────────────────────────────────────────
 async function renderFirma(doc: jsPDF, pageWidth: number, yPos: number): Promise<number> {
   let firmaData: ImageData | null = null;
   try { firmaData = await loadImageAsBase64(firmaPresidente); } catch (e) { console.warn("Could not load firma:", e); }
 
   const signatureX = pageWidth / 2;
+
   if (firmaData) {
-    const firmaWidth = 30;
+    const firmaWidth = 32;
     const firmaAspectRatio = firmaData.height / firmaData.width;
     const firmaHeight = firmaWidth * firmaAspectRatio;
     doc.addImage(firmaData.base64, "PNG", signatureX - firmaWidth / 2, yPos, firmaWidth, firmaHeight);
-    yPos += firmaHeight + 1;
+    yPos += firmaHeight + 2;
   } else {
-    yPos += 10;
+    yPos += 12;
   }
 
-  doc.setFontSize(7);
+  // Signature line
+  doc.setDrawColor(100, 100, 100);
+  doc.setLineWidth(0.4);
+  doc.line(signatureX - 30, yPos, signatureX + 30, yPos);
+  yPos += 4;
+
+  doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text(EMPRESA_INFO.nombre, signatureX, yPos, { align: "center" });
-  yPos += 3;
+  doc.text(EMPRESA_INFO.nombreFirma, signatureX, yPos, { align: "center" });
+  yPos += 3.5;
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
+  doc.text("Presidente", signatureX, yPos, { align: "center" });
+  yPos += 3;
   doc.setFontSize(6);
-  doc.text(
-    `CUIT: ${EMPRESA_INFO.cuit} | ${EMPRESA_INFO.presidente.toUpperCase()} - PRESIDENTE`,
-    signatureX, yPos, { align: "center" }
-  );
+  doc.setTextColor(100, 100, 100);
+  doc.text(`${EMPRESA_INFO.nombre} | CUIT: ${EMPRESA_INFO.cuit}`, signatureX, yPos, { align: "center" });
+  doc.setTextColor(0, 0, 0);
+
   return yPos;
 }
 
-// ============== SERVICIO PDF (original format) ==============
+// ─── Totals Box ─────────────────────────────────────────────────
+function renderTotalsBox(
+  doc: jsPDF, margin: number, pageWidth: number, yPos: number,
+  lines: { label: string; value: string; bold?: boolean; separator?: boolean }[]
+): number {
+  const boxWidth = 80;
+  const boxX = pageWidth - margin - boxWidth;
+  const lineHeight = 5;
+  const padding = 4;
+  const boxHeight = lines.length * lineHeight + padding * 2 + lines.filter(l => l.separator).length * 2;
 
+  // Box background and border
+  doc.setFillColor(...LIGHT_BG);
+  doc.setDrawColor(...SUBTLE_BORDER);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(boxX, yPos, boxWidth, boxHeight, 1, 1, "FD");
+
+  let lineY = yPos + padding + 3;
+  lines.forEach((line) => {
+    if (line.separator) {
+      doc.setDrawColor(...CORP_RED);
+      doc.setLineWidth(0.5);
+      doc.line(boxX + 3, lineY - 2, boxX + boxWidth - 3, lineY - 2);
+    }
+
+    doc.setFontSize(line.bold ? 9 : 7.5);
+    doc.setFont("helvetica", line.bold ? "bold" : "normal");
+    doc.text(line.label, boxX + 4, lineY);
+    doc.text(line.value, boxX + boxWidth - 4, lineY, { align: "right" });
+    lineY += lineHeight;
+  });
+
+  return yPos + boxHeight + 5;
+}
+
+// ─── Servicio PDF ───────────────────────────────────────────────
 function generateServicioPDF(
   doc: jsPDF, yPos: number, margin: number, pageWidth: number,
   certificado: Certificado, items: CertificadoItem[], categoriaMap: Record<string, string>
@@ -207,7 +380,7 @@ function generateServicioPDF(
     tableData.push([{
       content: catName.toUpperCase(),
       colSpan: 5,
-      styles: { fontStyle: "bold", fillColor: [220, 220, 220], fontSize: 7, cellPadding: 2 },
+      styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 7, cellPadding: 2 },
     }]);
 
     catItems.forEach((item) => {
@@ -233,7 +406,7 @@ function generateServicioPDF(
     head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal"]],
     body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7, halign: "center", cellPadding: 2 },
+    headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 7, halign: "center", cellPadding: 2 },
     bodyStyles: { fontSize: 7, cellPadding: 1.5 },
     columnStyles: {
       0: { cellWidth: "auto" },
@@ -245,39 +418,25 @@ function generateServicioPDF(
     margin: { left: margin, right: margin },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  yPos = (doc as any).lastAutoTable.finalY + 6;
 
   // Totals
-  const totalsStartX = pageWidth - margin - 60;
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "normal");
-  doc.text("Subtotal:", totalsStartX, yPos);
-  doc.text(formatCurrency(certificado.subtotal), pageWidth - margin, yPos, { align: "right" });
-  yPos += 5;
-  doc.text("IVA (21%):", totalsStartX, yPos);
-  doc.text(formatCurrency(certificado.iva), pageWidth - margin, yPos, { align: "right" });
-  yPos += 5;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setFillColor(245, 245, 245);
-  doc.rect(totalsStartX - 3, yPos - 4, 66, 8, "F");
-  doc.text("TOTAL:", totalsStartX, yPos + 1);
-  doc.text(formatCurrency(certificado.total), pageWidth - margin, yPos + 1, { align: "right" });
-  yPos += 10;
+  yPos = renderTotalsBox(doc, margin, pageWidth, yPos, [
+    { label: "Subtotal:", value: formatCurrency(certificado.subtotal) },
+    { label: "IVA (21%):", value: formatCurrency(certificado.iva) },
+    { label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true },
+  ]);
 
   return yPos;
 }
 
-// ============== OBRA PDF (with acumulados) ==============
-
+// ─── Obra PDF ───────────────────────────────────────────────────
 function generateObraPDF(
   doc: jsPDF, yPos: number, margin: number, pageWidth: number,
   certificado: Certificado, items: CertificadoItem[],
   etapaMap: Record<string, string>, cantidadTotalMap: Record<string, number>,
   acumulados: AcumuladoConcepto[]
 ): number {
-  // Use landscape-like layout with smaller fonts
-  // Group by etapa
   const itemsByEtapa = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
     const etapa = item.etapa || (item.concepto_id && etapaMap[item.concepto_id]) || "General";
@@ -299,8 +458,12 @@ function generateObraPDF(
     tableData.push([{
       content: etapaName.toUpperCase(),
       colSpan: 10,
-      styles: { fontStyle: "bold", fillColor: [220, 220, 220], fontSize: 6, cellPadding: 2 },
+      styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
+
+    let etapaAvAnterior = 0;
+    let etapaAvActual = 0;
+    let etapaAvAcumulado = 0;
 
     etapaItems.forEach((item) => {
       const ac = acumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
@@ -316,10 +479,13 @@ function generateObraPDF(
       totalAvAnterior += avAnterior;
       totalAvActual += avActual;
       totalAvAcumulado += avAcumulado;
+      etapaAvAnterior += avAnterior;
+      etapaAvActual += avActual;
+      etapaAvAcumulado += avAcumulado;
 
       tableData.push([
         item.descripcion,
-        `${formatCurrency(item.precio_unitario)}`,
+        formatCurrency(item.precio_unitario),
         cantTotal > 0 ? cantTotal.toLocaleString("es-AR") : "-",
         formatCurrency(valorTotal),
         formatPercent(pctAnterior),
@@ -330,6 +496,14 @@ function generateObraPDF(
         formatCurrency(avAcumulado),
       ]);
     });
+
+    // Subtotal row per etapa
+    tableData.push([
+      { content: `Subtotal ${etapaName}`, colSpan: 7, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
+      { content: formatCurrency(etapaAvAnterior), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
+      { content: formatCurrency(etapaAvActual), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
+      { content: formatCurrency(etapaAvAcumulado), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
+    ]);
   });
 
   autoTable(doc, {
@@ -337,7 +511,7 @@ function generateObraPDF(
     head: [["Concepto", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum."]],
     body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
+    headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
@@ -354,50 +528,29 @@ function generateObraPDF(
     margin: { left: margin, right: margin },
   });
 
-  yPos = (doc as any).lastAutoTable.finalY + 5;
+  yPos = (doc as any).lastAutoTable.finalY + 6;
 
-  // Totals for obra
-  const totalsStartX = pageWidth - margin - 70;
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-
-  doc.text("Avance Anterior:", totalsStartX, yPos);
-  doc.text(formatCurrency(totalAvAnterior), pageWidth - margin, yPos, { align: "right" });
-  yPos += 4;
-
-  doc.text("Avance Actual:", totalsStartX, yPos);
-  doc.text(formatCurrency(totalAvActual), pageWidth - margin, yPos, { align: "right" });
-  yPos += 4;
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Avance Acumulado:", totalsStartX, yPos);
-  doc.text(formatCurrency(totalAvAcumulado), pageWidth - margin, yPos, { align: "right" });
-  yPos += 5;
+  // Totals
+  const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [
+    { label: "Avance Anterior:", value: formatCurrency(totalAvAnterior) },
+    { label: "Avance Actual:", value: formatCurrency(totalAvActual) },
+    { label: "Avance Acumulado:", value: formatCurrency(totalAvAcumulado), bold: true },
+  ];
 
   if (certificado.anticipo_porcentaje > 0) {
-    doc.setFont("helvetica", "normal");
     const anticipoMonto = Math.round(totalAvAcumulado * (certificado.anticipo_porcentaje / 100));
-    doc.text(`Anticipo (${certificado.anticipo_porcentaje}%):`, totalsStartX, yPos);
-    doc.text(`- ${formatCurrency(anticipoMonto)}`, pageWidth - margin, yPos, { align: "right" });
-    yPos += 4;
+    totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
   }
 
-  doc.setFont("helvetica", "normal");
-  doc.text("IVA (21%):", totalsStartX, yPos);
-  doc.text(formatCurrency(certificado.iva), pageWidth - margin, yPos, { align: "right" });
-  yPos += 5;
+  totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+  totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setFillColor(245, 245, 245);
-  doc.rect(totalsStartX - 3, yPos - 4, 76, 8, "F");
-  doc.text("TOTAL:", totalsStartX, yPos + 1);
-  doc.text(formatCurrency(certificado.total), pageWidth - margin, yPos + 1, { align: "right" });
-  yPos += 10;
+  yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
 
   return yPos;
 }
 
+// ─── Main Export ─────────────────────────────────────────────────
 export async function generateCertificadoPDF({
   certificado,
   items,
@@ -405,6 +558,10 @@ export async function generateCertificadoPDF({
   obraUbicacion,
   clienteNombre,
   clienteCuit,
+  clienteDireccion,
+  clienteLocalidad,
+  clienteTelefono,
+  clienteEmail,
   categoriaMap,
   etapaMap = {},
   cantidadTotalMap = {},
@@ -415,7 +572,7 @@ export async function generateCertificadoPDF({
   const margin = 10;
 
   let yPos = await renderHeader(doc, margin, pageWidth);
-  yPos = renderCertInfo(doc, margin, pageWidth, yPos, certificado, obraNombre, obraUbicacion, clienteNombre, clienteCuit);
+  yPos = renderCertInfo(doc, margin, pageWidth, yPos, certificado, obraNombre, obraUbicacion, clienteNombre, clienteCuit, clienteDireccion, clienteLocalidad, clienteTelefono, clienteEmail);
 
   if (certificado.tipo === "obra") {
     yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados);
@@ -432,11 +589,14 @@ export async function generateCertificadoPDF({
     doc.setFont("helvetica", "normal");
     const obsLines = doc.splitTextToSize(certificado.observaciones, pageWidth - margin * 2);
     doc.text(obsLines, margin, yPos);
-    yPos += obsLines.length * 3 + 4;
+    yPos += obsLines.length * 3 + 5;
   }
 
   // Firma
   await renderFirma(doc, pageWidth, yPos);
+
+  // Footer on all pages
+  addFooter(doc, margin);
 
   doc.save(`Certificado_${certificado.numero}.pdf`);
 }
