@@ -722,35 +722,34 @@ export default function Certificados() {
                   ) : null;
                 })()}
               </DialogHeader>
-              <ScrollArea className="max-h-[55vh] pr-4">
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div>
-                      <Label>Tipo</Label>
-                      <Select value={tipoCert} onValueChange={(v) => setTipoCert(v as TipoCertificado)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="servicio">Servicio</SelectItem>
-                          <SelectItem value="obra">Obra (con acumulados)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label>Período</Label>
-                      <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
-                    </div>
-                    {tipoCert === "obra" && (
-                      <div>
-                        <Label>Anticipo (%)</Label>
-                        <Input type="number" min={0} max={100} value={anticipoPorcentaje || ""} onChange={(e) => setAnticipoPorcentaje(Number(e.target.value))} />
-                      </div>
-                    )}
-                    <div className={tipoCert === "obra" ? "" : "sm:col-span-2"}>
-                      <Label>Observaciones</Label>
-                      <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales..." className="min-h-[60px]" />
-                    </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <Label>Tipo</Label>
+                  <Select value={tipoCert} onValueChange={(v) => setTipoCert(v as TipoCertificado)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="servicio">Servicio</SelectItem>
+                      <SelectItem value="obra">Obra (con acumulados)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Período</Label>
+                  <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
+                </div>
+                {tipoCert === "obra" && (
+                  <div>
+                    <Label>Anticipo (%)</Label>
+                    <Input type="number" min={0} max={100} value={anticipoPorcentaje || ""} onChange={(e) => setAnticipoPorcentaje(Number(e.target.value))} />
                   </div>
-
+                )}
+                <div className={tipoCert === "obra" ? "" : "sm:col-span-2"}>
+                  <Label>Observaciones</Label>
+                  <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales..." className="min-h-[60px]" />
+                </div>
+              </div>
+              <ScrollArea className="flex-1 min-h-0 pr-4">
+                <div className="space-y-4">
                   {tipoCert === "servicio" ? (
                     /* ---- SERVICIO: same as before, grouped by categoria ---- */
                     <>
