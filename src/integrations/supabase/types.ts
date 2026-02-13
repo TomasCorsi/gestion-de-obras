@@ -309,8 +309,10 @@ export type Database = {
       certificado_conceptos: {
         Row: {
           activo: boolean
+          cantidad_total: number
           categoria: string
           created_at: string
+          etapa: string | null
           id: string
           nombre: string
           obra_id: string
@@ -321,8 +323,10 @@ export type Database = {
         }
         Insert: {
           activo?: boolean
+          cantidad_total?: number
           categoria?: string
           created_at?: string
+          etapa?: string | null
           id?: string
           nombre: string
           obra_id: string
@@ -333,8 +337,10 @@ export type Database = {
         }
         Update: {
           activo?: boolean
+          cantidad_total?: number
           categoria?: string
           created_at?: string
+          etapa?: string | null
           id?: string
           nombre?: string
           obra_id?: string
@@ -360,6 +366,7 @@ export type Database = {
           concepto_id: string | null
           created_at: string
           descripcion: string
+          etapa: string | null
           id: string
           precio_unitario: number
           subtotal: number
@@ -371,6 +378,7 @@ export type Database = {
           concepto_id?: string | null
           created_at?: string
           descripcion: string
+          etapa?: string | null
           id?: string
           precio_unitario?: number
           subtotal?: number
@@ -382,6 +390,7 @@ export type Database = {
           concepto_id?: string | null
           created_at?: string
           descripcion?: string
+          etapa?: string | null
           id?: string
           precio_unitario?: number
           subtotal?: number
@@ -406,6 +415,7 @@ export type Database = {
       }
       certificados: {
         Row: {
+          anticipo_porcentaje: number
           created_at: string
           estado: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision: string | null
@@ -416,10 +426,12 @@ export type Database = {
           observaciones: string | null
           periodo: string
           subtotal: number
+          tipo: string
           total: number
           updated_at: string
         }
         Insert: {
+          anticipo_porcentaje?: number
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision?: string | null
@@ -430,10 +442,12 @@ export type Database = {
           observaciones?: string | null
           periodo: string
           subtotal?: number
+          tipo?: string
           total?: number
           updated_at?: string
         }
         Update: {
+          anticipo_porcentaje?: number
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision?: string | null
@@ -444,6 +458,7 @@ export type Database = {
           observaciones?: string | null
           periodo?: string
           subtotal?: number
+          tipo?: string
           total?: number
           updated_at?: string
         }
