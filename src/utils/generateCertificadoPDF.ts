@@ -345,7 +345,8 @@ function renderTotalsBox(
     if (line.separator) {
       doc.setDrawColor(...CORP_RED);
       doc.setLineWidth(0.5);
-      doc.line(boxX + 3, lineY - 2, boxX + boxWidth - 3, lineY - 2);
+      doc.line(boxX + 3, lineY - 4, boxX + boxWidth - 3, lineY - 4);
+      lineY += 2;
     }
 
     doc.setFontSize(line.bold ? 9 : 7.5);
