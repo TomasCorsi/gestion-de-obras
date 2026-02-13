@@ -748,7 +748,7 @@ export default function Certificados() {
                   <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales..." className="min-h-[60px]" />
                 </div>
               </div>
-              <ScrollArea className="flex-1 min-h-0 pr-4">
+              <div className="overflow-y-auto max-h-[50vh] pr-2">
                 <div className="space-y-4">
                   {tipoCert === "servicio" ? (
                     /* ---- SERVICIO: same as before, grouped by categoria ---- */
@@ -872,7 +872,7 @@ export default function Certificados() {
                   )}
 
                 </div>
-              </ScrollArea>
+              </div>
               {/* Totals - always visible outside scroll */}
               <div className="border-t pt-3 space-y-1 px-1">
                 {tipoCert === "servicio" ? (
@@ -951,7 +951,7 @@ export default function Certificados() {
                   )}
                 </DialogTitle>
               </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-4">
+              <div className="overflow-y-auto max-h-[60vh] pr-2">
                 {viewCert && (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-sm text-muted-foreground">
@@ -1132,7 +1132,7 @@ export default function Certificados() {
                     )}
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
