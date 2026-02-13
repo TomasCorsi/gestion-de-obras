@@ -1,21 +1,65 @@
 
-## Corregir la linea roja que tapa el texto en la caja de totales del PDF
 
-### Problema
-La linea roja separadora en la caja de totales se dibuja demasiado cerca del texto "TOTAL", tapandolo visualmente.
+## Plan: Agregar ordenamiento manual de etapas en los certificados
 
-### Solucion
-En el archivo `src/utils/generateCertificadoPDF.ts`, funcion `renderTotalsBox` (linea 344-349):
+### Análisis Actual
+- Las etapas se agrupan mediante `groupByEtapa()` que ordena alfabéticamente
+- Cada concepto tiene un campo `orden` que se usa para ordenar conceptos dentro de categorías
+- Las etapas se derivan de los conceptos (campo `etapa`), pero no tienen un control de orden independiente
+- En el PDF, las etapas también se muestran en orden alfabético
 
-- Mover la linea roja separadora mas arriba, cambiando el offset de `lineY - 2` a `lineY - 4` para que quede claramente por encima del texto.
-- Agregar un pequeno espacio extra despues de la linea, incrementando `lineY` en 2mm adicionales cuando hay separador, para que el texto "TOTAL" no quede pegado a la linea.
+### Solución Propuesta
 
-### Detalle tecnico
+Agregar una sección de **"Gestión de Orden de Etapas"** en la pestaña de Configuración donde el usuario pueda:
+1. Ver todas las etapas disponibles de una obra
+2. Reordenarlas con drag-and-drop o botones up/down
+3. Guardar el orden en la base de datos
 
-**Archivo:** `src/utils/generateCertificadoPDF.ts`, lineas 344-355
+#### Opción A: Tabla simple con botones (más rápido, sin drag-and-drop)
+- Una tabla mostrando etapas con sus órdenes actuales
+- Botones "↑" y "↓" para mover etapas arriba/abajo
+- Guardar cambios en BD
 
-Cambiar la logica del separador:
-- La linea roja se dibuja en `lineY - 4` en vez de `lineY - 2`
-- Despues de dibujar la linea, se suma 2mm extra a `lineY` para dar espacio al texto
+#### Opción B: Drag-and-drop con librería (más visual, requiere dependencia)
+- Usar `react-beautiful-dnd` o similar
+- Experiencia más fluida
 
-Esto separa visualmente la linea del texto "TOTAL" sin afectar el resto del layout.
+### Cambios Técnicos
+
+**1. Base de datos** (`src/integrations/supabase/types.ts` - solo lectura, no modificar)
+- Las etapas se almacenan en `certificado_conceptos.etapa` (texto)
+- NO crear una tabla nueva de etapas (para mantener simplicidad)
+- Usar el campo `orden` existente en `certificado_conceptos` para determinar orden global
+
+**2. Backend - Nueva tabla virtual** (en React)
+- Crear un objeto de mapeo: `etapa -> min_orden_concepto` 
+- Al agrupar etapas, usar este mapeo en lugar de orden alfabético
+
+**3. `src/pages/Certificados.tsx`**
+- Modificar `groupByEtapa()` para aceptar un parámetro `etapaOrdenMap`
+- Crear una nueva pestaña "Orden de Etapas" en la sección de configuración
+- Mostrar tabla editable con etapas y sus órdenes
+- Agregar funciones `moveEtapaUp()`, `moveEtapaDown()`
+- Guardar el nuevo orden cuando cambia
+
+**4. `src/hooks/useCertificados.ts`**
+- Agregar función `reorderConceptos()` que actualice los campos `orden` de los conceptos pertenecientes a cada etapa
+
+**5. `src/utils/generateCertificadoPDF.ts`**
+- Pasar un `etapaOrdenMap` desde Certificados.tsx
+- En `generateObraPDF()`, usar ese mapa para ordenar etapas (no alfabéticamente)
+
+### Flujo de Uso
+1. Usuario abre la pestaña "Orden de Etapas" en Configuración
+2. Ve lista de etapas de la obra actual con inputs numéricos de orden
+3. Cambia los números y presiona guardar
+4. El sistema actualiza todos los conceptos de esa etapa para reflejar el nuevo orden
+5. Al crear/editar/visualizar certificados, las etapas aparecen en el orden definido
+6. El PDF también respeta ese orden
+
+### Ventajas
+- No requiere tabla nueva en BD
+- Usa infraestructura existente (`orden` en conceptos)
+- Simple de implementar
+- Funciona tanto en UI como en PDF
+
