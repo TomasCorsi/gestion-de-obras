@@ -700,7 +700,7 @@ export default function Certificados() {
 
           {/* ==================== CREAR/EDITAR CERTIFICADO DIALOG ==================== */}
           <Dialog open={crearOpen} onOpenChange={(open) => { setCrearOpen(open); if (!open) setEditingCertId(null); }}>
-            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {isEditing ? "Editar Certificado" : "Nuevo Certificado"} — {selectedObra?.nombre}
@@ -926,7 +926,7 @@ export default function Certificados() {
 
           {/* ==================== VIEW CERTIFICADO DIALOG ==================== */}
           <Dialog open={!!viewCertId} onOpenChange={() => setViewCertId(null)}>
-            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
                   <span>
