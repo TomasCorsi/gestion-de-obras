@@ -1,65 +1,26 @@
 
+## Corregir etapas faltantes en el PDF de certificados tipo Obra
 
-## Plan: Agregar ordenamiento manual de etapas en los certificados
+### Problema
+Al generar el PDF del certificado CERT-001 de Pride Center, solo aparece "ETAPA 2". Las etapas "ESTACIONAMIENTO" y "ALIVIADOR DE LAGUNA" no se muestran.
 
-### Análisis Actual
-- Las etapas se agrupan mediante `groupByEtapa()` que ordena alfabéticamente
-- Cada concepto tiene un campo `orden` que se usa para ordenar conceptos dentro de categorías
-- Las etapas se derivan de los conceptos (campo `etapa`), pero no tienen un control de orden independiente
-- En el PDF, las etapas también se muestran en orden alfabético
+**Causa raiz:** Cuando se guarda un certificado, solo se insertan items con `cantidad > 0` (linea 316 de `useCertificados.ts`). Esto es correcto para no guardar datos vacios. Sin embargo, al generar el PDF de tipo "obra", solo se pasan esos items guardados. Los conceptos de otras etapas que no tuvieron avance en este periodo quedan fuera del PDF, incluso si deberian mostrarse con avance anterior o simplemente como parte del contrato completo.
 
-### Solución Propuesta
+### Solucion
+Modificar la generacion del PDF para certificados tipo "obra": en lugar de usar solo los items guardados del certificado, combinar todos los conceptos activos de la obra con los items del certificado. Asi, todas las etapas aparecen en el PDF mostrando su estado completo (avance anterior, actual y acumulado).
 
-Agregar una sección de **"Gestión de Orden de Etapas"** en la pestaña de Configuración donde el usuario pueda:
-1. Ver todas las etapas disponibles de una obra
-2. Reordenarlas con drag-and-drop o botones up/down
-3. Guardar el orden en la base de datos
+### Cambios tecnicos
 
-#### Opción A: Tabla simple con botones (más rápido, sin drag-and-drop)
-- Una tabla mostrando etapas con sus órdenes actuales
-- Botones "↑" y "↓" para mover etapas arriba/abajo
-- Guardar cambios en BD
+**Archivo: `src/pages/Certificados.tsx`** (funcion `handleDownloadPDF`)
 
-#### Opción B: Drag-and-drop con librería (más visual, requiere dependencia)
-- Usar `react-beautiful-dnd` o similar
-- Experiencia más fluida
+Cuando el certificado es tipo "obra":
+1. Obtener todos los conceptos activos de la obra
+2. Para cada concepto, buscar si tiene un item en el certificado actual
+3. Crear una lista completa de items: los que tienen datos del certificado usan esos datos, y los que no, se crean con cantidad 0 y su precio unitario del concepto
+4. Pasar esta lista completa al generador de PDF
 
-### Cambios Técnicos
+Esto asegura que todas las etapas (ETAPA 2, ESTACIONAMIENTO, ALIVIADOR DE LAGUNA) aparezcan en el PDF con sus valores correctos, incluso si no tuvieron avance en el periodo actual.
 
-**1. Base de datos** (`src/integrations/supabase/types.ts` - solo lectura, no modificar)
-- Las etapas se almacenan en `certificado_conceptos.etapa` (texto)
-- NO crear una tabla nueva de etapas (para mantener simplicidad)
-- Usar el campo `orden` existente en `certificado_conceptos` para determinar orden global
+**Archivo: `src/utils/generateCertificadoPDF.ts`** (funcion `generateObraPDF`)
 
-**2. Backend - Nueva tabla virtual** (en React)
-- Crear un objeto de mapeo: `etapa -> min_orden_concepto` 
-- Al agrupar etapas, usar este mapeo en lugar de orden alfabético
-
-**3. `src/pages/Certificados.tsx`**
-- Modificar `groupByEtapa()` para aceptar un parámetro `etapaOrdenMap`
-- Crear una nueva pestaña "Orden de Etapas" en la sección de configuración
-- Mostrar tabla editable con etapas y sus órdenes
-- Agregar funciones `moveEtapaUp()`, `moveEtapaDown()`
-- Guardar el nuevo orden cuando cambia
-
-**4. `src/hooks/useCertificados.ts`**
-- Agregar función `reorderConceptos()` que actualice los campos `orden` de los conceptos pertenecientes a cada etapa
-
-**5. `src/utils/generateCertificadoPDF.ts`**
-- Pasar un `etapaOrdenMap` desde Certificados.tsx
-- En `generateObraPDF()`, usar ese mapa para ordenar etapas (no alfabéticamente)
-
-### Flujo de Uso
-1. Usuario abre la pestaña "Orden de Etapas" en Configuración
-2. Ve lista de etapas de la obra actual con inputs numéricos de orden
-3. Cambia los números y presiona guardar
-4. El sistema actualiza todos los conceptos de esa etapa para reflejar el nuevo orden
-5. Al crear/editar/visualizar certificados, las etapas aparecen en el orden definido
-6. El PDF también respeta ese orden
-
-### Ventajas
-- No requiere tabla nueva en BD
-- Usa infraestructura existente (`orden` en conceptos)
-- Simple de implementar
-- Funciona tanto en UI como en PDF
-
+No requiere cambios estructurales. La funcion ya maneja correctamente items con cantidad 0 (mostraria 0% actual y los valores acumulados correspondientes). Solo recibira mas items de los que recibia antes.
