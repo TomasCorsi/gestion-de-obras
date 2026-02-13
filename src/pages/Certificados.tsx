@@ -77,6 +77,8 @@ import {
   DollarSign,
   Clock,
   TrendingUp,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -125,8 +127,13 @@ function groupByCategoria<T extends { categoria?: string }>(items: T[]) {
     .map(({ key, items }) => ({ categoria: key, items }));
 }
 
-function groupByEtapa<T extends { etapa?: string | null }>(items: T[]) {
-  return groupByField(items, (i) => i.etapa || "Sin etapa")
+function groupByEtapa<T extends { etapa?: string | null }>(items: T[], etapaOrdenMap?: Record<string, number>) {
+  const sortOrder = etapaOrdenMap
+    ? Object.entries(etapaOrdenMap)
+        .sort(([, a], [, b]) => a - b)
+        .map(([etapa]) => etapa)
+    : undefined;
+  return groupByField(items, (i) => i.etapa || "Sin etapa", sortOrder)
     .map(({ key, items }) => ({ etapa: key, items }));
 }
 
@@ -148,7 +155,17 @@ export default function Certificados() {
     updateCertificado,
     updateCertificadoEstado,
     deleteCertificado,
+    reorderEtapas,
   } = useCertificados(selectedObraId);
+
+  // Build etapaOrdenMap from conceptos' orden field (min orden per etapa)
+  const etapaOrdenMap: Record<string, number> = {};
+  conceptos.forEach((c) => {
+    const etapa = c.etapa || "Sin etapa";
+    if (!(etapa in etapaOrdenMap) || c.orden < etapaOrdenMap[etapa]) {
+      etapaOrdenMap[etapa] = c.orden;
+    }
+  });
 
   // ---- KPIs ----
   const totalCertificados = certificados.length;
@@ -428,6 +445,7 @@ export default function Certificados() {
       etapaMap,
       cantidadTotalMap,
       acumulados: pdfAcumulados,
+      etapaOrdenMap,
     });
   };
 
@@ -445,7 +463,7 @@ export default function Certificados() {
 
   // Group draft items depending on tipo
   const draftGroupedCategoria = groupByCategoria(itemsDraft);
-  const draftGroupedEtapa = groupByEtapa(itemsDraft);
+  const draftGroupedEtapa = groupByEtapa(itemsDraft, etapaOrdenMap);
 
   // Group view items
   const viewItemsWithCat = viewItems.map((item) => ({
@@ -457,7 +475,7 @@ export default function Certificados() {
     ...item,
     etapa: item.etapa || (item.concepto_id && etapaMap[item.concepto_id]) || null,
   }));
-  const viewGroupedEtapa = groupByEtapa(viewItemsWithEtapa);
+  const viewGroupedEtapa = groupByEtapa(viewItemsWithEtapa, etapaOrdenMap);
 
   return (
     <MainLayout title="Certificados de Obra" subtitle="Gestión de certificaciones mensuales por obra">
@@ -501,6 +519,7 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
+                  <TabsTrigger value="orden-etapas">Orden de Etapas</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
@@ -640,6 +659,15 @@ export default function Certificados() {
                       ))}
                     </div>
                   )}
+                </TabsContent>
+
+                {/* ==================== ORDEN DE ETAPAS TAB ==================== */}
+                <TabsContent value="orden-etapas" className="space-y-4">
+                  <EtapasOrdenTab
+                    conceptos={conceptos}
+                    etapaOrdenMap={etapaOrdenMap}
+                    onReorder={reorderEtapas}
+                  />
                 </TabsContent>
               </Tabs>
             </>
@@ -1439,5 +1467,100 @@ function ConceptoRow({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ---- Etapas Orden Tab Component ----
+
+function EtapasOrdenTab({
+  conceptos,
+  etapaOrdenMap,
+  onReorder,
+}: {
+  conceptos: { id: string; etapa: string | null; orden: number }[];
+  etapaOrdenMap: Record<string, number>;
+  onReorder: (etapaOrder: { etapa: string; orden: number }[]) => Promise<void>;
+}) {
+  // Derive unique etapas sorted by current orden
+  const etapas = Object.entries(etapaOrdenMap)
+    .sort(([, a], [, b]) => a - b)
+    .map(([etapa]) => etapa);
+
+  const [saving, setSaving] = useState(false);
+
+  const moveEtapa = async (index: number, direction: "up" | "down") => {
+    if (direction === "up" && index === 0) return;
+    if (direction === "down" && index === etapas.length - 1) return;
+
+    const newEtapas = [...etapas];
+    const swapIdx = direction === "up" ? index - 1 : index + 1;
+    [newEtapas[index], newEtapas[swapIdx]] = [newEtapas[swapIdx], newEtapas[index]];
+
+    setSaving(true);
+    try {
+      await onReorder(newEtapas.map((etapa, i) => ({ etapa, orden: i })));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (etapas.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          No hay etapas definidas. Asigná etapas a los conceptos en la pestaña "Conceptos".
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Ordená las etapas como quieras que aparezcan en el certificado y el PDF.
+      </p>
+      <Card>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-16 text-center">#</TableHead>
+              <TableHead>Etapa</TableHead>
+              <TableHead className="text-center">Conceptos</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {etapas.map((etapa, idx) => {
+              const count = conceptos.filter((c) => (c.etapa || "Sin etapa") === etapa).length;
+              return (
+                <TableRow key={etapa}>
+                  <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
+                  <TableCell className="font-medium">{etapa}</TableCell>
+                  <TableCell className="text-center text-muted-foreground">{count}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={idx === 0 || saving}
+                      onClick={() => moveEtapa(idx, "up")}
+                    >
+                      <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      disabled={idx === etapas.length - 1 || saving}
+                      onClick={() => moveEtapa(idx, "down")}
+                    >
+                      <ArrowDown className="w-4 h-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </Card>
+    </div>
   );
 }

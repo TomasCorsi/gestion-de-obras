@@ -452,6 +452,31 @@ export function useCertificados(obraId?: string) {
     onError: () => toast.error("Error al eliminar certificado"),
   });
 
+  // ---- Reorder etapas by updating orden on conceptos ----
+  const reorderEtapas = async (etapaOrder: { etapa: string; orden: number }[]) => {
+    if (!obraId) return;
+    // For each etapa, update all conceptos belonging to it with the new base orden
+    const updates = etapaOrder.flatMap(({ etapa, orden }) => {
+      return conceptos
+        .filter((c) => (c.etapa || "Sin etapa") === etapa)
+        .map((c, idx) => ({
+          id: c.id,
+          orden: orden * 1000 + idx, // multiply to leave room for intra-etapa ordering
+        }));
+    });
+
+    for (const { id, orden } of updates) {
+      const { error } = await supabase
+        .from("certificado_conceptos")
+        .update({ orden })
+        .eq("id", id);
+      if (error) throw error;
+    }
+
+    toast.success("Orden de etapas actualizado");
+    queryClient.invalidateQueries({ queryKey: ["certificado_conceptos", obraId] });
+  };
+
   return {
     conceptos,
     loadingConceptos,
@@ -465,5 +490,6 @@ export function useCertificados(obraId?: string) {
     updateCertificado: updateCertificado.mutateAsync,
     updateCertificadoEstado: updateCertificadoEstado.mutateAsync,
     deleteCertificado: deleteCertificado.mutateAsync,
+    reorderEtapas,
   };
 }

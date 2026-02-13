@@ -78,6 +78,7 @@ interface CertificadoPDFData {
   etapaMap?: Record<string, string>;
   cantidadTotalMap?: Record<string, number>;
   acumulados?: AcumuladoConcepto[];
+  etapaOrdenMap?: Record<string, number>;
 }
 
 // ─── Header ─────────────────────────────────────────────────────
@@ -436,7 +437,8 @@ function generateObraPDF(
   doc: jsPDF, yPos: number, margin: number, pageWidth: number,
   certificado: Certificado, items: CertificadoItem[],
   etapaMap: Record<string, string>, cantidadTotalMap: Record<string, number>,
-  acumulados: AcumuladoConcepto[]
+  acumulados: AcumuladoConcepto[],
+  etapaOrdenMap?: Record<string, number>
 ): number {
   const itemsByEtapa = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
@@ -446,7 +448,14 @@ function generateObraPDF(
   });
 
   const tableData: any[] = [];
-  const sortedEtapas = [...itemsByEtapa.keys()].sort();
+  const sortedEtapas = [...itemsByEtapa.keys()].sort((a, b) => {
+    if (etapaOrdenMap) {
+      const oa = etapaOrdenMap[a] ?? 999999;
+      const ob = etapaOrdenMap[b] ?? 999999;
+      if (oa !== ob) return oa - ob;
+    }
+    return a.localeCompare(b);
+  });
 
   let totalAvAnterior = 0;
   let totalAvActual = 0;
@@ -567,6 +576,7 @@ export async function generateCertificadoPDF({
   etapaMap = {},
   cantidadTotalMap = {},
   acumulados = [],
+  etapaOrdenMap,
 }: CertificadoPDFData): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -576,7 +586,7 @@ export async function generateCertificadoPDF({
   yPos = renderCertInfo(doc, margin, pageWidth, yPos, certificado, obraNombre, obraUbicacion, clienteNombre, clienteCuit, clienteDireccion, clienteLocalidad, clienteTelefono, clienteEmail);
 
   if (certificado.tipo === "obra") {
-    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados);
+    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap);
   } else {
     yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap);
   }
