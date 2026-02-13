@@ -706,13 +706,23 @@ export default function Certificados() {
 
           {/* ==================== CREAR/EDITAR CERTIFICADO DIALOG ==================== */}
           <Dialog open={crearOpen} onOpenChange={(open) => { setCrearOpen(open); if (!open) setEditingCertId(null); }}>
-            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>
                   {isEditing ? "Editar Certificado" : "Nuevo Certificado"} — {selectedObra?.nombre}
                 </DialogTitle>
+                {(() => {
+                  const groups = tipoCert === "servicio" ? draftGroupedCategoria : draftGroupedEtapa;
+                  const totalConceptos = itemsDraft.length;
+                  const totalGrupos = groups.length;
+                  return totalGrupos > 1 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {totalConceptos} conceptos en {totalGrupos} {tipoCert === "servicio" ? "categorías" : "etapas"} — desplazá para ver todos
+                    </p>
+                  ) : null;
+                })()}
               </DialogHeader>
-              <ScrollArea className="flex-1 pr-4">
+              <ScrollArea className="max-h-[55vh] pr-4">
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div>
@@ -862,56 +872,56 @@ export default function Certificados() {
                     </>
                   )}
 
-                  {/* Totals */}
-                  <div className="border-t pt-3 space-y-1">
-                    {tipoCert === "servicio" ? (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span>Subtotal</span>
-                          <span className="font-semibold">{formatCurrency(draftSubtotal)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>IVA 21%</span>
-                          <span>{formatCurrency(draftIva)}</span>
-                        </div>
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>TOTAL</span>
-                          <span>{formatCurrency(draftTotal)}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex justify-between text-sm">
-                          <span>Avance Anterior</span>
-                          <span className="text-muted-foreground">{formatCurrency(avanceAnteriorTotal)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Avance Actual</span>
-                          <span className="font-semibold">{formatCurrency(avanceActualTotal)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Avance Acumulado</span>
-                          <span className="font-semibold">{formatCurrency(avanceAcumuladoTotal)}</span>
-                        </div>
-                        {anticipoPorcentaje > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span>Anticipo ({anticipoPorcentaje}%)</span>
-                            <span className="text-muted-foreground">- {formatCurrency(anticipoMonto)}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm">
-                          <span>IVA 21%</span>
-                          <span>{formatCurrency(draftIva)}</span>
-                        </div>
-                        <div className="flex justify-between text-lg font-bold">
-                          <span>TOTAL A PAGAR</span>
-                          <span>{formatCurrency(draftTotal)}</span>
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
               </ScrollArea>
+              {/* Totals - always visible outside scroll */}
+              <div className="border-t pt-3 space-y-1 px-1">
+                {tipoCert === "servicio" ? (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>Subtotal</span>
+                      <span className="font-semibold">{formatCurrency(draftSubtotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>IVA 21%</span>
+                      <span>{formatCurrency(draftIva)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>TOTAL</span>
+                      <span>{formatCurrency(draftTotal)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span>Avance Anterior</span>
+                      <span className="text-muted-foreground">{formatCurrency(avanceAnteriorTotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Avance Actual</span>
+                      <span className="font-semibold">{formatCurrency(avanceActualTotal)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span>Avance Acumulado</span>
+                      <span className="font-semibold">{formatCurrency(avanceAcumuladoTotal)}</span>
+                    </div>
+                    {anticipoPorcentaje > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span>Anticipo ({anticipoPorcentaje}%)</span>
+                        <span className="text-muted-foreground">- {formatCurrency(anticipoMonto)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm">
+                      <span>IVA 21%</span>
+                      <span>{formatCurrency(draftIva)}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>TOTAL A PAGAR</span>
+                      <span>{formatCurrency(draftTotal)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => { setCrearOpen(false); setEditingCertId(null); }}>Cancelar</Button>
                 <Button onClick={handleSaveCertificado} disabled={draftSubtotal === 0}>
@@ -923,7 +933,7 @@ export default function Certificados() {
 
           {/* ==================== VIEW CERTIFICADO DIALOG ==================== */}
           <Dialog open={!!viewCertId} onOpenChange={() => setViewCertId(null)}>
-            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+            <DialogContent className="max-w-[95vw] lg:max-w-5xl max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between">
                   <span>
@@ -942,7 +952,7 @@ export default function Certificados() {
                   )}
                 </DialogTitle>
               </DialogHeader>
-              <ScrollArea className="flex-1 pr-4">
+              <ScrollArea className="max-h-[60vh] pr-4">
                 {viewCert && (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-sm text-muted-foreground">
