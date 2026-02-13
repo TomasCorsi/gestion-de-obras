@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -460,24 +461,17 @@ export default function Certificados() {
         <div className="space-y-6">
           {/* Header */}
           <div className="flex justify-end">
-            <Select value={selectedObraId} onValueChange={setSelectedObraId}>
-              <SelectTrigger className="w-full sm:w-72">
-                <SelectValue placeholder="Seleccionar obra..." />
-              </SelectTrigger>
-              <SelectContent>
-                {loadingObras ? (
-                  <SelectItem value="_loading" disabled>Cargando...</SelectItem>
-                ) : (
-                  obras
-                    .filter((o) => o.estado === "activa")
-                    .map((o) => (
-                      <SelectItem key={o.id} value={o.id}>
-                        {o.nombre}
-                      </SelectItem>
-                    ))
-                )}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={obras
+                .filter((o) => o.estado === "activa")
+                .map((o) => ({ value: o.id, label: o.nombre }))}
+              value={selectedObraId}
+              onValueChange={setSelectedObraId}
+              placeholder="Seleccionar obra..."
+              searchPlaceholder="Buscar obra..."
+              emptyText="No se encontraron obras."
+              className="w-full sm:w-72"
+            />
           </div>
 
           {!selectedObraId ? (
