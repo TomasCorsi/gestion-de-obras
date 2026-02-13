@@ -4,6 +4,8 @@ import { toast } from "sonner";
 
 // ---- Types ----
 
+export type TipoCertificado = "obra" | "servicio";
+
 export interface CertificadoConcepto {
   id: string;
   obra_id: string;
@@ -13,6 +15,8 @@ export interface CertificadoConcepto {
   activo: boolean;
   orden: number;
   categoria: string;
+  cantidad_total: number;
+  etapa: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -25,6 +29,8 @@ export interface ConceptoForm {
   activo?: boolean;
   orden?: number;
   categoria?: string;
+  cantidad_total?: number;
+  etapa?: string | null;
 }
 
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
@@ -40,6 +46,8 @@ export interface Certificado {
   iva: number;
   total: number;
   observaciones: string | null;
+  tipo: TipoCertificado;
+  anticipo_porcentaje: number;
   created_at: string;
   updated_at: string;
 }
@@ -53,6 +61,7 @@ export interface CertificadoItem {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  etapa: string | null;
   created_at: string;
 }
 
@@ -64,6 +73,8 @@ export interface CertificadoItemForm {
   precio_unitario: number;
   subtotal: number;
   categoria: string;
+  etapa: string | null;
+  cantidad_total: number;
 }
 
 // ---- Categories ----
@@ -95,6 +106,59 @@ export const CONCEPTOS_ESTANDAR: { nombre: string; unidad: string; categoria: st
   { nombre: "Viajes", unidad: "VJ", categoria: "Transporte" },
 ];
 
+// ---- Acumulados helper ----
+
+export interface AcumuladoConcepto {
+  concepto_id: string;
+  cantidad_anterior: number;
+  avance_anterior: number;
+}
+
+export async function fetchAcumulados(
+  obraId: string,
+  periodoActual: string,
+  excludeCertId?: string
+): Promise<AcumuladoConcepto[]> {
+  // Get all certificados of type 'obra' for this obra with periodo < periodoActual
+  const { data: certs, error } = await supabase
+    .from("certificados")
+    .select("id, periodo")
+    .eq("obra_id", obraId)
+    .eq("tipo", "obra")
+    .lt("periodo", periodoActual);
+
+  if (error || !certs || certs.length === 0) return [];
+
+  const certIds = certs
+    .filter((c) => !excludeCertId || c.id !== excludeCertId)
+    .map((c) => c.id);
+
+  if (certIds.length === 0) return [];
+
+  const { data: items, error: itemsError } = await supabase
+    .from("certificado_items")
+    .select("concepto_id, cantidad, precio_unitario")
+    .in("certificado_id", certIds);
+
+  if (itemsError || !items) return [];
+
+  // Aggregate by concepto_id
+  const map = new Map<string, { cantidad: number; avance: number }>();
+  items.forEach((item) => {
+    if (!item.concepto_id) return;
+    const existing = map.get(item.concepto_id) || { cantidad: 0, avance: 0 };
+    existing.cantidad += item.cantidad;
+    existing.avance += item.cantidad * item.precio_unitario;
+    map.set(item.concepto_id, existing);
+  });
+
+  return [...map.entries()].map(([concepto_id, { cantidad, avance }]) => ({
+    concepto_id,
+    cantidad_anterior: cantidad,
+    avance_anterior: avance,
+  }));
+}
+
 // ---- Hook ----
 
 export function useCertificados(obraId?: string) {
@@ -114,6 +178,8 @@ export function useCertificados(obraId?: string) {
       return (data as any[]).map((d) => ({
         ...d,
         categoria: d.categoria || "General",
+        cantidad_total: d.cantidad_total || 0,
+        etapa: d.etapa || null,
       })) as CertificadoConcepto[];
     },
     enabled: !!obraId,
@@ -130,7 +196,11 @@ export function useCertificados(obraId?: string) {
         .eq("obra_id", obraId)
         .order("periodo", { ascending: false });
       if (error) throw error;
-      return data as Certificado[];
+      return (data as any[]).map((d) => ({
+        ...d,
+        tipo: d.tipo || "servicio",
+        anticipo_porcentaje: d.anticipo_porcentaje || 0,
+      })) as Certificado[];
     },
     enabled: !!obraId,
   });
@@ -143,7 +213,10 @@ export function useCertificados(obraId?: string) {
       .eq("certificado_id", certificadoId)
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return data as CertificadoItem[];
+    return (data as any[]).map((d) => ({
+      ...d,
+      etapa: d.etapa || null,
+    })) as CertificadoItem[];
   };
 
   // ---- Concepto mutations ----
@@ -202,10 +275,14 @@ export function useCertificados(obraId?: string) {
       periodo,
       items,
       observaciones,
+      tipo = "servicio",
+      anticipo_porcentaje = 0,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
       observaciones?: string;
+      tipo?: TipoCertificado;
+      anticipo_porcentaje?: number;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
@@ -219,7 +296,17 @@ export function useCertificados(obraId?: string) {
 
       const { data: cert, error } = await supabase
         .from("certificados")
-        .insert([{ obra_id: obraId, numero, periodo, subtotal, iva, total, observaciones: observaciones || null }])
+        .insert([{
+          obra_id: obraId,
+          numero,
+          periodo,
+          subtotal,
+          iva,
+          total,
+          observaciones: observaciones || null,
+          tipo,
+          anticipo_porcentaje,
+        }])
         .select()
         .single();
       if (error) throw error;
@@ -235,6 +322,7 @@ export function useCertificados(obraId?: string) {
           cantidad: i.cantidad,
           precio_unitario: i.precio_unitario,
           subtotal: i.subtotal,
+          etapa: i.etapa || null,
         }));
 
       if (itemsToInsert.length > 0) {
@@ -287,20 +375,28 @@ export function useCertificados(obraId?: string) {
       periodo,
       items,
       observaciones,
+      tipo,
+      anticipo_porcentaje,
     }: {
       id: string;
       periodo: string;
       items: CertificadoItemForm[];
       observaciones?: string;
+      tipo?: TipoCertificado;
+      anticipo_porcentaje?: number;
     }) => {
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
       const iva = Math.round(subtotal * 0.21 * 100) / 100;
       const total = subtotal + iva;
 
+      const updateData: Record<string, unknown> = { periodo, subtotal, iva, total, observaciones: observaciones || null };
+      if (tipo !== undefined) updateData.tipo = tipo;
+      if (anticipo_porcentaje !== undefined) updateData.anticipo_porcentaje = anticipo_porcentaje;
+
       // Update certificado header
       const { error } = await supabase
         .from("certificados")
-        .update({ periodo, subtotal, iva, total, observaciones: observaciones || null })
+        .update(updateData)
         .eq("id", id);
       if (error) throw error;
 
@@ -321,6 +417,7 @@ export function useCertificados(obraId?: string) {
           cantidad: i.cantidad,
           precio_unitario: i.precio_unitario,
           subtotal: i.subtotal,
+          etapa: i.etapa || null,
         }));
 
       if (itemsToInsert.length > 0) {
