@@ -809,7 +809,7 @@ export default function Certificados() {
                                     <TableHead className="text-right">Cant. Total</TableHead>
                                     <TableHead className="text-right">Valor Total</TableHead>
                                     <TableHead className="text-right">% Ant.</TableHead>
-                                    <TableHead className="w-24">Cant. Actual</TableHead>
+                                    <TableHead className="w-32">Cant. Actual</TableHead>
                                     <TableHead className="text-right">% Actual</TableHead>
                                     <TableHead className="text-right">% Acum.</TableHead>
                                     <TableHead className="text-right">Av. Ant.</TableHead>
@@ -839,7 +839,7 @@ export default function Certificados() {
                                         <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
                                         <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
                                         <TableCell>
-                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
+                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
                                         </TableCell>
                                         <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
                                         <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
