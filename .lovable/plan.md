@@ -1,93 +1,104 @@
 
-## Mostrar costos y totales sin filtro de mes (vista de todos los meses)
+## Solución: sesión robusta al reabrir la PWA
 
-### Diagnóstico
+### Diagnóstico confirmado
 
-El problema central está en `usePreciosMes`: solo carga precios cuando hay un mes seleccionado (`enabled: !!mes`). Cuando el usuario ve "Todos los meses", no hay precios disponibles y por lo tanto:
-- Las columnas "Precio U." y "Costo" muestran "Sin precio" en todas las filas
-- El total del período no aparece
-- El KPI de "Costo Total" muestra el promedio en lugar de un número en pesos
+Los logs del backend muestran el error exacto: `refresh_token_not_found`. Esto ocurre cuando:
 
-### Solución
+1. El celular mata la PWA en segundo plano (iOS/Android lo hacen para ahorrar batería)
+2. El `useSessionKeepAlive` deja de renovar el token porque la app no está activa
+3. Al reabrir, el refresh token guardado localmente ya fue invalidado en el servidor (se rota por uso o expira)
+4. El sistema intenta usarlo → falla → cierra la sesión → pantalla de carga larga → login
 
-**Nuevo hook `usePreciosTodos`**: Trae todos los registros de `precios_productos_mes` del año seleccionado (sin filtrar por mes). Devuelve un mapa indexado por `"mes-producto"` para que cada carga pueda buscar su precio correspondiente.
+El largo tiempo de carga viene de que `initializeAuth` hace 2 requests encadenados antes de decidir que no hay sesión válida (primero `getSession()`, después `refreshSession()`), y si ambos fallan, el listener de `SIGNED_OUT` intenta un tercer `getSession()`.
 
-**Lógica de cálculo por carga**: La función `getPrecioForCarga` debe extraer el mes de la fecha de cada entrega y buscarlo en el mapa completo cuando no hay mes seleccionado.
+### Qué se va a cambiar
 
-**Panel de precios**: Se mantiene igual, requiriendo un mes específico para editar. Cuando no hay mes seleccionado, muestra el mensaje actual.
+#### 1. `src/hooks/useAuth.tsx` — Inicialización más rápida y limpia
 
----
+**Problema actual**: Si no hay sesión o el refresh falla, el código hace hasta 3 llamadas a red encadenadas antes de mostrar el login. El usuario ve el spinner durante 5-10 segundos.
 
-### Cambios técnicos
-
-#### 1. `src/hooks/usePreciosMes.ts` — agregar nueva función exportada
-
-Se agrega `usePreciosTodos(anio)`:
+**Solución**: 
+- Eliminar el refresh manual en `initializeAuth` — Supabase ya maneja esto automáticamente en `getSession()` si el access token expiró pero el refresh token es válido.
+- Si `getSession()` devuelve `null` (refresh token inválido o inexistente), ir directo al login sin intentar más recuperaciones.
+- Eliminar el bloque de "recuperación" en el listener de `SIGNED_OUT` — cuando el servidor dice que el refresh token no existe, ya no hay nada que recuperar y ese intento agrega latencia innecesaria.
+- Corregir el bug de doble condición `TOKEN_REFRESHED` (el `return` prematuro hace que el segundo `if` nunca se ejecute).
 
 ```typescript
-export function usePreciosTodos(anio: number) {
-  const { data: precios = [] } = useQuery({
-    queryKey: ["precios_productos_mes_todos", anio],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("precios_productos_mes")
-        .select("*")
-        .eq("anio", anio);
-      if (error) throw error;
-      return data as PrecioProductoMes[];
-    },
-  });
-
-  // Mapa indexado por "mes-producto" → precio
-  const preciosPorMesProducto: Record<string, number> = {};
-  for (const p of precios) {
-    preciosPorMesProducto[`${p.mes}-${p.producto}`] = p.precio_unitario;
+// ANTES (buggy):
+const initializeAuth = async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    // ok
+  } else {
+    // intento innecesario — getSession ya hace refresh internamente
+    const { data: refreshData } = await supabase.auth.refreshSession();
+    if (refreshData.session?.user) { ... }
+    else { /* sin sesión */ }
   }
+};
 
-  return { preciosPorMesProducto };
-}
-```
-
-#### 2. `src/components/gastos/CombustibleRepartidorTab.tsx` — usar precios de todos los meses
-
-**Importar y usar `usePreciosTodos`:**
-
-```typescript
-const { preciosPorMesProducto } = usePreciosTodos(year);
-```
-
-**Actualizar `getPrecioForCarga`** para que cuando no hay filtro de mes específico, extraiga el mes de la fecha de cada carga y busque en `preciosPorMesProducto`:
-
-```typescript
-const getPrecioForCarga = (carga: typeof filtered[0]) => {
-  const producto = carga.tipo_producto || "combustible";
-  
-  if (mes) {
-    // Mes específico seleccionado → usa los precios ya cargados del mes
-    return preciosPorProducto[producto];
+// DESPUÉS (correcto):
+const initializeAuth = async () => {
+  // getSession() ya usa el refresh token si el access token expiró
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    setSession(session); setUser(session.user);
+    await fetchUserData(session.user.id);
+  } else {
+    // No hay sesión recuperable → ir al login directamente
+    setSession(null); setUser(null);
   }
-  
-  // Vista de todos los meses o filtro por día: buscar precio según la fecha de la carga
-  const fechaMes = parseInt(carga.fecha.split("-")[1], 10);
-  return preciosPorMesProducto[`${fechaMes}-${producto}`];
 };
 ```
 
-Esto funciona para todos los escenarios:
-- Filtro por mes → usa `preciosPorProducto` (cargado por `usePreciosMes`)
-- Sin filtro (todos los meses) → usa `preciosPorMesProducto` con la fecha de cada carga
-- Filtro por día exacto → usa `preciosPorMesProducto` con el mes de la fecha del día
+#### 2. `src/hooks/useAuth.tsx` — Listener `SIGNED_OUT` sin bucle de recuperación
 
-### Resultado esperado
+Cuando el servidor invalida el refresh token (`refresh_token_not_found`), Supabase emite `SIGNED_OUT`. El código actual intenta `getSession()` otra vez, que inevitablemente falla también (el refresh token ya está invalidado). Esto agrega latencia sin beneficio.
 
-| Escenario | Antes | Después |
-|---|---|---|
-| Filtro por mes | ✅ Muestra costos | ✅ Sin cambios |
-| Sin filtro (todos) | ❌ Sin precio en todas | ✅ Cada fila usa el precio de su mes |
-| Filtro por día | ⚠️ Usa precio del mes seleccionado | ✅ Usa precio del mes del día filtrado |
-| Total del período | ❌ No aparece sin mes | ✅ Suma todos los que tienen precio configurado |
+```typescript
+// ELIMINAR este bloque que no sirve cuando el refresh token está invalidado:
+if (event === 'SIGNED_OUT' && session === null) {
+  const { data } = await supabase.auth.getSession(); // siempre falla acá
+  ...
+}
+```
+
+#### 3. `src/hooks/useSessionKeepAlive.ts` — Refresh más agresivo al despertar
+
+El `VISIBILITY_REFRESH_MIN_INTERVAL` actual es de 10 minutos. Si el usuario abre la app después de 2 horas, el sistema sí intenta refrescar, pero si el access token Y el refresh token ya expiraron, es demasiado tarde.
+
+**Solución**: Al despertar (`visibilitychange` a `visible`), verificar si el access token expiró usando `session.expires_at`. Si expiró hace más de cierto tiempo, hacer el refresh sin esperar el mínimo de 10 minutos.
+
+```typescript
+const handleVisibility = () => {
+  if (document.visibilityState === 'visible') {
+    updateActivity();
+    // Forzar refresh sin importar cuándo fue el último
+    setTimeout(forceRefreshOnWake, 500);
+  }
+};
+```
+
+Además, reducir `VISIBILITY_REFRESH_MIN_INTERVAL` de 10 minutos a 0 (siempre refrescar al despertar) — el throttle de `isRefreshing.current` ya previene llamadas duplicadas.
 
 ### Archivos a modificar
 
-1. **`src/hooks/usePreciosMes.ts`** — agregar `usePreciosTodos` al final del archivo
-2. **`src/components/gastos/CombustibleRepartidorTab.tsx`** — importar `usePreciosTodos`, usarlo en el componente y actualizar `getPrecioForCarga`
+1. **`src/hooks/useAuth.tsx`**
+   - Simplificar `initializeAuth`: quitar el `refreshSession()` manual (ya lo hace `getSession()` internamente)
+   - Eliminar el bloque de recuperación en `SIGNED_OUT` 
+   - Corregir el bug de doble `TOKEN_REFRESHED`
+
+2. **`src/hooks/useSessionKeepAlive.ts`**
+   - Quitar `VISIBILITY_REFRESH_MIN_INTERVAL` del guard en `forceRefreshOnWake` (siempre refrescar al reabrir)
+   - Simplificar `handleVisibility` para que no tenga throttle al despertar
+
+### Resultado esperado
+
+| Situación | Antes | Después |
+|---|---|---|
+| Reabrir tras pocas horas (token aún válido) | Carga rápida ✅ | Carga rápida ✅ |
+| Reabrir tras muchas horas (access token expirado, refresh válido) | A veces funciona, a veces cierra sesión | Siempre recupera la sesión ✅ |
+| Reabrir tras 7+ días (refresh token expirado) | 5-10s cargando, luego login | 1-2s cargando, luego login ✅ |
+| Spinner largo al reabrir | ❌ Hasta 10 segundos | ✅ Máximo 2-3 segundos |
+
