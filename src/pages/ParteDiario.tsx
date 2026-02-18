@@ -102,10 +102,13 @@ const ParteDiario = () => {
     isDeleting: isDeletingCarga,
   } = useCargasRepartidor(null, isRepartidor ? empleado?.id : null);
 
-  // Filter deliveries by selected date
-  const todayStr = new Date().toISOString().split('T')[0];
+  // Filter deliveries by selected date (using local date to avoid UTC timezone bugs)
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
   const selectedDateStr = useMemo(() => {
-    return selectedDate.toISOString().split('T')[0];
+    return `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
   }, [selectedDate]);
   const isToday = selectedDateStr === todayStr;
 
@@ -130,8 +133,9 @@ const ParteDiario = () => {
       const d = new Date(prev);
       d.setDate(d.getDate() + 1);
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      return d > today ? prev : d;
+      const todayLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const dLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return dLocal > todayLocal ? prev : d;
     });
   }, []);
 
