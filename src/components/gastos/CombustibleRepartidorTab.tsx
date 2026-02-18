@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Fuel, Droplets, Download, CalendarDays, X } from "lucide-react";
+import { Search, Fuel, Droplets, Download, CalendarDays, X, DollarSign, Save, ChevronDown, ChevronUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,16 +13,19 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableFooter,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
+import { usePreciosMes } from "@/hooks/usePreciosMes";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { startOfMonth, endOfMonth, format, parseISO } from "date-fns";
+import { format as formatEs } from "date-fns";
 import { es } from "date-fns/locale";
 
 const meses = [
@@ -40,9 +43,149 @@ const meses = [
   { value: "12", label: "Diciembre" },
 ];
 
+const productos = [
+  { key: "combustible", label: "Combustible", emoji: "🛢️", unidad: "L" },
+  { key: "grasa", label: "Grasa", emoji: "🧴", unidad: "Kg" },
+  { key: "aceite", label: "Aceite", emoji: "🫗", unidad: "L" },
+  { key: "uria", label: "Urea", emoji: "💧", unidad: "L" },
+];
+
 function formatOperador(op: { nombre: string | null; apellido: string | null } | null | undefined): string {
   if (!op) return "-";
   return `${op.apellido || ""}, ${op.nombre?.charAt(0) || ""}.`.trim();
+}
+
+function formatPeso(value: number): string {
+  return `$${value.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+}
+
+// Panel de precios del mes
+function PreciosMesPanel({
+  anio,
+  mes,
+  mesLabel,
+}: {
+  anio: number;
+  mes: number | undefined;
+  mesLabel: string;
+}) {
+  const [open, setOpen] = useState(true);
+  const [localPrecios, setLocalPrecios] = useState<Record<string, string>>({});
+  const { preciosPorProducto, upsertPrecio, isSaving } = usePreciosMes(anio, mes);
+
+  // Sync local state when prices load
+  const getDisplayValue = (key: string) => {
+    if (localPrecios[key] !== undefined) return localPrecios[key];
+    const val = preciosPorProducto[key];
+    return val !== undefined ? String(val) : "";
+  };
+
+  const handleSave = (key: string) => {
+    const raw = localPrecios[key] ?? String(preciosPorProducto[key] ?? "");
+    const precio = parseFloat(raw.replace(",", "."));
+    if (isNaN(precio) || precio < 0) {
+      toast.error("Precio inválido");
+      return;
+    }
+    upsertPrecio({ producto: key, precio });
+    setLocalPrecios((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  return (
+    <div className="card-industrial overflow-hidden">
+      <button
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <div className="flex items-center gap-2">
+          <DollarSign className="w-4 h-4 text-primary" />
+          <span className="font-semibold text-foreground text-sm">
+            Precios del Mes{mes ? ` — ${mesLabel} ${anio}` : ""}
+          </span>
+          {!mes && (
+            <span className="text-xs text-muted-foreground">(seleccione un mes para configurar)</span>
+          )}
+        </div>
+        {open ? (
+          <ChevronUp className="w-4 h-4 text-muted-foreground" />
+        ) : (
+          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+        )}
+      </button>
+
+      {open && (
+        <div className="border-t border-border">
+          {!mes ? (
+            <p className="text-center text-muted-foreground text-sm py-6">
+              Seleccione un mes para ver y editar los precios.
+            </p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/20">
+                  <th className="text-left px-4 py-2 text-muted-foreground font-medium">Producto</th>
+                  <th className="text-left px-4 py-2 text-muted-foreground font-medium">Precio / unidad</th>
+                  <th className="px-4 py-2 w-24"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {productos.map((prod) => {
+                  const configured = preciosPorProducto[prod.key] !== undefined;
+                  return (
+                    <tr key={prod.key} className="border-b border-border last:border-0 hover:bg-muted/20">
+                      <td className="px-4 py-2">
+                        <span className="mr-2">{prod.emoji}</span>
+                        <span className="text-foreground">{prod.label}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">/ {prod.unidad}</span>
+          {configured && (
+                          <span className="ml-2 inline-block w-2 h-2 rounded-full bg-primary" title="Precio configurado" />
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground text-sm">$</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={getDisplayValue(prod.key)}
+                            onChange={(e) =>
+                              setLocalPrecios((prev) => ({ ...prev, [prod.key]: e.target.value }))
+                            }
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleSave(prod.key);
+                            }}
+                            placeholder="Sin precio"
+                            className="w-36 h-8 text-sm bg-background"
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 gap-1"
+                          disabled={isSaving}
+                          onClick={() => handleSave(prod.key)}
+                        >
+                          <Save className="w-3 h-3" />
+                          Guardar
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function CombustibleRepartidorTab() {
@@ -62,10 +205,15 @@ export function CombustibleRepartidorTab() {
     return result;
   }, [currentYear]);
 
+  // Prices for the selected month
+  const mesNum = mes ? parseInt(mes, 10) : undefined;
+  const { preciosPorProducto } = usePreciosMes(year, mesNum);
+
+  const mesLabel = mes ? meses.find((m) => m.value === mes)?.label ?? "" : "";
+
   const filtered = useMemo(() => {
     let result = [...cargas];
 
-    // Specific day filter (takes priority over month)
     if (fechaFiltro) {
       result = result.filter((c) => c.fecha === fechaFiltro);
     } else if (mes) {
@@ -75,7 +223,6 @@ export function CombustibleRepartidorTab() {
       result = result.filter((c) => c.fecha >= desde && c.fecha <= hasta);
     }
 
-    // Search
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(
@@ -91,27 +238,52 @@ export function CombustibleRepartidorTab() {
     return result;
   }, [cargas, mes, year, searchTerm, fechaFiltro]);
 
+  // Calculate cost per row using monthly prices
+  // For specific day filter, determine month from the date
+  const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
+    const producto = carga.tipo_producto || "combustible";
+    if (mes && !fechaFiltro) {
+      return preciosPorProducto[producto];
+    }
+    // When filtering by exact day, we still use the same month's price
+    if (fechaFiltro) {
+      return preciosPorProducto[producto];
+    }
+    return preciosPorProducto[producto];
+  };
+
   const totalLitros = filtered.reduce((sum, c) => sum + (c.litros || 0), 0);
+  const totalCosto = filtered.reduce((sum, c) => {
+    const precio = getPrecioForCarga(c);
+    if (precio === undefined) return sum;
+    return sum + (c.litros || 0) * precio;
+  }, 0);
+  const hayCostos = filtered.some((c) => getPrecioForCarga(c) !== undefined);
 
   const handleExport = () => {
     if (filtered.length === 0) {
       toast.error("No hay datos para exportar");
       return;
     }
-    const exportData = filtered.map((c) => ({
-      Fecha: formatDate(c.fecha),
-      Producto: (c.tipo_producto || 'combustible').charAt(0).toUpperCase() + (c.tipo_producto || 'combustible').slice(1),
-      Repartidor: c.repartidor ? formatOperador(c.repartidor) : formatOperador(c.parte_diario?.personal),
-      Operador: formatOperador(c.operador),
-      "Tipo Operador": (c.tipo_operador || 'interno').charAt(0).toUpperCase() + (c.tipo_operador || 'interno').slice(1),
-      Máquina: c.maquinaria?.codigo || c.maquinaria?.tipo || "-",
-      Obra: c.obra?.nombre || "-",
-      Cantidad: c.litros,
-      Unidad: c.tipo_producto === 'grasa' ? 'Kg' : 'L',
-      Horas: c.horas || "-",
-      Km: c.km || "-",
-      Observaciones: c.observaciones || "-",
-    }));
+    const exportData = filtered.map((c) => {
+      const precio = getPrecioForCarga(c);
+      return {
+        Fecha: formatDate(c.fecha),
+        Producto: (c.tipo_producto || "combustible").charAt(0).toUpperCase() + (c.tipo_producto || "combustible").slice(1),
+        Repartidor: c.repartidor ? formatOperador(c.repartidor) : formatOperador(c.parte_diario?.personal),
+        Operador: formatOperador(c.operador),
+        "Tipo Operador": (c.tipo_operador || "interno").charAt(0).toUpperCase() + (c.tipo_operador || "interno").slice(1),
+        Máquina: c.maquinaria?.codigo || c.maquinaria?.tipo || "-",
+        Obra: c.obra?.nombre || "-",
+        Cantidad: c.litros,
+        Unidad: c.tipo_producto === "grasa" ? "Kg" : "L",
+        Horas: c.horas || "-",
+        Km: c.km || "-",
+        "Precio Unit.": precio !== undefined ? precio : "Sin precio",
+        "Costo Total": precio !== undefined ? (c.litros || 0) * precio : "Sin precio",
+        Observaciones: c.observaciones || "-",
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -202,6 +374,9 @@ export function CombustibleRepartidorTab() {
         </div>
       </div>
 
+      {/* Prices panel */}
+      <PreciosMesPanel anio={year} mes={mesNum} mesLabel={mesLabel} />
+
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <div className="card-industrial p-4 flex items-center justify-between">
@@ -221,11 +396,11 @@ export function CombustibleRepartidorTab() {
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {filtered.length > 0 ? (totalLitros / filtered.length).toFixed(0) : 0} L
+              {hayCostos ? formatPeso(totalCosto) : (filtered.length > 0 ? (totalLitros / filtered.length).toFixed(0) + " L" : "0 L")}
             </p>
-            <p className="text-sm text-muted-foreground">Promedio/Carga</p>
+            <p className="text-sm text-muted-foreground">{hayCostos ? "Costo Total" : "Promedio/Carga"}</p>
           </div>
-          <Fuel className="w-8 h-8 text-muted-foreground" />
+          <DollarSign className="w-8 h-8 text-muted-foreground" />
         </div>
       </div>
 
@@ -242,6 +417,8 @@ export function CombustibleRepartidorTab() {
               <TableHead className="text-muted-foreground font-medium">Máquina</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Cantidad</TableHead>
+              <TableHead className="text-muted-foreground font-medium text-right">Precio U.</TableHead>
+              <TableHead className="text-muted-foreground font-medium text-right">Costo</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Horas</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
             </TableRow>
@@ -249,34 +426,61 @@ export function CombustibleRepartidorTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-              <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
                   <Fuel className="w-10 h-10 mx-auto mb-2 opacity-40" />
                   <p>No hay entregas de repartidor registradas</p>
                 </TableCell>
               </TableRow>
             ) : (
-              filtered.map((carga) => (
-                <TableRow key={carga.id} className="border-border hover:bg-muted/50">
-                  <TableCell className="text-foreground">{formatDate(carga.fecha)}</TableCell>
-                  <TableCell className="text-foreground capitalize">{carga.tipo_producto || 'combustible'}</TableCell>
-                  <TableCell className="text-foreground">
-                    {carga.repartidor ? formatOperador(carga.repartidor) : formatOperador(carga.parte_diario?.personal)}
-                  </TableCell>
-                  <TableCell className="text-foreground">{formatOperador(carga.operador)}</TableCell>
-                  <TableCell className="text-foreground capitalize">{carga.tipo_operador || 'interno'}</TableCell>
-                  <TableCell className="text-foreground">
-                    {carga.maquinaria?.codigo || carga.maquinaria?.tipo || "-"}
-                  </TableCell>
-                  <TableCell className="text-foreground">{carga.obra?.nombre || "-"}</TableCell>
-                  <TableCell className="text-right font-medium text-primary">
-                    {carga.litros} {carga.tipo_producto === 'grasa' ? 'Kg' : 'L'}
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">{carga.horas || "-"}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{carga.km || "-"}</TableCell>
-                </TableRow>
-              ))
+              filtered.map((carga) => {
+                const precio = getPrecioForCarga(carga);
+                const costo = precio !== undefined ? (carga.litros || 0) * precio : undefined;
+                return (
+                  <TableRow key={carga.id} className="border-border hover:bg-muted/50">
+                    <TableCell className="text-foreground">{formatDate(carga.fecha)}</TableCell>
+                    <TableCell className="text-foreground capitalize">{carga.tipo_producto || "combustible"}</TableCell>
+                    <TableCell className="text-foreground">
+                      {carga.repartidor ? formatOperador(carga.repartidor) : formatOperador(carga.parte_diario?.personal)}
+                    </TableCell>
+                    <TableCell className="text-foreground">{formatOperador(carga.operador)}</TableCell>
+                    <TableCell className="text-foreground capitalize">{carga.tipo_operador || "interno"}</TableCell>
+                    <TableCell className="text-foreground">
+                      {carga.maquinaria?.codigo || carga.maquinaria?.tipo || "-"}
+                    </TableCell>
+                    <TableCell className="text-foreground">{carga.obra?.nombre || "-"}</TableCell>
+                    <TableCell className="text-right font-medium text-primary">
+                      {carga.litros} {carga.tipo_producto === "grasa" ? "Kg" : "L"}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground text-xs">
+                      {precio !== undefined ? formatPeso(precio) : <span className="text-muted-foreground/50 italic">Sin precio</span>}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {costo !== undefined ? (
+                        <span className="text-primary font-semibold">{formatPeso(costo)}</span>
+                      ) : (
+                        <span className="text-muted-foreground/50 text-xs italic">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground">{carga.horas || "-"}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{carga.km || "-"}</TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
+          {filtered.length > 0 && hayCostos && (
+            <TableFooter>
+              <TableRow className="border-border">
+                <TableCell colSpan={9} className="text-right font-semibold text-foreground">
+                  Total del período:
+                </TableCell>
+                <TableCell className="text-right font-bold text-primary text-base">
+                  {formatPeso(totalCosto)}
+                </TableCell>
+                <TableCell colSpan={2} />
+              </TableRow>
+            </TableFooter>
+          )}
         </Table>
       </div>
     </div>

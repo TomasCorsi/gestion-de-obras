@@ -1361,6 +1361,36 @@ export type Database = {
         }
         Relationships: []
       }
+      precios_productos_mes: {
+        Row: {
+          anio: number
+          created_at: string
+          id: string
+          mes: number
+          precio_unitario: number
+          producto: string
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          created_at?: string
+          id?: string
+          mes: number
+          precio_unitario?: number
+          producto: string
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          precio_unitario?: number
+          producto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
