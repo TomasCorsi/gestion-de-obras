@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
 import { UpdatePrompt } from "@/components/pwa/UpdatePrompt";
+import { OfflineBanner } from "@/components/pwa/OfflineBanner";
 
 // Eagerly loaded pages (critical path)
 import Login from "./pages/Login";
@@ -63,6 +64,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <SessionKeepAlive />
+          <OfflineBanner />
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
