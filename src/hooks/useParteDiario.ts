@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useEmpleadoProfile } from './useEmpleadoProfile';
+import { useOfflineQueue } from './useOfflineQueue';
+import { useNetworkStatus } from './useNetworkStatus';
 import { format } from 'date-fns';
 
 export interface ParteDiario {
@@ -81,6 +83,8 @@ export interface ParteDiarioInsert {
 export function useParteDiario() {
   const queryClient = useQueryClient();
   const { empleado } = useEmpleadoProfile();
+  const { isOnline } = useNetworkStatus();
+  const { enqueueOfflineParte } = useOfflineQueue();
   const fechaHoy = format(new Date(), 'yyyy-MM-dd');
 
   // Fetch all partes for the current employee
@@ -222,6 +226,12 @@ export function useParteDiario() {
   const saveDraft = async (data: ParteDiarioInsert, editingParteId?: string) => {
     const parteData = { ...data, estado: 'borrador' as const };
     
+    // Offline: queue locally
+    if (!isOnline) {
+      enqueueOfflineParte(parteData);
+      return;
+    }
+
     if (editingParteId) {
       await updateMutation.mutateAsync({ id: editingParteId, ...parteData });
     } else {
@@ -238,6 +248,12 @@ export function useParteDiario() {
   const completeParte = async (data: ParteDiarioInsert, editingParteId?: string) => {
     const parteData = { ...data, estado: 'completado' as const };
     
+    // Offline: queue locally
+    if (!isOnline) {
+      enqueueOfflineParte(parteData);
+      return;
+    }
+
     if (editingParteId) {
       await updateMutation.mutateAsync({ id: editingParteId, ...parteData });
     } else {

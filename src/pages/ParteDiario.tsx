@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 import { useParteDiario, type ParteDiario as ParteDiarioType } from "@/hooks/useParteDiario";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { saveToOfflineCache, loadFromOfflineCache } from "@/hooks/useOfflineCache";
 import { supabase } from "@/integrations/supabase/client";
 import { useCargasRepartidor } from "@/hooks/useCargasRepartidor";
 import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeView";
@@ -48,8 +49,24 @@ const ParteDiario = () => {
     isDeleting,
     isLoading: loadingPartes,
   } = useParteDiario();
-  const { obras = [] } = useObras();
-  const { maquinarias = [] } = useMaquinarias();
+  const { obras: obrasFromDB = [] } = useObras();
+  const { maquinarias: maquinariasFromDB = [] } = useMaquinarias();
+
+  // Offline cache: save when we have fresh data, fall back to cache when empty
+  useEffect(() => {
+    if (obrasFromDB.length > 0) saveToOfflineCache('obras', obrasFromDB);
+  }, [obrasFromDB]);
+  useEffect(() => {
+    if (maquinariasFromDB.length > 0) saveToOfflineCache('maquinarias', maquinariasFromDB);
+  }, [maquinariasFromDB]);
+
+  const obras = obrasFromDB.length > 0
+    ? obrasFromDB
+    : (loadFromOfflineCache<typeof obrasFromDB>('obras') ?? []);
+  const maquinarias = maquinariasFromDB.length > 0
+    ? maquinariasFromDB
+    : (loadFromOfflineCache<typeof maquinariasFromDB>('maquinarias') ?? []);
+
   const { data: personal = [] } = useQuery({
     queryKey: ['personal_selector'],
     queryFn: async () => {

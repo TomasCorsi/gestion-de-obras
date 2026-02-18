@@ -63,6 +63,27 @@ export default defineConfig(({ mode }) => ({
               },
             },
           },
+          {
+            // Cache Supabase API responses for obras, maquinarias, personal
+            urlPattern: ({ url }: { url: URL }) => {
+              return url.hostname.includes('supabase') &&
+                (url.pathname.includes('/rest/v1/obras') ||
+                 url.pathname.includes('/rest/v1/maquinarias') ||
+                 url.pathname.includes('/rest/v1/personal'));
+            },
+            handler: "NetworkFirst" as const,
+            options: {
+              cacheName: "supabase-reference-data",
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+              networkTimeoutSeconds: 5,
+            },
+          },
         ],
       },
     }),
