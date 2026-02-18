@@ -71,31 +71,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Get initial session first
     const initializeAuth = async () => {
       try {
+        // getSession() ya usa el refresh token internamente si el access token expiró
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
         if (session?.user) {
-          // Sesión válida, usar directamente
           setSession(session);
           setUser(session.user);
           await fetchUserData(session.user.id);
         } else {
-          // Sin sesión o token expirado - intentar refresh
-          console.debug('[Auth] No valid session, attempting refresh...');
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (!isMounted) return;
-          
-          if (refreshData.session?.user) {
-            console.debug('[Auth] Session recovered via refresh');
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-            await fetchUserData(refreshData.session.user.id);
-          } else {
-            // Definitivamente no hay sesión
-            setSession(null);
-            setUser(null);
-          }
+          // No hay sesión recuperable → ir al login directamente
+          setSession(null);
+          setUser(null);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
@@ -121,26 +109,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return;
         }
         
-        // Log silencioso para debugging
+        // En refresh de token solo actualizamos la sesión sin disparar re-renders innecesarios
         if (event === 'TOKEN_REFRESHED') {
           console.debug('[Auth] Token refreshed silently');
-        }
-        
-        // Si se cierra sesión inesperadamente, intentar recuperar
-        if (event === 'SIGNED_OUT' && session === null) {
-          console.debug('[Auth] Unexpected sign out, attempting recovery...');
-          try {
-            const { data } = await supabase.auth.getSession();
-            if (data.session && isMounted) {
-              console.debug('[Auth] Session recovered successfully');
-              setSession(data.session);
-              setUser(data.session.user);
-              fetchUserData(data.session.user.id);
-              return;
-            }
-          } catch (e) {
-            console.warn('[Auth] Session recovery failed:', e);
-          }
+          setSession(session);
+          return;
         }
         
         setSession(session);

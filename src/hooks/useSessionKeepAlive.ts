@@ -11,10 +11,6 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
   const isRefreshing = useRef(false);
   const lastRefreshAt = useRef(0);
 
-  // Evita refrescar en cada "focus" de pestaña (causa re-renders visibles).
-  // Si el usuario vuelve en menos de este umbral, no forzamos refresh.
-  const VISIBILITY_REFRESH_MIN_INTERVAL = 10 * 60 * 1000; // 10 minutos
-
   // Registrar actividad del usuario silenciosamente
   const updateActivity = useCallback(() => {
     lastActivity.current = Date.now();
@@ -23,10 +19,6 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
   // Renovar sesión silenciosamente (para el intervalo periódico)
   const silentRefresh = useCallback(async () => {
     if (!isAuthenticated || isRefreshing.current) return;
-
-    if (lastRefreshAt.current && Date.now() - lastRefreshAt.current < VISIBILITY_REFRESH_MIN_INTERVAL) {
-      return;
-    }
 
     const isActive = Date.now() - lastActivity.current < ACTIVITY_TIMEOUT;
     
@@ -65,10 +57,9 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     }
   }, [isAuthenticated]);
 
-  // Refresh forzado al reabrir la PWA (sin chequeo de actividad)
+  // Refresh forzado al reabrir la PWA (sin throttle — isRefreshing ya previene duplicados)
   const forceRefreshOnWake = useCallback(async () => {
     if (!isAuthenticated || isRefreshing.current) return;
-    if (lastRefreshAt.current && Date.now() - lastRefreshAt.current < VISIBILITY_REFRESH_MIN_INTERVAL) return;
 
     isRefreshing.current = true;
     try {
@@ -96,11 +87,11 @@ export function useSessionKeepAlive(isAuthenticated: boolean) {
     // Renovar periódicamente
     refreshIntervalRef.current = setInterval(silentRefresh, REFRESH_INTERVAL);
 
-    // Renovar cuando la pestaña vuelve a estar visible (PWA wake-up)
+    // Renovar cuando la pestaña vuelve a estar visible (PWA wake-up) — sin throttle
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         updateActivity();
-        setTimeout(forceRefreshOnWake, 1000);
+        setTimeout(forceRefreshOnWake, 500);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
