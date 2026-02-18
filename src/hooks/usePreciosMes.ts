@@ -81,3 +81,25 @@ export function usePreciosMes(anio: number, mes: number | undefined) {
     isSaving: upsertMutation.isPending,
   };
 }
+
+export function usePreciosTodos(anio: number) {
+  const { data: precios = [] } = useQuery({
+    queryKey: ["precios_productos_mes_todos", anio],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("precios_productos_mes" as any)
+        .select("*")
+        .eq("anio", anio);
+      if (error) throw error;
+      return (data || []) as unknown as PrecioProductoMes[];
+    },
+  });
+
+  // Mapa indexado por "mes-producto" → precio
+  const preciosPorMesProducto: Record<string, number> = {};
+  for (const p of precios) {
+    preciosPorMesProducto[`${p.mes}-${p.producto}`] = p.precio_unitario;
+  }
+
+  return { preciosPorMesProducto };
+}
