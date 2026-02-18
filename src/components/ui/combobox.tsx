@@ -62,10 +62,10 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50 max-h-[80vh]" align="start">
         <Command className="bg-popover">
           <CommandInput placeholder={searchPlaceholder} className="h-9" />
-          <CommandList>
+          <CommandList className="max-h-[260px] overflow-y-auto overscroll-contain touch-pan-y">
             <CommandEmpty>{emptyText}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
