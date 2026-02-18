@@ -1,26 +1,38 @@
 
-## Corregir etapas faltantes en el PDF de certificados tipo Obra
+## Permitir edición del parte del día anterior
 
-### Problema
-Al generar el PDF del certificado CERT-001 de Pride Center, solo aparece "ETAPA 2". Las etapas "ESTACIONAMIENTO" y "ALIVIADOR DE LAGUNA" no se muestran.
+### Problema actual
+En `src/components/parte-diario/ParteDiarioListView.tsx`, la variable `canEdit` se calcula usando únicamente `isToday(parteDate)`. Si la fecha del parte no es hoy, el sistema redirige al modal de detalle (solo lectura) en lugar de abrir el formulario de edición.
 
-**Causa raiz:** Cuando se guarda un certificado, solo se insertan items con `cantidad > 0` (linea 316 de `useCertificados.ts`). Esto es correcto para no guardar datos vacios. Sin embargo, al generar el PDF de tipo "obra", solo se pasan esos items guardados. Los conceptos de otras etapas que no tuvieron avance en este periodo quedan fuera del PDF, incluso si deberian mostrarse con avance anterior o simplemente como parte del contrato completo.
+### Solución
+Cambiar la condición de `canEdit` para que también permita editar partes del día anterior ("ayer"). El resto del sistema (formulario, guardado, mutations) ya funciona correctamente para editar cualquier parte existente — la única restricción era esta comprobación de fecha en la vista de lista.
 
-### Solucion
-Modificar la generacion del PDF para certificados tipo "obra": en lugar de usar solo los items guardados del certificado, combinar todos los conceptos activos de la obra con los items del certificado. Asi, todas las etapas aparecen en el PDF mostrando su estado completo (avance anterior, actual y acumulado).
+### Cambios técnicos
 
-### Cambios tecnicos
+**Archivo: `src/components/parte-diario/ParteDiarioListView.tsx`**
 
-**Archivo: `src/pages/Certificados.tsx`** (funcion `handleDownloadPDF`)
+Importar `isYesterday` de `date-fns` junto a `isToday`, y cambiar la condición en dos lugares:
 
-Cuando el certificado es tipo "obra":
-1. Obtener todos los conceptos activos de la obra
-2. Para cada concepto, buscar si tiene un item en el certificado actual
-3. Crear una lista completa de items: los que tienen datos del certificado usan esos datos, y los que no, se crean con cantidad 0 y su precio unitario del concepto
-4. Pasar esta lista completa al generador de PDF
+```
+// Antes:
+const canEdit = isToday(parteDate);
 
-Esto asegura que todas las etapas (ETAPA 2, ESTACIONAMIENTO, ALIVIADOR DE LAGUNA) aparezcan en el PDF con sus valores correctos, incluso si no tuvieron avance en el periodo actual.
+// Después:
+const canEdit = isToday(parteDate) || isYesterday(parteDate);
+```
 
-**Archivo: `src/utils/generateCertificadoPDF.ts`** (funcion `generateObraPDF`)
+Esto afecta:
+1. La función `handleCardClick` — para decidir si abrir el formulario o el modal de detalle
+2. El cálculo del mismo `canEdit` en el `.map()` — para mostrar el ícono de "Editar" o "Ver detalle"
 
-No requiere cambios estructurales. La funcion ya maneja correctamente items con cantidad 0 (mostraria 0% actual y los valores acumulados correspondientes). Solo recibira mas items de los que recibia antes.
+Además, se actualizará el texto del indicador visual para que diga algo como "Editar (ayer)" en el caso del día anterior, dejando claro al empleado que está editando un parte de ayer.
+
+### Sin cambios en backend
+No se requieren cambios en la base de datos ni en las políticas de seguridad. La política RLS ya permite que los empleados modifiquen sus propios partes sin restricción de fecha:
+
+```sql
+-- "Employees can manage own partes"
+personal_id IN (SELECT personal.id FROM personal WHERE personal.user_id = auth.uid())
+```
+
+El hook `useParteDiario` también soporta actualizar cualquier parte por `id` sin restricción de fecha.
