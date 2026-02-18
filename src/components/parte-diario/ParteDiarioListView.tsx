@@ -3,7 +3,7 @@ import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar, Lock, Pencil, Eye } 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, isToday } from "date-fns";
+import { format, parseISO, isToday, isYesterday } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import type { ParteDiario } from "@/hooks/useParteDiario";
@@ -24,7 +24,7 @@ export const ParteDiarioListView = ({
 
   const handleCardClick = (parte: ParteDiario) => {
     const parteDate = parseISO(parte.fecha);
-    const canEdit = isToday(parteDate);
+    const canEdit = isToday(parteDate) || isYesterday(parteDate);
     
     if (canEdit) {
       onEdit(parte);
@@ -51,7 +51,9 @@ export const ParteDiarioListView = ({
         {partes.map((parte) => {
           const isBorrador = (parte as any).estado === 'borrador';
           const parteDate = parseISO(parte.fecha);
-          const canEdit = isToday(parteDate);
+          const isHoy = isToday(parteDate);
+          const isAyer = isYesterday(parteDate);
+          const canEdit = isHoy || isAyer;
           
           return (
             <Card 
@@ -126,18 +128,18 @@ export const ParteDiarioListView = ({
                       </span>
                     )}
                     
-                    {/* Indicador de editable/ver detalle */}
-                    {canEdit ? (
-                      <span className="flex items-center gap-1 text-xs text-primary">
-                        <Pencil className="w-3 h-3" />
-                        Editar
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Eye className="w-3 h-3" />
-                        Ver detalle
-                      </span>
-                    )}
+                     {/* Indicador de editable/ver detalle */}
+                     {canEdit ? (
+                       <span className="flex items-center gap-1 text-xs text-primary">
+                         <Pencil className="w-3 h-3" />
+                         {isAyer ? "Editar (ayer)" : "Editar"}
+                       </span>
+                     ) : (
+                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                         <Eye className="w-3 h-3" />
+                         Ver detalle
+                       </span>
+                     )}
                   </div>
                 </div>
               </CardContent>
