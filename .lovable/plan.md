@@ -1,53 +1,95 @@
 
-## Corregir scroll en Combobox y bloqueo del navegador de fechas
+## Tabla de precios mensuales por producto (Repartidor)
 
-### Problema 1: Sin scroll táctil en los selectores (Combobox)
+### Objetivo
+Agregar una sección de "Precios del Mes" dentro del tab **Repartidor** en la página de Gastos, donde los administradores puedan definir el precio por unidad (litro/kg) de cada producto (combustible, grasa, aceite, urea) para cada mes. La tabla de cargas existente mostrará automáticamente el costo calculado usando esos precios.
 
-En `src/components/ui/combobox.tsx`, el componente `CommandList` no tiene una altura máxima definida. En dispositivos móviles, cuando la lista de operadores, obras o maquinarias es larga, el popover crece sin límite y no permite hacer scroll con el dedo porque no hay un contenedor con `overflow-y: auto` y el flag `touch-action` apropiado.
+### Solución completa
 
-**Solución**: Agregar `max-h-60 overflow-y-auto overscroll-contain` al `CommandList`, y asegurarse de que el `PopoverContent` tenga un `max-h` para no salir de la pantalla. También se agrega `-webkit-overflow-scrolling: touch` a través de la clase `touch-pan-y` de Tailwind para garantizar scroll suave en iOS.
+#### Base de datos — nueva tabla `precios_productos_mes`
 
-### Problema 2: El botón "siguiente día" se bloquea y no puede volver al día de hoy
+Se creará una tabla con la siguiente estructura:
 
-En `src/pages/ParteDiario.tsx`, la variable `isToday` se calcula así:
+| Columna | Tipo | Descripción |
+|---|---|---|
+| `id` | uuid | Clave primaria |
+| `anio` | integer | Año (ej: 2025) |
+| `mes` | integer | Mes 1-12 |
+| `producto` | text | 'combustible', 'grasa', 'aceite', 'uria' |
+| `precio_unitario` | numeric | Precio por litro o kg |
+| `created_at` / `updated_at` | timestamptz | Auditoría |
 
-```typescript
-const todayStr = new Date().toISOString().split('T')[0];
-const selectedDateStr = selectedDate.toISOString().split('T')[0];
-const isToday = selectedDateStr === todayStr;
+Constraint único: `(anio, mes, producto)` — solo un precio por producto por mes.
+
+**Políticas RLS:**
+- Solo admins y capataces pueden leer y gestionar los precios
+- Los maquinistas y repartidores no tienen acceso (la tabla es solo administrativa)
+
+#### Nuevo hook `usePreciosMes.ts`
+
+- `fetchPrecios(anio, mes)`: trae los precios del mes seleccionado
+- `upsertPrecio(anio, mes, producto, precio)`: inserta o actualiza un precio (upsert por constraint único)
+- Retorna los precios indexados por producto para fácil acceso
+
+#### Nueva UI — Panel de precios en `CombustibleRepartidorTab`
+
+Se agregará un panel colapsable (o un bloque fijo) encima de la tabla con:
+
+**Sub-tab o sección "Precios del Mes":**
+- Un selector de mes/año (ya existe en el tab)
+- Una tabla compacta con 4 filas: Combustible, Grasa, Aceite, Urea
+- Cada fila tiene un input de precio editable con botón "Guardar"
+- Muestra un indicador visual si el precio está configurado o no para ese mes
+
+**Tabla de cargas — columna "Costo":**
+- Se agregarán dos columnas nuevas: **Precio unit.** y **Costo total**
+- El costo se calcula: `cantidad × precio_del_mes_correspondiente`
+- Si no hay precio configurado para ese mes/producto, muestra "Sin precio"
+- Al final de la tabla, un resumen: **Total del período: $X.XXX**
+
+#### Flujo de uso
+
+```text
+Admin abre Gastos → Tab Repartidor
+         ↓
+Selecciona mes (ej: Marzo 2025)
+         ↓
+Panel "Precios del mes" muestra las 4 filas de productos
+         ↓
+Admin ingresa precios y guarda (upsert en BD)
+         ↓
+La tabla de cargas de ese mes calcula automáticamente
+el costo de cada entrega y muestra el total
 ```
 
-El método `.toISOString()` siempre devuelve la fecha en **UTC**. En Argentina (UTC-3), si son las 21:01 hs locales, `new Date().toISOString()` devuelve `"2025-xx-xxT00:01:00Z"` — es decir, **la fecha de mañana en UTC**. Esto hace que `isToday` sea `false` aunque el usuario esté en el "día de hoy" local, lo que causa:
+### Archivos a crear/modificar
 
-- Que el botón "siguiente" no esté deshabilitado correctamente
-- Que se pueda avanzar más allá de hoy
-- Que la lógica de `handleNextDay` permita una fecha futura, y luego el usuario ya no puede avanzar más pero tampoco puede retroceder (porque no hay cargas)
+**1. Migración SQL** (nueva tabla `precios_productos_mes` con RLS)
 
-**Adicionalmente**, en `ParteDiarioHomeView.tsx`, el botón "Entrega" está `disabled={!isTodayProp}`, por lo que cuando el bug activa incorrectamente `isToday = false`, el repartidor tampoco puede registrar nuevas entregas.
+**2. `src/hooks/usePreciosMes.ts`** (nuevo)
+- Query + mutación para leer y guardar precios por mes
 
-**Solución**: Reemplazar el cálculo basado en `toISOString()` (UTC) por uno basado en la fecha local del dispositivo usando `toLocaleDateString` con formato `'sv-SE'` (que devuelve `YYYY-MM-DD` en hora local), o simplemente construyendo el string de fecha local manualmente:
+**3. `src/components/gastos/CombustibleRepartidorTab.tsx`** (modificar)
+- Agregar panel de precios del mes (tabla de 4 productos con inputs editables)
+- Agregar columnas "Precio unit." y "Costo" en la tabla de cargas
+- Agregar fila de totales al pie de la tabla con el costo total del período
 
-```typescript
-// Antes (buggy en zonas horarias UTC-):
-const todayStr = new Date().toISOString().split('T')[0]; // USA UTC
+### Diseño del panel de precios
 
-// Después (correcto):
-const today = new Date();
-const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+El panel de precios tendrá este aspecto:
+
+```text
+┌─────────────────────────────────────────────┐
+│ 💰 Precios del Mes — Marzo 2025             │
+├──────────────┬───────────────┬──────────────┤
+│ Producto     │ Precio/unidad │              │
+├──────────────┼───────────────┼──────────────┤
+│ 🛢️ Combustible│ $ [    950  ] │ [Guardar]    │
+│ 🧴 Grasa     │ $ [   3500  ] │ [Guardar]    │
+│ 🫗 Aceite    │ $ [   4200  ] │ [Guardar]    │
+│ 💧 Urea      │ $ [    800  ] │ [Guardar]    │
+└──────────────┴───────────────┴──────────────┘
 ```
 
-Lo mismo para `selectedDateStr` y para la guardia en `handleNextDay`.
-
----
-
-### Archivos a modificar
-
-**1. `src/components/ui/combobox.tsx`**
-- Agregar `max-h-[280px] overflow-y-auto overscroll-contain` al `CommandList`
-- Agregar `max-h-[80vh]` al `PopoverContent` para que no desborde la pantalla en móvil
-
-**2. `src/pages/ParteDiario.tsx`**
-- Cambiar el cálculo de `todayStr` y `selectedDateStr` para usar hora local en lugar de UTC
-- Actualizar la guardia en `handleNextDay` para comparar strings locales correctamente
-
-Estos dos cambios resuelven ambos problemas reportados sin afectar ninguna otra funcionalidad.
+### Sin cambios en la carga del repartidor (móvil)
+La pantalla del repartidor para cargar entregas **no se modifica**. Los precios son solo para el cálculo administrativo en la vista de Gastos.
