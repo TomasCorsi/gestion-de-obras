@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
-import { usePreciosMes } from "@/hooks/usePreciosMes";
+import { usePreciosMes, usePreciosTodos } from "@/hooks/usePreciosMes";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -208,6 +208,7 @@ export function CombustibleRepartidorTab() {
   // Prices for the selected month
   const mesNum = mes ? parseInt(mes, 10) : undefined;
   const { preciosPorProducto } = usePreciosMes(year, mesNum);
+  const { preciosPorMesProducto } = usePreciosTodos(year);
 
   const mesLabel = mes ? meses.find((m) => m.value === mes)?.label ?? "" : "";
 
@@ -239,17 +240,17 @@ export function CombustibleRepartidorTab() {
   }, [cargas, mes, year, searchTerm, fechaFiltro]);
 
   // Calculate cost per row using monthly prices
-  // For specific day filter, determine month from the date
   const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
     const producto = carga.tipo_producto || "combustible";
+
     if (mes && !fechaFiltro) {
+      // Mes específico seleccionado → usa los precios ya cargados del mes
       return preciosPorProducto[producto];
     }
-    // When filtering by exact day, we still use the same month's price
-    if (fechaFiltro) {
-      return preciosPorProducto[producto];
-    }
-    return preciosPorProducto[producto];
+
+    // Sin filtro de mes o filtro por día exacto: buscar precio según la fecha de la carga
+    const fechaMes = parseInt(carga.fecha.split("-")[1], 10);
+    return preciosPorMesProducto[`${fechaMes}-${producto}`];
   };
 
   const totalLitros = filtered.reduce((sum, c) => sum + (c.litros || 0), 0);
