@@ -1,95 +1,93 @@
 
-## Tabla de precios mensuales por producto (Repartidor)
+## Mostrar costos y totales sin filtro de mes (vista de todos los meses)
 
-### Objetivo
-Agregar una sección de "Precios del Mes" dentro del tab **Repartidor** en la página de Gastos, donde los administradores puedan definir el precio por unidad (litro/kg) de cada producto (combustible, grasa, aceite, urea) para cada mes. La tabla de cargas existente mostrará automáticamente el costo calculado usando esos precios.
+### Diagnóstico
 
-### Solución completa
+El problema central está en `usePreciosMes`: solo carga precios cuando hay un mes seleccionado (`enabled: !!mes`). Cuando el usuario ve "Todos los meses", no hay precios disponibles y por lo tanto:
+- Las columnas "Precio U." y "Costo" muestran "Sin precio" en todas las filas
+- El total del período no aparece
+- El KPI de "Costo Total" muestra el promedio en lugar de un número en pesos
 
-#### Base de datos — nueva tabla `precios_productos_mes`
+### Solución
 
-Se creará una tabla con la siguiente estructura:
+**Nuevo hook `usePreciosTodos`**: Trae todos los registros de `precios_productos_mes` del año seleccionado (sin filtrar por mes). Devuelve un mapa indexado por `"mes-producto"` para que cada carga pueda buscar su precio correspondiente.
 
-| Columna | Tipo | Descripción |
+**Lógica de cálculo por carga**: La función `getPrecioForCarga` debe extraer el mes de la fecha de cada entrega y buscarlo en el mapa completo cuando no hay mes seleccionado.
+
+**Panel de precios**: Se mantiene igual, requiriendo un mes específico para editar. Cuando no hay mes seleccionado, muestra el mensaje actual.
+
+---
+
+### Cambios técnicos
+
+#### 1. `src/hooks/usePreciosMes.ts` — agregar nueva función exportada
+
+Se agrega `usePreciosTodos(anio)`:
+
+```typescript
+export function usePreciosTodos(anio: number) {
+  const { data: precios = [] } = useQuery({
+    queryKey: ["precios_productos_mes_todos", anio],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("precios_productos_mes")
+        .select("*")
+        .eq("anio", anio);
+      if (error) throw error;
+      return data as PrecioProductoMes[];
+    },
+  });
+
+  // Mapa indexado por "mes-producto" → precio
+  const preciosPorMesProducto: Record<string, number> = {};
+  for (const p of precios) {
+    preciosPorMesProducto[`${p.mes}-${p.producto}`] = p.precio_unitario;
+  }
+
+  return { preciosPorMesProducto };
+}
+```
+
+#### 2. `src/components/gastos/CombustibleRepartidorTab.tsx` — usar precios de todos los meses
+
+**Importar y usar `usePreciosTodos`:**
+
+```typescript
+const { preciosPorMesProducto } = usePreciosTodos(year);
+```
+
+**Actualizar `getPrecioForCarga`** para que cuando no hay filtro de mes específico, extraiga el mes de la fecha de cada carga y busque en `preciosPorMesProducto`:
+
+```typescript
+const getPrecioForCarga = (carga: typeof filtered[0]) => {
+  const producto = carga.tipo_producto || "combustible";
+  
+  if (mes) {
+    // Mes específico seleccionado → usa los precios ya cargados del mes
+    return preciosPorProducto[producto];
+  }
+  
+  // Vista de todos los meses o filtro por día: buscar precio según la fecha de la carga
+  const fechaMes = parseInt(carga.fecha.split("-")[1], 10);
+  return preciosPorMesProducto[`${fechaMes}-${producto}`];
+};
+```
+
+Esto funciona para todos los escenarios:
+- Filtro por mes → usa `preciosPorProducto` (cargado por `usePreciosMes`)
+- Sin filtro (todos los meses) → usa `preciosPorMesProducto` con la fecha de cada carga
+- Filtro por día exacto → usa `preciosPorMesProducto` con el mes de la fecha del día
+
+### Resultado esperado
+
+| Escenario | Antes | Después |
 |---|---|---|
-| `id` | uuid | Clave primaria |
-| `anio` | integer | Año (ej: 2025) |
-| `mes` | integer | Mes 1-12 |
-| `producto` | text | 'combustible', 'grasa', 'aceite', 'uria' |
-| `precio_unitario` | numeric | Precio por litro o kg |
-| `created_at` / `updated_at` | timestamptz | Auditoría |
+| Filtro por mes | ✅ Muestra costos | ✅ Sin cambios |
+| Sin filtro (todos) | ❌ Sin precio en todas | ✅ Cada fila usa el precio de su mes |
+| Filtro por día | ⚠️ Usa precio del mes seleccionado | ✅ Usa precio del mes del día filtrado |
+| Total del período | ❌ No aparece sin mes | ✅ Suma todos los que tienen precio configurado |
 
-Constraint único: `(anio, mes, producto)` — solo un precio por producto por mes.
+### Archivos a modificar
 
-**Políticas RLS:**
-- Solo admins y capataces pueden leer y gestionar los precios
-- Los maquinistas y repartidores no tienen acceso (la tabla es solo administrativa)
-
-#### Nuevo hook `usePreciosMes.ts`
-
-- `fetchPrecios(anio, mes)`: trae los precios del mes seleccionado
-- `upsertPrecio(anio, mes, producto, precio)`: inserta o actualiza un precio (upsert por constraint único)
-- Retorna los precios indexados por producto para fácil acceso
-
-#### Nueva UI — Panel de precios en `CombustibleRepartidorTab`
-
-Se agregará un panel colapsable (o un bloque fijo) encima de la tabla con:
-
-**Sub-tab o sección "Precios del Mes":**
-- Un selector de mes/año (ya existe en el tab)
-- Una tabla compacta con 4 filas: Combustible, Grasa, Aceite, Urea
-- Cada fila tiene un input de precio editable con botón "Guardar"
-- Muestra un indicador visual si el precio está configurado o no para ese mes
-
-**Tabla de cargas — columna "Costo":**
-- Se agregarán dos columnas nuevas: **Precio unit.** y **Costo total**
-- El costo se calcula: `cantidad × precio_del_mes_correspondiente`
-- Si no hay precio configurado para ese mes/producto, muestra "Sin precio"
-- Al final de la tabla, un resumen: **Total del período: $X.XXX**
-
-#### Flujo de uso
-
-```text
-Admin abre Gastos → Tab Repartidor
-         ↓
-Selecciona mes (ej: Marzo 2025)
-         ↓
-Panel "Precios del mes" muestra las 4 filas de productos
-         ↓
-Admin ingresa precios y guarda (upsert en BD)
-         ↓
-La tabla de cargas de ese mes calcula automáticamente
-el costo de cada entrega y muestra el total
-```
-
-### Archivos a crear/modificar
-
-**1. Migración SQL** (nueva tabla `precios_productos_mes` con RLS)
-
-**2. `src/hooks/usePreciosMes.ts`** (nuevo)
-- Query + mutación para leer y guardar precios por mes
-
-**3. `src/components/gastos/CombustibleRepartidorTab.tsx`** (modificar)
-- Agregar panel de precios del mes (tabla de 4 productos con inputs editables)
-- Agregar columnas "Precio unit." y "Costo" en la tabla de cargas
-- Agregar fila de totales al pie de la tabla con el costo total del período
-
-### Diseño del panel de precios
-
-El panel de precios tendrá este aspecto:
-
-```text
-┌─────────────────────────────────────────────┐
-│ 💰 Precios del Mes — Marzo 2025             │
-├──────────────┬───────────────┬──────────────┤
-│ Producto     │ Precio/unidad │              │
-├──────────────┼───────────────┼──────────────┤
-│ 🛢️ Combustible│ $ [    950  ] │ [Guardar]    │
-│ 🧴 Grasa     │ $ [   3500  ] │ [Guardar]    │
-│ 🫗 Aceite    │ $ [   4200  ] │ [Guardar]    │
-│ 💧 Urea      │ $ [    800  ] │ [Guardar]    │
-└──────────────┴───────────────┴──────────────┘
-```
-
-### Sin cambios en la carga del repartidor (móvil)
-La pantalla del repartidor para cargar entregas **no se modifica**. Los precios son solo para el cálculo administrativo en la vista de Gastos.
+1. **`src/hooks/usePreciosMes.ts`** — agregar `usePreciosTodos` al final del archivo
+2. **`src/components/gastos/CombustibleRepartidorTab.tsx`** — importar `usePreciosTodos`, usarlo en el componente y actualizar `getPrecioForCarga`
