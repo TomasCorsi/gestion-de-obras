@@ -363,7 +363,8 @@ function renderTotalsBox(
 // ─── Servicio PDF ───────────────────────────────────────────────
 function generateServicioPDF(
   doc: jsPDF, yPos: number, margin: number, pageWidth: number,
-  certificado: Certificado, items: CertificadoItem[], categoriaMap: Record<string, string>
+  certificado: Certificado, items: CertificadoItem[], categoriaMap: Record<string, string>,
+  skipTotals = false
 ): number {
   const itemsByCategory = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
@@ -423,11 +424,13 @@ function generateServicioPDF(
   yPos = (doc as any).lastAutoTable.finalY + 6;
 
   // Totals
-  yPos = renderTotalsBox(doc, margin, pageWidth, yPos, [
-    { label: "Subtotal:", value: formatCurrency(certificado.subtotal) },
-    { label: "IVA (21%):", value: formatCurrency(certificado.iva) },
-    { label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true },
-  ]);
+  if (!skipTotals) {
+    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, [
+      { label: "Subtotal:", value: formatCurrency(certificado.subtotal) },
+      { label: "IVA (21%):", value: formatCurrency(certificado.iva) },
+      { label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true },
+    ]);
+  }
 
   return yPos;
 }
@@ -439,7 +442,8 @@ function generateObraPDF(
   etapaMap: Record<string, string>, cantidadTotalMap: Record<string, number>,
   acumulados: AcumuladoConcepto[],
   etapaOrdenMap?: Record<string, number>,
-  categoriaMap?: Record<string, string>
+  categoriaMap?: Record<string, string>,
+  skipTotals = false
 ): number {
   const itemsByEtapa = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
@@ -467,7 +471,7 @@ function generateObraPDF(
     if (etapaItems.length === 0) return;
 
     tableData.push([{
-      content: "SUB CATEGORÍA: " + etapaName.toUpperCase(),
+      content: etapaName.toUpperCase(),
       colSpan: 11,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
@@ -544,21 +548,23 @@ function generateObraPDF(
   yPos = (doc as any).lastAutoTable.finalY + 6;
 
   // Totals
-  const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [
-    { label: "Avance Anterior:", value: formatCurrency(totalAvAnterior) },
-    { label: "Avance Actual:", value: formatCurrency(totalAvActual) },
-    { label: "Avance Acumulado:", value: formatCurrency(totalAvAcumulado), bold: true },
-  ];
+  if (!skipTotals) {
+    const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [
+      { label: "Avance Anterior:", value: formatCurrency(totalAvAnterior) },
+      { label: "Avance Actual:", value: formatCurrency(totalAvActual) },
+      { label: "Avance Acumulado:", value: formatCurrency(totalAvAcumulado), bold: true },
+    ];
 
-  if (certificado.anticipo_porcentaje > 0) {
-    const anticipoMonto = Math.round(totalAvAcumulado * (certificado.anticipo_porcentaje / 100));
-    totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
+    if (certificado.anticipo_porcentaje > 0) {
+      const anticipoMonto = Math.round(totalAvAcumulado * (certificado.anticipo_porcentaje / 100));
+      totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
+    }
+
+    totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+    totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
+
+    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
   }
-
-  totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
-  totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
-
-  yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
 
   return yPos;
 }
@@ -577,34 +583,39 @@ function generateMixtoPDF(
 
   // --- SECCIÓN OBRA ---
   if (obraItems.length > 0) {
-    // Section header
-    doc.setFillColor(...CORP_DARK_RED);
-    doc.rect(margin, yPos, pageWidth - margin * 2, 7, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...WHITE);
-    doc.text("SECCIÓN OBRA — Avance Acumulado", margin + 3, yPos + 5);
-    doc.setTextColor(0, 0, 0);
-    yPos += 10;
-
-    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, obraItems, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
+    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, obraItems, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap, true);
   }
 
   // --- SECCIÓN SERVICIO ---
   if (servicioItems.length > 0) {
-    yPos += 4;
-    // Section header
-    doc.setFillColor(80, 80, 80);
-    doc.rect(margin, yPos, pageWidth - margin * 2, 7, "F");
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...WHITE);
-    doc.text("SECCIÓN SERVICIO — Precio × Cantidad", margin + 3, yPos + 5);
-    doc.setTextColor(0, 0, 0);
-    yPos += 10;
-
-    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, servicioItems, categoriaMap || {});
+    if (obraItems.length > 0) yPos += 4;
+    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, servicioItems, categoriaMap || {}, true);
   }
+
+  // --- TOTALES UNIFICADOS AL FINAL ---
+  const obraSubtotal = obraItems.reduce((s, i) => s + i.subtotal, 0);
+  const servicioSubtotal = servicioItems.reduce((s, i) => s + i.subtotal, 0);
+  const totalSub = obraSubtotal + servicioSubtotal;
+
+  const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
+
+  if (obraItems.length > 0) {
+    totalsLines.push({ label: "Subtotal Obra:", value: formatCurrency(obraSubtotal) });
+  }
+  if (servicioItems.length > 0) {
+    totalsLines.push({ label: "Subtotal Servicio:", value: formatCurrency(servicioSubtotal) });
+  }
+  totalsLines.push({ label: "Subtotal General:", value: formatCurrency(totalSub), bold: true });
+
+  if (certificado.anticipo_porcentaje > 0) {
+    const anticipoMonto = Math.round(totalSub * (certificado.anticipo_porcentaje / 100));
+    totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
+  }
+
+  totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+  totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
+
+  yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
 
   return yPos;
 }

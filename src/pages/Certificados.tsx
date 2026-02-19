@@ -1090,7 +1090,7 @@ export default function Certificados() {
                         const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                         return (
                           <div key={group.etapa}>
-                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
+                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
                             <div className="overflow-x-auto">
                               <Table>
                                <TableHeader>
@@ -1184,7 +1184,7 @@ export default function Certificados() {
                             const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                             return (
                               <div key={group.etapa}>
-                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
+                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
                                 <div className="overflow-x-auto">
                                   <Table>
                                     <TableHeader>
