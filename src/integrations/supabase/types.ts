@@ -369,6 +369,7 @@ export type Database = {
           etapa: string | null
           id: string
           precio_unitario: number
+          seccion: string | null
           subtotal: number
           unidad: string
         }
@@ -381,6 +382,7 @@ export type Database = {
           etapa?: string | null
           id?: string
           precio_unitario?: number
+          seccion?: string | null
           subtotal?: number
           unidad: string
         }
@@ -393,6 +395,7 @@ export type Database = {
           etapa?: string | null
           id?: string
           precio_unitario?: number
+          seccion?: string | null
           subtotal?: number
           unidad?: string
         }

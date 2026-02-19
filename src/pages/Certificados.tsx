@@ -224,6 +224,8 @@ export default function Certificados() {
   const [itemsDraft, setItemsDraft] = useState<CertificadoItemForm[]>([]);
   const [tipoCert, setTipoCert] = useState<TipoCertificado>("servicio");
   const [anticipoPorcentaje, setAnticipoPorcentaje] = useState(0);
+  // For "Agregar concepto" dialogs — null = not open, "obra" | "servicio" = which section
+  const [addExtraConceptoSection, setAddExtraConceptoSection] = useState<string | null>(null);
   const [numeroCert, setNumeroCert] = useState("");
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
   // State for adding extra concepts to an existing certificate during edit
@@ -231,9 +233,10 @@ export default function Certificados() {
 
   const isEditing = !!editingCertId;
 
-  // Fetch acumulados when tipo is obra and dialog is open
+
+  // Fetch acumulados when tipo is obra or mixto and dialog is open
   useEffect(() => {
-    if (crearOpen && tipoCert === "obra" && selectedObraId && periodo) {
+    if (crearOpen && (tipoCert === "obra" || tipoCert === "mixto") && selectedObraId && periodo) {
       fetchAcumulados(selectedObraId, periodo, editingCertId || undefined).then(setAcumulados);
     } else {
       setAcumulados([]);
@@ -279,6 +282,7 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
+      seccion: item.seccion || null,
     }));
 
     setItemsDraft(draft);
@@ -308,6 +312,7 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
+      seccion: item.seccion || null,
     }));
 
     setItemsDraft(draft);
@@ -349,7 +354,7 @@ export default function Certificados() {
     (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id)
   );
 
-  const addConceptoToDraft = (conceptoId: string) => {
+  const addConceptoToDraft = (conceptoId: string, seccion?: string | null) => {
     const c = conceptos.find((x) => x.id === conceptoId);
     if (!c) return;
     setItemsDraft((prev) => [
@@ -364,9 +369,11 @@ export default function Certificados() {
         categoria: c.categoria,
         etapa: c.etapa,
         cantidad_total: c.cantidad_total,
+        seccion: seccion || null,
       },
     ]);
     setAddExtraConceptoOpen(false);
+    setAddExtraConceptoSection(null);
   };
 
   const draftSubtotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
@@ -380,15 +387,17 @@ export default function Certificados() {
   };
 
   const avanceActualTotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
-  const avanceAnteriorTotal = tipoCert === "obra"
-    ? itemsDraft.reduce((s, i) => {
-        const ac = getAcumuladoForItem(i.concepto_id);
-        return s + ac.avance_anterior;
-      }, 0)
+  const avanceAnteriorTotal = (tipoCert === "obra" || tipoCert === "mixto")
+    ? itemsDraft
+        .filter((i) => tipoCert === "obra" || i.seccion === "obra")
+        .reduce((s, i) => {
+          const ac = getAcumuladoForItem(i.concepto_id);
+          return s + ac.avance_anterior;
+        }, 0)
     : 0;
   const avanceAcumuladoTotal = avanceAnteriorTotal + avanceActualTotal;
   const anticipoMonto = Math.round(avanceAcumuladoTotal * (anticipoPorcentaje / 100));
-  const totalAPagar = avanceActualTotal; // In this period, only current avance minus nothing previously deducted individually
+  const totalAPagar = avanceActualTotal;
 
   const handleSaveCertificado = async () => {
     if (isEditing && editingCertId) {
@@ -428,7 +437,7 @@ export default function Certificados() {
     setViewItems(items);
 
     const cert = certificados.find((c) => c.id === id);
-    if (cert?.tipo === "obra" && selectedObraId) {
+    if ((cert?.tipo === "obra" || cert?.tipo === "mixto") && selectedObraId) {
       const ac = await fetchAcumulados(selectedObraId, cert.periodo, cert.id);
       setViewAcumulados(ac);
     } else {
@@ -458,29 +467,32 @@ export default function Certificados() {
 
     // For obra type, fetch acumulados and merge ALL active concepts
     let pdfAcumulados: AcumuladoConcepto[] = [];
-    if (targetCert.tipo === "obra" && selectedObraId) {
+    if ((targetCert.tipo === "obra" || targetCert.tipo === "mixto") && selectedObraId) {
       pdfAcumulados = await fetchAcumulados(selectedObraId, targetCert.periodo, targetCert.id);
 
-      // Merge all active concepts with certificate items so all stages appear in PDF
-      const allItems: CertificadoItem[] = conceptos
-        .filter((c) => c.activo)
-        .map((c) => {
-          const existingItem = targetItems.find((i) => i.concepto_id === c.id);
-          if (existingItem) return existingItem;
-          return {
-            id: `virtual-${c.id}`,
-            certificado_id: targetCert.id,
-            concepto_id: c.id,
-            descripcion: c.nombre,
-            unidad: c.unidad,
-            cantidad: 0,
-            precio_unitario: c.precio_unitario,
-            subtotal: 0,
-            etapa: c.etapa || null,
-            created_at: new Date().toISOString(),
-          } as CertificadoItem;
-        });
-      targetItems = allItems;
+      if (targetCert.tipo === "obra") {
+        // Merge all active concepts with certificate items so all stages appear in PDF
+        const allItems: CertificadoItem[] = conceptos
+          .filter((c) => c.activo)
+          .map((c) => {
+            const existingItem = targetItems.find((i) => i.concepto_id === c.id);
+            if (existingItem) return existingItem;
+            return {
+              id: `virtual-${c.id}`,
+              certificado_id: targetCert.id,
+              concepto_id: c.id,
+              descripcion: c.nombre,
+              unidad: c.unidad,
+              cantidad: 0,
+              precio_unitario: c.precio_unitario,
+              subtotal: 0,
+              etapa: c.etapa || null,
+              seccion: null,
+              created_at: new Date().toISOString(),
+            } as CertificadoItem;
+          });
+        targetItems = allItems;
+      }
     }
 
     await generateCertificadoPDF({
@@ -515,20 +527,30 @@ export default function Certificados() {
   const conceptosGrouped = groupByCategoria(conceptos);
 
   // Group draft items depending on tipo
-  const draftGroupedCategoria = groupByCategoria(itemsDraft);
-  const draftGroupedEtapa = groupByEtapa(itemsDraft, etapaOrdenMap);
+  const draftGroupedCategoria = groupByCategoria(itemsDraft.filter((i) => !i.seccion || i.seccion === "servicio"));
+  const draftGroupedEtapa = groupByEtapa(itemsDraft.filter((i) => !i.seccion || i.seccion === "obra"), etapaOrdenMap);
+  // For mixto: separate sections
+  const draftMixtoObra = itemsDraft.filter((i) => i.seccion === "obra");
+  const draftMixtoServicio = itemsDraft.filter((i) => i.seccion === "servicio");
+  const draftMixtoObraGrouped = groupByEtapa(draftMixtoObra, etapaOrdenMap);
+  const draftMixtoServicioGrouped = groupByCategoria(draftMixtoServicio);
 
   // Group view items
   const viewItemsWithCat = viewItems.map((item) => ({
     ...item,
     categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
   }));
-  const viewGroupedCategoria = groupByCategoria(viewItemsWithCat);
+  const viewGroupedCategoria = groupByCategoria(viewItemsWithCat.filter((i) => !i.seccion || i.seccion === "servicio"));
   const viewItemsWithEtapa = viewItems.map((item) => ({
     ...item,
     etapa: item.etapa || (item.concepto_id && etapaMap[item.concepto_id]) || null,
   }));
-  const viewGroupedEtapa = groupByEtapa(viewItemsWithEtapa, etapaOrdenMap);
+  const viewGroupedEtapa = groupByEtapa(viewItemsWithEtapa.filter((i) => !i.seccion || i.seccion === "obra"), etapaOrdenMap);
+  // For mixto view
+  const viewMixtoObra = viewItemsWithEtapa.filter((i) => i.seccion === "obra");
+  const viewMixtoServicio = viewItemsWithCat.filter((i) => i.seccion === "servicio");
+  const viewMixtoObraGrouped = groupByEtapa(viewMixtoObra, etapaOrdenMap);
+  const viewMixtoServicioGrouped = groupByCategoria(viewMixtoServicio);
 
   return (
     <MainLayout title="Certificados de Obra" subtitle="Gestión de certificaciones mensuales por obra">
@@ -791,12 +813,10 @@ export default function Certificados() {
                   {isEditing ? "Editar Certificado" : "Nuevo Certificado"} — {selectedObra?.nombre}
                 </DialogTitle>
                 {(() => {
-                  const groups = tipoCert === "servicio" ? draftGroupedCategoria : draftGroupedEtapa;
                   const totalConceptos = itemsDraft.length;
-                  const totalGrupos = groups.length;
-                  return totalGrupos > 1 ? (
+                  return totalConceptos > 0 ? (
                     <p className="text-xs text-muted-foreground">
-                      {totalConceptos} conceptos en {totalGrupos} {tipoCert === "servicio" ? "categorías" : "sub categorías"} — desplazá para ver todos
+                      {totalConceptos} conceptos — desplazá para ver todos
                     </p>
                   ) : null;
                 })()}
@@ -809,6 +829,7 @@ export default function Certificados() {
                     <SelectContent>
                       <SelectItem value="servicio">Servicio</SelectItem>
                       <SelectItem value="obra">Obra (con acumulados)</SelectItem>
+                      <SelectItem value="mixto">Mixto (Obra + Servicio)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -822,13 +843,13 @@ export default function Certificados() {
                     <Input value={numeroCert} onChange={(e) => setNumeroCert(e.target.value)} placeholder="CERT-001" />
                   </div>
                 )}
-                {tipoCert === "obra" && (
+                {(tipoCert === "obra" || tipoCert === "mixto") && (
                   <div>
                     <Label>Anticipo (%)</Label>
                     <Input type="number" min={0} max={100} value={anticipoPorcentaje || ""} onChange={(e) => setAnticipoPorcentaje(Number(e.target.value))} />
                   </div>
                 )}
-                <div className={tipoCert === "obra" ? "" : "sm:col-span-2"}>
+                <div className={(tipoCert === "obra" || tipoCert === "mixto") ? "" : "sm:col-span-2"}>
                   <Label>Observaciones</Label>
                   <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales..." className="min-h-[60px]" />
                 </div>
@@ -924,7 +945,7 @@ export default function Certificados() {
                         );
                       })}
                     </>
-                  ) : (
+                  ) : tipoCert === "obra" ? (
                     /* ---- OBRA: grouped by etapa with acumulado columns ---- */
                     <>
                       {draftGroupedEtapa.map((group) => {
@@ -949,6 +970,7 @@ export default function Certificados() {
                                     <TableHead className="text-right">Av. Ant.</TableHead>
                                     <TableHead className="text-right">Av. Actual</TableHead>
                                     <TableHead className="text-right">Av. Acum.</TableHead>
+                                    <TableHead className="w-8"></TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -963,50 +985,218 @@ export default function Certificados() {
                                     const avActual = item.subtotal;
                                     const avAcumulado = avAnterior + avActual;
                                     const valorTotal = cantTotal * item.precio_unitario;
-
-                                       return (
-                                       <TableRow key={globalIdx}>
-                                         <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                         <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
-                                         <TableCell>{item.unidad}</TableCell>
-                                         <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                         <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                         <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                         <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                         <TableCell>
-                                           <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
-                                         </TableCell>
-                                         <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                         <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                         <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                         <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                         <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                       </TableRow>
-                                     );
+                                    return (
+                                      <TableRow key={globalIdx}>
+                                        <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                        <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
+                                        <TableCell>{item.unidad}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                        <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                        <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                        <TableCell>
+                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
+                                        </TableCell>
+                                        <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                        <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                        <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                        <TableCell>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </TableCell>
+                                      </TableRow>
+                                    );
                                   })}
                                 </TableBody>
                                 <TableFooter>
-                                   <TableRow>
-                                     <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                     <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
-                                     <TableCell />
-                                   </TableRow>
-                                 </TableFooter>
+                                  <TableRow>
+                                    <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                    <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                    <TableCell />
+                                  </TableRow>
+                                </TableFooter>
                               </Table>
                             </div>
                           </div>
                         );
                       })}
                     </>
+                  ) : (
+                    /* ---- MIXTO: Sección Obra + Sección Servicio ---- */
+                    <>
+                      {/* SECCIÓN OBRA */}
+                      <div className="rounded-md border border-primary/30 overflow-hidden">
+                        <div className="bg-primary/10 px-4 py-2 flex items-center justify-between">
+                          <span className="font-semibold text-sm text-primary">Sección Obra (con acumulados)</span>
+                          {conceptosNoEnDraft.length > 0 && (
+                            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection("obra"); }}>
+                              <Plus className="w-3 h-3 mr-1" />Agregar concepto
+                            </Button>
+                          )}
+                        </div>
+                        {draftMixtoObraGrouped.length === 0 ? (
+                          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                            No hay conceptos de obra. Agregá uno con el botón de arriba.
+                          </div>
+                        ) : (
+                          draftMixtoObraGrouped.map((group) => {
+                            const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                            return (
+                              <div key={group.etapa}>
+                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="min-w-[120px]">Concepto</TableHead>
+                                        <TableHead>Categoría</TableHead>
+                                        <TableHead>Un.</TableHead>
+                                        <TableHead className="text-right">P. Unit.</TableHead>
+                                        <TableHead className="text-right">Cant. Total</TableHead>
+                                        <TableHead className="text-right">Valor Total</TableHead>
+                                        <TableHead className="text-right">% Ant.</TableHead>
+                                        <TableHead className="w-32">Cant. Actual</TableHead>
+                                        <TableHead className="text-right">% Actual</TableHead>
+                                        <TableHead className="text-right">% Acum.</TableHead>
+                                        <TableHead className="text-right">Av. Ant.</TableHead>
+                                        <TableHead className="text-right">Av. Actual</TableHead>
+                                        <TableHead className="text-right">Av. Acum.</TableHead>
+                                        <TableHead className="w-8"></TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {group.items.map((item) => {
+                                        const globalIdx = itemsDraft.indexOf(item);
+                                        const ac = getAcumuladoForItem(item.concepto_id);
+                                        const cantTotal = item.cantidad_total || 0;
+                                        const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
+                                        const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
+                                        const pctAcumulado = pctAnterior + pctActual;
+                                        const avAnterior = ac.avance_anterior;
+                                        const avActual = item.subtotal;
+                                        const avAcumulado = avAnterior + avActual;
+                                        const valorTotal = cantTotal * item.precio_unitario;
+                                        return (
+                                          <TableRow key={globalIdx}>
+                                            <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
+                                            <TableCell>{item.unidad}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                            <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                            <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                            <TableCell>
+                                              <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
+                                            </TableCell>
+                                            <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                            <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                            <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                            <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                            <TableCell>
+                                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                              </Button>
+                                            </TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </TableBody>
+                                    <TableFooter>
+                                      <TableRow>
+                                        <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                        <TableCell />
+                                      </TableRow>
+                                    </TableFooter>
+                                  </Table>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* SECCIÓN SERVICIO */}
+                      <div className="rounded-md border border-secondary/50 overflow-hidden mt-4">
+                        <div className="bg-secondary/30 px-4 py-2 flex items-center justify-between">
+                          <span className="font-semibold text-sm">Sección Servicio (Precio × Cantidad)</span>
+                          {conceptosNoEnDraft.length > 0 && (
+                            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection("servicio"); }}>
+                              <Plus className="w-3 h-3 mr-1" />Agregar concepto
+                            </Button>
+                          )}
+                        </div>
+                        {draftMixtoServicioGrouped.length === 0 ? (
+                          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                            No hay conceptos de servicio. Agregá uno con el botón de arriba.
+                          </div>
+                        ) : (
+                          draftMixtoServicioGrouped.map((group) => {
+                            const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
+                            return (
+                              <div key={group.categoria}>
+                                <div className="bg-muted px-3 py-1.5 text-sm font-semibold">{group.categoria}</div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Concepto</TableHead>
+                                      <TableHead>Unidad</TableHead>
+                                      <TableHead className="w-28">Cantidad</TableHead>
+                                      <TableHead className="w-36">P. Unitario</TableHead>
+                                      <TableHead className="text-right">Subtotal</TableHead>
+                                      <TableHead className="w-8"></TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.items.map((item) => {
+                                      const globalIdx = itemsDraft.indexOf(item);
+                                      return (
+                                        <TableRow key={globalIdx}>
+                                          <TableCell>{item.descripcion}</TableCell>
+                                          <TableCell>{item.unidad}</TableCell>
+                                          <TableCell>
+                                            <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
+                                          </TableCell>
+                                          <TableCell>
+                                            <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
+                                          </TableCell>
+                                          <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                                          <TableCell>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                            </Button>
+                                          </TableCell>
+                                        </TableRow>
+                                      );
+                                    })}
+                                  </TableBody>
+                                  <TableFooter>
+                                    <TableRow>
+                                      <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                      <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                      <TableCell />
+                                    </TableRow>
+                                  </TableFooter>
+                                </Table>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </>
                   )}
 
-                  {/* Add extra concept button — visible when editing */}
-                  {conceptosNoEnDraft.length > 0 && (
+                  {/* Add extra concept button — visible for servicio and obra (not mixto, they have inline buttons) */}
+                  {tipoCert !== "mixto" && conceptosNoEnDraft.length > 0 && (
                     <div className="flex justify-start pt-1">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setAddExtraConceptoOpen(true)}
+                        onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection(null); }}
                         className="text-xs"
                       >
                         <Plus className="w-3.5 h-3.5 mr-1" />
@@ -1033,7 +1223,7 @@ export default function Certificados() {
                       <span>{formatCurrency(draftTotal)}</span>
                     </div>
                   </>
-                ) : (
+                ) : tipoCert === "obra" ? (
                   <>
                     <div className="flex justify-between text-sm">
                       <span>Avance Anterior</span>
@@ -1062,6 +1252,43 @@ export default function Certificados() {
                       <span>{formatCurrency(draftTotal)}</span>
                     </div>
                   </>
+                ) : (
+                  /* MIXTO totals */
+                  <>
+                    {(() => {
+                      const obraSubtotal = draftMixtoObra.reduce((s, i) => s + i.subtotal, 0);
+                      const servicioSubtotal = draftMixtoServicio.reduce((s, i) => s + i.subtotal, 0);
+                      const totalSub = obraSubtotal + servicioSubtotal;
+                      const totalIva = Math.round(totalSub * 0.21 * 100) / 100;
+                      const totalFinal = totalSub + totalIva;
+                      return (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal Obra</span>
+                            <span className="font-medium">{formatCurrency(obraSubtotal)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal Servicio</span>
+                            <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
+                          </div>
+                          {anticipoPorcentaje > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Anticipo ({anticipoPorcentaje}%)</span>
+                              <span className="text-muted-foreground">- {formatCurrency(Math.round(obraSubtotal * (anticipoPorcentaje / 100)))}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm">
+                            <span>IVA 21%</span>
+                            <span>{formatCurrency(totalIva)}</span>
+                          </div>
+                          <div className="flex justify-between text-lg font-bold">
+                            <span>TOTAL</span>
+                            <span>{formatCurrency(totalFinal)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
                 )}
               </div>
               <DialogFooter>
@@ -1087,7 +1314,7 @@ export default function Certificados() {
                   <button
                     key={c.id}
                     className="w-full text-left px-3 py-2 rounded-md border hover:bg-accent transition-colors text-sm flex justify-between items-center"
-                    onClick={() => addConceptoToDraft(c.id)}
+                    onClick={() => addConceptoToDraft(c.id, addExtraConceptoSection)}
                   >
                     <span className="font-medium">{c.nombre}</span>
                     <span className="text-muted-foreground text-xs">{c.unidad} · {c.categoria}</span>
@@ -1109,7 +1336,7 @@ export default function Certificados() {
                     {viewCert?.numero} — {selectedObra?.nombre}
                     {viewCert && (
                       <Badge variant="outline" className="ml-2 text-xs">
-                        {viewCert.tipo === "obra" ? "Obra" : "Servicio"}
+                        {viewCert.tipo === "obra" ? "Obra" : viewCert.tipo === "mixto" ? "Mixto" : "Servicio"}
                       </Badge>
                     )}
                   </span>
@@ -1340,7 +1567,7 @@ function CertificadoCard({
             <div className="flex items-center gap-2">
               <p className="font-semibold text-lg">{cert.numero}</p>
               <Badge variant="outline" className="text-xs">
-                {cert.tipo === "obra" ? "Obra" : "Servicio"}
+                {cert.tipo === "obra" ? "Obra" : cert.tipo === "mixto" ? "Mixto" : "Servicio"}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground capitalize">
