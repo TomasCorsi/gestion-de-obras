@@ -1,88 +1,46 @@
 
-## Validación obligatoria de la observación de máquina
+## Auto-completar el campo Técnico con el usuario logueado
 
-### Problema identificado
+### Problema
+En `MecanicoMantenimientoForm.tsx`, el campo `tecnico` se inicializa con `useState(nombreMecanico || "")` (línea 51). Si la prop `nombreMecanico` llega en un momento posterior al primer render del componente, el estado queda vacío porque `useState` solo toma el valor inicial una vez al montarse.
 
-En `src/components/parte-diario/ParteDiarioFormView.tsx`, cuando el usuario selecciona "OBSERVACIÓN" en el estado de la máquina, el textarea aparece pero la función `validateForComplete()` (línea 257) **no verifica** que el campo `observacion_maquina` tenga contenido. Esto permite guardar el parte con la observación vacía.
+### Solución
+Dos cambios en `src/components/parte-diario/MecanicoMantenimientoForm.tsx`:
 
-El campo tampoco se valida al guardar como borrador, lo que significa que un operador puede guardar y completar el parte sin escribir nada en la observación.
+**1. Agregar un `useEffect` que sincronice el campo `tecnico` con `nombreMecanico`**
 
-### Cambios a realizar
-
-**Archivo: `src/components/parte-diario/ParteDiarioFormView.tsx`**
-
-**1. Agregar validación en `validateForComplete` (línea 257)**
-
-Agregar una verificación: si `showEstadoMaquina` es true y `formData.estado_maquina === 'OBSERVACION'`, el campo `observacion_maquina` no puede estar vacío ni solo tener espacios en blanco.
+Debajo del `useEffect` existente que maneja el preload de la máquina (línea 62), agregar:
 
 ```typescript
-const validateForComplete = (): boolean => {
-  if (isMaquinista && !formData.maquinaria_id) {
-    toast.error('Debes seleccionar una máquina para completar el parte');
-    return false;
+// Sync tecnico with logged-in mechanic's name
+useEffect(() => {
+  if (nombreMecanico) {
+    setTecnico(nombreMecanico);
   }
-  // NUEVO: validar observación obligatoria
-  if (showEstadoMaquina && formData.estado_maquina === 'OBSERVACION' && !formData.observacion_maquina.trim()) {
-    toast.error('Debés describir la observación de la máquina');
-    return false;
-  }
-  if (showHorometro) {
-    const inicio = parseFloat(formData.horometro_inicio) || 0;
-    const fin = parseFloat(formData.horometro_fin) || 0;
-    if (fin > 0 && fin < inicio) {
-      toast.error('El horómetro fin debe ser mayor al inicio');
-      return false;
-    }
-  }
-  return true;
-};
+}, [nombreMecanico]);
 ```
 
-**2. Mostrar error visual en el Textarea (línea 544)**
+Esto garantiza que aunque `nombreMecanico` llegue tarde (por carga asíncrona), el campo se actualiza correctamente.
 
-Agregar un estado o derivar un flag `obsError` que sea `true` cuando el estado es OBSERVACION y el campo está vacío **después de un intento de guardado fallido**. Esto muestra el textarea con borde rojo y un mensaje de error bajo el campo:
+**2. Hacer el campo `Técnico` de solo lectura y visualmente distinguible**
+
+El técnico debe ser siempre el mecánico logueado — no tiene sentido que lo puedan editar manualmente. Se cambia el `Input` a `readOnly` con un estilo de fondo diferenciado para que quede claro que es auto-completado:
 
 ```tsx
-{formData.estado_maquina === 'OBSERVACION' && (
-  <div className="mt-4">
-    <Textarea
-      placeholder="Describa la observación de la máquina..."
-      value={formData.observacion_maquina}
-      onChange={(e) => handleChange('observacion_maquina', e.target.value)}
-      className={cn(
-        "min-h-24 text-base",
-        showObsError && "border-destructive focus-visible:ring-destructive"
-      )}
-    />
-    {showObsError && (
-      <p className="text-sm text-destructive mt-1 flex items-center gap-1">
-        <span>⚠</span> Debés escribir la observación antes de continuar
-      </p>
-    )}
-    <p className="text-xs text-muted-foreground mt-1">
-      {formData.observacion_maquina.length}/0 caracteres
-    </p>
-  </div>
-)}
+<Input
+  value={tecnico}
+  readOnly
+  className="h-12 text-base bg-muted cursor-default"
+  placeholder="Cargando nombre..."
+/>
 ```
 
-**3. Limpiar el error cuando el usuario empieza a escribir**
+Se agrega también un pequeño ícono de usuario o un label auxiliar ("Completado automáticamente") para aclarar al usuario que este campo se rellena solo.
 
-Se agrega un `useState<boolean>` llamado `showObsError` que:
-- Se activa (`true`) cuando `validateForComplete` detecta observación vacía
-- Se limpia (`false`) cuando el usuario escribe en el textarea
+### Archivo modificado
 
-**4. También validar al guardar borrador (opcional pero recomendado)**
+| Archivo | Cambio |
+|---|---|
+| `src/components/parte-diario/MecanicoMantenimientoForm.tsx` | Agregar `useEffect` para sincronizar `tecnico` + campo `readOnly` |
 
-El `handleSaveDraft` actualmente no valida nada. Para el borrador no se bloqueará (es un draft), pero se mostrará el error visual igualmente si intenta completar después. La validación dura solo aplica a `handleComplete`.
-
-### Resumen de cambios
-
-| Cambio | Archivo | Tipo |
-|---|---|---|
-| Agregar `showObsError` state | `ParteDiarioFormView.tsx` | Nuevo estado |
-| Validar observación en `validateForComplete` | `ParteDiarioFormView.tsx` | Lógica de validación |
-| Mostrar borde rojo + mensaje de error en Textarea | `ParteDiarioFormView.tsx` | UI feedback |
-| Limpiar error al escribir | `ParteDiarioFormView.tsx` | UX |
-
-**Sin cambios de base de datos** — es una validación puramente de frontend.
+**Sin cambios de base de datos.** Es un ajuste puramente de frontend.
