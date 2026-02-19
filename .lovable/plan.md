@@ -1,104 +1,141 @@
 
-## Solución: sesión robusta al reabrir la PWA
+## Módulo de Mantenimiento para Mecánicos en el Parte Diario
 
-### Diagnóstico confirmado
+### Objetivo
+Agregar, dentro de la vista del Parte Diario del rol **Mecánico** (y Ayudante), dos nuevas secciones accesibles desde la pantalla principal:
+1. **Ver Observaciones de Campo** — alertas pendientes reportadas por maquinistas/choferes, con opción de registrar mantenimiento correctivo desde ahí.
+2. **Registrar Mantenimiento** — formulario para crear mantenimientos libres (sin necesidad de que exista una observación previa).
 
-Los logs del backend muestran el error exacto: `refresh_token_not_found`. Esto ocurre cuando:
+Todo diseñado con la misma filosofía mobile-first del resto de la app: tarjetas grandes, botones táctiles, flujo claro.
 
-1. El celular mata la PWA en segundo plano (iOS/Android lo hacen para ahorrar batería)
-2. El `useSessionKeepAlive` deja de renovar el token porque la app no está activa
-3. Al reabrir, el refresh token guardado localmente ya fue invalidado en el servidor (se rota por uso o expira)
-4. El sistema intenta usarlo → falla → cierra la sesión → pantalla de carga larga → login
+---
 
-El largo tiempo de carga viene de que `initializeAuth` hace 2 requests encadenados antes de decidir que no hay sesión válida (primero `getSession()`, después `refreshSession()`), y si ambos fallan, el listener de `SIGNED_OUT` intenta un tercer `getSession()`.
+### Arquitectura de la solución
 
-### Qué se va a cambiar
+El flujo de navegación del Parte Diario se extiende con nuevas vistas:
 
-#### 1. `src/hooks/useAuth.tsx` — Inicialización más rápida y limpia
-
-**Problema actual**: Si no hay sesión o el refresh falla, el código hace hasta 3 llamadas a red encadenadas antes de mostrar el login. El usuario ve el spinner durante 5-10 segundos.
-
-**Solución**: 
-- Eliminar el refresh manual en `initializeAuth` — Supabase ya maneja esto automáticamente en `getSession()` si el access token expiró pero el refresh token es válido.
-- Si `getSession()` devuelve `null` (refresh token inválido o inexistente), ir directo al login sin intentar más recuperaciones.
-- Eliminar el bloque de "recuperación" en el listener de `SIGNED_OUT` — cuando el servidor dice que el refresh token no existe, ya no hay nada que recuperar y ese intento agrega latencia innecesaria.
-- Corregir el bug de doble condición `TOKEN_REFRESHED` (el `return` prematuro hace que el segundo `if` nunca se ejecute).
-
-```typescript
-// ANTES (buggy):
-const initializeAuth = async () => {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    // ok
-  } else {
-    // intento innecesario — getSession ya hace refresh internamente
-    const { data: refreshData } = await supabase.auth.refreshSession();
-    if (refreshData.session?.user) { ... }
-    else { /* sin sesión */ }
-  }
-};
-
-// DESPUÉS (correcto):
-const initializeAuth = async () => {
-  // getSession() ya usa el refresh token si el access token expiró
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    setSession(session); setUser(session.user);
-    await fetchUserData(session.user.id);
-  } else {
-    // No hay sesión recuperable → ir al login directamente
-    setSession(null); setUser(null);
-  }
-};
+```text
+ParteDiario.tsx
+│
+├── ViewMode: 'home'  ← ParteDiarioHomeView
+│     [Para mecanico/ayudante: se añaden 2 botones nuevos]
+│     ┌───────────┬──────────────┐
+│     │ Nuevo     │  Mis Partes  │
+│     │ Parte     │              │
+│     ├───────────┴──────────────┤
+│     │ 🔔 Alertas    │ 🔧 Nuevo  │
+│     │    de Campo   │   Manto.  │
+│     └───────────────┴──────────┘
+│
+├── ViewMode: 'form'  ← ParteDiarioFormView (sin cambios)
+│
+├── ViewMode: 'alerts' (NUEVO) ← MecanicoObservacionesView
+│     Muestra observaciones pendientes de maquinistas
+│     Permite marcar como atendida + crear mantenimiento
+│
+└── ViewMode: 'mantenimiento' (NUEVO) ← MecanicoMantenimientoForm
+      Formulario mobile para registrar mantenimiento libre
 ```
 
-#### 2. `src/hooks/useAuth.tsx` — Listener `SIGNED_OUT` sin bucle de recuperación
+---
 
-Cuando el servidor invalida el refresh token (`refresh_token_not_found`), Supabase emite `SIGNED_OUT`. El código actual intenta `getSession()` otra vez, que inevitablemente falla también (el refresh token ya está invalidado). Esto agrega latencia sin beneficio.
+### Cambios técnicos detallados
 
-```typescript
-// ELIMINAR este bloque que no sirve cuando el refresh token está invalidado:
-if (event === 'SIGNED_OUT' && session === null) {
-  const { data } = await supabase.auth.getSession(); // siempre falla acá
-  ...
-}
+#### 1. `src/pages/ParteDiario.tsx`
+- Extender `ViewMode` con `'alerts'` y `'mantenimiento'`
+- Detectar cuando el rol es `mecanico` o `ayudante` para pasar la prop `isMecanico`
+- Agregar handlers: `handleGoToAlerts()`, `handleGoToMantenimiento(obs?)` (el parámetro `obs` permite pre-llenar el form desde una alerta)
+- Renderizar los dos nuevos componentes cuando el view lo indica
+
+#### 2. `src/components/parte-diario/ParteDiarioHomeView.tsx`
+- Agregar prop `isMecanico?: boolean` y `onVerAlertas?: () => void` y `onNuevoMantenimiento?: () => void`
+- Cuando `isMecanico`, mostrar un grid de 2x2 con los 4 botones:
+  - Nuevo Parte / Mis Partes (fila 1)
+  - Alertas de Campo (con badge del número de pendientes) / Nuevo Mantenimiento (fila 2)
+
+#### 3. Nuevo componente: `src/components/parte-diario/MecanicoObservacionesView.tsx`
+Vista mobile de observaciones pendientes. Usa `useObservacionesMaquina`. Diseño compacto:
+- Header con botón Atrás y contador de pendientes
+- Lista de tarjetas con: nombre máquina, patente, operador, fecha, descripción
+- Indicador de urgencia por color (borde izquierdo: verde < 3d, naranja 3-7d, rojo 7d+)
+- Dos botones por tarjeta: **Marcar como atendida** y **Crear Mantenimiento** (navega a la vista de form con datos pre-llenados)
+- Sección inferior con "atendidas recientes" colapsable
+
+#### 4. Nuevo componente: `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
+Formulario mobile para registrar un mantenimiento. Usa `useMantenimientos` y `useMaquinarias`.
+Campos con UX mobile-first (tarjetas grandes, inputs h-14):
+- Fecha (prellenada con hoy)
+- Máquina (Combobox buscable por código/patente/tipo)
+- Tipo de mantenimiento (radio visual: Preventivo / Correctivo / Emergencia)
+- Estado (radio visual: Programado / En Proceso / Completado)
+- Descripción (Textarea)
+- Repuestos (Textarea, opcional)
+- Técnico (Input, prellenado con nombre del mecánico si está disponible)
+- Horas máquina (Input numérico)
+- Costo repuestos + Costo mano de obra (se calcula el total automáticamente)
+- Próximo mantenimiento (fecha, opcional)
+- Observaciones (opcional)
+- Botones sticky footer: **Guardar** (spinner mientras procesa)
+
+Si viene desde una observación de campo (`obsId`), se pre-llenan: máquina, tipo=correctivo, descripción, y se guarda el `observacion_reporte_id`.
+
+---
+
+### Diseño visual del Home para mecánico
+
+```text
+┌─────────────────────────────────┐
+│  📋 Parte Diario                │
+│  Hola, Juan (Mecánico)          │
+│                                 │
+│ ┌──────────────┬──────────────┐ │
+│ │   Nuevo      │  Mis Partes  │ │
+│ │   Parte      │              │ │
+│ │   [+]        │   [📋]       │ │
+│ └──────────────┴──────────────┘ │
+│                                 │
+│ ┌──────────────┬──────────────┐ │
+│ │  🔔 Alertas  │  🔧 Nuevo   │ │
+│ │  de Campo    │  Mantenim.  │ │
+│ │  [3 pend.]   │             │ │
+│ └──────────────┴──────────────┘ │
+└─────────────────────────────────┘
 ```
 
-#### 3. `src/hooks/useSessionKeepAlive.ts` — Refresh más agresivo al despertar
+---
 
-El `VISIBILITY_REFRESH_MIN_INTERVAL` actual es de 10 minutos. Si el usuario abre la app después de 2 horas, el sistema sí intenta refrescar, pero si el access token Y el refresh token ya expiraron, es demasiado tarde.
+### Archivos a crear/modificar
 
-**Solución**: Al despertar (`visibilitychange` a `visible`), verificar si el access token expiró usando `session.expires_at`. Si expiró hace más de cierto tiempo, hacer el refresh sin esperar el mínimo de 10 minutos.
+| Archivo | Acción |
+|---|---|
+| `src/pages/ParteDiario.tsx` | Modificar: nuevas views y handlers |
+| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Modificar: botones adicionales para mecánico |
+| `src/components/parte-diario/MecanicoObservacionesView.tsx` | Crear nuevo |
+| `src/components/parte-diario/MecanicoMantenimientoForm.tsx` | Crear nuevo |
 
-```typescript
-const handleVisibility = () => {
-  if (document.visibilityState === 'visible') {
-    updateActivity();
-    // Forzar refresh sin importar cuándo fue el último
-    setTimeout(forceRefreshOnWake, 500);
-  }
-};
+**Sin cambios de base de datos** — se reutilizan las tablas y hooks existentes (`useMantenimientos`, `useObservacionesMaquina`, `useMaquinarias`).
+
+### Permisos RLS
+La tabla `mantenimientos` ya tiene política que permite `ALL` a `admin` y `capataz`. Los mecánicos NO tienen permiso de escritura actualmente. Se necesitará agregar una política RLS para permitir a usuarios con rol `mecanico` hacer INSERT en `mantenimientos`. La política de lectura ya existe a través del rol `maquinista` — se agregará también para `mecanico`.
+
+Se creará una migración con:
+```sql
+-- Mecánicos pueden ver mantenimientos
+CREATE POLICY "Mecanicos can view mantenimientos"
+  ON mantenimientos FOR SELECT
+  USING (has_role(auth.uid(), 'mecanico'::app_role));
+
+-- Mecánicos pueden crear y actualizar mantenimientos
+CREATE POLICY "Mecanicos can manage mantenimientos"
+  ON mantenimientos FOR INSERT
+  WITH CHECK (has_role(auth.uid(), 'mecanico'::app_role));
+
+CREATE POLICY "Mecanicos can update mantenimientos"
+  ON mantenimientos FOR UPDATE
+  USING (has_role(auth.uid(), 'mecanico'::app_role));
+
+-- Mecánicos necesitan ver maquinarias para el selector
+-- (ya tienen SELECT via la política de maquinistas — verificar que aplique a mecanico también)
 ```
 
-Además, reducir `VISIBILITY_REFRESH_MIN_INTERVAL` de 10 minutos a 0 (siempre refrescar al despertar) — el throttle de `isRefreshing.current` ya previene llamadas duplicadas.
-
-### Archivos a modificar
-
-1. **`src/hooks/useAuth.tsx`**
-   - Simplificar `initializeAuth`: quitar el `refreshSession()` manual (ya lo hace `getSession()` internamente)
-   - Eliminar el bloque de recuperación en `SIGNED_OUT` 
-   - Corregir el bug de doble `TOKEN_REFRESHED`
-
-2. **`src/hooks/useSessionKeepAlive.ts`**
-   - Quitar `VISIBILITY_REFRESH_MIN_INTERVAL` del guard en `forceRefreshOnWake` (siempre refrescar al reabrir)
-   - Simplificar `handleVisibility` para que no tenga throttle al despertar
-
-### Resultado esperado
-
-| Situación | Antes | Después |
-|---|---|---|
-| Reabrir tras pocas horas (token aún válido) | Carga rápida ✅ | Carga rápida ✅ |
-| Reabrir tras muchas horas (access token expirado, refresh válido) | A veces funciona, a veces cierra sesión | Siempre recupera la sesión ✅ |
-| Reabrir tras 7+ días (refresh token expirado) | 5-10s cargando, luego login | 1-2s cargando, luego login ✅ |
-| Spinner largo al reabrir | ❌ Hasta 10 segundos | ✅ Máximo 2-3 segundos |
-
+También se verificará si `mecanico` necesita acceso a `observaciones_maquina_estado` para leer las observaciones.
