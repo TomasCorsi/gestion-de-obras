@@ -1411,7 +1411,7 @@ export default function Certificados() {
                           </div>
                         </div>
                       </>
-                    ) : (
+                    ) : viewCert.tipo === "obra" ? (
                       /* OBRA VIEW */
                       <>
                         {viewGroupedEtapa.map((group) => {
@@ -1449,7 +1449,6 @@ export default function Certificados() {
                                       const avActual = item.subtotal;
                                       const avAcumulado = avAnterior + avActual;
                                       const valorTotal = cantTotal * item.precio_unitario;
-
                                        return (
                                          <TableRow key={item.id}>
                                            <TableCell className="font-medium">{item.descripcion}</TableCell>
@@ -1503,6 +1502,168 @@ export default function Certificados() {
                                 <div className="flex justify-between text-sm">
                                   <span>Avance Acumulado</span>
                                   <span className="font-semibold">{formatCurrency(viewAvAcumulado)}</span>
+                                </div>
+                                {viewCert.anticipo_porcentaje > 0 && (
+                                  <div className="flex justify-between text-sm">
+                                    <span>Anticipo ({viewCert.anticipo_porcentaje}%)</span>
+                                    <span className="text-muted-foreground">- {formatCurrency(viewAnticipo)}</span>
+                                  </div>
+                                )}
+                                <div className="flex justify-between text-sm">
+                                  <span>IVA 21%</span>
+                                  <span>{formatCurrency(viewCert.iva)}</span>
+                                </div>
+                                <div className="flex justify-between text-lg font-bold">
+                                  <span>TOTAL</span>
+                                  <span>{formatCurrency(viewCert.total)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </>
+                    ) : (
+                      /* MIXTO VIEW: Sección Obra + Sección Servicio */
+                      <>
+                        {/* Sección Obra */}
+                        <div className="rounded-md border border-primary/30 overflow-hidden">
+                          <div className="bg-primary/10 px-4 py-2">
+                            <span className="font-semibold text-sm text-primary">Sección Obra (con acumulados)</span>
+                          </div>
+                          {viewMixtoObraGrouped.length === 0 ? (
+                            <div className="px-4 py-4 text-sm text-muted-foreground text-center">Sin ítems de obra.</div>
+                          ) : viewMixtoObraGrouped.map((group) => {
+                            const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                            return (
+                              <div key={group.etapa}>
+                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
+                                <div className="overflow-x-auto">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="min-w-[120px]">Concepto</TableHead>
+                                        <TableHead>Categoría</TableHead>
+                                        <TableHead>Un.</TableHead>
+                                        <TableHead className="text-right">P. Unit.</TableHead>
+                                        <TableHead className="text-right">Cant. Total</TableHead>
+                                        <TableHead className="text-right">Valor Total</TableHead>
+                                        <TableHead className="text-right">% Ant.</TableHead>
+                                        <TableHead className="text-right">Cant. Actual</TableHead>
+                                        <TableHead className="text-right">% Actual</TableHead>
+                                        <TableHead className="text-right">% Acum.</TableHead>
+                                        <TableHead className="text-right">Av. Ant.</TableHead>
+                                        <TableHead className="text-right">Av. Actual</TableHead>
+                                        <TableHead className="text-right">Av. Acum.</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {group.items.map((item) => {
+                                        const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
+                                        const cantTotal = (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0;
+                                        const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
+                                        const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
+                                        const pctAcumulado = pctAnterior + pctActual;
+                                        const avAnterior = ac.avance_anterior;
+                                        const avActual = item.subtotal;
+                                        const avAcumulado = avAnterior + avActual;
+                                        const valorTotal = cantTotal * item.precio_unitario;
+                                        return (
+                                          <TableRow key={item.id}>
+                                            <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                            <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                            <TableCell>{item.unidad}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                            <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                            <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                            <TableCell className="text-right">{item.cantidad.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                            <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                            <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                            <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                            <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </TableBody>
+                                    <TableFooter>
+                                      <TableRow>
+                                        <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                        <TableCell />
+                                      </TableRow>
+                                    </TableFooter>
+                                  </Table>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Sección Servicio */}
+                        <div className="rounded-md border border-secondary/50 overflow-hidden mt-4">
+                          <div className="bg-secondary/30 px-4 py-2">
+                            <span className="font-semibold text-sm">Sección Servicio (Precio × Cantidad)</span>
+                          </div>
+                          {viewMixtoServicioGrouped.length === 0 ? (
+                            <div className="px-4 py-4 text-sm text-muted-foreground text-center">Sin ítems de servicio.</div>
+                          ) : viewMixtoServicioGrouped.map((group) => {
+                            const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
+                            return (
+                              <div key={group.categoria}>
+                                <div className="bg-muted px-3 py-1.5 text-sm font-semibold">{group.categoria}</div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Concepto</TableHead>
+                                      <TableHead>Unidad</TableHead>
+                                      <TableHead className="text-right">Cantidad</TableHead>
+                                      <TableHead className="text-right">P. Unitario</TableHead>
+                                      <TableHead className="text-right">Subtotal</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.items.map((item) => (
+                                      <TableRow key={item.id}>
+                                        <TableCell>{item.descripcion}</TableCell>
+                                        <TableCell>{item.unidad}</TableCell>
+                                        <TableCell className="text-right">{item.cantidad}</TableCell>
+                                        <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                        <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                  <TableFooter>
+                                    <TableRow>
+                                      <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                      <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                    </TableRow>
+                                  </TableFooter>
+                                </Table>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Totals Mixto */}
+                        <div className="border-t pt-3 space-y-1">
+                          {(() => {
+                            const obraSubtotal = viewMixtoObra.reduce((s, i) => s + i.subtotal, 0);
+                            const servicioSubtotal = viewMixtoServicio.reduce((s, i) => s + i.subtotal, 0);
+                            const obraAvAnterior = viewMixtoObra.reduce((s, i) => {
+                              const ac = viewAcumulados.find((a) => a.concepto_id === i.concepto_id);
+                              return s + (ac?.avance_anterior || 0);
+                            }, 0);
+                            const viewAnticipo = Math.round((obraSubtotal + obraAvAnterior) * (viewCert.anticipo_porcentaje / 100));
+                            return (
+                              <>
+                                <div className="flex justify-between text-sm">
+                                  <span>Subtotal Obra</span>
+                                  <span className="font-medium">{formatCurrency(obraSubtotal)}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                  <span>Subtotal Servicio</span>
+                                  <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                                 </div>
                                 {viewCert.anticipo_porcentaje > 0 && (
                                   <div className="flex justify-between text-sm">
