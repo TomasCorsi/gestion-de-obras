@@ -226,6 +226,8 @@ export default function Certificados() {
   const [anticipoPorcentaje, setAnticipoPorcentaje] = useState(0);
   const [numeroCert, setNumeroCert] = useState("");
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
+  // State for adding extra concepts to an existing certificate during edit
+  const [addExtraConceptoOpen, setAddExtraConceptoOpen] = useState(false);
 
   const isEditing = !!editingCertId;
 
@@ -264,22 +266,20 @@ export default function Certificados() {
 
   const openEditCertificado = async (cert: Certificado) => {
     const items = await fetchItems(cert.id);
-    const activos = conceptos.filter((c) => c.activo);
 
-    const draft: CertificadoItemForm[] = activos.map((c) => {
-      const existing = items.find((i) => i.concepto_id === c.id);
-      return {
-        concepto_id: c.id,
-        descripcion: c.nombre,
-        unidad: c.unidad,
-        cantidad: existing?.cantidad || 0,
-        precio_unitario: existing?.precio_unitario || c.precio_unitario,
-        subtotal: existing?.subtotal || 0,
-        categoria: c.categoria,
-        etapa: existing?.etapa || c.etapa,
-        cantidad_total: c.cantidad_total,
-      };
-    });
+    // Build draft ONLY from saved items — snapshot of what was at creation time
+    // No cross-contamination from current active concepts
+    const draft: CertificadoItemForm[] = items.map((item) => ({
+      concepto_id: item.concepto_id,
+      descripcion: item.descripcion,
+      unidad: item.unidad,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario,
+      subtotal: item.subtotal,
+      categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
+      etapa: item.etapa,
+      cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
+    }));
 
     setItemsDraft(draft);
     setPeriodo(cert.periodo);
@@ -295,22 +295,20 @@ export default function Certificados() {
     if (certificados.length === 0) return;
     const ultimo = certificados[0];
     const items = await fetchItems(ultimo.id);
-    const activos = conceptos.filter((c) => c.activo);
 
-    const draft: CertificadoItemForm[] = activos.map((c) => {
-      const existing = items.find((i) => i.concepto_id === c.id);
-      return {
-        concepto_id: c.id,
-        descripcion: c.nombre,
-        unidad: c.unidad,
-        cantidad: existing?.cantidad || 0,
-        precio_unitario: existing?.precio_unitario || c.precio_unitario,
-        subtotal: existing ? existing.cantidad * existing.precio_unitario : 0,
-        categoria: c.categoria,
-        etapa: existing?.etapa || c.etapa,
-        cantidad_total: c.cantidad_total,
-      };
-    });
+    // Copy items exactly as saved — snapshot of the last period
+    // User can then adjust quantities and prices for the new month
+    const draft: CertificadoItemForm[] = items.map((item) => ({
+      concepto_id: item.concepto_id,
+      descripcion: item.descripcion,
+      unidad: item.unidad,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio_unitario,
+      subtotal: item.subtotal,
+      categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
+      etapa: item.etapa,
+      cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
+    }));
 
     setItemsDraft(draft);
     setPeriodo(format(new Date(), "yyyy-MM"));
@@ -340,6 +338,35 @@ export default function Certificados() {
           : item
       )
     );
+  };
+
+  const removeItemFromDraft = (idx: number) => {
+    setItemsDraft((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  // Active concepts not yet in draft — for adding extras when editing
+  const conceptosNoEnDraft = conceptos.filter(
+    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id)
+  );
+
+  const addConceptoToDraft = (conceptoId: string) => {
+    const c = conceptos.find((x) => x.id === conceptoId);
+    if (!c) return;
+    setItemsDraft((prev) => [
+      ...prev,
+      {
+        concepto_id: c.id,
+        descripcion: c.nombre,
+        unidad: c.unidad,
+        cantidad: 0,
+        precio_unitario: c.precio_unitario,
+        subtotal: 0,
+        categoria: c.categoria,
+        etapa: c.etapa,
+        cantidad_total: c.cantidad_total,
+      },
+    ]);
+    setAddExtraConceptoOpen(false);
   };
 
   const draftSubtotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
@@ -817,40 +844,47 @@ export default function Certificados() {
                           <div key={group.categoria}>
                             <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.categoria}</div>
                             <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>Concepto</TableHead>
-                                  <TableHead>Unidad</TableHead>
-                                  <TableHead className="w-28">Cantidad</TableHead>
-                                  <TableHead className="w-36">P. Unitario</TableHead>
-                                  <TableHead className="text-right">Subtotal</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {group.items.map((item) => {
-                                  const globalIdx = itemsDraft.indexOf(item);
-                                  return (
-                                    <TableRow key={globalIdx}>
-                                      <TableCell>{item.descripcion}</TableCell>
-                                      <TableCell>{item.unidad}</TableCell>
-                                      <TableCell>
-                                        <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
-                                      </TableCell>
-                                      <TableCell>
-                                        <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
-                                      </TableCell>
-                                      <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                              </TableBody>
-                              <TableFooter>
-                                <TableRow>
-                                  <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
-                                  <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
-                                </TableRow>
-                              </TableFooter>
-                            </Table>
+                               <TableHeader>
+                                 <TableRow>
+                                   <TableHead>Concepto</TableHead>
+                                   <TableHead>Unidad</TableHead>
+                                   <TableHead className="w-28">Cantidad</TableHead>
+                                   <TableHead className="w-36">P. Unitario</TableHead>
+                                   <TableHead className="text-right">Subtotal</TableHead>
+                                   <TableHead className="w-8"></TableHead>
+                                 </TableRow>
+                               </TableHeader>
+                               <TableBody>
+                                 {group.items.map((item) => {
+                                   const globalIdx = itemsDraft.indexOf(item);
+                                   return (
+                                     <TableRow key={globalIdx}>
+                                       <TableCell>{item.descripcion}</TableCell>
+                                       <TableCell>{item.unidad}</TableCell>
+                                       <TableCell>
+                                         <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
+                                       </TableCell>
+                                       <TableCell>
+                                         <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
+                                       </TableCell>
+                                       <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                                       <TableCell>
+                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                           <Trash2 className="w-3.5 h-3.5" />
+                                         </Button>
+                                       </TableCell>
+                                     </TableRow>
+                                   );
+                                 })}
+                               </TableBody>
+                               <TableFooter>
+                                 <TableRow>
+                                   <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                   <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                   <TableCell />
+                                 </TableRow>
+                               </TableFooter>
+                             </Table>
                           </div>
                         );
                       })}
@@ -931,6 +965,20 @@ export default function Certificados() {
                     </>
                   )}
 
+                  {/* Add extra concept button — visible when editing */}
+                  {conceptosNoEnDraft.length > 0 && (
+                    <div className="flex justify-start pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setAddExtraConceptoOpen(true)}
+                        className="text-xs"
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" />
+                        Agregar concepto
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Totals - always visible outside scroll */}
@@ -986,6 +1034,33 @@ export default function Certificados() {
                 <Button onClick={handleSaveCertificado} disabled={draftSubtotal === 0}>
                   {isEditing ? "Guardar Cambios" : "Crear Certificado"}
                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* ==================== ADD EXTRA CONCEPTO DIALOG ==================== */}
+          <Dialog open={addExtraConceptoOpen} onOpenChange={setAddExtraConceptoOpen}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Agregar concepto al certificado</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Seleccioná un concepto activo de la obra que no estaba en el certificado original.
+              </p>
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {conceptosNoEnDraft.map((c) => (
+                  <button
+                    key={c.id}
+                    className="w-full text-left px-3 py-2 rounded-md border hover:bg-accent transition-colors text-sm flex justify-between items-center"
+                    onClick={() => addConceptoToDraft(c.id)}
+                  >
+                    <span className="font-medium">{c.nombre}</span>
+                    <span className="text-muted-foreground text-xs">{c.unidad} · {c.categoria}</span>
+                  </button>
+                ))}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddExtraConceptoOpen(false)}>Cancelar</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
