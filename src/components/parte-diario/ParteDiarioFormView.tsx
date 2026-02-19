@@ -64,6 +64,7 @@ export const ParteDiarioFormView = ({
 }: ParteDiarioFormViewProps) => {
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
   const [searchAusencia, setSearchAusencia] = useState('');
+  const [showObsError, setShowObsError] = useState(false);
   
   const defaultFormData = useMemo(() => ({
     fecha: format(new Date(), 'yyyy-MM-dd'),
@@ -257,6 +258,11 @@ export const ParteDiarioFormView = ({
   const validateForComplete = (): boolean => {
     if (isMaquinista && !formData.maquinaria_id) {
       toast.error('Debes seleccionar una máquina para completar el parte');
+      return false;
+    }
+    if (showEstadoMaquina && formData.estado_maquina === 'OBSERVACION' && !formData.observacion_maquina.trim()) {
+      setShowObsError(true);
+      toast.error('Debés describir la observación de la máquina');
       return false;
     }
     if (showHorometro) {
@@ -542,12 +548,25 @@ export const ParteDiarioFormView = ({
               </RadioGroup>
 
               {formData.estado_maquina === 'OBSERVACION' && (
-                <Textarea
-                  placeholder="Describa la observación..."
-                  value={formData.observacion_maquina}
-                  onChange={(e) => handleChange('observacion_maquina', e.target.value)}
-                  className="mt-4 min-h-24 text-base"
-                />
+                <div className="mt-4">
+                  <Textarea
+                    placeholder="Describa la observación de la máquina..."
+                    value={formData.observacion_maquina}
+                    onChange={(e) => {
+                      handleChange('observacion_maquina', e.target.value);
+                      if (e.target.value.trim()) setShowObsError(false);
+                    }}
+                    className={cn(
+                      "min-h-24 text-base",
+                      showObsError && "border-destructive focus-visible:ring-destructive"
+                    )}
+                  />
+                  {showObsError && (
+                    <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+                      <span>⚠</span> Debés escribir la observación antes de continuar
+                    </p>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
