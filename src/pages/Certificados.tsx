@@ -353,6 +353,13 @@ export default function Certificados() {
   const conceptosNoEnDraft = conceptos.filter(
     (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id)
   );
+  // For mixto: filter per section independently so same concept can appear in both
+  const conceptosNoEnDraftObra = conceptos.filter(
+    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "obra")
+  );
+  const conceptosNoEnDraftServicio = conceptos.filter(
+    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "servicio")
+  );
 
   const addConceptoToDraft = (conceptoId: string, seccion?: string | null) => {
     const c = conceptos.find((x) => x.id === conceptoId);
@@ -1031,7 +1038,7 @@ export default function Certificados() {
                       <div className="rounded-md border border-primary/30 overflow-hidden">
                         <div className="bg-primary/10 px-4 py-2 flex items-center justify-between">
                           <span className="font-semibold text-sm text-primary">Sección Obra (con acumulados)</span>
-                          {conceptosNoEnDraft.length > 0 && (
+                          {conceptosNoEnDraftObra.length > 0 && (
                             <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection("obra"); }}>
                               <Plus className="w-3 h-3 mr-1" />Agregar concepto
                             </Button>
@@ -1124,7 +1131,7 @@ export default function Certificados() {
                       <div className="rounded-md border border-secondary/50 overflow-hidden mt-4">
                         <div className="bg-secondary/30 px-4 py-2 flex items-center justify-between">
                           <span className="font-semibold text-sm">Sección Servicio (Precio × Cantidad)</span>
-                          {conceptosNoEnDraft.length > 0 && (
+                          {conceptosNoEnDraftServicio.length > 0 && (
                             <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection("servicio"); }}>
                               <Plus className="w-3 h-3 mr-1" />Agregar concepto
                             </Button>
@@ -1310,7 +1317,10 @@ export default function Certificados() {
                 Seleccioná un concepto activo de la obra que no estaba en el certificado original.
               </p>
               <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {conceptosNoEnDraft.map((c) => (
+                {(tipoCert === "mixto"
+                  ? (addExtraConceptoSection === "obra" ? conceptosNoEnDraftObra : conceptosNoEnDraftServicio)
+                  : conceptosNoEnDraft
+                ).map((c) => (
                   <button
                     key={c.id}
                     className="w-full text-left px-3 py-2 rounded-md border hover:bg-accent transition-colors text-sm flex justify-between items-center"
