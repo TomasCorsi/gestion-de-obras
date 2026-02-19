@@ -1,63 +1,89 @@
 
-## Renombrar "Etapa" → "Sub Categoría" y mostrar Categoría en certificados de Obra
+## Modo "Carga Rápida por Equipo" en Certificados de Servicio
 
-### Qué se cambia y dónde
+### Qué problema resuelve
 
-El término "Etapa" existe en varias capas del sistema. Se renombra visualmente a "Sub Categoría" en la UI y en el PDF, sin alterar la base de datos (la columna sigue llamándose `etapa` internamente — solo cambia lo que ve el usuario).
+El flujo actual de certificados de tipo "Servicio" muestra todos los conceptos configurados en la obra y el usuario ingresa la cantidad para cada uno. Pero el caso del usuario es diferente: cada mes cambian las máquinas que trabajaron, los días/horas, el remito asociado y el precio por día. Es una tabla libre donde cada fila es un equipo + período parcial + remito + precio + días.
 
----
-
-### 1. `src/pages/Certificados.tsx` — Cambios de etiquetas en la UI
-
-**a) Tabla de Conceptos (pestaña "Conceptos")**
-- Columna `<TableHead>Etapa</TableHead>` → `<TableHead>Sub Categoría</TableHead>` (línea 668)
-- En el dialog "Nuevo Concepto": label `Etapa (opcional)` → `Sub Categoría (opcional)` (línea 726)
-- En el dialog "Editar Concepto": label `Etapa (opcional)` → `Sub Categoría (opcional)` (línea 1467)
-
-**b) Dialog de crear/editar certificado — sección Obra**
-- Encabezado de grupo: `{group.etapa}` se mantiene (es el valor del campo), pero el texto descriptivo en el subtítulo cambia:
-  - Línea 772: `"categorías" : "etapas"` → `"categorías" : "sub categorías"`
-- Footer de la tabla obra: `Subtotal {group.etapa}` → `Subtotal {group.etapa}` (sin cambio de dato, solo la label de la sección de totales si hubiese texto fijo)
-
-**c) Dialog de vista del certificado (tipo Obra)**
-- Añadir una columna **"Categoría"** en la tabla de ítems de tipo Obra, mostrando la categoría de cada ítem (obtenida del `categoriaMap` — que ya existe como variable en la función para el PDF).
-  - En la vista actual, los ítems de Obra están agrupados por Sub Categoría (etapa), pero no muestran Categoría en ninguna columna de la tabla.
-  - Se añade columna `Categoría` entre `Concepto` y `Un.` en la tabla de vista.
-  - Se construye el `categoriaMap` (igual que para el PDF) en el componente principal y se pasa a los grupos de la vista.
-
-**d) Tab "Orden de Etapas"**
-- El tab se renombra a `"Orden de Sub Categorías"` (línea 548)
-- El texto explicativo dentro de `EtapasOrdenTab`: "Ordená las etapas..." → "Ordená las sub categorías..."
-- La columna de la tabla: `<TableHead>Etapa</TableHead>` → `<TableHead>Sub Categoría</TableHead>`
-- El texto vacío: "No hay etapas definidas. Asigná etapas..." → "No hay sub categorías definidas..."
-
-**e) Dialog de crear/editar — tabla tipo Servicio**
-- En tipo servicio, la categoría ya se ve como encabezado de grupo — no hay cambio necesario.
-
-**f) Mostrar Categoría en la tabla de Obra del dialog crear/editar**
-- En la tabla de ítems de tipo Obra (sección `draftGroupedEtapa`), añadir columna `Categoría` entre `Concepto` y `Un.` para que el usuario vea a qué categoría pertenece cada ítem mientras carga el certificado.
+El modelo actual no permite:
+1. Agregar ítems libres (sin concepto predefinido) con un **nombre de equipo personalizado**
+2. Registrar el **número de remito** por ítem
+3. Registrar el **período parcial** por ítem (ej: "DEL 5 AL 11/01")
+4. Agregar/eliminar filas dinámicamente durante la carga del certificado
 
 ---
 
-### 2. `src/utils/generateCertificadoPDF.ts` — PDF
+### Solución propuesta: Pestaña "Equipo Libre" en el dialog de creación
 
-**a) Certificados tipo Obra — función `generateObraPDF`**
-- Actualmente las filas tienen 10 columnas: `Concepto | V. Unit. | Cant. Tot. | V. Total | % Ant. | % Act. | % Acum. | Av. Ant. | Av. Act. | Av. Acum.`
-- Se añade columna **"Categoría"** como segunda columna (después de Concepto): `Concepto | Categoría | V. Unit. | ...`
-- El encabezado del grupo cambia de `etapaName.toUpperCase()` a mostrar `"SUB CATEGORÍA: " + etapaName.toUpperCase()` para dejarlo más claro.
-- Se actualiza el `colSpan` de los encabezados de grupo de 10 a 11.
-- La función recibe el `categoriaMap` (ya disponible en el llamador).
+Se agrega una segunda opción en el formulario de certificados de tipo **Servicio**: un toggle/tab que permite elegir entre:
+- **Modo estándar** (conceptos predefinidos, como ahora)
+- **Modo por Equipo** (filas libres, similar a la planilla Excel)
 
-**b) Certificados tipo Servicio — función `generateServicioPDF`**
-- La categoría ya aparece como encabezado de grupo en el PDF — no hay cambio necesario.
+En el **Modo por Equipo**, el formulario muestra una grilla editable con columnas:
+
+| Equipo | Período | Remito | Precio Unit | Cant (Días/Hrs) | Un. | Subtotal | — |
+|---|---|---|---|---|---|---|---|
+| CAMION TATU AB629IP | DEL 5 AL 11/01 | 65227 | 700,000 | 3 | DIA | 2,100,000 | 🗑 |
+| RETRO 300 | DEL 5 AL 11/01 | 69847 | 90,000 | 29 | HR | 2,610,000 | 🗑 |
+| + Agregar equipo | | | | | | | |
+
+Cada fila es un ítem libre que:
+- Se vincula al concepto de categoría "Alquiler de Maquinas" (o la que el usuario elija) al guardar
+- Guarda el período parcial en el campo `observaciones` del ítem o en el campo `descripcion` (ej: "CAMION TATU AB629IP — DEL 5 AL 11/01")
+- Guarda el remito en la descripción del ítem de forma estructurada
+
+#### Cambios técnicos requeridos
+
+**1. Base de datos**: Agregar campo `remito` (texto, nullable) a la tabla `certificado_items`
+
+```sql
+ALTER TABLE certificado_items ADD COLUMN IF NOT EXISTS remito TEXT;
+ALTER TABLE certificado_items ADD COLUMN IF NOT EXISTS periodo_parcial TEXT;
+```
+
+**2. Tipos (`useCertificados.ts`)**: Agregar `remito?: string | null` y `periodo_parcial?: string | null` a `CertificadoItem` y `CertificadoItemForm`
+
+**3. `src/pages/Certificados.tsx`**:
+
+- En el dialog de crear/editar certificado tipo Servicio, agregar un toggle de modo:
+  ```
+  [Modo Conceptos]  [Modo Equipos]
+  ```
+- Cuando se activa "Modo Equipos", mostrar una tabla editable con botón "Agregar equipo" y borrado por fila
+- Cada fila tiene: campo texto libre Equipo, campo Período (texto), campo Remito (número), campo Precio, campo Cantidad, selector Unidad (DIA/HR), subtotal calculado automáticamente
+- Al guardar, los ítems del modo equipo se guardan como ítems normales pero con `remito` y `periodo_parcial` poblados
+
+**4. Vista del certificado**: Si un ítem tiene `periodo_parcial`, mostrarlo en una columna extra. Si tiene `remito`, mostrarlo también.
+
+**5. PDF (Servicio)**: Cuando el certificado tiene ítems con remito, el PDF cambia el layout a tabla estilo planilla con columnas: Equipo | Período | Remito | Precio Unit | Cantidad | Unidad | Subtotal
 
 ---
 
-### 3. Resumen de archivos modificados
+### Archivos modificados
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/Certificados.tsx` | Renombrar "Etapa" → "Sub Categoría" en labels, tabs y columnas; añadir columna Categoría en vistas de Obra |
-| `src/utils/generateCertificadoPDF.ts` | Añadir columna Categoría en PDF de Obra; actualizar label del encabezado de grupo a "Sub Categoría" |
+| Migración SQL | Agregar columnas `remito` y `periodo_parcial` a `certificado_items` |
+| `src/hooks/useCertificados.ts` | Agregar campos `remito` y `periodo_parcial` a los tipos e inserción/actualización |
+| `src/pages/Certificados.tsx` | Toggle Modo Estándar/Modo Equipos + grilla editable de filas libres en dialog de certificado Servicio |
+| `src/utils/generateCertificadoPDF.ts` | Layout alternativo para certificados con ítems de equipos (con columna Remito y Período) |
 
-**Sin cambios de base de datos** — todo es visual/UI, el campo interno sigue siendo `etapa`.
+---
+
+### Flujo de uso
+
+```text
+1. Usuario selecciona obra y abre "Nuevo Certificado"
+2. Selecciona Tipo: Servicio
+3. Cambia a "Modo Equipos" con el toggle
+4. Agrega filas una por una:
+   - Escribe el nombre del equipo (ej: "CAMION TATU AB629IP")
+   - Escribe el período parcial (ej: "DEL 5 AL 11/01")
+   - Escribe el número de remito
+   - Ingresa precio unitario y cantidad
+   - Elige unidad (DIA/HR)
+   - El subtotal se calcula solo
+5. Repite para cada equipo
+6. Guarda el certificado
+7. El PDF generado muestra el formato tipo planilla con todas las columnas
+```
