@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -79,11 +80,14 @@ import {
   TrendingUp,
   ArrowUp,
   ArrowDown,
+  HardHat,
+  Wrench,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
@@ -179,6 +183,7 @@ export default function Certificados() {
 
   // ---- Add concepto dialog ----
   const [addConceptoOpen, setAddConceptoOpen] = useState(false);
+  const [addConceptoTipo, setAddConceptoTipo] = useState<'obra' | 'servicio'>('servicio');
   const [newConcepto, setNewConcepto] = useState({
     nombre: "",
     unidad: "",
@@ -187,6 +192,12 @@ export default function Certificados() {
     cantidad_total: "",
     etapa: "",
   });
+
+  const openAddConceptoDialog = (tipo: 'obra' | 'servicio') => {
+    setAddConceptoTipo(tipo);
+    setNewConcepto({ nombre: "", unidad: "", precio_unitario: "", categoria: "General", cantidad_total: "", etapa: "" });
+    setAddConceptoOpen(true);
+  };
 
   const handleAddConcepto = async () => {
     if (!selectedObraId || !newConcepto.nombre || !newConcepto.unidad) return;
@@ -199,12 +210,13 @@ export default function Certificados() {
       categoria: newConcepto.categoria,
       cantidad_total: Number(newConcepto.cantidad_total) || 0,
       etapa: newConcepto.etapa || null,
+      tipo: addConceptoTipo,
     });
     setNewConcepto({ nombre: "", unidad: "", precio_unitario: "", categoria: "General", cantidad_total: "", etapa: "" });
     setAddConceptoOpen(false);
   };
 
-  const handleAddEstandar = async (e: { nombre: string; unidad: string; categoria: string }) => {
+  const handleAddEstandar = async (e: { nombre: string; unidad: string; categoria: string }, tipo: 'obra' | 'servicio' = 'servicio') => {
     if (!selectedObraId) return;
     await createConcepto({
       obra_id: selectedObraId,
@@ -213,6 +225,7 @@ export default function Certificados() {
       precio_unitario: 0,
       orden: conceptos.length,
       categoria: e.categoria,
+      tipo,
     });
   };
 
@@ -243,10 +256,10 @@ export default function Certificados() {
     }
   }, [crearOpen, tipoCert, selectedObraId, periodo, editingCertId]);
 
-  const openCrearCertificado = () => {
+  const buildDraftForTipo = (tipo: TipoCertificado) => {
     const activos = conceptos.filter((c) => c.activo);
-    setItemsDraft(
-      activos.map((c) => ({
+    if (tipo === "mixto") {
+      const obraItems = activos.filter((c) => c.tipo === "obra").map((c) => ({
         concepto_id: c.id,
         descripcion: c.nombre,
         unidad: c.unidad,
@@ -256,12 +269,43 @@ export default function Certificados() {
         categoria: c.categoria,
         etapa: c.etapa,
         cantidad_total: c.cantidad_total,
-      }))
-    );
+        seccion: "obra" as const,
+      }));
+      const servicioItems = activos.filter((c) => c.tipo === "servicio").map((c) => ({
+        concepto_id: c.id,
+        descripcion: c.nombre,
+        unidad: c.unidad,
+        cantidad: 0,
+        precio_unitario: c.precio_unitario,
+        subtotal: 0,
+        categoria: c.categoria,
+        etapa: c.etapa,
+        cantidad_total: c.cantidad_total,
+        seccion: "servicio" as const,
+      }));
+      return [...obraItems, ...servicioItems];
+    }
+    return activos.filter((c) => c.tipo === tipo).map((c) => ({
+      concepto_id: c.id,
+      descripcion: c.nombre,
+      unidad: c.unidad,
+      cantidad: 0,
+      precio_unitario: c.precio_unitario,
+      subtotal: 0,
+      categoria: c.categoria,
+      etapa: c.etapa,
+      cantidad_total: c.cantidad_total,
+      seccion: null as string | null,
+    }));
+  };
+
+  const openCrearCertificado = () => {
+    const initialTipo: TipoCertificado = "servicio";
+    setItemsDraft(buildDraftForTipo(initialTipo));
     setPeriodo(format(new Date(), "yyyy-MM"));
     setObservaciones("");
     setEditingCertId(null);
-    setTipoCert("servicio");
+    setTipoCert(initialTipo);
     setAnticipoPorcentaje(0);
     setNumeroCert("");
     setCrearOpen(true);
@@ -349,16 +393,60 @@ export default function Certificados() {
     setItemsDraft((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  // Rebuild draft when tipoCert changes (only for new certificates)
+  useEffect(() => {
+    if (crearOpen && !editingCertId) {
+      setItemsDraft(buildDraftForTipo(tipoCert));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipoCert]);
+
+  // Multi-select state for "Agregar concepto" dialog
+  const [selectedConceptoIds, setSelectedConceptoIds] = useState<Set<string>>(new Set());
+
+  const toggleConceptoSelection = (id: string) => {
+    setSelectedConceptoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const addSelectedConceptosToDraft = () => {
+    const seccion = addExtraConceptoSection;
+    const toAdd = conceptos.filter((c) => selectedConceptoIds.has(c.id));
+    setItemsDraft((prev) => [
+      ...prev,
+      ...toAdd.map((c) => ({
+        concepto_id: c.id,
+        descripcion: c.nombre,
+        unidad: c.unidad,
+        cantidad: 0,
+        precio_unitario: c.precio_unitario,
+        subtotal: 0,
+        categoria: c.categoria,
+        etapa: c.etapa,
+        cantidad_total: c.cantidad_total,
+        seccion: seccion || null,
+      })),
+    ]);
+    setSelectedConceptoIds(new Set());
+    setAddExtraConceptoOpen(false);
+    setAddExtraConceptoSection(null);
+  };
+
   // Active concepts not yet in draft — for adding extras when editing
+  // For non-mixto: filter by tipo matching cert tipo
   const conceptosNoEnDraft = conceptos.filter(
-    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id)
+    (c) => c.activo && c.tipo === tipoCert && !itemsDraft.some((i) => i.concepto_id === c.id)
   );
-  // For mixto: filter per section independently so same concept can appear in both
+  // For mixto: filter per section AND tipo independently
   const conceptosNoEnDraftObra = conceptos.filter(
-    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "obra")
+    (c) => c.activo && c.tipo === "obra" && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "obra")
   );
   const conceptosNoEnDraftServicio = conceptos.filter(
-    (c) => c.activo && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "servicio")
+    (c) => c.activo && c.tipo === "servicio" && !itemsDraft.some((i) => i.concepto_id === c.id && i.seccion === "servicio")
   );
 
   const addConceptoToDraft = (conceptoId: string, seccion?: string | null) => {
@@ -661,37 +749,10 @@ export default function Certificados() {
                 </TabsContent>
 
                 {/* ==================== CONCEPTOS TAB ==================== */}
-                <TabsContent value="conceptos" className="space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between gap-3">
-                    <p className="text-sm text-muted-foreground">
-                      Definí los conceptos que aplican a <strong>{selectedObra?.nombre}</strong> y su precio unitario.
-                    </p>
-                    <Button onClick={() => setAddConceptoOpen(true)}>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Agregar Concepto
-                    </Button>
-                  </div>
-
-                  {/* Quick-add standard concepts */}
-                  {conceptosEstandarNoAgregados.length > 0 && (
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm font-medium flex items-center gap-2">
-                          <Zap className="w-4 h-4 text-primary" />
-                          Agregar concepto rápido
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                          {conceptosEstandarNoAgregados.map((e) => (
-                            <Button key={e.nombre} variant="outline" size="sm" onClick={() => handleAddEstandar(e)}>
-                              {e.nombre} ({e.unidad})
-                            </Button>
-                          ))}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                <TabsContent value="conceptos" className="space-y-6">
+                  <p className="text-sm text-muted-foreground">
+                    Definí los conceptos que aplican a <strong>{selectedObra?.nombre}</strong>. Los conceptos de Obra se usan en certificados de tipo Obra o Mixto; los de Servicio en certificados de tipo Servicio o Mixto.
+                  </p>
 
                   {loadingConceptos ? (
                     <div className="space-y-2">
@@ -699,47 +760,114 @@ export default function Certificados() {
                         <Skeleton key={i} className="h-12 w-full" />
                       ))}
                     </div>
-                  ) : conceptos.length === 0 ? (
-                    <Card>
-                      <CardContent className="py-8 text-center text-muted-foreground">
-                        No hay conceptos configurados para esta obra.
-                      </CardContent>
-                    </Card>
                   ) : (
-                    <div className="space-y-4">
-                      {conceptosGrouped.map((group) => (
-                        <Card key={group.categoria}>
-                          <CardHeader className="py-3 px-4">
-                            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                              {group.categoria}
-                            </CardTitle>
-                          </CardHeader>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Concepto</TableHead>
-                                <TableHead>Unidad</TableHead>
-                                <TableHead className="text-right">P. Unitario</TableHead>
-                                <TableHead className="text-right">Cant. Total</TableHead>
-                                 <TableHead>Sub Categoría</TableHead>
-                                 <TableHead>Estado</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {group.items.map((c) => (
-                                <ConceptoRow
-                                  key={c.id}
-                                  concepto={c}
-                                  onUpdate={(updates) => updateConcepto({ id: c.id, ...updates })}
-                                  onDelete={() => deleteConcepto(c.id)}
-                                />
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </Card>
-                      ))}
-                    </div>
+                    <>
+                      {/* ---- CONCEPTOS DE OBRA ---- */}
+                      <div className="rounded-lg border border-primary/30 overflow-hidden">
+                        <div className="bg-primary/10 px-4 py-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <HardHat className="w-4 h-4 text-primary" />
+                            <span className="font-semibold text-sm text-primary">Conceptos de Obra</span>
+                            <Badge variant="outline" className="text-xs">{conceptos.filter(c => c.tipo === 'obra').length}</Badge>
+                          </div>
+                          <Button size="sm" onClick={() => openAddConceptoDialog('obra')}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Agregar concepto de Obra
+                          </Button>
+                        </div>
+                        {conceptos.filter(c => c.tipo === 'obra').length === 0 ? (
+                          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                            No hay conceptos de obra. Hacé clic en "Agregar concepto de Obra".
+                          </div>
+                        ) : (
+                          <div className="space-y-0">
+                            {groupByCategoria(conceptos.filter(c => c.tipo === 'obra')).map((group) => (
+                              <div key={group.categoria}>
+                                <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
+                                  {group.categoria}
+                                </div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Concepto</TableHead>
+                                      <TableHead>Unidad</TableHead>
+                                      <TableHead className="text-right">P. Unitario</TableHead>
+                                      <TableHead className="text-right">Cant. Total</TableHead>
+                                      <TableHead>Sub Categoría</TableHead>
+                                      <TableHead>Estado</TableHead>
+                                      <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.items.map((c) => (
+                                      <ConceptoRow
+                                        key={c.id}
+                                        concepto={c}
+                                        onUpdate={(updates) => updateConcepto({ id: c.id, ...updates })}
+                                        onDelete={() => deleteConcepto(c.id)}
+                                      />
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ---- CONCEPTOS DE SERVICIO ---- */}
+                      <div className="rounded-lg border border-secondary/50 overflow-hidden">
+                        <div className="bg-secondary/30 px-4 py-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Wrench className="w-4 h-4" />
+                            <span className="font-semibold text-sm">Conceptos de Servicio</span>
+                            <Badge variant="outline" className="text-xs">{conceptos.filter(c => c.tipo === 'servicio').length}</Badge>
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => openAddConceptoDialog('servicio')}>
+                            <Plus className="w-4 h-4 mr-1" />
+                            Agregar concepto de Servicio
+                          </Button>
+                        </div>
+                        {conceptos.filter(c => c.tipo === 'servicio').length === 0 ? (
+                          <div className="px-4 py-8 text-center text-sm text-muted-foreground">
+                            No hay conceptos de servicio. Hacé clic en "Agregar concepto de Servicio".
+                          </div>
+                        ) : (
+                          <div className="space-y-0">
+                            {groupByCategoria(conceptos.filter(c => c.tipo === 'servicio')).map((group) => (
+                              <div key={group.categoria}>
+                                <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
+                                  {group.categoria}
+                                </div>
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Concepto</TableHead>
+                                      <TableHead>Unidad</TableHead>
+                                      <TableHead className="text-right">P. Unitario</TableHead>
+                                      <TableHead className="text-right">Cant. Total</TableHead>
+                                      <TableHead>Sub Categoría</TableHead>
+                                      <TableHead>Estado</TableHead>
+                                      <TableHead className="text-right">Acciones</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {group.items.map((c) => (
+                                      <ConceptoRow
+                                        key={c.id}
+                                        concepto={c}
+                                        onUpdate={(updates) => updateConcepto({ id: c.id, ...updates })}
+                                        onDelete={() => deleteConcepto(c.id)}
+                                      />
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
                   )}
                 </TabsContent>
 
@@ -759,7 +887,10 @@ export default function Certificados() {
           <Dialog open={addConceptoOpen} onOpenChange={setAddConceptoOpen}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Nuevo Concepto</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  {addConceptoTipo === 'obra' ? <HardHat className="w-4 h-4 text-primary" /> : <Wrench className="w-4 h-4" />}
+                  Nuevo Concepto de {addConceptoTipo === 'obra' ? 'Obra' : 'Servicio'}
+                </DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
@@ -812,7 +943,7 @@ export default function Certificados() {
             </DialogContent>
           </Dialog>
 
-          {/* ==================== CREAR/EDITAR CERTIFICADO DIALOG ==================== */}
+
           <Dialog open={crearOpen} onOpenChange={(open) => { setCrearOpen(open); if (!open) setEditingCertId(null); }}>
             <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -1307,32 +1438,56 @@ export default function Certificados() {
             </DialogContent>
           </Dialog>
 
-          {/* ==================== ADD EXTRA CONCEPTO DIALOG ==================== */}
-          <Dialog open={addExtraConceptoOpen} onOpenChange={setAddExtraConceptoOpen}>
-            <DialogContent className="max-w-md">
+          {/* ==================== ADD EXTRA CONCEPTO DIALOG (Multi-select, grouped) ==================== */}
+          <Dialog open={addExtraConceptoOpen} onOpenChange={(open) => { setAddExtraConceptoOpen(open); if (!open) { setSelectedConceptoIds(new Set()); setAddExtraConceptoSection(null); } }}>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
-                <DialogTitle>Agregar concepto al certificado</DialogTitle>
+                <DialogTitle className="flex items-center gap-2">
+                  {tipoCert === "obra" || (tipoCert === "mixto" && addExtraConceptoSection === "obra")
+                    ? <><HardHat className="w-4 h-4 text-primary" />Agregar conceptos de Obra</>
+                    : <><Wrench className="w-4 h-4" />Agregar conceptos de Servicio</>
+                  }
+                </DialogTitle>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                Seleccioná un concepto activo de la obra que no estaba en el certificado original.
-              </p>
-              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                {(tipoCert === "mixto"
+              {(() => {
+                const conceptosParaAgregar = tipoCert === "mixto"
                   ? (addExtraConceptoSection === "obra" ? conceptosNoEnDraftObra : conceptosNoEnDraftServicio)
-                  : conceptosNoEnDraft
-                ).map((c) => (
-                  <button
-                    key={c.id}
-                    className="w-full text-left px-3 py-2 rounded-md border hover:bg-accent transition-colors text-sm flex justify-between items-center"
-                    onClick={() => addConceptoToDraft(c.id, addExtraConceptoSection)}
-                  >
-                    <span className="font-medium">{c.nombre}</span>
-                    <span className="text-muted-foreground text-xs">{c.unidad} · {c.categoria}</span>
-                  </button>
-                ))}
-              </div>
+                  : conceptosNoEnDraft;
+                const groupedForDialog = groupByCategoria(conceptosParaAgregar);
+                return conceptosParaAgregar.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No hay conceptos disponibles para agregar.</p>
+                ) : (
+                  <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-3">
+                    {groupedForDialog.map(({ categoria, items }) => {
+                      const etapaGroups = groupByEtapa(items);
+                      return (
+                        <div key={categoria}>
+                          <div className="bg-muted px-3 py-1.5 rounded-md text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{categoria}</div>
+                          {etapaGroups.map(({ etapa, items: etapaItems }) => (
+                            <div key={etapa}>
+                              {etapa !== "Sin etapa" && (
+                                <div className="pl-3 py-1 text-xs font-medium text-muted-foreground border-l-2 border-primary/30 ml-2 mb-0.5">{etapa}</div>
+                              )}
+                              {etapaItems.map((c) => (
+                                <label key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent cursor-pointer transition-colors">
+                                  <Checkbox checked={selectedConceptoIds.has(c.id)} onCheckedChange={() => toggleConceptoSelection(c.id)} />
+                                  <span className="flex-1 text-sm font-medium">{c.nombre}</span>
+                                  <span className="text-xs text-muted-foreground">{c.unidad}</span>
+                                </label>
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <DialogFooter>
-                <Button variant="outline" onClick={() => setAddExtraConceptoOpen(false)}>Cancelar</Button>
+                <Button variant="outline" onClick={() => { setAddExtraConceptoOpen(false); setSelectedConceptoIds(new Set()); setAddExtraConceptoSection(null); }}>Cancelar</Button>
+                <Button onClick={addSelectedConceptosToDraft} disabled={selectedConceptoIds.size === 0}>
+                  Agregar ({selectedConceptoIds.size})
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

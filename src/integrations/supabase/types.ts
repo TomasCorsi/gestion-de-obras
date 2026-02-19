@@ -318,6 +318,7 @@ export type Database = {
           obra_id: string
           orden: number
           precio_unitario: number
+          tipo: string
           unidad: string
           updated_at: string
         }
@@ -332,6 +333,7 @@ export type Database = {
           obra_id: string
           orden?: number
           precio_unitario?: number
+          tipo?: string
           unidad: string
           updated_at?: string
         }
@@ -346,6 +348,7 @@ export type Database = {
           obra_id?: string
           orden?: number
           precio_unitario?: number
+          tipo?: string
           unidad?: string
           updated_at?: string
         }
