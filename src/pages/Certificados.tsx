@@ -840,51 +840,86 @@ export default function Certificados() {
                     <>
                       {draftGroupedCategoria.map((group) => {
                         const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
+                        // Sub-group by etapa within each categoria
+                        const etapas = Array.from(new Set(group.items.map((i) => i.etapa || ""))).filter(Boolean);
+                        const hasEtapas = etapas.length > 0;
+                        const itemsWithoutEtapa = group.items.filter((i) => !i.etapa);
+
+                        const renderItemsTable = (items: typeof group.items, showFooter = false) => (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead>Unidad</TableHead>
+                                <TableHead className="w-28">Cantidad</TableHead>
+                                <TableHead className="w-36">P. Unitario</TableHead>
+                                <TableHead className="text-right">Subtotal</TableHead>
+                                <TableHead className="w-8"></TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {items.map((item) => {
+                                const globalIdx = itemsDraft.indexOf(item);
+                                return (
+                                  <TableRow key={globalIdx}>
+                                    <TableCell>{item.descripcion}</TableCell>
+                                    <TableCell>{item.unidad}</TableCell>
+                                    <TableCell>
+                                      <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
+                                    </TableCell>
+                                    <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
+                                    <TableCell>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                            </TableBody>
+                            {showFooter && (
+                              <TableFooter>
+                                <TableRow>
+                                  <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                  <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                  <TableCell />
+                                </TableRow>
+                              </TableFooter>
+                            )}
+                          </Table>
+                        );
+
                         return (
                           <div key={group.categoria}>
                             <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.categoria}</div>
-                            <Table>
-                               <TableHeader>
-                                 <TableRow>
-                                   <TableHead>Concepto</TableHead>
-                                   <TableHead>Unidad</TableHead>
-                                   <TableHead className="w-28">Cantidad</TableHead>
-                                   <TableHead className="w-36">P. Unitario</TableHead>
-                                   <TableHead className="text-right">Subtotal</TableHead>
-                                   <TableHead className="w-8"></TableHead>
-                                 </TableRow>
-                               </TableHeader>
-                               <TableBody>
-                                 {group.items.map((item) => {
-                                   const globalIdx = itemsDraft.indexOf(item);
-                                   return (
-                                     <TableRow key={globalIdx}>
-                                       <TableCell>{item.descripcion}</TableCell>
-                                       <TableCell>{item.unidad}</TableCell>
-                                       <TableCell>
-                                         <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
-                                       </TableCell>
-                                       <TableCell>
-                                         <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
-                                       </TableCell>
-                                       <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                                       <TableCell>
-                                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                           <Trash2 className="w-3.5 h-3.5" />
-                                         </Button>
-                                       </TableCell>
-                                     </TableRow>
-                                   );
-                                 })}
-                               </TableBody>
-                               <TableFooter>
-                                 <TableRow>
-                                   <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
-                                   <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
-                                   <TableCell />
-                                 </TableRow>
-                               </TableFooter>
-                             </Table>
+                            {hasEtapas ? (
+                              <>
+                                {etapas.map((etapa) => {
+                                  const etapaItems = group.items.filter((i) => (i.etapa || "") === etapa);
+                                  return (
+                                    <div key={etapa}>
+                                      <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-1 mt-1">{etapa}</div>
+                                      {renderItemsTable(etapaItems, false)}
+                                    </div>
+                                  );
+                                })}
+                                {itemsWithoutEtapa.length > 0 && renderItemsTable(itemsWithoutEtapa, false)}
+                                <Table>
+                                  <TableFooter>
+                                    <TableRow>
+                                      <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                      <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                      <TableCell />
+                                    </TableRow>
+                                  </TableFooter>
+                                </Table>
+                              </>
+                            ) : (
+                              renderItemsTable(group.items, true)
+                            )}
                           </div>
                         );
                       })}
