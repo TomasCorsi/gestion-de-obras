@@ -1927,6 +1927,7 @@ export type Database = {
         Returns: boolean
       }
       is_personal_capataz: { Args: { _user_id: string }; Returns: boolean }
+      is_personal_mecanico: { Args: { _user_id: string }; Returns: boolean }
       link_personal_to_user: {
         Args: { p_legajo: string; p_user_id: string }
         Returns: {

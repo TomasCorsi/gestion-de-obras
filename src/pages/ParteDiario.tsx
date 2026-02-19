@@ -15,8 +15,12 @@ import { ParteDiarioHomeView } from "@/components/parte-diario/ParteDiarioHomeVi
 import { ParteDiarioListView } from "@/components/parte-diario/ParteDiarioListView";
 import { ParteDiarioFormView } from "@/components/parte-diario/ParteDiarioFormView";
 import { ParteDiarioAdminView } from "@/components/parte-diario/ParteDiarioAdminView";
+import { MecanicoObservacionesView } from "@/components/parte-diario/MecanicoObservacionesView";
+import { MecanicoMantenimientoForm } from "@/components/parte-diario/MecanicoMantenimientoForm";
 import { CargaCombustibleRepartidorDialog } from "@/components/parte-diario/CargaCombustibleRepartidorDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { useObservacionesMaquina } from "@/hooks/useObservacionesMaquina";
+import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -32,7 +36,7 @@ const ROL_LABELS: Record<RolPersonal, string> = {
   repartidor_calecita: 'Repartidor Calecita',
 };
 
-type ViewMode = 'home' | 'form' | 'list';
+type ViewMode = 'home' | 'form' | 'list' | 'alerts' | 'mantenimiento';
 
 const ParteDiario = () => {
   const { role, loading: loadingAuth } = useAuth();
@@ -51,6 +55,7 @@ const ParteDiario = () => {
   } = useParteDiario();
   const { obras: obrasFromDB = [] } = useObras();
   const { maquinarias: maquinariasFromDB = [] } = useMaquinarias();
+  const { pendientes: alertasPendientes } = useObservacionesMaquina();
 
   // Offline cache: save when we have fresh data, fall back to cache when empty
   useEffect(() => {
@@ -85,10 +90,12 @@ const ParteDiario = () => {
   const [editingCarga, setEditingCarga] = useState<any>(null);
   const [deletingCarga, setDeletingCarga] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [obsPreload, setObsPreload] = useState<ObservacionMaquina | null>(null);
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
   const isRepartidor = rol === 'repartidor_calecita';
+  const isMecanico = rol === 'mecanico' || rol === 'ayudante';
 
   // For repartidor: query by repartidor_id to get all their loads
   const { 
@@ -190,7 +197,6 @@ const ParteDiario = () => {
   }
 
   const handleNewParte = () => {
-    // Always open a blank form for new parte
     setEditingParte(null);
     setView('form');
   };
@@ -215,6 +221,7 @@ const ParteDiario = () => {
 
   const handleBack = () => {
     setEditingParte(null);
+    setObsPreload(null);
     setView('home');
   };
 
@@ -233,6 +240,25 @@ const ParteDiario = () => {
     handleBack();
   };
 
+  const handleGoToAlerts = () => {
+    setView('alerts');
+  };
+
+  const handleGoToMantenimiento = (obs?: ObservacionMaquina) => {
+    setObsPreload(obs || null);
+    setView('mantenimiento');
+  };
+
+  const handleBackFromMantenimiento = () => {
+    setObsPreload(null);
+    setView('home');
+  };
+
+  const handleMantenimientoSuccess = () => {
+    setObsPreload(null);
+    setView('home');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <TopNavbar />
@@ -246,6 +272,8 @@ const ParteDiario = () => {
               nombreEmpleado={empleado.nombreCompleto}
               rolLabel={rol ? ROL_LABELS[rol] : 'Empleado'}
               isRepartidor={isRepartidor}
+              isMecanico={isMecanico}
+              alertasPendientesCount={alertasPendientes.length}
               entregasHoyCount={cargasFiltered.length}
               cargasHoy={cargasFiltered}
               totalLitrosHoy={totalLitrosFiltered}
@@ -262,6 +290,8 @@ const ParteDiario = () => {
               onRegistrarEntrega={() => { setEditingCarga(null); setShowEntregaDialog(true); }}
               onEditCarga={(carga) => { setEditingCarga(carga); setShowEntregaDialog(true); }}
               onDeleteCarga={(carga) => setDeletingCarga(carga)}
+              onVerAlertas={handleGoToAlerts}
+              onNuevoMantenimiento={() => handleGoToMantenimiento()}
               isDiscarding={isDeleting}
             />
             {isRepartidor && (
@@ -301,6 +331,23 @@ const ParteDiario = () => {
               </>
             )}
           </>
+        )}
+
+        {view === 'alerts' && (
+          <MecanicoObservacionesView
+            onBack={handleBack}
+            onCrearMantenimiento={(obs) => handleGoToMantenimiento(obs)}
+            nombreMecanico={empleado.nombreCompleto}
+          />
+        )}
+
+        {view === 'mantenimiento' && (
+          <MecanicoMantenimientoForm
+            onBack={handleBackFromMantenimiento}
+            onSuccess={handleMantenimientoSuccess}
+            obsPreload={obsPreload}
+            nombreMecanico={empleado.nombreCompleto}
+          />
         )}
 
         {view === 'list' && (
