@@ -373,7 +373,8 @@ function renderTotalsBox(
 function generateServicioPDF(
   doc: jsPDF, yPos: number, margin: number, pageWidth: number,
   certificado: Certificado, items: CertificadoItem[], categoriaMap: Record<string, string>,
-  skipTotals = false
+  skipTotals = false,
+  etapaMap: Record<string, string> = {}
 ): number {
   const itemsByCategory = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
@@ -389,20 +390,45 @@ function generateServicioPDF(
     const catItems = itemsByCategory.get(catName) || [];
     if (catItems.length === 0) return;
 
+    // Category header row
     tableData.push([{
       content: catName.toUpperCase(),
       colSpan: 5,
-      styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 7, cellPadding: 2 },
+      styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
     }]);
 
+    // Group items by sub category (etapa) within this category
+    const itemsByEtapa = new Map<string, CertificadoItem[]>();
     catItems.forEach((item) => {
-      tableData.push([
-        item.descripcion,
-        item.unidad,
-        item.cantidad.toLocaleString("es-AR"),
-        formatCurrency(item.precio_unitario),
-        formatCurrency(item.subtotal),
-      ]);
+      const etapa = item.etapa || (item.concepto_id && etapaMap[item.concepto_id]) || "";
+      if (!itemsByEtapa.has(etapa)) itemsByEtapa.set(etapa, []);
+      itemsByEtapa.get(etapa)!.push(item);
+    });
+
+    const sortedEtapas = [...itemsByEtapa.keys()].sort();
+
+    sortedEtapas.forEach((etapaName) => {
+      const etapaItems = itemsByEtapa.get(etapaName) || [];
+      if (etapaItems.length === 0) return;
+
+      // Sub category row (only if there's an etapa name)
+      if (etapaName) {
+        tableData.push([{
+          content: "  " + etapaName.toUpperCase(),
+          colSpan: 5,
+          styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
+        }]);
+      }
+
+      etapaItems.forEach((item) => {
+        tableData.push([
+          item.descripcion,
+          item.unidad,
+          item.cantidad.toLocaleString("es-AR"),
+          formatCurrency(item.precio_unitario),
+          formatCurrency(item.subtotal),
+        ]);
+      });
     });
 
     const catSubtotal = catItems.reduce((s, i) => s + i.subtotal, 0);
@@ -615,7 +641,7 @@ function generateMixtoPDF(
   // --- SECCIÓN SERVICIO ---
   if (servicioItems.length > 0) {
     if (obraItems.length > 0) yPos += 4;
-    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, servicioItems, categoriaMap || {}, true);
+    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, servicioItems, categoriaMap || {}, true, etapaMap);
   }
 
   // --- TOTALES UNIFICADOS AL FINAL ---
@@ -676,7 +702,7 @@ export async function generateCertificadoPDF({
   } else if (certificado.tipo === "mixto") {
     yPos = generateMixtoPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
   } else {
-    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap);
+    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap, false, etapaMap);
   }
 
   // Observaciones
@@ -690,9 +716,6 @@ export async function generateCertificadoPDF({
     doc.text(obsLines, margin, yPos);
     yPos += obsLines.length * 3 + 5;
   }
-
-  // Firma
-  await renderFirma(doc, pageWidth, yPos);
 
   // Footer on all pages
   addFooter(doc, margin);
