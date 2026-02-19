@@ -66,6 +66,13 @@ export const MecanicoMantenimientoForm = ({
     }
   }, [obsPreload]);
 
+  // Sync tecnico with logged-in mechanic's name (handles async prop loading)
+  useEffect(() => {
+    if (nombreMecanico) {
+      setTecnico(nombreMecanico);
+    }
+  }, [nombreMecanico]);
+
   const costoTotal = (parseFloat(costoRepuestos) || 0) + (parseFloat(costoManoObra) || 0);
 
   const maquinariasFiltradas = maquinarias.filter(m => {
@@ -251,13 +258,14 @@ export const MecanicoMantenimientoForm = ({
 
         {/* Técnico */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Técnico *</Label>
+          <Label className="text-sm font-semibold">Técnico</Label>
           <Input
-            placeholder="Nombre del mecánico"
             value={tecnico}
-            onChange={e => setTecnico(e.target.value)}
-            className="h-12 text-base"
+            readOnly
+            placeholder="Cargando nombre..."
+            className="h-12 text-base bg-muted cursor-default"
           />
+          <p className="text-xs text-muted-foreground px-1">✓ Completado automáticamente según el usuario logueado</p>
         </div>
 
         {/* Horas máquina */}
