@@ -286,7 +286,16 @@ function addFooter(doc: jsPDF, margin: number) {
 }
 
 // ─── Firma ──────────────────────────────────────────────────────
-async function renderFirma(doc: jsPDF, pageWidth: number, yPos: number): Promise<number> {
+async function renderFirma(doc: jsPDF, pageWidth: number, yPos: number, margin = 10): Promise<number> {
+  // Check if there's enough space for the signature block (~40mm needed)
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const footerZone = 15; // footer occupies ~15mm at the bottom
+  const firmaSpace = 40;
+  if (yPos + firmaSpace > pageHeight - footerZone) {
+    doc.addPage();
+    yPos = 20;
+  }
+
   let firmaData: ImageData | null = null;
   try { firmaData = await loadImageAsBase64(firmaPresidente); } catch (e) { console.warn("Could not load firma:", e); }
 
@@ -466,12 +475,29 @@ function generateObraPDF(
   let totalAvActual = 0;
   let totalAvAcumulado = 0;
 
+  let lastCategory = "";
+
   sortedEtapas.forEach((etapaName) => {
     const etapaItems = itemsByEtapa.get(etapaName) || [];
     if (etapaItems.length === 0) return;
 
+    // Determine the category from the first item in this etapa group
+    const firstItem = etapaItems[0];
+    const currentCategory = (firstItem.concepto_id && categoriaMap && categoriaMap[firstItem.concepto_id]) || "";
+
+    // Insert category header row if category changed
+    if (currentCategory && currentCategory !== lastCategory) {
+      tableData.push([{
+        content: currentCategory.toUpperCase(),
+        colSpan: 11,
+        styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
+      }]);
+      lastCategory = currentCategory;
+    }
+
+    // Sub category row
     tableData.push([{
-      content: etapaName.toUpperCase(),
+      content: "  " + etapaName.toUpperCase(),
       colSpan: 11,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
