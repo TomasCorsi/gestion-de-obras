@@ -545,7 +545,7 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
-                  <TabsTrigger value="orden-etapas">Orden de Etapas</TabsTrigger>
+                  <TabsTrigger value="orden-etapas">Orden de Sub Categorías</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
@@ -665,8 +665,8 @@ export default function Certificados() {
                                 <TableHead>Unidad</TableHead>
                                 <TableHead className="text-right">P. Unitario</TableHead>
                                 <TableHead className="text-right">Cant. Total</TableHead>
-                                <TableHead>Etapa</TableHead>
-                                <TableHead>Estado</TableHead>
+                                 <TableHead>Sub Categoría</TableHead>
+                                 <TableHead>Estado</TableHead>
                                 <TableHead className="text-right">Acciones</TableHead>
                               </TableRow>
                             </TableHeader>
@@ -723,7 +723,7 @@ export default function Certificados() {
                     </Select>
                   </div>
                   <div>
-                    <Label>Etapa (opcional)</Label>
+                   <Label>Sub Categoría (opcional)</Label>
                     <Input value={newConcepto.etapa} onChange={(e) => setNewConcepto((p) => ({ ...p, etapa: e.target.value }))} placeholder="Ej: ETAPA 2" />
                   </div>
                 </div>
@@ -769,7 +769,7 @@ export default function Certificados() {
                   const totalGrupos = groups.length;
                   return totalGrupos > 1 ? (
                     <p className="text-xs text-muted-foreground">
-                      {totalConceptos} conceptos en {totalGrupos} {tipoCert === "servicio" ? "categorías" : "etapas"} — desplazá para ver todos
+                      {totalConceptos} conceptos en {totalGrupos} {tipoCert === "servicio" ? "categorías" : "sub categorías"} — desplazá para ver todos
                     </p>
                   ) : null;
                 })()}
@@ -865,9 +865,10 @@ export default function Certificados() {
                             <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
                             <div className="overflow-x-auto">
                               <Table>
-                                <TableHeader>
+                               <TableHeader>
                                   <TableRow>
                                     <TableHead className="min-w-[120px]">Concepto</TableHead>
+                                    <TableHead>Categoría</TableHead>
                                     <TableHead>Un.</TableHead>
                                     <TableHead className="text-right">P. Unit.</TableHead>
                                     <TableHead className="text-right">Cant. Total</TableHead>
@@ -894,33 +895,34 @@ export default function Certificados() {
                                     const avAcumulado = avAnterior + avActual;
                                     const valorTotal = cantTotal * item.precio_unitario;
 
-                                    return (
-                                      <TableRow key={globalIdx}>
-                                        <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                        <TableCell>{item.unidad}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                        <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                        <TableCell>
-                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
-                                        </TableCell>
-                                        <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                        <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                        <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                      </TableRow>
-                                    );
+                                       return (
+                                       <TableRow key={globalIdx}>
+                                         <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                         <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
+                                         <TableCell>{item.unidad}</TableCell>
+                                         <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                         <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                         <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                         <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                         <TableCell>
+                                           <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
+                                         </TableCell>
+                                         <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                         <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                         <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                         <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                         <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                       </TableRow>
+                                     );
                                   })}
                                 </TableBody>
                                 <TableFooter>
-                                  <TableRow>
-                                    <TableCell colSpan={10} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                    <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
-                                    <TableCell />
-                                  </TableRow>
-                                </TableFooter>
+                                   <TableRow>
+                                     <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                     <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                     <TableCell />
+                                   </TableRow>
+                                 </TableFooter>
                               </Table>
                             </div>
                           </div>
@@ -1082,22 +1084,23 @@ export default function Certificados() {
                               <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
                               <div className="overflow-x-auto">
                                 <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                      <TableHead>Un.</TableHead>
-                                      <TableHead className="text-right">P. Unit.</TableHead>
-                                      <TableHead className="text-right">Cant. Total</TableHead>
-                                      <TableHead className="text-right">Valor Total</TableHead>
-                                      <TableHead className="text-right">% Ant.</TableHead>
-                                      <TableHead className="text-right">Cant. Actual</TableHead>
-                                      <TableHead className="text-right">% Actual</TableHead>
-                                      <TableHead className="text-right">% Acum.</TableHead>
-                                      <TableHead className="text-right">Av. Ant.</TableHead>
-                                      <TableHead className="text-right">Av. Actual</TableHead>
-                                      <TableHead className="text-right">Av. Acum.</TableHead>
-                                    </TableRow>
-                                  </TableHeader>
+                                   <TableHeader>
+                                     <TableRow>
+                                       <TableHead className="min-w-[120px]">Concepto</TableHead>
+                                       <TableHead>Categoría</TableHead>
+                                       <TableHead>Un.</TableHead>
+                                       <TableHead className="text-right">P. Unit.</TableHead>
+                                       <TableHead className="text-right">Cant. Total</TableHead>
+                                       <TableHead className="text-right">Valor Total</TableHead>
+                                       <TableHead className="text-right">% Ant.</TableHead>
+                                       <TableHead className="text-right">Cant. Actual</TableHead>
+                                       <TableHead className="text-right">% Actual</TableHead>
+                                       <TableHead className="text-right">% Acum.</TableHead>
+                                       <TableHead className="text-right">Av. Ant.</TableHead>
+                                       <TableHead className="text-right">Av. Actual</TableHead>
+                                       <TableHead className="text-right">Av. Acum.</TableHead>
+                                     </TableRow>
+                                   </TableHeader>
                                   <TableBody>
                                     {group.items.map((item) => {
                                       const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
@@ -1110,31 +1113,32 @@ export default function Certificados() {
                                       const avAcumulado = avAnterior + avActual;
                                       const valorTotal = cantTotal * item.precio_unitario;
 
-                                      return (
-                                        <TableRow key={item.id}>
-                                          <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                          <TableCell>{item.unidad}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                          <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                          <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                          <TableCell className="text-right">{item.cantidad.toLocaleString("es-AR")}</TableCell>
-                                          <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                          <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                          <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                          <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                        </TableRow>
-                                      );
+                                       return (
+                                         <TableRow key={item.id}>
+                                           <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                           <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                           <TableCell>{item.unidad}</TableCell>
+                                           <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                           <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                           <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                           <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                           <TableCell className="text-right">{item.cantidad.toLocaleString("es-AR")}</TableCell>
+                                           <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                           <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                           <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                           <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                           <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                         </TableRow>
+                                       );
                                     })}
                                   </TableBody>
-                                  <TableFooter>
-                                    <TableRow>
-                                      <TableCell colSpan={10} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                      <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
-                                      <TableCell />
-                                    </TableRow>
-                                  </TableFooter>
+                                   <TableFooter>
+                                     <TableRow>
+                                       <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                       <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                       <TableCell />
+                                     </TableRow>
+                                   </TableFooter>
                                 </Table>
                               </div>
                             </div>
@@ -1464,7 +1468,7 @@ function ConceptoRow({
                 </Select>
               </div>
               <div>
-                <Label>Etapa (opcional)</Label>
+                <Label>Sub Categoría (opcional)</Label>
                 <Input value={editForm.etapa} onChange={(e) => setEditForm((p) => ({ ...p, etapa: e.target.value }))} placeholder="Ej: ETAPA 2" />
               </div>
             </div>
@@ -1540,7 +1544,7 @@ function EtapasOrdenTab({
     return (
       <Card>
         <CardContent className="py-8 text-center text-muted-foreground">
-          No hay etapas definidas. Asigná etapas a los conceptos en la pestaña "Conceptos".
+          No hay sub categorías definidas. Asigná sub categorías a los conceptos en la pestaña "Conceptos".
         </CardContent>
       </Card>
     );
@@ -1549,14 +1553,14 @@ function EtapasOrdenTab({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Ordená las etapas como quieras que aparezcan en el certificado y el PDF.
+        Ordená las sub categorías como quieras que aparezcan en el certificado y el PDF.
       </p>
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-16 text-center">#</TableHead>
-              <TableHead>Etapa</TableHead>
+              <TableHead>Sub Categoría</TableHead>
               <TableHead className="text-center">Conceptos</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>

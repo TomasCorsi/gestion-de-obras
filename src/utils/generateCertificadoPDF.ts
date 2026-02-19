@@ -438,7 +438,8 @@ function generateObraPDF(
   certificado: Certificado, items: CertificadoItem[],
   etapaMap: Record<string, string>, cantidadTotalMap: Record<string, number>,
   acumulados: AcumuladoConcepto[],
-  etapaOrdenMap?: Record<string, number>
+  etapaOrdenMap?: Record<string, number>,
+  categoriaMap?: Record<string, string>
 ): number {
   const itemsByEtapa = new Map<string, CertificadoItem[]>();
   items.forEach((item) => {
@@ -466,8 +467,8 @@ function generateObraPDF(
     if (etapaItems.length === 0) return;
 
     tableData.push([{
-      content: etapaName.toUpperCase(),
-      colSpan: 10,
+      content: "SUB CATEGORÍA: " + etapaName.toUpperCase(),
+      colSpan: 11,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
 
@@ -495,6 +496,7 @@ function generateObraPDF(
 
       tableData.push([
         item.descripcion,
+        (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "-",
         formatCurrency(item.precio_unitario),
         cantTotal > 0 ? cantTotal.toLocaleString("es-AR") : "-",
         formatCurrency(valorTotal),
@@ -509,7 +511,7 @@ function generateObraPDF(
 
     // Subtotal row per etapa
     tableData.push([
-      { content: `Subtotal ${etapaName}`, colSpan: 7, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
+      { content: `Subtotal ${etapaName}`, colSpan: 8, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAnterior), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvActual), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAcumulado), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
@@ -518,22 +520,23 @@ function generateObraPDF(
 
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum."]],
+    head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum."]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { cellWidth: 18, halign: "right" },
+      1: { cellWidth: 20, halign: "left" },
       2: { cellWidth: 16, halign: "right" },
-      3: { cellWidth: 20, halign: "right" },
-      4: { cellWidth: 14, halign: "right" },
-      5: { cellWidth: 14, halign: "right" },
-      6: { cellWidth: 14, halign: "right" },
-      7: { cellWidth: 20, halign: "right" },
-      8: { cellWidth: 20, halign: "right" },
-      9: { cellWidth: 20, halign: "right" },
+      3: { cellWidth: 14, halign: "right" },
+      4: { cellWidth: 18, halign: "right" },
+      5: { cellWidth: 12, halign: "right" },
+      6: { cellWidth: 12, halign: "right" },
+      7: { cellWidth: 12, halign: "right" },
+      8: { cellWidth: 18, halign: "right" },
+      9: { cellWidth: 18, halign: "right" },
+      10: { cellWidth: 18, halign: "right" },
     },
     margin: { left: margin, right: margin },
   });
@@ -586,7 +589,7 @@ export async function generateCertificadoPDF({
   yPos = renderCertInfo(doc, margin, pageWidth, yPos, certificado, obraNombre, obraUbicacion, clienteNombre, clienteCuit, clienteDireccion, clienteLocalidad, clienteTelefono, clienteEmail);
 
   if (certificado.tipo === "obra") {
-    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap);
+    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
   } else {
     yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap);
   }
