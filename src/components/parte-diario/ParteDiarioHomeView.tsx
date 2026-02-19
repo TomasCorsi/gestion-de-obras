@@ -1,4 +1,4 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format, parseISO, isToday as isDateToday } from "date-fns";
@@ -13,6 +13,8 @@ interface ParteDiarioHomeViewProps {
   nombreEmpleado: string;
   rolLabel: string;
   isRepartidor?: boolean;
+  isMecanico?: boolean;
+  alertasPendientesCount?: number;
   entregasHoyCount?: number;
   cargasHoy?: CargaRepartidor[];
   totalLitrosHoy?: number;
@@ -29,6 +31,8 @@ interface ParteDiarioHomeViewProps {
   onRegistrarEntrega?: () => void;
   onEditCarga?: (carga: CargaRepartidor) => void;
   onDeleteCarga?: (carga: CargaRepartidor) => void;
+  onVerAlertas?: () => void;
+  onNuevoMantenimiento?: () => void;
   isDiscarding?: boolean;
 }
 
@@ -38,6 +42,8 @@ export const ParteDiarioHomeView = ({
   nombreEmpleado,
   rolLabel,
   isRepartidor = false,
+  isMecanico = false,
+  alertasPendientesCount = 0,
   entregasHoyCount = 0,
   cargasHoy = [],
   totalLitrosHoy = 0,
@@ -54,6 +60,8 @@ export const ParteDiarioHomeView = ({
   onRegistrarEntrega,
   onEditCarga,
   onDeleteCarga,
+  onVerAlertas,
+  onNuevoMantenimiento,
   isDiscarding = false,
 }: ParteDiarioHomeViewProps) => {
   return (
@@ -98,6 +106,37 @@ export const ParteDiarioHomeView = ({
           </Button>
         )}
       </div>
+
+      {/* Mechanic buttons */}
+      {isMecanico && (
+        <div className="grid grid-cols-2 gap-3">
+          <Button
+            onClick={onVerAlertas}
+            variant="outline"
+            className="h-24 flex-col gap-2 px-2 relative border-orange-500/40 hover:bg-orange-500/5"
+            size="lg"
+          >
+            <div className="relative">
+              <Bell className="w-8 h-8 text-orange-500" />
+              {alertasPendientesCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                  {alertasPendientesCount}
+                </span>
+              )}
+            </div>
+            <span className="font-semibold text-xs leading-tight text-center text-foreground">Alertas de Campo</span>
+          </Button>
+          <Button
+            onClick={onNuevoMantenimiento}
+            variant="outline"
+            className="h-24 flex-col gap-2 px-2 border-primary/40 hover:bg-primary/5"
+            size="lg"
+          >
+            <Wrench className="w-8 h-8 text-primary" />
+            <span className="font-semibold text-xs leading-tight text-center text-foreground">Nuevo Mantenim.</span>
+          </Button>
+        </div>
+      )}
 
       {/* Date navigator + Entregas list for repartidor */}
       {isRepartidor && (
