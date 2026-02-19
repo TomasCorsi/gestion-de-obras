@@ -1,34 +1,39 @@
 
 
-## Correcciones en PDF de Certificados
+## Cambios en PDF de Certificados
 
-### Problema 1: Mostrar Categoria y Sub Categoria en la tabla de Obra
+### 1. Agregar Sub Categoria en la seccion Servicio del PDF
 
-Actualmente la fila de agrupacion en la tabla de Obra solo muestra la sub categoria (etapa). Se necesita mostrar primero la **Categoria** como encabezado y debajo la **Sub Categoria**.
+Actualmente `generateServicioPDF` solo agrupa los items por **categoria** (ej: "ALQUILER DE MAQUINAS"). Falta mostrar la **sub categoria** (etapa) debajo de cada categoria, igual que en la seccion Obra.
 
-**Solucion:** En `generateObraPDF`, antes de cada grupo de etapa, determinar la categoria de los items del grupo (usando `categoriaMap`). Si la categoria cambia respecto al grupo anterior, insertar una fila de encabezado de categoria (fondo mas oscuro, texto en mayusculas). La sub categoria se sigue mostrando debajo como hasta ahora.
+**Solucion:** Modificar `generateServicioPDF` para:
+- Recibir `etapaMap` como parametro adicional
+- Dentro de cada grupo de categoria, agrupar los items por sub categoria (etapa)
+- Insertar una fila de sub categoria (fondo gris claro, texto indentado) antes de los items de ese grupo
+- Si un item no tiene sub categoria, se muestra directamente bajo la categoria
 
-Ejemplo visual en el PDF:
+Ejemplo visual:
 ```text
-ALQUILER DE MAQUINAS          <- fila categoria (nueva)
-  SEMANA 1                    <- fila sub categoria (existente)
+ALQUILER DE MAQUINAS          <- categoria (existente)
+  SEMANA 1                    <- sub categoria (nueva)
     Camion Tatu PAT AB629IP   <- items
+  SEMANA 2                    <- sub categoria (nueva)
+    Otra maquina              <- items
 ```
 
-### Problema 2: Firma cortada / superpuesta con el footer
+Tambien se debe actualizar la llamada a `generateServicioPDF` en `generateMixtoPDF` y en la funcion principal para pasar el `etapaMap`.
 
-En la captura se ve que la firma, el nombre y los datos de empresa se superponen con la linea del footer. Esto ocurre porque `renderFirma` no verifica si hay espacio suficiente antes de renderizar en la posicion actual.
+### 2. Eliminar la firma del PDF
 
-**Solucion:** Antes de renderizar la firma, calcular el espacio necesario (~35mm para imagen + linea + textos). Si `yPos + 35` supera el limite de la pagina (pageHeight - 15mm del footer), agregar una nueva pagina y resetear yPos.
+Se elimina completamente la llamada a `renderFirma` en la funcion principal `generateCertificadoPDF`. La funcion `renderFirma` se puede dejar en el codigo por si se necesita en el futuro, pero no se invocara.
 
-### Resumen de cambios
+### Resumen tecnico
 
 **Archivo:** `src/utils/generateCertificadoPDF.ts`
 
 | Cambio | Detalle |
 |---|---|
-| Fila de categoria en tabla Obra | Insertar fila de encabezado por categoria antes de las sub categorias, usando `categoriaMap` para determinar la categoria de cada grupo |
-| Fila de categoria en tabla Servicio | Aplicar la misma logica para consistencia (ya agrupa por categoria, se mantiene) |
-| Firma con salto de pagina | Agregar verificacion de espacio antes de `renderFirma`. Si no hay espacio, llamar `doc.addPage()` y resetear yPos |
-| Firma con salto de pagina | Pasar `margin` a `renderFirma` para poder calcular correctamente |
-
+| Sub categoria en Servicio | Modificar `generateServicioPDF` para agrupar por etapa dentro de cada categoria, usando `etapaMap` |
+| Firma de `generateServicioPDF` | Agregar parametro `etapaMap` |
+| Llamadas a `generateServicioPDF` | Pasar `etapaMap` en `generateMixtoPDF` (linea 618) y en la funcion principal (linea 679) |
+| Eliminar firma | Quitar la linea `await renderFirma(doc, pageWidth, yPos)` (linea 695) |
