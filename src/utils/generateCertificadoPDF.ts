@@ -563,6 +563,52 @@ function generateObraPDF(
   return yPos;
 }
 
+// ─── Mixto PDF ──────────────────────────────────────────────────
+function generateMixtoPDF(
+  doc: jsPDF, yPos: number, margin: number, pageWidth: number,
+  certificado: Certificado, items: CertificadoItem[],
+  etapaMap: Record<string, string>, cantidadTotalMap: Record<string, number>,
+  acumulados: AcumuladoConcepto[],
+  etapaOrdenMap?: Record<string, number>,
+  categoriaMap?: Record<string, string>
+): number {
+  const obraItems = items.filter((i) => i.seccion === "obra");
+  const servicioItems = items.filter((i) => i.seccion === "servicio");
+
+  // --- SECCIÓN OBRA ---
+  if (obraItems.length > 0) {
+    // Section header
+    doc.setFillColor(...CORP_DARK_RED);
+    doc.rect(margin, yPos, pageWidth - margin * 2, 7, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...WHITE);
+    doc.text("SECCIÓN OBRA — Avance Acumulado", margin + 3, yPos + 5);
+    doc.setTextColor(0, 0, 0);
+    yPos += 10;
+
+    yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, obraItems, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
+  }
+
+  // --- SECCIÓN SERVICIO ---
+  if (servicioItems.length > 0) {
+    yPos += 4;
+    // Section header
+    doc.setFillColor(80, 80, 80);
+    doc.rect(margin, yPos, pageWidth - margin * 2, 7, "F");
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(...WHITE);
+    doc.text("SECCIÓN SERVICIO — Precio × Cantidad", margin + 3, yPos + 5);
+    doc.setTextColor(0, 0, 0);
+    yPos += 10;
+
+    yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, servicioItems, categoriaMap || {});
+  }
+
+  return yPos;
+}
+
 // ─── Main Export ─────────────────────────────────────────────────
 export async function generateCertificadoPDF({
   certificado,
@@ -590,6 +636,8 @@ export async function generateCertificadoPDF({
 
   if (certificado.tipo === "obra") {
     yPos = generateObraPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
+  } else if (certificado.tipo === "mixto") {
+    yPos = generateMixtoPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
   } else {
     yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap);
   }
@@ -614,3 +662,4 @@ export async function generateCertificadoPDF({
 
   doc.save(`Certificado_${certificado.numero}.pdf`);
 }
+
