@@ -785,7 +785,7 @@ export default function Certificados() {
 
           {/* ==================== CREAR/EDITAR CERTIFICADO DIALOG ==================== */}
           <Dialog open={crearOpen} onOpenChange={(open) => { setCrearOpen(open); if (!open) setEditingCertId(null); }}>
-            <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
                   {isEditing ? "Editar Certificado" : "Nuevo Certificado"} — {selectedObra?.nombre}
@@ -833,7 +833,7 @@ export default function Certificados() {
                   <Textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Notas adicionales..." className="min-h-[60px]" />
                 </div>
               </div>
-              <div className="flex-1 min-h-0 overflow-y-auto pr-2">
+              <div className="pr-2">
                 <div className="space-y-4">
                   {tipoCert === "servicio" ? (
                     /* ---- SERVICIO: same as before, grouped by categoria ---- */
