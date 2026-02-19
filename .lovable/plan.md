@@ -1,141 +1,88 @@
 
-## Módulo de Mantenimiento para Mecánicos en el Parte Diario
+## Validación obligatoria de la observación de máquina
 
-### Objetivo
-Agregar, dentro de la vista del Parte Diario del rol **Mecánico** (y Ayudante), dos nuevas secciones accesibles desde la pantalla principal:
-1. **Ver Observaciones de Campo** — alertas pendientes reportadas por maquinistas/choferes, con opción de registrar mantenimiento correctivo desde ahí.
-2. **Registrar Mantenimiento** — formulario para crear mantenimientos libres (sin necesidad de que exista una observación previa).
+### Problema identificado
 
-Todo diseñado con la misma filosofía mobile-first del resto de la app: tarjetas grandes, botones táctiles, flujo claro.
+En `src/components/parte-diario/ParteDiarioFormView.tsx`, cuando el usuario selecciona "OBSERVACIÓN" en el estado de la máquina, el textarea aparece pero la función `validateForComplete()` (línea 257) **no verifica** que el campo `observacion_maquina` tenga contenido. Esto permite guardar el parte con la observación vacía.
 
----
+El campo tampoco se valida al guardar como borrador, lo que significa que un operador puede guardar y completar el parte sin escribir nada en la observación.
 
-### Arquitectura de la solución
+### Cambios a realizar
 
-El flujo de navegación del Parte Diario se extiende con nuevas vistas:
+**Archivo: `src/components/parte-diario/ParteDiarioFormView.tsx`**
 
-```text
-ParteDiario.tsx
-│
-├── ViewMode: 'home'  ← ParteDiarioHomeView
-│     [Para mecanico/ayudante: se añaden 2 botones nuevos]
-│     ┌───────────┬──────────────┐
-│     │ Nuevo     │  Mis Partes  │
-│     │ Parte     │              │
-│     ├───────────┴──────────────┤
-│     │ 🔔 Alertas    │ 🔧 Nuevo  │
-│     │    de Campo   │   Manto.  │
-│     └───────────────┴──────────┘
-│
-├── ViewMode: 'form'  ← ParteDiarioFormView (sin cambios)
-│
-├── ViewMode: 'alerts' (NUEVO) ← MecanicoObservacionesView
-│     Muestra observaciones pendientes de maquinistas
-│     Permite marcar como atendida + crear mantenimiento
-│
-└── ViewMode: 'mantenimiento' (NUEVO) ← MecanicoMantenimientoForm
-      Formulario mobile para registrar mantenimiento libre
+**1. Agregar validación en `validateForComplete` (línea 257)**
+
+Agregar una verificación: si `showEstadoMaquina` es true y `formData.estado_maquina === 'OBSERVACION'`, el campo `observacion_maquina` no puede estar vacío ni solo tener espacios en blanco.
+
+```typescript
+const validateForComplete = (): boolean => {
+  if (isMaquinista && !formData.maquinaria_id) {
+    toast.error('Debes seleccionar una máquina para completar el parte');
+    return false;
+  }
+  // NUEVO: validar observación obligatoria
+  if (showEstadoMaquina && formData.estado_maquina === 'OBSERVACION' && !formData.observacion_maquina.trim()) {
+    toast.error('Debés describir la observación de la máquina');
+    return false;
+  }
+  if (showHorometro) {
+    const inicio = parseFloat(formData.horometro_inicio) || 0;
+    const fin = parseFloat(formData.horometro_fin) || 0;
+    if (fin > 0 && fin < inicio) {
+      toast.error('El horómetro fin debe ser mayor al inicio');
+      return false;
+    }
+  }
+  return true;
+};
 ```
 
----
+**2. Mostrar error visual en el Textarea (línea 544)**
 
-### Cambios técnicos detallados
+Agregar un estado o derivar un flag `obsError` que sea `true` cuando el estado es OBSERVACION y el campo está vacío **después de un intento de guardado fallido**. Esto muestra el textarea con borde rojo y un mensaje de error bajo el campo:
 
-#### 1. `src/pages/ParteDiario.tsx`
-- Extender `ViewMode` con `'alerts'` y `'mantenimiento'`
-- Detectar cuando el rol es `mecanico` o `ayudante` para pasar la prop `isMecanico`
-- Agregar handlers: `handleGoToAlerts()`, `handleGoToMantenimiento(obs?)` (el parámetro `obs` permite pre-llenar el form desde una alerta)
-- Renderizar los dos nuevos componentes cuando el view lo indica
-
-#### 2. `src/components/parte-diario/ParteDiarioHomeView.tsx`
-- Agregar prop `isMecanico?: boolean` y `onVerAlertas?: () => void` y `onNuevoMantenimiento?: () => void`
-- Cuando `isMecanico`, mostrar un grid de 2x2 con los 4 botones:
-  - Nuevo Parte / Mis Partes (fila 1)
-  - Alertas de Campo (con badge del número de pendientes) / Nuevo Mantenimiento (fila 2)
-
-#### 3. Nuevo componente: `src/components/parte-diario/MecanicoObservacionesView.tsx`
-Vista mobile de observaciones pendientes. Usa `useObservacionesMaquina`. Diseño compacto:
-- Header con botón Atrás y contador de pendientes
-- Lista de tarjetas con: nombre máquina, patente, operador, fecha, descripción
-- Indicador de urgencia por color (borde izquierdo: verde < 3d, naranja 3-7d, rojo 7d+)
-- Dos botones por tarjeta: **Marcar como atendida** y **Crear Mantenimiento** (navega a la vista de form con datos pre-llenados)
-- Sección inferior con "atendidas recientes" colapsable
-
-#### 4. Nuevo componente: `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
-Formulario mobile para registrar un mantenimiento. Usa `useMantenimientos` y `useMaquinarias`.
-Campos con UX mobile-first (tarjetas grandes, inputs h-14):
-- Fecha (prellenada con hoy)
-- Máquina (Combobox buscable por código/patente/tipo)
-- Tipo de mantenimiento (radio visual: Preventivo / Correctivo / Emergencia)
-- Estado (radio visual: Programado / En Proceso / Completado)
-- Descripción (Textarea)
-- Repuestos (Textarea, opcional)
-- Técnico (Input, prellenado con nombre del mecánico si está disponible)
-- Horas máquina (Input numérico)
-- Costo repuestos + Costo mano de obra (se calcula el total automáticamente)
-- Próximo mantenimiento (fecha, opcional)
-- Observaciones (opcional)
-- Botones sticky footer: **Guardar** (spinner mientras procesa)
-
-Si viene desde una observación de campo (`obsId`), se pre-llenan: máquina, tipo=correctivo, descripción, y se guarda el `observacion_reporte_id`.
-
----
-
-### Diseño visual del Home para mecánico
-
-```text
-┌─────────────────────────────────┐
-│  📋 Parte Diario                │
-│  Hola, Juan (Mecánico)          │
-│                                 │
-│ ┌──────────────┬──────────────┐ │
-│ │   Nuevo      │  Mis Partes  │ │
-│ │   Parte      │              │ │
-│ │   [+]        │   [📋]       │ │
-│ └──────────────┴──────────────┘ │
-│                                 │
-│ ┌──────────────┬──────────────┐ │
-│ │  🔔 Alertas  │  🔧 Nuevo   │ │
-│ │  de Campo    │  Mantenim.  │ │
-│ │  [3 pend.]   │             │ │
-│ └──────────────┴──────────────┘ │
-└─────────────────────────────────┘
+```tsx
+{formData.estado_maquina === 'OBSERVACION' && (
+  <div className="mt-4">
+    <Textarea
+      placeholder="Describa la observación de la máquina..."
+      value={formData.observacion_maquina}
+      onChange={(e) => handleChange('observacion_maquina', e.target.value)}
+      className={cn(
+        "min-h-24 text-base",
+        showObsError && "border-destructive focus-visible:ring-destructive"
+      )}
+    />
+    {showObsError && (
+      <p className="text-sm text-destructive mt-1 flex items-center gap-1">
+        <span>⚠</span> Debés escribir la observación antes de continuar
+      </p>
+    )}
+    <p className="text-xs text-muted-foreground mt-1">
+      {formData.observacion_maquina.length}/0 caracteres
+    </p>
+  </div>
+)}
 ```
 
----
+**3. Limpiar el error cuando el usuario empieza a escribir**
 
-### Archivos a crear/modificar
+Se agrega un `useState<boolean>` llamado `showObsError` que:
+- Se activa (`true`) cuando `validateForComplete` detecta observación vacía
+- Se limpia (`false`) cuando el usuario escribe en el textarea
 
-| Archivo | Acción |
-|---|---|
-| `src/pages/ParteDiario.tsx` | Modificar: nuevas views y handlers |
-| `src/components/parte-diario/ParteDiarioHomeView.tsx` | Modificar: botones adicionales para mecánico |
-| `src/components/parte-diario/MecanicoObservacionesView.tsx` | Crear nuevo |
-| `src/components/parte-diario/MecanicoMantenimientoForm.tsx` | Crear nuevo |
+**4. También validar al guardar borrador (opcional pero recomendado)**
 
-**Sin cambios de base de datos** — se reutilizan las tablas y hooks existentes (`useMantenimientos`, `useObservacionesMaquina`, `useMaquinarias`).
+El `handleSaveDraft` actualmente no valida nada. Para el borrador no se bloqueará (es un draft), pero se mostrará el error visual igualmente si intenta completar después. La validación dura solo aplica a `handleComplete`.
 
-### Permisos RLS
-La tabla `mantenimientos` ya tiene política que permite `ALL` a `admin` y `capataz`. Los mecánicos NO tienen permiso de escritura actualmente. Se necesitará agregar una política RLS para permitir a usuarios con rol `mecanico` hacer INSERT en `mantenimientos`. La política de lectura ya existe a través del rol `maquinista` — se agregará también para `mecanico`.
+### Resumen de cambios
 
-Se creará una migración con:
-```sql
--- Mecánicos pueden ver mantenimientos
-CREATE POLICY "Mecanicos can view mantenimientos"
-  ON mantenimientos FOR SELECT
-  USING (has_role(auth.uid(), 'mecanico'::app_role));
+| Cambio | Archivo | Tipo |
+|---|---|---|
+| Agregar `showObsError` state | `ParteDiarioFormView.tsx` | Nuevo estado |
+| Validar observación en `validateForComplete` | `ParteDiarioFormView.tsx` | Lógica de validación |
+| Mostrar borde rojo + mensaje de error en Textarea | `ParteDiarioFormView.tsx` | UI feedback |
+| Limpiar error al escribir | `ParteDiarioFormView.tsx` | UX |
 
--- Mecánicos pueden crear y actualizar mantenimientos
-CREATE POLICY "Mecanicos can manage mantenimientos"
-  ON mantenimientos FOR INSERT
-  WITH CHECK (has_role(auth.uid(), 'mecanico'::app_role));
-
-CREATE POLICY "Mecanicos can update mantenimientos"
-  ON mantenimientos FOR UPDATE
-  USING (has_role(auth.uid(), 'mecanico'::app_role));
-
--- Mecánicos necesitan ver maquinarias para el selector
--- (ya tienen SELECT via la política de maquinistas — verificar que aplique a mecanico también)
-```
-
-También se verificará si `mecanico` necesita acceso a `observaciones_maquina_estado` para leer las observaciones.
+**Sin cambios de base de datos** — es una validación puramente de frontend.
