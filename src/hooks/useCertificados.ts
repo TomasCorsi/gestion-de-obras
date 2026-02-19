@@ -17,6 +17,7 @@ export interface CertificadoConcepto {
   categoria: string;
   cantidad_total: number;
   etapa: string | null;
+  tipo: 'obra' | 'servicio';
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,7 @@ export interface ConceptoForm {
   categoria?: string;
   cantidad_total?: number;
   etapa?: string | null;
+  tipo?: 'obra' | 'servicio';
 }
 
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
@@ -182,6 +184,7 @@ export function useCertificados(obraId?: string) {
         categoria: d.categoria || "General",
         cantidad_total: d.cantidad_total || 0,
         etapa: d.etapa || null,
+        tipo: (d.tipo === 'obra' ? 'obra' : 'servicio') as 'obra' | 'servicio',
       })) as CertificadoConcepto[];
     },
     enabled: !!obraId,
