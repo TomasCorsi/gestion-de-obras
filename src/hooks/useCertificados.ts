@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 // ---- Types ----
 
-export type TipoCertificado = "obra" | "servicio";
+export type TipoCertificado = "obra" | "servicio" | "mixto";
 
 export interface CertificadoConcepto {
   id: string;
@@ -62,6 +62,7 @@ export interface CertificadoItem {
   precio_unitario: number;
   subtotal: number;
   etapa: string | null;
+  seccion: string | null;
   created_at: string;
 }
 
@@ -75,6 +76,7 @@ export interface CertificadoItemForm {
   categoria: string;
   etapa: string | null;
   cantidad_total: number;
+  seccion?: string | null;
 }
 
 // ---- Categories ----
@@ -119,12 +121,12 @@ export async function fetchAcumulados(
   periodoActual: string,
   excludeCertId?: string
 ): Promise<AcumuladoConcepto[]> {
-  // Get all certificados of type 'obra' for this obra with periodo < periodoActual
+  // Get all certificados of type 'obra' or 'mixto' for this obra with periodo < periodoActual
   const { data: certs, error } = await supabase
     .from("certificados")
     .select("id, periodo")
     .eq("obra_id", obraId)
-    .eq("tipo", "obra")
+    .in("tipo", ["obra", "mixto"])
     .lt("periodo", periodoActual);
 
   if (error || !certs || certs.length === 0) return [];
@@ -216,6 +218,7 @@ export function useCertificados(obraId?: string) {
     return (data as any[]).map((d) => ({
       ...d,
       etapa: d.etapa || null,
+      seccion: d.seccion || null,
     })) as CertificadoItem[];
   };
 
@@ -323,6 +326,7 @@ export function useCertificados(obraId?: string) {
           precio_unitario: i.precio_unitario,
           subtotal: i.subtotal,
           etapa: i.etapa || null,
+          seccion: i.seccion || null,
         }));
 
       if (itemsToInsert.length > 0) {
@@ -421,6 +425,7 @@ export function useCertificados(obraId?: string) {
           precio_unitario: i.precio_unitario,
           subtotal: i.subtotal,
           etapa: i.etapa || null,
+          seccion: i.seccion || null,
         }));
 
       if (itemsToInsert.length > 0) {
