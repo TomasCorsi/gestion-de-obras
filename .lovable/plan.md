@@ -1,60 +1,95 @@
 
-## Problema: Las sub categorías no aparecen al crear un certificado de tipo Servicio
+## Dos mejoras al módulo de Certificados
 
-### Causa raíz
+### Pedido 1: Eliminar y agregar conceptos en tipo "Obra (con acumulados)"
 
-En el dialog de crear/editar certificado, cuando el tipo es **Servicio**, los ítems se agrupan únicamente por `categoria` usando `draftGroupedCategoria`. Esto muestra la categoría como encabezado, pero dentro de cada categoría los conceptos se listan todos juntos, sin mostrar la **sub categoría (etapa)** como sub-encabezado.
+**Problema actual:** La tabla de tipo Obra no tiene columna de eliminación ni se conecta al botón "Agregar concepto". Solo el modo Servicio tiene el botón de eliminar por fila.
 
-El campo `etapa` existe en los ítems del draft (se carga correctamente desde los conceptos), pero en el modo Servicio el código actual no lo usa para sub-agrupar.
+**Solución:** Tres cambios en la tabla Obra del dialog de crear/editar:
+- Agregar una columna extra al final de la tabla de Obra con el botón de papelera (igual al de Servicio).
+- Ajustar el `colSpan` del footer de subtotal de Obra de 11 → 12 para compensar la columna nueva.
+- El botón "Agregar concepto" ya existe y funciona (`conceptosNoEnDraft`), pero solo si hay conceptos activos no en el draft. Esto ya funciona para ambos tipos automáticamente.
 
----
-
-### Solución: Agregar sub-agrupamiento por etapa dentro de cada categoría (modo Servicio)
-
-En el bloque de renderizado del modo Servicio (líneas 840-891 de `Certificados.tsx`), se agrega un segundo nivel de agrupamiento: dentro de cada `categoria`, se agrupan los ítems por su `etapa`. Cuando hay ítems sin etapa, se muestran directamente sin sub-encabezado.
-
-**Antes (solo 1 nivel):**
-```
-[Alquiler de Maquinas]   ← encabezado de categoría
-  Retroexcavadora | HR | 0 | 90,000 | ...
-  Cargadora       | HR | 0 | 85,000 | ...
-```
-
-**Después (2 niveles):**
-```
-[Alquiler de Maquinas]   ← encabezado de categoría
-  [Enero - Semana 1]     ← sub-encabezado de sub categoría (etapa)
-    Retroexcavadora | HR | 0 | 90,000 | ...
-  [Enero - Semana 2]
-    Cargadora       | HR | 0 | 85,000 | ...
-```
-
-Si un ítem no tiene etapa asignada, se lista directamente bajo la categoría sin sub-encabezado extra.
+**Cambios técnicos:**
+- `src/pages/Certificados.tsx` línea ~967-984: agregar `<TableHead className="w-8"></TableHead>` en el `<TableHeader>` de la tabla Obra.
+- Agregar `<TableCell><Button Trash2 /></TableCell>` en cada `<TableRow>` de la tabla Obra.
+- Ajustar `colSpan={11}` → `colSpan={12}` en el `<TableFooter>` de la tabla Obra.
 
 ---
 
-### Cambio técnico
+### Pedido 2: Certificado mixto con sección "Obra" y sección "Servicio"
 
-**Archivo:** `src/pages/Certificados.tsx`
+**Contexto:** El caso de uso es Pride: hay una parte de obra con acumulados (avance físico del contrato) y una parte de servicios/alquileres de maquinaria (sin acumulados, a precio unitario simple). Hoy solo puede elegirse uno u otro.
 
-**Sección modificada:** El bloque de renderizado del modo Servicio (dentro del div `draftGroupedCategoria.map(...)`, aproximadamente líneas 841-891).
+**Diseño de la solución:**
 
-**Lógica nueva dentro del map de cada `group` (categoria):**
+Agregar un tercer tipo de certificado: `"mixto"`. Cuando el tipo es "mixto", el certificado tiene dos secciones independientes:
+- **Sección Obra** — usa los ítems marcados con `seccion: "obra"`, muestra la tabla de acumulados
+- **Sección Servicio** — usa los ítems marcados con `seccion: "servicio"`, muestra la tabla simple de precio × cantidad
 
-1. Agrupar `group.items` por `etapa` usando `groupByEtapa`
-2. Si todos los ítems de la categoría tienen `etapa === null/undefined`, renderizar la tabla directamente (sin sub-encabezado)
-3. Si hay ítems con etapa, renderizar un sub-encabezado más suave (fondo más claro que el encabezado de categoría) con la etiqueta de la etapa, y debajo la tabla con los ítems de esa etapa
+Para no modificar el esquema de base de datos, la `seccion` se almacena en el campo `etapa` del ítem con un prefijo especial (`__obra__` o `__serv__`), **pero esto sería hacky y confuso**. 
 
-**Estilo propuesto para sub-encabezado:**
-- Encabezado de categoría: `bg-muted px-3 py-2 rounded-t-md font-semibold text-sm` (sin cambios)
-- Sub-encabezado de etapa: `bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-1 mt-1`
+Mejor enfoque: **agregar una columna `seccion` a `certificado_items`** con valor `'obra'` o `'servicio'` (nullable, default `null` = sin distinción).
+
+Alternativamente, la solución más simple y sin cambio de DB: **usar `categoria = "__OBRA__"` como discriminador** en los ítems de tipo mixto. Pero también hacky.
+
+**La solución correcta y limpia:**
+
+Agregar columna `seccion text` a `certificado_items` (nullable, default `null`). Los certificados de tipo `servicio` u `obra` no usan esta columna (todos sus ítems tienen `seccion = null`). Los certificados de tipo `mixto` tienen sus ítems con `seccion = 'obra'` o `seccion = 'servicio'`.
+
+**Flujo de usuario para tipo "Mixto":**
+1. Usuario selecciona tipo "Mixto" en el selector
+2. El formulario muestra dos secciones claramente separadas con un divisor:
+   - **"Sección Obra (con acumulados)"** — tabla de 13 columnas, con botón de eliminar
+   - **"Sección Servicio (Alquiler / Precio × Cantidad)"** — tabla simple agrupada por categoría
+3. Cada sección tiene su propio botón "+ Agregar concepto" que añade al array correspondiente
+4. Los totales del certificado suman ambas secciones
+5. Al guardar, los ítems llevan `seccion: 'obra'` o `seccion: 'servicio'` según su origen
+
+**Cambios de base de datos:**
+```sql
+ALTER TABLE certificado_items ADD COLUMN seccion text DEFAULT NULL;
+```
+
+**Cambios en el hook `useCertificados`:**
+- Agregar `seccion?: string | null` a `CertificadoItemForm` y `CertificadoItem`
+- Actualizar `createCertificado` y `updateCertificado` para incluir `seccion` en el insert
+- Agregar `"mixto"` al type `TipoCertificado`
+
+**Cambios en `src/pages/Certificados.tsx`:**
+- Nuevo `SelectItem value="mixto"` → "Mixto (Obra + Servicio)"
+- Estado del draft se divide en dos arrays: `itemsDraftObra` y `itemsDraftServicio` (o se mantiene un solo array con campo `seccion`)
+- Solución más limpia: mantener `itemsDraft` pero con campo `seccion` en cada ítem
+- Nueva función `addConceptoToDraftSection(conceptoId, seccion)` que además de los datos del concepto, setea `seccion`
+- Dos botones "Agregar concepto": uno para cada sección
+- Render del formulario tipo mixto: renderizar primero la sección obra, luego la sección servicio
+
+**Totales en tipo mixto:**
+- La sección Obra muestra sus avances con la lógica de acumulados
+- La sección Servicio muestra su subtotal simple
+- Al final: suma de ambos + IVA 21%
+
+**Vista y PDF tipo mixto:**
+- `openViewCert`: al cargar ítems, separarlos por `seccion`
+- Vista: primero muestra la tabla Obra, luego la tabla Servicio
+- PDF: se añade una rama `mixto` en `generateCertificadoPDF` que combina ambas tablas
 
 ---
 
-### Archivos modificados
+### Resumen de archivos modificados
 
 | Archivo | Cambio |
 |---|---|
-| `src/pages/Certificados.tsx` | Sub-agrupar por `etapa` dentro de cada `categoria` en el renderizado del modo Servicio del dialog de crear/editar |
+| `src/hooks/useCertificados.ts` | Agregar `"mixto"` al type `TipoCertificado`; agregar `seccion` a `CertificadoItemForm` y `CertificadoItem`; actualizar mutations para incluir `seccion` |
+| `src/pages/Certificados.tsx` | Botón eliminar en tabla Obra; nuevo tipo "Mixto" en el Select; render dual del formulario; totales combinados; vista dual |
+| `src/utils/generateCertificadoPDF.ts` | Nueva rama para tipo `mixto` en el PDF |
+| **Migración DB** | `ALTER TABLE certificado_items ADD COLUMN seccion text DEFAULT NULL` |
 
-**Sin cambios de base de datos ni de hooks** — los campos ya existen y se cargan correctamente. El problema era solo visual en el render.
+---
+
+### Secuencia de implementación
+
+1. Migración de base de datos (agregar columna `seccion`)
+2. Actualizar tipos y hook `useCertificados`
+3. Actualizar `Certificados.tsx`: botón eliminar en Obra + tipo mixto completo
+4. Actualizar `generateCertificadoPDF` para soportar mixto
