@@ -80,7 +80,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -224,6 +224,7 @@ export default function Certificados() {
   const [itemsDraft, setItemsDraft] = useState<CertificadoItemForm[]>([]);
   const [tipoCert, setTipoCert] = useState<TipoCertificado>("servicio");
   const [anticipoPorcentaje, setAnticipoPorcentaje] = useState(0);
+  const [numeroCert, setNumeroCert] = useState("");
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
 
   const isEditing = !!editingCertId;
@@ -257,6 +258,7 @@ export default function Certificados() {
     setEditingCertId(null);
     setTipoCert("servicio");
     setAnticipoPorcentaje(0);
+    setNumeroCert("");
     setCrearOpen(true);
   };
 
@@ -285,6 +287,7 @@ export default function Certificados() {
     setEditingCertId(cert.id);
     setTipoCert(cert.tipo);
     setAnticipoPorcentaje(cert.anticipo_porcentaje);
+    setNumeroCert(cert.numero);
     setCrearOpen(true);
   };
 
@@ -315,6 +318,7 @@ export default function Certificados() {
     setEditingCertId(null);
     setTipoCert(ultimo.tipo);
     setAnticipoPorcentaje(ultimo.anticipo_porcentaje);
+    setNumeroCert("");
     setCrearOpen(true);
   };
 
@@ -368,6 +372,7 @@ export default function Certificados() {
         observaciones,
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
+        numero: numeroCert,
       });
     } else {
       await createCertificado({
@@ -784,6 +789,12 @@ export default function Certificados() {
                   <Label>Período</Label>
                   <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
                 </div>
+                {isEditing && (
+                  <div>
+                    <Label>Número</Label>
+                    <Input value={numeroCert} onChange={(e) => setNumeroCert(e.target.value)} placeholder="CERT-001" />
+                  </div>
+                )}
                 {tipoCert === "obra" && (
                   <div>
                     <Label>Anticipo (%)</Label>
@@ -1002,7 +1013,7 @@ export default function Certificados() {
                 {viewCert && (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span>Período: {format(new Date(viewCert.periodo + "-01"), "MMMM yyyy", { locale: es })}</span>
+                      <span>Período: {format(parseISO(viewCert.periodo + "-01"), "MMMM yyyy", { locale: es })}</span>
                       <Badge variant="secondary" className={ESTADO_COLORS[viewCert.estado]}>{ESTADO_LABELS[viewCert.estado]}</Badge>
                       {viewCert.fecha_emision && <span>Emitido: {format(new Date(viewCert.fecha_emision), "dd/MM/yyyy")}</span>}
                     </div>
@@ -1219,7 +1230,7 @@ function CertificadoCard({
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground capitalize">
-              {format(new Date(cert.periodo + "-01"), "MMMM yyyy", { locale: es })}
+              {format(parseISO(cert.periodo + "-01"), "MMMM yyyy", { locale: es })}
             </p>
           </div>
           <Badge variant="secondary" className={ESTADO_COLORS[cert.estado]}>
