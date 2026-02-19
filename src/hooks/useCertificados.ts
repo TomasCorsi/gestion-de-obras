@@ -319,7 +319,6 @@ export function useCertificados(obraId?: string) {
 
       // Insert items
       const itemsToInsert = items
-        .filter((i) => i.cantidad > 0)
         .map((i) => ({
           certificado_id: cert.id,
           concepto_id: i.concepto_id,
@@ -418,7 +417,6 @@ export function useCertificados(obraId?: string) {
       if (delError) throw delError;
 
       const itemsToInsert = items
-        .filter((i) => i.cantidad > 0)
         .map((i) => ({
           certificado_id: id,
           concepto_id: i.concepto_id,
