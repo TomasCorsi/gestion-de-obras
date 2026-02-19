@@ -1,46 +1,50 @@
 
-## Auto-completar el campo Técnico con el usuario logueado
+## Dos correcciones en el módulo de Certificados
 
-### Problema
-En `MecanicoMantenimientoForm.tsx`, el campo `tecnico` se inicializa con `useState(nombreMecanico || "")` (línea 51). Si la prop `nombreMecanico` llega en un momento posterior al primer render del componente, el estado queda vacío porque `useState` solo toma el valor inicial una vez al montarse.
+### Problema 1: El período muestra un mes menos del correcto
 
-### Solución
-Dos cambios en `src/components/parte-diario/MecanicoMantenimientoForm.tsx`:
+**Causa**: En la línea 1222 de `src/pages/Certificados.tsx`, el período se convierte a fecha con `new Date(cert.periodo + "-01")`. Por ejemplo, `"2026-01-01"` se interpreta como medianoche UTC, y en zonas con UTC-3 (Argentina) eso equivale a las 21:00 del 31 de diciembre anterior. `format` de date-fns entonces muestra "Diciembre" en lugar de "Enero".
 
-**1. Agregar un `useEffect` que sincronice el campo `tecnico` con `nombreMecanico`**
+**Solución**: Reemplazar `new Date(cert.periodo + "-01")` por `parseISO(cert.periodo + "-01")`, que interpreta la fecha en hora local sin corrimiento UTC. Este mismo patrón ya está establecido en el proyecto como estándar (`date-handling-standard-v2`).
 
-Debajo del `useEffect` existente que maneja el preload de la máquina (línea 62), agregar:
+El mismo problema existe en el dialog de vista (línea ~1000) si se muestra el período allí.
 
+**Archivo**: `src/pages/Certificados.tsx` — solo el componente `CertificadoCard` (línea 1222).
+
+---
+
+### Problema 2: Permitir editar el número del certificado
+
+Actualmente el número se genera automáticamente al crear (`CERT-001`, `CERT-002`, etc.) y no hay forma de modificarlo. Se necesita:
+
+**1. Hook `useCertificados.ts`**: Agregar soporte para actualizar el campo `numero` en la mutación `updateCertificado`. Actualmente `updateData` solo incluye `periodo`, `subtotal`, `iva`, `total`, `observaciones`, `tipo` y `anticipo_porcentaje`.
+
+**2. `src/pages/Certificados.tsx`**:
+
+- Agregar estado `const [numeroCert, setNumeroCert] = useState("")` junto al resto de estados del formulario.
+- Popularlo al abrir edición: `setNumeroCert(cert.numero)` en `openEditCertificado`.
+- Limpiarlo al crear: `setNumeroCert("")` en `openCrearCertificado` y `openDuplicarCertificado`.
+- Agregar campo Input "Número" en el grid de campos del dialog (solo visible al editar, ya que al crear se genera automáticamente).
+- Pasar `numero: numeroCert` al llamar a `updateCertificado`.
+
+**Diseño del campo en el dialog** (solo en modo edición):
+```
+[Tipo]  [Período]  [Número]  [Anticipo%]  [Observaciones]
+```
+El campo Número aparece entre Período y Anticipo, solo cuando `isEditing === true`.
+
+**3. `src/hooks/useCertificados.ts`**: En la mutación `updateCertificado`, incluir `numero` en el `updateData` si se pasa como parámetro:
 ```typescript
-// Sync tecnico with logged-in mechanic's name
-useEffect(() => {
-  if (nombreMecanico) {
-    setTecnico(nombreMecanico);
-  }
-}, [nombreMecanico]);
+if (numero !== undefined) updateData.numero = numero;
 ```
 
-Esto garantiza que aunque `nombreMecanico` llegue tarde (por carga asíncrona), el campo se actualiza correctamente.
+---
 
-**2. Hacer el campo `Técnico` de solo lectura y visualmente distinguible**
-
-El técnico debe ser siempre el mecánico logueado — no tiene sentido que lo puedan editar manualmente. Se cambia el `Input` a `readOnly` con un estilo de fondo diferenciado para que quede claro que es auto-completado:
-
-```tsx
-<Input
-  value={tecnico}
-  readOnly
-  className="h-12 text-base bg-muted cursor-default"
-  placeholder="Cargando nombre..."
-/>
-```
-
-Se agrega también un pequeño ícono de usuario o un label auxiliar ("Completado automáticamente") para aclarar al usuario que este campo se rellena solo.
-
-### Archivo modificado
+### Resumen de archivos modificados
 
 | Archivo | Cambio |
 |---|---|
-| `src/components/parte-diario/MecanicoMantenimientoForm.tsx` | Agregar `useEffect` para sincronizar `tecnico` + campo `readOnly` |
+| `src/pages/Certificados.tsx` | Fix `parseISO` en `CertificadoCard` + campo editable de número en el dialog |
+| `src/hooks/useCertificados.ts` | Agregar `numero` al `updateData` en `updateCertificado` |
 
-**Sin cambios de base de datos.** Es un ajuste puramente de frontend.
+**Sin cambios de base de datos** — el campo `numero` ya existe en la tabla `certificados`.
