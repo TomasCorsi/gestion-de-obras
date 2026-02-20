@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, UserPlus } from 'lucide-react';
 import logoFull from '@/assets/logo-full.png';
-import authBackground from '@/assets/auth-background.jpg';
+import authBackground from '@/assets/auth-background.webp';
 
 export default function Register() {
   const { signUp, user, loading } = useAuth();

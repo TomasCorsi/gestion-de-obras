@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import logoFull from '@/assets/logo-full.png';
-import authBackground from '@/assets/auth-background.jpg';
+import authBackground from '@/assets/auth-background.webp';
 import InstallAppBanner from '@/components/auth/InstallAppBanner';
 
 const RegistroEmpleado = () => {
