@@ -329,7 +329,7 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
-      seccion: item.seccion || null,
+      seccion: item.seccion || (cert.tipo === "mixto" ? "servicio" : null),
     }));
 
     setItemsDraft(draft);
@@ -359,7 +359,7 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
-      seccion: item.seccion || null,
+      seccion: item.seccion || (ultimo.tipo === "mixto" ? "servicio" : null),
     }));
 
     setItemsDraft(draft);
