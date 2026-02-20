@@ -47,7 +47,8 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,jpg,woff2}"],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
@@ -57,6 +58,21 @@ export default defineConfig(({ mode }) => ({
               expiration: {
                 maxEntries: 10,
                 maxAgeSeconds: 60 * 60 * 24 * 365,
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // Cache hashed static assets (JS, CSS, images) with CacheFirst
+            urlPattern: /\/assets\/.*\.[a-f0-9]+\.(js|css|png|jpg|svg|woff2)$/i,
+            handler: "CacheFirst" as const,
+            options: {
+              cacheName: "static-assets-cache",
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -76,7 +92,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "supabase-reference-data",
               expiration: {
                 maxEntries: 20,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {
                 statuses: [0, 200],
