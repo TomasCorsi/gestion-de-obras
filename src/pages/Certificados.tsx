@@ -1021,24 +1021,24 @@ export default function Certificados() {
                         return (
                           <div key={group.etapa}>
                             <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                            <div className="overflow-x-auto">
-                              <Table>
+                            <div className="overflow-hidden">
+                              <Table className="text-xs">
                                <TableHeader>
                                   <TableRow>
-                                    <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                    <TableHead>Categoría</TableHead>
-                                    <TableHead>Un.</TableHead>
-                                    <TableHead className="text-right">P. Unit.</TableHead>
-                                    <TableHead className="text-right">Cant. Total</TableHead>
-                                    <TableHead className="text-right">Valor Total</TableHead>
-                                    <TableHead className="text-right">% Ant.</TableHead>
-                                    <TableHead className="w-32">Cant. Actual</TableHead>
-                                    <TableHead className="text-right">% Actual</TableHead>
-                                    <TableHead className="text-right">% Acum.</TableHead>
-                                    <TableHead className="text-right">Av. Ant.</TableHead>
-                                    <TableHead className="text-right">Av. Actual</TableHead>
-                                    <TableHead className="text-right">Av. Acum.</TableHead>
-                                    <TableHead className="w-8"></TableHead>
+                                    <TableHead className="px-1.5 py-2">Concepto</TableHead>
+                                    <TableHead className="px-1.5 py-2">Cat.</TableHead>
+                                    <TableHead className="px-1.5 py-2">Un.</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
+                                    <TableHead className="px-1.5 py-2 w-24">C.Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
+                                    <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
+                                    <TableHead className="px-1 py-2 w-8"></TableHead>
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -1055,24 +1055,24 @@ export default function Certificados() {
                                     const valorTotal = cantTotal * item.precio_unitario;
                                     return (
                                       <TableRow key={globalIdx}>
-                                        <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                        <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
-                                        <TableCell>{item.unidad}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                        <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                        <TableCell>
-                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
+                                        <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5">
+                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-7 w-20 text-xs" />
                                         </TableCell>
-                                        <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                        <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                        <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                        <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                        <TableCell>
-                                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                        <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                        <TableCell className="px-1 py-1.5">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                            <Trash2 className="w-3 h-3" />
                                           </Button>
                                         </TableCell>
                                       </TableRow>
@@ -1081,8 +1081,8 @@ export default function Certificados() {
                                 </TableBody>
                                 <TableFooter>
                                   <TableRow>
-                                    <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                    <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                    <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                    <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                     <TableCell />
                                   </TableRow>
                                 </TableFooter>
@@ -1115,24 +1115,24 @@ export default function Certificados() {
                             return (
                               <div key={group.etapa}>
                                 <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                                <div className="overflow-x-auto">
-                                  <Table>
+                                <div className="overflow-hidden">
+                                  <Table className="text-xs">
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                        <TableHead>Categoría</TableHead>
-                                        <TableHead>Un.</TableHead>
-                                        <TableHead className="text-right">P. Unit.</TableHead>
-                                        <TableHead className="text-right">Cant. Total</TableHead>
-                                        <TableHead className="text-right">Valor Total</TableHead>
-                                        <TableHead className="text-right">% Ant.</TableHead>
-                                        <TableHead className="w-32">Cant. Actual</TableHead>
-                                        <TableHead className="text-right">% Actual</TableHead>
-                                        <TableHead className="text-right">% Acum.</TableHead>
-                                        <TableHead className="text-right">Av. Ant.</TableHead>
-                                        <TableHead className="text-right">Av. Actual</TableHead>
-                                        <TableHead className="text-right">Av. Acum.</TableHead>
-                                        <TableHead className="w-8"></TableHead>
+                                        <TableHead className="px-1.5 py-2">Concepto</TableHead>
+                                        <TableHead className="px-1.5 py-2">Cat.</TableHead>
+                                        <TableHead className="px-1.5 py-2">Un.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
+                                        <TableHead className="px-1.5 py-2 w-24">C.Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
+                                        <TableHead className="px-1 py-2 w-8"></TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1149,24 +1149,24 @@ export default function Certificados() {
                                         const valorTotal = cantTotal * item.precio_unitario;
                                         return (
                                           <TableRow key={globalIdx}>
-                                            <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                            <TableCell className="text-muted-foreground text-xs">{item.categoria || "-"}</TableCell>
-                                            <TableCell>{item.unidad}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                            <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                            <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                            <TableCell>
-                                              <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-9 w-28 text-sm" />
+                                            <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5">
+                                              <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-7 w-20 text-xs" />
                                             </TableCell>
-                                            <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                            <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                            <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                            <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                            <TableCell>
-                                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                                <Trash2 className="w-3.5 h-3.5" />
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                            <TableCell className="px-1 py-1.5">
+                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                                <Trash2 className="w-3 h-3" />
                                               </Button>
                                             </TableCell>
                                           </TableRow>
@@ -1175,8 +1175,8 @@ export default function Certificados() {
                                     </TableBody>
                                     <TableFooter>
                                       <TableRow>
-                                        <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                        <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                        <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                        <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                         <TableCell />
                                       </TableRow>
                                     </TableFooter>
@@ -1482,23 +1482,23 @@ export default function Certificados() {
                           return (
                             <div key={group.etapa}>
                               <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
-                              <div className="overflow-x-auto">
-                                <Table>
+                              <div className="overflow-hidden">
+                                <Table className="text-xs">
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                      <TableHead>Categoría</TableHead>
-                                      <TableHead>Un.</TableHead>
-                                      <TableHead className="text-right">P. Unit.</TableHead>
-                                      <TableHead className="text-right">Cant. Total</TableHead>
-                                      <TableHead className="text-right">Valor Total</TableHead>
-                                      <TableHead className="text-right">% Ant.</TableHead>
-                                      <TableHead className="text-right">Cant. Actual</TableHead>
-                                      <TableHead className="text-right">% Actual</TableHead>
-                                      <TableHead className="text-right">% Acum.</TableHead>
-                                      <TableHead className="text-right">Av. Ant.</TableHead>
-                                      <TableHead className="text-right">Av. Actual</TableHead>
-                                      <TableHead className="text-right">Av. Acum.</TableHead>
+                                      <TableHead className="px-1.5 py-2">Concepto</TableHead>
+                                      <TableHead className="px-1.5 py-2">Cat.</TableHead>
+                                      <TableHead className="px-1.5 py-2">Un.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">C.Act.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
+                                      <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -1514,27 +1514,27 @@ export default function Certificados() {
                                       const valorTotal = cantTotal * item.precio_unitario;
                                       return (
                                         <TableRow key={item.id}>
-                                          <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                          <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
-                                          <TableCell>{item.unidad}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                          <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                          <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                          <TableCell className="text-right">{item.cantidad}</TableCell>
-                                          <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                          <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                          <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                          <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                          <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{item.cantidad}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
                                         </TableRow>
                                       );
                                     })}
                                   </TableBody>
                                   <TableFooter>
                                     <TableRow>
-                                      <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                      <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                      <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                      <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                     </TableRow>
                                   </TableFooter>
                                 </Table>
@@ -1576,23 +1576,23 @@ export default function Certificados() {
                             return (
                               <div key={group.etapa}>
                                 <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
-                                <div className="overflow-x-auto">
-                                  <Table>
+                                <div className="overflow-hidden">
+                                  <Table className="text-xs">
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                        <TableHead>Categoría</TableHead>
-                                        <TableHead>Un.</TableHead>
-                                        <TableHead className="text-right">P. Unit.</TableHead>
-                                        <TableHead className="text-right">Cant. Total</TableHead>
-                                        <TableHead className="text-right">Valor Total</TableHead>
-                                        <TableHead className="text-right">% Ant.</TableHead>
-                                        <TableHead className="text-right">Cant. Actual</TableHead>
-                                        <TableHead className="text-right">% Actual</TableHead>
-                                        <TableHead className="text-right">% Acum.</TableHead>
-                                        <TableHead className="text-right">Av. Ant.</TableHead>
-                                        <TableHead className="text-right">Av. Actual</TableHead>
-                                        <TableHead className="text-right">Av. Acum.</TableHead>
+                                        <TableHead className="px-1.5 py-2">Concepto</TableHead>
+                                        <TableHead className="px-1.5 py-2">Cat.</TableHead>
+                                        <TableHead className="px-1.5 py-2">Un.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">C.Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
+                                        <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
                                       </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1608,27 +1608,27 @@ export default function Certificados() {
                                         const valorTotal = cantTotal * item.precio_unitario;
                                         return (
                                           <TableRow key={item.id}>
-                                            <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                            <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
-                                            <TableCell>{item.unidad}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                            <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                            <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                            <TableCell className="text-right">{item.cantidad}</TableCell>
-                                            <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                            <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                            <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                            <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                            <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{item.cantidad}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
                                           </TableRow>
                                         );
                                       })}
                                     </TableBody>
                                     <TableFooter>
                                       <TableRow>
-                                        <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                        <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                        <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                        <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                       </TableRow>
                                     </TableFooter>
                                   </Table>
