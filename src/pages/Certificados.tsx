@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { CertificadoServiceGrid } from "@/components/certificados/CertificadoServiceGrid";
 import { useObras } from "@/hooks/useObras";
 import {
   useCertificados,
@@ -995,94 +996,15 @@ export default function Certificados() {
               <div className="pr-2">
                 <div className="space-y-4">
                   {tipoCert === "servicio" ? (
-                    /* ---- SERVICIO: same as before, grouped by categoria ---- */
-                    <>
-                      {draftGroupedCategoria.map((group) => {
-                        const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
-                        // Sub-group by etapa within each categoria
-                        const etapas = Array.from(new Set(group.items.map((i) => i.etapa || ""))).filter(Boolean);
-                        const hasEtapas = etapas.length > 0;
-                        const itemsWithoutEtapa = group.items.filter((i) => !i.etapa);
-
-                        const renderItemsTable = (items: typeof group.items, showFooter = false) => (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Concepto</TableHead>
-                                <TableHead>Unidad</TableHead>
-                                <TableHead className="w-28">Cantidad</TableHead>
-                                <TableHead className="w-36">P. Unitario</TableHead>
-                                <TableHead className="text-right">Subtotal</TableHead>
-                                <TableHead className="w-8"></TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {items.map((item) => {
-                                const globalIdx = itemsDraft.indexOf(item);
-                                return (
-                                  <TableRow key={globalIdx}>
-                                    <TableCell>{item.descripcion}</TableCell>
-                                    <TableCell>{item.unidad}</TableCell>
-                                    <TableCell>
-                                      <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
-                                    </TableCell>
-                                    <TableCell>
-                                      <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
-                                    </TableCell>
-                                    <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                                    <TableCell>
-                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                            {showFooter && (
-                              <TableFooter>
-                                <TableRow>
-                                  <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
-                                  <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
-                                  <TableCell />
-                                </TableRow>
-                              </TableFooter>
-                            )}
-                          </Table>
-                        );
-
-                        return (
-                          <div key={group.categoria}>
-                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.categoria}</div>
-                            {hasEtapas ? (
-                              <>
-                                {etapas.map((etapa) => {
-                                  const etapaItems = group.items.filter((i) => (i.etapa || "") === etapa);
-                                  return (
-                                    <div key={etapa}>
-                                      <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-1 mt-1">{etapa}</div>
-                                      {renderItemsTable(etapaItems, false)}
-                                    </div>
-                                  );
-                                })}
-                                {itemsWithoutEtapa.length > 0 && renderItemsTable(itemsWithoutEtapa, false)}
-                                <Table>
-                                  <TableFooter>
-                                    <TableRow>
-                                      <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
-                                      <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
-                                      <TableCell />
-                                    </TableRow>
-                                  </TableFooter>
-                                </Table>
-                              </>
-                            ) : (
-                              renderItemsTable(group.items, true)
-                            )}
-                          </div>
-                        );
-                      })}
-                    </>
+                    /* ---- SERVICIO: editable grid ---- */
+                    <CertificadoServiceGrid
+                      items={itemsDraft.filter((i) => !i.seccion)}
+                      seccion={null}
+                      onItemsChange={(newServiceItems) => {
+                        const otherItems = itemsDraft.filter((i) => i.seccion != null);
+                        setItemsDraft([...otherItems, ...newServiceItems]);
+                      }}
+                    />
                   ) : tipoCert === "obra" ? (
                     /* ---- OBRA: grouped by etapa with acumulado columns ---- */
                     <>
@@ -1262,85 +1184,19 @@ export default function Certificados() {
                       <div className="rounded-md border border-secondary/50 overflow-hidden mt-4">
                         <div className="bg-secondary/30 px-4 py-2 flex items-center justify-between">
                           <span className="font-semibold text-sm">Sección Servicio (Precio × Cantidad)</span>
-                          {conceptosNoEnDraftServicio.length > 0 && (
-                            <Button variant="outline" size="sm" className="text-xs h-7" onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection("servicio"); }}>
-                              <Plus className="w-3 h-3 mr-1" />Agregar concepto
-                            </Button>
-                          )}
                         </div>
-                        {draftMixtoServicioGrouped.length === 0 ? (
-                          <div className="px-4 py-6 text-center text-sm text-muted-foreground">
-                            No hay conceptos de servicio. Agregá uno con el botón de arriba.
-                          </div>
-                        ) : (
-                          draftMixtoServicioGrouped.map((group) => {
-                            const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
-                            return (
-                              <div key={group.categoria}>
-                                <div className="bg-muted px-3 py-1.5 text-sm font-semibold">{group.categoria}</div>
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Concepto</TableHead>
-                                      <TableHead>Unidad</TableHead>
-                                      <TableHead className="w-28">Cantidad</TableHead>
-                                      <TableHead className="w-36">P. Unitario</TableHead>
-                                      <TableHead className="text-right">Subtotal</TableHead>
-                                      <TableHead className="w-8"></TableHead>
-                                    </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {group.items.map((item) => {
-                                      const globalIdx = itemsDraft.indexOf(item);
-                                      return (
-                                        <TableRow key={globalIdx}>
-                                          <TableCell>{item.descripcion}</TableCell>
-                                          <TableCell>{item.unidad}</TableCell>
-                                          <TableCell>
-                                            <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-8" />
-                                          </TableCell>
-                                          <TableCell>
-                                            <Input type="number" min={0} value={item.precio_unitario || ""} onChange={(e) => updateItemPrecio(globalIdx, Number(e.target.value))} className="h-8" />
-                                          </TableCell>
-                                          <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                                          <TableCell>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                              <Trash2 className="w-3.5 h-3.5" />
-                                            </Button>
-                                          </TableCell>
-                                        </TableRow>
-                                      );
-                                    })}
-                                  </TableBody>
-                                  <TableFooter>
-                                    <TableRow>
-                                      <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
-                                      <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
-                                      <TableCell />
-                                    </TableRow>
-                                  </TableFooter>
-                                </Table>
-                              </div>
-                            );
-                          })
-                        )}
+                        <div className="p-2">
+                          <CertificadoServiceGrid
+                            items={draftMixtoServicio}
+                            seccion="servicio"
+                            onItemsChange={(newServiceItems) => {
+                              const obraItems = itemsDraft.filter((i) => i.seccion === "obra");
+                              setItemsDraft([...obraItems, ...newServiceItems]);
+                            }}
+                          />
+                        </div>
                       </div>
                     </>
-                  )}
-
-                  {/* Add extra concept button — visible for servicio and obra (not mixto, they have inline buttons) */}
-                  {tipoCert !== "mixto" && conceptosNoEnDraft.length > 0 && (
-                    <div className="flex justify-start pt-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => { setAddExtraConceptoOpen(true); setAddExtraConceptoSection(null); }}
-                        className="text-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" />
-                        Agregar concepto
-                      </Button>
-                    </div>
                   )}
                 </div>
               </div>
@@ -1484,80 +1340,115 @@ export default function Certificados() {
                 );
               })()}
               <DialogFooter>
-                <Button variant="outline" onClick={() => { setAddExtraConceptoOpen(false); setSelectedConceptoIds(new Set()); setAddExtraConceptoSection(null); }}>Cancelar</Button>
+                <Button variant="outline" onClick={() => { setAddExtraConceptoOpen(false); setSelectedConceptoIds(new Set()); }}>
+                  Cancelar
+                </Button>
                 <Button onClick={addSelectedConceptosToDraft} disabled={selectedConceptoIds.size === 0}>
-                  Agregar ({selectedConceptoIds.size})
+                  Agregar {selectedConceptoIds.size > 0 ? `(${selectedConceptoIds.size})` : ""}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
 
-          {/* ==================== VIEW CERTIFICADO DIALOG ==================== */}
-          <Dialog open={!!viewCertId} onOpenChange={() => setViewCertId(null)}>
-            <DialogContent className="max-w-[95vw] lg:max-w-7xl max-h-[90vh] flex flex-col">
+          {/* ==================== VER CERTIFICADO ==================== */}
+          <Dialog open={!!viewCertId} onOpenChange={(open) => { if (!open) setViewCertId(null); }}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="flex items-center justify-between">
-                  <span>
-                    {viewCert?.numero} — {selectedObra?.nombre}
-                    {viewCert && (
-                      <Badge variant="outline" className="ml-2 text-xs">
-                        {viewCert.tipo === "obra" ? "Obra" : viewCert.tipo === "mixto" ? "Mixto" : "Servicio"}
-                      </Badge>
-                    )}
-                  </span>
-                  {viewCert && (
-                    <Button size="sm" variant="outline" onClick={() => handleDownloadPDF()}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Descargar PDF
-                    </Button>
-                  )}
+                <DialogTitle>
+                  {viewCert?.numero} — {selectedObra?.nombre}
                 </DialogTitle>
               </DialogHeader>
-              <div className="overflow-y-auto max-h-[60vh] pr-2">
-                {viewCert && (
+              <div>
+                {loadingItems ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => <Skeleton key={i} className="h-8 w-full" />)}
+                  </div>
+                ) : viewCert && (
                   <div className="space-y-4">
-                    <div className="flex gap-4 text-sm text-muted-foreground">
-                      <span>Período: {format(parseISO(viewCert.periodo + "-01"), "MMMM yyyy", { locale: es })}</span>
-                      <Badge variant="secondary" className={ESTADO_COLORS[viewCert.estado]}>{ESTADO_LABELS[viewCert.estado]}</Badge>
-                      {viewCert.fecha_emision && <span>Emitido: {format(new Date(viewCert.fecha_emision), "dd/MM/yyyy")}</span>}
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className={ESTADO_COLORS[viewCert.estado]}>
+                        {ESTADO_LABELS[viewCert.estado]}
+                      </Badge>
+                      <Badge variant="outline" className="text-xs">
+                        {viewCert.tipo === "obra" ? "Obra" : viewCert.tipo === "mixto" ? "Mixto" : "Servicio"}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground capitalize">
+                        {format(parseISO(viewCert.periodo + "-01"), "MMMM yyyy", { locale: es })}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => handleDownloadPDF()} className="ml-auto">
+                        <Download className="w-4 h-4 mr-1" /> PDF
+                      </Button>
                     </div>
-                    {loadingItems ? (
-                      <Skeleton className="h-40 w-full" />
-                    ) : viewCert.tipo === "servicio" ? (
+
+                    {/* Service or simple view */}
+                    {viewCert.tipo === "servicio" ? (
                       <>
                         {viewGroupedCategoria.map((group) => {
                           const groupSubtotal = group.items.reduce((s, i) => s + i.subtotal, 0);
-                          return (
-                            <div key={group.categoria}>
-                              <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.categoria}</div>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Concepto</TableHead>
-                                    <TableHead>Unidad</TableHead>
-                                    <TableHead className="text-right">Cantidad</TableHead>
-                                    <TableHead className="text-right">P. Unitario</TableHead>
-                                    <TableHead className="text-right">Subtotal</TableHead>
+                          const etapas = Array.from(new Set(group.items.map((i: any) => i.etapa || ""))).filter(Boolean);
+                          const hasEtapas = etapas.length > 0;
+                          const itemsWithoutEtapa = group.items.filter((i: any) => !i.etapa);
+
+                          const renderViewTable = (items: typeof group.items, showFooter = false) => (
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Concepto</TableHead>
+                                  <TableHead>Unidad</TableHead>
+                                  <TableHead className="text-right">Cantidad</TableHead>
+                                  <TableHead className="text-right">P. Unitario</TableHead>
+                                  <TableHead className="text-right">Subtotal</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {items.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell>{item.descripcion}</TableCell>
+                                    <TableCell>{item.unidad}</TableCell>
+                                    <TableCell className="text-right">{item.cantidad}</TableCell>
+                                    <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                    <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
                                   </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {group.items.map((item) => (
-                                    <TableRow key={item.id}>
-                                      <TableCell>{item.descripcion}</TableCell>
-                                      <TableCell>{item.unidad}</TableCell>
-                                      <TableCell className="text-right">{item.cantidad}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                      <TableCell className="text-right font-medium">{formatCurrency(item.subtotal)}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
+                                ))}
+                              </TableBody>
+                              {showFooter && (
                                 <TableFooter>
                                   <TableRow>
                                     <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
                                     <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
                                   </TableRow>
                                 </TableFooter>
-                              </Table>
+                              )}
+                            </Table>
+                          );
+
+                          return (
+                            <div key={group.categoria}>
+                              <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.categoria}</div>
+                              {hasEtapas ? (
+                                <>
+                                  {etapas.map((etapa) => {
+                                    const etapaItems = group.items.filter((i: any) => (i.etapa || "") === etapa);
+                                    return (
+                                      <div key={etapa}>
+                                        <div className="bg-muted/50 px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-1 mt-1">{etapa}</div>
+                                        {renderViewTable(etapaItems, false)}
+                                      </div>
+                                    );
+                                  })}
+                                  {itemsWithoutEtapa.length > 0 && renderViewTable(itemsWithoutEtapa, false)}
+                                  <Table>
+                                    <TableFooter>
+                                      <TableRow>
+                                        <TableCell colSpan={4} className="text-right text-sm font-medium">Subtotal {group.categoria}</TableCell>
+                                        <TableCell className="text-right font-semibold">{formatCurrency(groupSubtotal)}</TableCell>
+                                      </TableRow>
+                                    </TableFooter>
+                                  </Table>
+                                </>
+                              ) : (
+                                renderViewTable(group.items, true)
+                              )}
                             </div>
                           );
                         })}
@@ -1577,7 +1468,6 @@ export default function Certificados() {
                         </div>
                       </>
                     ) : viewCert.tipo === "obra" ? (
-                      /* OBRA VIEW */
                       <>
                         {viewGroupedEtapa.map((group) => {
                           const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
@@ -1586,23 +1476,23 @@ export default function Certificados() {
                               <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
                               <div className="overflow-x-auto">
                                 <Table>
-                                   <TableHeader>
-                                     <TableRow>
-                                       <TableHead className="min-w-[120px]">Concepto</TableHead>
-                                       <TableHead>Categoría</TableHead>
-                                       <TableHead>Un.</TableHead>
-                                       <TableHead className="text-right">P. Unit.</TableHead>
-                                       <TableHead className="text-right">Cant. Total</TableHead>
-                                       <TableHead className="text-right">Valor Total</TableHead>
-                                       <TableHead className="text-right">% Ant.</TableHead>
-                                       <TableHead className="text-right">Cant. Actual</TableHead>
-                                       <TableHead className="text-right">% Actual</TableHead>
-                                       <TableHead className="text-right">% Acum.</TableHead>
-                                       <TableHead className="text-right">Av. Ant.</TableHead>
-                                       <TableHead className="text-right">Av. Actual</TableHead>
-                                       <TableHead className="text-right">Av. Acum.</TableHead>
-                                     </TableRow>
-                                   </TableHeader>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead className="min-w-[120px]">Concepto</TableHead>
+                                      <TableHead>Categoría</TableHead>
+                                      <TableHead>Un.</TableHead>
+                                      <TableHead className="text-right">P. Unit.</TableHead>
+                                      <TableHead className="text-right">Cant. Total</TableHead>
+                                      <TableHead className="text-right">Valor Total</TableHead>
+                                      <TableHead className="text-right">% Ant.</TableHead>
+                                      <TableHead className="text-right">Cant. Actual</TableHead>
+                                      <TableHead className="text-right">% Actual</TableHead>
+                                      <TableHead className="text-right">% Acum.</TableHead>
+                                      <TableHead className="text-right">Av. Ant.</TableHead>
+                                      <TableHead className="text-right">Av. Actual</TableHead>
+                                      <TableHead className="text-right">Av. Acum.</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
                                   <TableBody>
                                     {group.items.map((item) => {
                                       const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
@@ -1614,81 +1504,57 @@ export default function Certificados() {
                                       const avActual = item.subtotal;
                                       const avAcumulado = avAnterior + avActual;
                                       const valorTotal = cantTotal * item.precio_unitario;
-                                       return (
-                                         <TableRow key={item.id}>
-                                           <TableCell className="font-medium">{item.descripcion}</TableCell>
-                                           <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
-                                           <TableCell>{item.unidad}</TableCell>
-                                           <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                           <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                           <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
-                                           <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                           <TableCell className="text-right">{item.cantidad.toLocaleString("es-AR")}</TableCell>
-                                           <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
-                                           <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                           <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                           <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
-                                           <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                         </TableRow>
-                                       );
+                                      return (
+                                        <TableRow key={item.id}>
+                                          <TableCell className="font-medium">{item.descripcion}</TableCell>
+                                          <TableCell className="text-muted-foreground text-xs">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                          <TableCell>{item.unidad}</TableCell>
+                                          <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                          <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                          <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
+                                          <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                          <TableCell className="text-right">{item.cantidad}</TableCell>
+                                          <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
+                                          <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                          <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                          <TableCell className="text-right">{formatCurrency(avActual)}</TableCell>
+                                          <TableCell className="text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                        </TableRow>
+                                      );
                                     })}
                                   </TableBody>
-                                   <TableFooter>
-                                     <TableRow>
-                                       <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
-                                       <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
-                                       <TableCell />
-                                     </TableRow>
-                                   </TableFooter>
+                                  <TableFooter>
+                                    <TableRow>
+                                      <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                      <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
+                                    </TableRow>
+                                  </TableFooter>
                                 </Table>
                               </div>
                             </div>
                           );
                         })}
                         <div className="border-t pt-3 space-y-1">
-                          {(() => {
-                            const viewAvAnterior = viewItems.reduce((s, i) => {
-                              const ac = viewAcumulados.find((a) => a.concepto_id === i.concepto_id);
-                              return s + (ac?.avance_anterior || 0);
-                            }, 0);
-                            const viewAvActual = viewItems.reduce((s, i) => s + i.subtotal, 0);
-                            const viewAvAcumulado = viewAvAnterior + viewAvActual;
-                            const viewAnticipo = Math.round(viewAvAcumulado * (viewCert.anticipo_porcentaje / 100));
-                            return (
-                              <>
-                                <div className="flex justify-between text-sm">
-                                  <span>Avance Anterior</span>
-                                  <span className="text-muted-foreground">{formatCurrency(viewAvAnterior)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span>Avance Actual</span>
-                                  <span className="font-semibold">{formatCurrency(viewAvActual)}</span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span>Avance Acumulado</span>
-                                  <span className="font-semibold">{formatCurrency(viewAvAcumulado)}</span>
-                                </div>
-                                {viewCert.anticipo_porcentaje > 0 && (
-                                  <div className="flex justify-between text-sm">
-                                    <span>Anticipo ({viewCert.anticipo_porcentaje}%)</span>
-                                    <span className="text-muted-foreground">- {formatCurrency(viewAnticipo)}</span>
-                                  </div>
-                                )}
-                                <div className="flex justify-between text-sm">
-                                  <span>IVA 21%</span>
-                                  <span>{formatCurrency(viewCert.iva)}</span>
-                                </div>
-                                <div className="flex justify-between text-lg font-bold">
-                                  <span>TOTAL</span>
-                                  <span>{formatCurrency(viewCert.total)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
+                          <div className="flex justify-between text-sm">
+                            <span>Avance Anterior</span>
+                            <span className="text-muted-foreground">{formatCurrency(viewGroupedEtapa.reduce((s, g) => s + g.items.reduce((ss, i) => { const ac = viewAcumulados.find((a) => a.concepto_id === i.concepto_id); return ss + (ac?.avance_anterior || 0); }, 0), 0))}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal</span>
+                            <span className="font-semibold">{formatCurrency(viewCert.subtotal)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>IVA 21%</span>
+                            <span>{formatCurrency(viewCert.iva)}</span>
+                          </div>
+                          <div className="flex justify-between text-lg font-bold">
+                            <span>TOTAL</span>
+                            <span>{formatCurrency(viewCert.total)}</span>
+                          </div>
                         </div>
                       </>
                     ) : (
-                      /* MIXTO VIEW: Sección Obra + Sección Servicio */
+                      /* MIXTO view */
                       <>
                         {/* Sección Obra */}
                         <div className="rounded-md border border-primary/30 overflow-hidden">
@@ -1741,7 +1607,7 @@ export default function Certificados() {
                                             <TableCell className="text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
                                             <TableCell className="text-right">{formatCurrency(valorTotal)}</TableCell>
                                             <TableCell className="text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                            <TableCell className="text-right">{item.cantidad.toLocaleString("es-AR")}</TableCell>
+                                            <TableCell className="text-right">{item.cantidad}</TableCell>
                                             <TableCell className="text-right">{formatPercent(pctActual)}</TableCell>
                                             <TableCell className="text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
                                             <TableCell className="text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
@@ -1753,9 +1619,8 @@ export default function Certificados() {
                                     </TableBody>
                                     <TableFooter>
                                       <TableRow>
-                                        <TableCell colSpan={11} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
+                                        <TableCell colSpan={12} className="text-right text-sm font-medium">Subtotal {group.etapa}</TableCell>
                                         <TableCell className="text-right font-semibold">{formatCurrency(groupAvanceActual)}</TableCell>
-                                        <TableCell />
                                       </TableRow>
                                     </TableFooter>
                                   </Table>
