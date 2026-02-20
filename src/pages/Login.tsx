@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogIn } from 'lucide-react';
 import logoFull from '@/assets/logo-full.png';
-import authBackground from '@/assets/auth-background.jpg';
+import authBackground from '@/assets/auth-background.webp';
 import InstallAppBanner from '@/components/auth/InstallAppBanner';
 
 export default function Login() {
