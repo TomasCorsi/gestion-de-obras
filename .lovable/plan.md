@@ -1,39 +1,43 @@
 
 
-## Cambios en PDF de Certificados
+## Grilla Editable en el Formulario de Certificado
 
-### 1. Agregar Sub Categoria en la seccion Servicio del PDF
+### Objetivo
+Reemplazar la tabla actual del formulario "Nuevo/Editar Certificado" (seccion Servicio y seccion Servicio dentro de Mixto) por una grilla editable tipo Excel usando `react-datasheet-grid`. Esto permite agregar filas libres sin necesidad de tener conceptos predefinidos, escribir directamente, y copiar/pegar desde planillas externas.
 
-Actualmente `generateServicioPDF` solo agrupa los items por **categoria** (ej: "ALQUILER DE MAQUINAS"). Falta mostrar la **sub categoria** (etapa) debajo de cada categoria, igual que en la seccion Obra.
+### Que cambia para el usuario
+- En vez de tener que crear conceptos previamente y luego "Agregar concepto" uno por uno, el usuario puede escribir directamente en la grilla
+- Puede agregar filas nuevas con el boton "+" de la grilla o pegando desde Excel
+- Los campos editables son: Descripcion, Categoria, Sub Categoria, Unidad, Cantidad, Precio Unitario
+- El Subtotal se calcula automaticamente
+- Los conceptos existentes se siguen cargando como filas pre-llenadas, pero ahora son editables
+- Se puede eliminar filas con el menu de la grilla
 
-**Solucion:** Modificar `generateServicioPDF` para:
-- Recibir `etapaMap` como parametro adicional
-- Dentro de cada grupo de categoria, agrupar los items por sub categoria (etapa)
-- Insertar una fila de sub categoria (fondo gris claro, texto indentado) antes de los items de ese grupo
-- Si un item no tiene sub categoria, se muestra directamente bajo la categoria
-
-Ejemplo visual:
-```text
-ALQUILER DE MAQUINAS          <- categoria (existente)
-  SEMANA 1                    <- sub categoria (nueva)
-    Camion Tatu PAT AB629IP   <- items
-  SEMANA 2                    <- sub categoria (nueva)
-    Otra maquina              <- items
-```
-
-Tambien se debe actualizar la llamada a `generateServicioPDF` en `generateMixtoPDF` y en la funcion principal para pasar el `etapaMap`.
-
-### 2. Eliminar la firma del PDF
-
-Se elimina completamente la llamada a `renderFirma` en la funcion principal `generateCertificadoPDF`. La funcion `renderFirma` se puede dejar en el codigo por si se necesita en el futuro, pero no se invocara.
+### Seccion Obra (sin cambios)
+La seccion Obra mantiene su formato actual con las columnas de acumulados, porcentajes, etc. porque requiere logica especial que no se adapta bien a una grilla simple.
 
 ### Resumen tecnico
 
-**Archivo:** `src/utils/generateCertificadoPDF.ts`
+**Archivo principal:** `src/pages/Certificados.tsx`
 
 | Cambio | Detalle |
 |---|---|
-| Sub categoria en Servicio | Modificar `generateServicioPDF` para agrupar por etapa dentro de cada categoria, usando `etapaMap` |
-| Firma de `generateServicioPDF` | Agregar parametro `etapaMap` |
-| Llamadas a `generateServicioPDF` | Pasar `etapaMap` en `generateMixtoPDF` (linea 618) y en la funcion principal (linea 679) |
-| Eliminar firma | Quitar la linea `await renderFirma(doc, pageWidth, yPos)` (linea 695) |
+| Importar react-datasheet-grid | Agregar imports de `DataSheetGrid`, `textColumn`, `floatColumn`, `keyColumn` y estilos CSS |
+| Nuevo tipo de fila para la grilla | Definir interfaz `GridRow` con campos: descripcion, categoria, etapa, unidad, cantidad, precio_unitario |
+| Columna personalizada para selects | Crear columnas de tipo select para Categoria (dropdown con CATEGORIAS_CERTIFICADO) y Unidad (dropdown con HR, DIA, M3, etc.) usando `GridSelectCell` existente o componentes inline |
+| Reemplazar tabla Servicio por grilla | En la seccion `tipoCert === "servicio"`, reemplazar el bloque de `draftGroupedCategoria.map(...)` por un `DataSheetGrid` con las columnas mencionadas |
+| Reemplazar tabla Servicio en Mixto | En la seccion Mixto > "Seccion Servicio", reemplazar la tabla por la misma grilla |
+| Sincronizar grilla con itemsDraft | Convertir `itemsDraft` (filtrado por seccion servicio) a `GridRow[]` para la grilla, y al cambiar la grilla, actualizar `itemsDraft` manteniendo los items de obra intactos |
+| Subtotal calculado | Agregar columna de solo lectura que muestra cantidad * precio_unitario |
+| Eliminar boton "Agregar concepto" en servicio | Ya no es necesario porque la grilla permite agregar filas directamente |
+| Mantener funcionalidad de duplicar | Al duplicar un certificado, las filas se cargan en la grilla normalmente |
+| buildDraftForTipo | Sin cambios - sigue generando items desde conceptos activos, que se muestran como filas editables en la grilla |
+
+**Archivo CSS:** `src/index.css` o import directo
+- Importar estilos de `react-datasheet-grid/dist/style.css`
+
+**Archivos sin cambios:**
+- `src/hooks/useCertificados.ts` - Ya soporta items con `concepto_id: null`
+- `src/utils/generateCertificadoPDF.ts` - Ya maneja items sin concepto_id
+- La seccion Obra del formulario se mantiene igual
+
