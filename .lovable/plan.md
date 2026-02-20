@@ -1,34 +1,38 @@
 
 
-## Fix: Certificado items not showing when editing
+## Reemplazar grilla por tabla editable simple
 
-### Problem
-When editing a certificate (especially tipo "Mixto"), the saved items don't appear because the `seccion` column in the database is `null` for all existing items. The mixto rendering code filters strictly by `seccion === "obra"` and `seccion === "servicio"`, so items with `null` never match either filter and the form appears empty.
+### Problema
+La libreria `react-datasheet-grid` tiene problemas persistentes con el menu contextual (click derecho) dentro de dialogos, impidiendo eliminar filas.
 
-### Solution
-Fix the `openEditCertificado` function to assign a default `seccion` value to items that have `null`, based on the certificate type:
+### Solucion
+Reemplazar `CertificadoServiceGrid` con una tabla HTML editable simple (igual que ya funciona la seccion "Obra"), usando inputs inline y un boton de eliminar por fila. Este patron ya esta probado y funciona perfectamente en el mismo dialogo.
 
-- If the certificate is **tipo "servicio"**: keep `seccion: null` (this already works correctly)
-- If the certificate is **tipo "obra"**: keep `seccion: null` (also works correctly)  
-- If the certificate is **tipo "mixto"**: items with `null` seccion need to be assigned a default. Since there's no way to know which section they originally belonged to, assign them to `"servicio"` as a safe default (the user can reorganize them)
+### Cambios
 
-Additionally, fix the `openDuplicarCertificado` function with the same logic.
+**Archivo: `src/components/certificados/CertificadoServiceGrid.tsx`** - Reescritura completa
 
-### Technical detail
+- Eliminar toda dependencia de `react-datasheet-grid`
+- Usar componentes `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` (ya usados en la seccion Obra)
+- Cada fila tiene:
+  - **Descripcion**: `<Input>` de texto
+  - **Categoria**: `<Select>` con las categorias existentes
+  - **Sub Categoria**: `<Input>` de texto
+  - **Unidad**: `<Select>` con las unidades
+  - **Cantidad**: `<Input type="number">`
+  - **P. Unitario**: `<Input type="number">`
+  - **Subtotal**: campo calculado (solo lectura)
+  - **Eliminar**: boton con icono Trash2 (igual que en seccion Obra)
+- Boton "+ Agregar fila" al final de la tabla
+- Total general al pie
 
-**File:** `src/pages/Certificados.tsx`
+### Ventajas
+- Mismo patron que la seccion Obra, que ya funciona sin problemas
+- Sin dependencias externas complejas
+- Eliminar filas funciona con un simple boton, sin depender de menus contextuales
+- Codigo mas simple y mantenible
 
-In `openEditCertificado` (~line 322), when building the draft from saved items, add logic to assign `seccion` based on the cert type:
-
-```typescript
-const draft: CertificadoItemForm[] = items.map((item) => ({
-  concepto_id: item.concepto_id,
-  descripcion: item.descripcion,
-  // ... other fields ...
-  seccion: item.seccion || (cert.tipo === "mixto" ? "servicio" : null),
-}));
-```
-
-Same fix applied in `openDuplicarCertificado` (~line 352).
-
-This ensures that legacy items without a `seccion` value are visible when editing or duplicating mixto certificates.
+### Detalle tecnico
+- Se mantiene la misma interfaz (`CertificadoServiceGridProps`) para no tocar `Certificados.tsx`
+- La logica de `onItemsChange` se invoca en cada cambio de campo individual
+- Se usa `useCallback` para las funciones de update/delete/add
