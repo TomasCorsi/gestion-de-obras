@@ -1,13 +1,13 @@
 import { Suspense, lazy } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
-// Lazy loaded non-critical wrappers (improve TTI)
+// Lazy loaded non-critical wrappers (reduce unused JS on initial load)
+const Toaster = lazy(() => import("@/components/ui/toaster").then(m => ({ default: m.Toaster })));
+const Sonner = lazy(() => import("@/components/ui/sonner").then(m => ({ default: m.Toaster })));
+const TooltipProvider = lazy(() => import("@/components/ui/tooltip").then(m => ({ default: m.TooltipProvider })));
 const SessionKeepAlive = lazy(() => import("@/components/auth/SessionKeepAlive").then(m => ({ default: m.SessionKeepAlive })));
 const UpdatePrompt = lazy(() => import("@/components/pwa/UpdatePrompt").then(m => ({ default: m.UpdatePrompt })));
 const OfflineBanner = lazy(() => import("@/components/pwa/OfflineBanner").then(m => ({ default: m.OfflineBanner })));
@@ -61,17 +61,17 @@ const PageLoader = () => <LoadingScreen />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <UpdatePrompt />
-      <BrowserRouter>
-        <AuthProvider>
-          <Suspense fallback={null}>
-            <SessionKeepAlive />
-            <UpdatePrompt />
-            <OfflineBanner />
-          </Suspense>
+    <Suspense fallback={null}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Suspense fallback={null}>
+              <SessionKeepAlive />
+              <UpdatePrompt />
+              <OfflineBanner />
+            </Suspense>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
@@ -176,7 +176,8 @@ const App = () => (
           </Suspense>
         </AuthProvider>
       </BrowserRouter>
-    </TooltipProvider>
+      </TooltipProvider>
+    </Suspense>
   </QueryClientProvider>
 );
 
