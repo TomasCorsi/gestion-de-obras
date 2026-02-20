@@ -21,8 +21,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { TopNavbar } from "@/components/layout/TopNavbar";
+
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
-import authBackground from "@/assets/auth-background.webp";
 
 type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
 
@@ -196,14 +196,7 @@ const Index = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${authBackground})` }}
-      />
-      <div className="absolute inset-0 backdrop-blur-sm bg-background/80" />
-      
-      <div className="relative z-10">
+    <div className="min-h-screen bg-background">
       <TopNavbar />
       
       <main className="container mx-auto px-4 py-8">
@@ -246,7 +239,6 @@ const Index = () => {
           </div>
         </div>
       </main>
-      </div>
     </div>
   );
 };
