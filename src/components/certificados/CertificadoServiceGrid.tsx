@@ -10,7 +10,6 @@ import {
 import "react-datasheet-grid/dist/style.css";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { CATEGORIAS_CERTIFICADO, type CertificadoItemForm } from "@/hooks/useCertificados";
-import { Trash2 } from "lucide-react";
 
 const UNIDADES = ["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"];
 
@@ -82,11 +81,6 @@ interface CertificadoServiceGridProps {
 }
 
 export function CertificadoServiceGrid({ items, seccion, onItemsChange }: CertificadoServiceGridProps) {
-  const handleDeleteRow = useCallback((index: number) => {
-    const newItems = items.filter((_, i) => i !== index);
-    onItemsChange(newItems);
-  }, [items, onItemsChange]);
-
   // Convert CertificadoItemForm[] to grid rows
   const gridRows: ServiceGridRow[] = useMemo(
     () =>
@@ -119,27 +113,8 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
         minWidth: 120,
         disabled: true,
       } as Column<ServiceGridRow>,
-      {
-        component: ({ rowIndex }: { rowIndex: number }) => (
-          <div className="w-full h-full flex items-center justify-center">
-            <button
-              type="button"
-              className="p-1 text-muted-foreground hover:text-destructive transition-colors"
-              onClick={() => handleDeleteRow(rowIndex)}
-              tabIndex={-1}
-              title="Eliminar fila"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ),
-        title: " ",
-        minWidth: 40,
-        maxWidth: 40,
-        disabled: true,
-      } as Column<ServiceGridRow>,
     ],
-    [handleDeleteRow]
+    []
   );
 
   const createRow = useCallback(
@@ -184,26 +159,34 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
 
   const totalSubtotal = items.reduce((s, i) => s + i.subtotal, 0);
 
+  // Prevent Dialog from intercepting contextmenu events so the grid's native
+  // right-click menu (insert / delete row) works correctly inside dialogs.
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+  }, []);
+
   return (
     <div className="space-y-2">
-      <DataSheetGrid
-        value={gridRows}
-        onChange={handleChange}
-        columns={columns}
-        createRow={createRow}
-        height={Math.min(Math.max(gridRows.length * 36 + 80, 200), 500)}
-        rowHeight={36}
-        headerRowHeight={32}
-        addRowsComponent={({ addRows }) => (
-          <button
-            type="button"
-            className="text-xs text-primary hover:text-primary/80 px-3 py-1.5 transition-colors"
-            onClick={() => addRows(1)}
-          >
-            + Agregar fila
-          </button>
-        )}
-      />
+      <div onContextMenu={handleContextMenu}>
+        <DataSheetGrid
+          value={gridRows}
+          onChange={handleChange}
+          columns={columns}
+          createRow={createRow}
+          height={Math.min(Math.max(gridRows.length * 36 + 80, 200), 500)}
+          rowHeight={36}
+          headerRowHeight={32}
+          addRowsComponent={({ addRows }) => (
+            <button
+              type="button"
+              className="text-xs text-primary hover:text-primary/80 px-3 py-1.5 transition-colors"
+              onClick={() => addRows(1)}
+            >
+              + Agregar fila
+            </button>
+          )}
+        />
+      </div>
       <div className="flex justify-end text-sm font-semibold pr-2">
         Total: {formatCurrency(totalSubtotal)}
       </div>
