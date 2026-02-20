@@ -10,6 +10,7 @@ import {
 import "react-datasheet-grid/dist/style.css";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { CATEGORIAS_CERTIFICADO, type CertificadoItemForm } from "@/hooks/useCertificados";
+import { Trash2 } from "lucide-react";
 
 const UNIDADES = ["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"];
 
@@ -81,6 +82,11 @@ interface CertificadoServiceGridProps {
 }
 
 export function CertificadoServiceGrid({ items, seccion, onItemsChange }: CertificadoServiceGridProps) {
+  const handleDeleteRow = useCallback((index: number) => {
+    const newItems = items.filter((_, i) => i !== index);
+    onItemsChange(newItems);
+  }, [items, onItemsChange]);
+
   // Convert CertificadoItemForm[] to grid rows
   const gridRows: ServiceGridRow[] = useMemo(
     () =>
@@ -113,8 +119,27 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
         minWidth: 120,
         disabled: true,
       } as Column<ServiceGridRow>,
+      {
+        component: ({ rowIndex }: { rowIndex: number }) => (
+          <div className="w-full h-full flex items-center justify-center">
+            <button
+              type="button"
+              className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+              onClick={() => handleDeleteRow(rowIndex)}
+              tabIndex={-1}
+              title="Eliminar fila"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ),
+        title: " ",
+        minWidth: 40,
+        maxWidth: 40,
+        disabled: true,
+      } as Column<ServiceGridRow>,
     ],
-    []
+    [handleDeleteRow]
   );
 
   const createRow = useCallback(
