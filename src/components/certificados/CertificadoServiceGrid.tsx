@@ -69,7 +69,7 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
 
   return (
     <div className="space-y-2">
-      <div className="border rounded-md overflow-auto max-h-[500px]">
+      <div className="border rounded-md overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
