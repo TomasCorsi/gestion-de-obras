@@ -6,9 +6,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
-import { SessionKeepAlive } from "@/components/auth/SessionKeepAlive";
-import { UpdatePrompt } from "@/components/pwa/UpdatePrompt";
-import { OfflineBanner } from "@/components/pwa/OfflineBanner";
+
+// Lazy loaded non-critical wrappers (improve TTI)
+const SessionKeepAlive = lazy(() => import("@/components/auth/SessionKeepAlive").then(m => ({ default: m.SessionKeepAlive })));
+const UpdatePrompt = lazy(() => import("@/components/pwa/UpdatePrompt").then(m => ({ default: m.UpdatePrompt })));
+const OfflineBanner = lazy(() => import("@/components/pwa/OfflineBanner").then(m => ({ default: m.OfflineBanner })));
 
 // Eagerly loaded pages (critical path)
 import Login from "./pages/Login";
@@ -38,14 +40,16 @@ const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 const Clientes = lazy(() => import("./pages/Clientes"));
+const Combustible = lazy(() => import("./pages/Combustible"));
+const Presentismo = lazy(() => import("./pages/Presentismo"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false, // No recargar al volver a la pestaña
-      staleTime: 5 * 60 * 1000, // 5 minutos - datos frescos más tiempo
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
       retry: 1,
-      refetchOnReconnect: true, // Sí recargar al reconectar internet
+      refetchOnReconnect: true,
     },
   },
 });
@@ -63,8 +67,11 @@ const App = () => (
       <UpdatePrompt />
       <BrowserRouter>
         <AuthProvider>
-          <SessionKeepAlive />
-          <OfflineBanner />
+          <Suspense fallback={null}>
+            <SessionKeepAlive />
+            <UpdatePrompt />
+            <OfflineBanner />
+          </Suspense>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public routes */}
