@@ -88,6 +88,8 @@ import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 
 const formatCurrency = (n: number) =>
@@ -764,18 +766,20 @@ export default function Certificados() {
                   ) : (
                     <>
                       {/* ---- CONCEPTOS DE OBRA ---- */}
-                      <div className="rounded-lg border border-primary/30 overflow-hidden">
+                      <Collapsible defaultOpen className="rounded-lg border border-primary/30 overflow-hidden">
                         <div className="bg-primary/10 px-4 py-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <CollapsibleTrigger className="group flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
+                            <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                             <HardHat className="w-4 h-4 text-primary" />
                             <span className="font-semibold text-sm text-primary">Conceptos de Obra</span>
                             <Badge variant="outline" className="text-xs">{conceptos.filter(c => c.tipo === 'obra').length}</Badge>
-                          </div>
+                          </CollapsibleTrigger>
                           <Button size="sm" onClick={() => openAddConceptoDialog('obra')}>
                             <Plus className="w-4 h-4 mr-1" />
                             Agregar concepto de Obra
                           </Button>
                         </div>
+                        <CollapsibleContent>
                         {conceptos.filter(c => c.tipo === 'obra').length === 0 ? (
                           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                             No hay conceptos de obra. Hacé clic en "Agregar concepto de Obra".
@@ -814,21 +818,24 @@ export default function Certificados() {
                             ))}
                           </div>
                         )}
-                      </div>
+                        </CollapsibleContent>
+                      </Collapsible>
 
                       {/* ---- CONCEPTOS DE SERVICIO ---- */}
-                      <div className="rounded-lg border border-secondary/50 overflow-hidden">
+                      <Collapsible defaultOpen className="rounded-lg border border-secondary/50 overflow-hidden">
                         <div className="bg-secondary/30 px-4 py-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          <CollapsibleTrigger className="group flex items-center gap-2 hover:opacity-80 transition-opacity cursor-pointer">
+                            <ChevronDown className="w-4 h-4 transition-transform duration-200 group-data-[state=closed]:-rotate-90" />
                             <Wrench className="w-4 h-4" />
                             <span className="font-semibold text-sm">Conceptos de Servicio</span>
                             <Badge variant="outline" className="text-xs">{conceptos.filter(c => c.tipo === 'servicio').length}</Badge>
-                          </div>
+                          </CollapsibleTrigger>
                           <Button size="sm" variant="outline" onClick={() => openAddConceptoDialog('servicio')}>
                             <Plus className="w-4 h-4 mr-1" />
                             Agregar concepto de Servicio
                           </Button>
                         </div>
+                        <CollapsibleContent>
                         {conceptos.filter(c => c.tipo === 'servicio').length === 0 ? (
                           <div className="px-4 py-8 text-center text-sm text-muted-foreground">
                             No hay conceptos de servicio. Hacé clic en "Agregar concepto de Servicio".
@@ -867,7 +874,8 @@ export default function Certificados() {
                             ))}
                           </div>
                         )}
-                      </div>
+                        </CollapsibleContent>
+                      </Collapsible>
                     </>
                   )}
                 </TabsContent>
