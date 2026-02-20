@@ -1,32 +1,34 @@
 
 
-## Filtrar roles en "Empleados sin Parte"
+## Fix: Certificado items not showing when editing
 
-### Cambio
-Excluir a los empleados con rol **administrativo**, **sereno** y **topografo** de la lista de personas faltantes en completar el parte diario, ya que estos roles no tienen obligacion de cargar parte.
+### Problem
+When editing a certificate (especially tipo "Mixto"), the saved items don't appear because the `seccion` column in the database is `null` for all existing items. The mixto rendering code filters strictly by `seccion === "obra"` and `seccion === "servicio"`, so items with `null` never match either filter and the form appears empty.
 
-### Archivo a modificar
-**`src/hooks/useEmpleadosSinParte.ts`**
+### Solution
+Fix the `openEditCertificado` function to assign a default `seccion` value to items that have `null`, based on the certificate type:
 
-### Detalle
-- Definir una lista de roles excluidos: `['administrativo', 'sereno', 'topografo']`
-- Filtrar en el paso 1 (despues de traer empleados activos) para que estos roles no se consideren ni en el listado ni en el conteo de `totalActivos`
-- Esto se hace con un `.filter()` en el lado del cliente justo despues de recibir los datos de `personal_selector`, antes de cruzar con los partes del dia
+- If the certificate is **tipo "servicio"**: keep `seccion: null` (this already works correctly)
+- If the certificate is **tipo "obra"**: keep `seccion: null` (also works correctly)  
+- If the certificate is **tipo "mixto"**: items with `null` seccion need to be assigned a default. Since there's no way to know which section they originally belonged to, assign them to `"servicio"` as a safe default (the user can reorganize them)
 
-### Detalle tecnico
+Additionally, fix the `openDuplicarCertificado` function with the same logic.
 
-En la linea donde se obtienen los empleados activos (~linea 28-32), se agrega un filtro posterior:
+### Technical detail
 
-```text
-const ROLES_EXCLUIDOS = ['administrativo', 'sereno', 'topografo'];
+**File:** `src/pages/Certificados.tsx`
 
-const empleadosRelevantes = (empleadosActivos || [])
-  .filter(emp => !ROLES_EXCLUIDOS.includes(emp.rol));
+In `openEditCertificado` (~line 322), when building the draft from saved items, add logic to assign `seccion` based on the cert type:
+
+```typescript
+const draft: CertificadoItemForm[] = items.map((item) => ({
+  concepto_id: item.concepto_id,
+  descripcion: item.descripcion,
+  // ... other fields ...
+  seccion: item.seccion || (cert.tipo === "mixto" ? "servicio" : null),
+}));
 ```
 
-Luego se usa `empleadosRelevantes` en vez de `empleadosActivos` para:
-- El cruce con partes del dia (paso 4)
-- El calculo de `totalActivos`
+Same fix applied in `openDuplicarCertificado` (~line 352).
 
-Esto asegura que tanto la lista como los conteos reflejen solo los roles operativos que deben cargar parte.
-
+This ensures that legacy items without a `seccion` value are visible when editing or duplicating mixto certificates.
