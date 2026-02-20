@@ -179,7 +179,7 @@ const RegistroEmpleado = () => {
       <Card className="w-full max-w-md relative z-10">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto">
-            <img src={logoFull} alt="Calamina Sur" className="h-20 w-auto" />
+            <img src={logoFull} alt="Calamina Sur" className="h-20 w-auto" width={80} height={80} fetchPriority="high" />
           </div>
           <div>
             <CardTitle className="text-2xl">Registro de Empleado</CardTitle>
