@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef, useEffect } from "react";
 import {
   DataSheetGrid,
   textColumn,
@@ -129,10 +129,14 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
     []
   );
 
+  const itemsRef = useRef(items);
+  useEffect(() => { itemsRef.current = items; }, [items]);
+
   const handleChange = useCallback(
     (newRows: ServiceGridRow[]) => {
+      const currentItems = itemsRef.current;
       const newItems: CertificadoItemForm[] = newRows.map((row, i) => {
-        const existingItem = items[i];
+        const existingItem = currentItems[i];
         const cantidad = row.cantidad || 0;
         const precio = row.precio_unitario || 0;
         return {
@@ -150,7 +154,7 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
       });
       onItemsChange(newItems);
     },
-    [items, seccion, onItemsChange]
+    [seccion, onItemsChange]
   );
 
   const totalSubtotal = items.reduce((s, i) => s + i.subtotal, 0);
