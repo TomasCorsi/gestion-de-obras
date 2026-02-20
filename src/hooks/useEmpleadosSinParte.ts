@@ -33,6 +33,11 @@ export function useEmpleadosSinParte(fecha: string): UseEmpleadosSinParteResult 
 
       if (errorEmpleados) throw errorEmpleados;
 
+      // Filter out roles that don't need to submit partes
+      const ROLES_EXCLUIDOS = ['administrativo', 'sereno', 'topografo'];
+      const empleadosRelevantes = (empleadosActivos || [])
+        .filter((emp) => !ROLES_EXCLUIDOS.includes(emp.rol));
+
       // 2. Get all partes_diarios for the given date
       const { data: partesDelDia, error: errorPartes } = await supabase
         .from("partes_diarios")
@@ -45,7 +50,7 @@ export function useEmpleadosSinParte(fecha: string): UseEmpleadosSinParteResult 
       const conParte = new Set(partesDelDia?.map((p) => p.personal_id) || []);
 
       // 4. Filter employees that don't have a parte for this date
-      const sinParte: EmpleadoSinParte[] = (empleadosActivos || [])
+      const sinParte: EmpleadoSinParte[] = empleadosRelevantes
         .filter((emp) => !conParte.has(emp.id))
         .map((emp) => ({
           id: emp.id,
@@ -58,7 +63,7 @@ export function useEmpleadosSinParte(fecha: string): UseEmpleadosSinParteResult 
 
       return {
         empleadosSinParte: sinParte,
-        totalActivos: empleadosActivos?.length || 0,
+        totalActivos: empleadosRelevantes.length,
       };
     },
     enabled: !!fecha,
