@@ -80,7 +80,7 @@ export default function Stock() {
     cantidad: 0,
     stock_anterior: 0,
     stock_nuevo: 0,
-    obra_id: "",
+    obra_id: "none",
     motivo: "",
     responsable_id: "",
     comprobante: "",
@@ -180,7 +180,7 @@ export default function Stock() {
       cantidad: 0,
       stock_anterior: 0,
       stock_nuevo: 0,
-      obra_id: "",
+      obra_id: "none",
       motivo: "",
       responsable_id: "",
       comprobante: "",
@@ -213,7 +213,7 @@ export default function Stock() {
       ...movFormData,
       stock_anterior: stockAnterior,
       stock_nuevo: stockNuevo,
-      obra_id: movFormData.obra_id || undefined,
+      obra_id: movFormData.obra_id === "none" ? undefined : movFormData.obra_id || undefined,
     });
     setIsSubmitting(false);
     setIsMovFormOpen(false);
@@ -569,7 +569,7 @@ export default function Stock() {
               >
                 <SelectTrigger><SelectValue placeholder="Seleccionar obra" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin obra</SelectItem>
+                  <SelectItem value="none">Sin obra</SelectItem>
                   {obras.filter(o => o.estado === "activa").map((obra) => (
                     <SelectItem key={obra.id} value={obra.id}>{obra.nombre}</SelectItem>
                   ))}
