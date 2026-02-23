@@ -1,38 +1,28 @@
 
 
-## Reemplazar grilla por tabla editable simple
+# Fix: Registrar Movimiento en Stock
 
-### Problema
-La libreria `react-datasheet-grid` tiene problemas persistentes con el menu contextual (click derecho) dentro de dialogos, impidiendo eliminar filas.
+## Problema Identificado
 
-### Solucion
-Reemplazar `CertificadoServiceGrid` con una tabla HTML editable simple (igual que ya funciona la seccion "Obra"), usando inputs inline y un boton de eliminar por fila. Este patron ya esta probado y funciona perfectamente en el mismo dialogo.
+El formulario de "Registrar Movimiento" tiene un bug en el componente Select de "Obra (opcional)": usa `<SelectItem value="">Sin obra</SelectItem>` con un valor de string vacio (`""`). Radix UI Select **no soporta valores vacios** como string, lo que hace que el componente se rompa silenciosamente y bloquee la interaccion con el formulario.
 
-### Cambios
+Ademas, el estado inicial de `obra_id` es `""` (string vacio), lo cual genera conflictos adicionales con el Select.
 
-**Archivo: `src/components/certificados/CertificadoServiceGrid.tsx`** - Reescritura completa
+## Solucion
 
-- Eliminar toda dependencia de `react-datasheet-grid`
-- Usar componentes `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell` (ya usados en la seccion Obra)
-- Cada fila tiene:
-  - **Descripcion**: `<Input>` de texto
-  - **Categoria**: `<Select>` con las categorias existentes
-  - **Sub Categoria**: `<Input>` de texto
-  - **Unidad**: `<Select>` con las unidades
-  - **Cantidad**: `<Input type="number">`
-  - **P. Unitario**: `<Input type="number">`
-  - **Subtotal**: campo calculado (solo lectura)
-  - **Eliminar**: boton con icono Trash2 (igual que en seccion Obra)
-- Boton "+ Agregar fila" al final de la tabla
-- Total general al pie
+1. **Reemplazar el valor vacio** del SelectItem de "Sin obra" por un valor placeholder valido como `"none"`.
+2. **Ajustar `handleSubmitMovimiento`** para convertir `"none"` a `undefined` antes de enviar a la base de datos.
+3. **Actualizar el estado inicial** de `movFormData.obra_id` para que sea `"none"` en vez de `""`.
 
-### Ventajas
-- Mismo patron que la seccion Obra, que ya funciona sin problemas
-- Sin dependencias externas complejas
-- Eliminar filas funciona con un simple boton, sin depender de menus contextuales
-- Codigo mas simple y mantenible
+## Detalles Tecnicos
 
-### Detalle tecnico
-- Se mantiene la misma interfaz (`CertificadoServiceGridProps`) para no tocar `Certificados.tsx`
-- La logica de `onItemsChange` se invoca en cada cambio de campo individual
-- Se usa `useCallback` para las funciones de update/delete/add
+**Archivo:** `src/pages/Stock.tsx`
+
+Cambios puntuales:
+- Linea 83: Cambiar `obra_id: ""` a `obra_id: "none"` en el estado inicial de `movFormData`
+- Linea 186: Igual en `handleNewMovimiento`
+- Linea 217: Ajustar la logica de envio: `obra_id: movFormData.obra_id === "none" ? undefined : movFormData.obra_id || undefined`
+- Linea 572: Cambiar `<SelectItem value="">Sin obra</SelectItem>` a `<SelectItem value="none">Sin obra</SelectItem>`
+
+Estos cambios son minimos y no afectan el diseno ni la experiencia visual.
+
