@@ -72,7 +72,7 @@ const ParteDiario = () => {
     ? maquinariasFromDB
     : (loadFromOfflineCache<typeof maquinariasFromDB>('maquinarias') ?? []);
 
-  const { data: personal = [] } = useQuery({
+  const { data: personalFromDB = [] } = useQuery({
     queryKey: ['personal_selector'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -84,6 +84,15 @@ const ParteDiario = () => {
       return (data || []) as unknown as { id: string; nombre: string | null; apellido: string | null; legajo: string | null; rol: string | null }[];
     },
   });
+
+  // Offline cache for personal selector
+  useEffect(() => {
+    if (personalFromDB.length > 0) saveToOfflineCache('personal_selector', personalFromDB);
+  }, [personalFromDB]);
+
+  const personal = personalFromDB.length > 0
+    ? personalFromDB
+    : (loadFromOfflineCache<typeof personalFromDB>('personal_selector') ?? []);
   const [view, setView] = useState<ViewMode>('home');
   const [editingParte, setEditingParte] = useState<ParteDiarioType | null>(null);
   const [showEntregaDialog, setShowEntregaDialog] = useState(false);

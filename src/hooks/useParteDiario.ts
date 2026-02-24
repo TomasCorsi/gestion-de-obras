@@ -91,6 +91,8 @@ export function useParteDiario() {
   const { data: partes = [], isLoading, error } = useQuery({
     queryKey: ['partes_diarios', empleado?.id],
     enabled: !!empleado?.id,
+    retry: false,
+    networkMode: 'offlineFirst',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partes_diarios')
@@ -113,6 +115,8 @@ export function useParteDiario() {
   const { data: partesHoy = [], isLoading: isLoadingParteHoy } = useQuery({
     queryKey: ['parte_hoy', empleado?.id, fechaHoy],
     enabled: !!empleado?.id,
+    retry: false,
+    networkMode: 'offlineFirst',
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partes_diarios')

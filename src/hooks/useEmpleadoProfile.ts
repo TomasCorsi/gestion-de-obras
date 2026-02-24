@@ -35,7 +35,7 @@ export function useEmpleadoProfile() {
         let { data, error: fetchError } = await supabase
           .from('personal')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', userId!)
           .maybeSingle();
 
         if (fetchError) {
@@ -81,16 +81,30 @@ export function useEmpleadoProfile() {
         }
 
         if (data) {
-          setEmpleado({
+          const profile = {
             ...data,
             nombreCompleto: `${data.nombre || ''} ${data.apellido || ''}`.trim(),
-          });
+          };
+          setEmpleado(profile);
+          // Cache for offline fallback
+          try { localStorage.setItem(`offline_cache_empleado_${userId}`, JSON.stringify(profile)); } catch {}
         } else {
           setEmpleado(null);
         }
       } catch (err) {
         console.error('Error in fetchAndLinkEmpleado:', err);
-        setError('Error al cargar perfil');
+        // Offline fallback
+        try {
+          const cached = localStorage.getItem(`offline_cache_empleado_${userId}`);
+          if (cached) {
+            setEmpleado(JSON.parse(cached));
+            setError(null);
+          } else {
+            setError('Error al cargar perfil');
+          }
+        } catch {
+          setError('Error al cargar perfil');
+        }
       } finally {
         setLoading(false);
       }

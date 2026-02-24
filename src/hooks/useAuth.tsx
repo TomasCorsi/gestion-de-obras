@@ -55,11 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileResult.error) throw profileResult.error;
       setProfile(profileResult.data);
+      // Cache for offline fallback
+      if (profileResult.data) {
+        try { localStorage.setItem(`offline_cache_profile_${userId}`, JSON.stringify(profileResult.data)); } catch {}
+      }
 
       if (roleResult.error) throw roleResult.error;
-      setRole(roleResult.data?.role as AppRole || null);
+      const fetchedRole = roleResult.data?.role as AppRole || null;
+      setRole(fetchedRole);
+      if (fetchedRole) {
+        try { localStorage.setItem(`offline_cache_role_${userId}`, fetchedRole); } catch {}
+      }
     } catch (error) {
       console.error('Error fetching user data:', error);
+      // Offline fallback: serve cached data
+      try {
+        const cachedProfile = localStorage.getItem(`offline_cache_profile_${userId}`);
+        if (cachedProfile) setProfile(JSON.parse(cachedProfile));
+        const cachedRole = localStorage.getItem(`offline_cache_role_${userId}`);
+        if (cachedRole) setRole(cachedRole as AppRole);
+      } catch {}
     } finally {
       setRoleLoading(false);
     }
