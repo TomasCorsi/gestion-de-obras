@@ -1,58 +1,59 @@
 
-# Fix: PWA Partes Diarios no funciona sin internet
+# Fix: Carga rapida en modo offline
 
 ## Problema
 
-Cuando no hay conexion a internet, la app no puede cargar la pagina de Parte Diario porque varios hooks dependen de llamadas a la base de datos que fallan silenciosamente:
+Cuando se corta el WiFi, la app se queda en la pantalla de "Cargando..." durante mucho tiempo (30-90 segundos) porque hay varias peticiones de red que se hacen en secuencia, y cada una espera hasta que el navegador las descarta por timeout:
 
-1. **`useAuth` (fetchUserData)**: Carga `profiles` y `user_roles` desde la base de datos. Si falla, `role` queda en `null` y `ProtectedRoute` muestra un spinner infinito (linea 30-36).
-2. **`useEmpleadoProfile`**: Carga el registro de `personal` desde la base de datos. Si falla, `empleado` queda en `null` y la pagina muestra "Perfil no encontrado".
-3. **`useParteDiario`**: Las queries de partes fallan, pero esto es menos critico porque el formulario puede funcionar con la cola offline.
-
-La sesion de Supabase Auth si se recupera desde localStorage (el SDK la persiste), pero los datos de perfil/rol/empleado no estan cacheados.
+1. `getSession()` intenta refrescar el token expirado por la red (10-30s de espera)
+2. `fetchUserData()` hace 2 peticiones a profiles y user_roles (otros 10-30s)
+3. `useEmpleadoProfile` hace otra peticion a personal (otros 10-30s)
 
 ## Solucion
 
-Cachear los datos criticos de usuario (profile, role, empleado) en localStorage y servirlos como fallback cuando las peticiones de red fallan. Esto permite que la app se renderice correctamente offline.
+Aplicar un patron de "carrera contra el tiempo" (race) con datos cacheados: si las peticiones de red no responden en 3 segundos, usar los datos guardados en localStorage inmediatamente.
 
 ### Cambios por archivo:
 
 ### 1. `src/hooks/useAuth.tsx`
-- En `fetchUserData`: tras obtener profile y role exitosamente, guardarlos en localStorage con claves `offline_cache_profile_{userId}` y `offline_cache_role_{userId}`
-- Si las peticiones fallan (catch), intentar cargar desde localStorage como fallback
-- Esto desbloquea `ProtectedRoute` porque `role` ya no sera `null` offline
+
+**Problema**: `initializeAuth` espera a `getSession()` y luego a `fetchUserData()`, ambas bloqueantes offline.
+
+**Solucion**:
+- Cargar inmediatamente profile y role desde localStorage al iniciar (antes de cualquier peticion de red)
+- Agregar un timeout de 3 segundos a `getSession()`: si no responde, usar la sesion que Supabase ya tiene en localStorage (el SDK la guarda automaticamente)
+- Agregar un timeout de 3 segundos a `fetchUserData()`: si no responde, los datos cacheados ya estan seteados, asi que simplemente terminar la carga
+- `loading` pasa a `false` rapidamente, desbloqueando `ProtectedRoute`
 
 ### 2. `src/hooks/useEmpleadoProfile.ts`
-- Tras obtener el empleado exitosamente, guardarlo en localStorage con clave `offline_cache_empleado_{userId}`
-- Si la peticion falla, cargar desde localStorage como fallback
-- Esto evita el mensaje "Perfil no encontrado" cuando no hay red
 
-### 3. `src/hooks/useParteDiario.ts`
-- Configurar las queries con `retry: false` y `networkMode: 'offlineFirst'` para que no bloqueen la UI esperando red
-- El sistema de offline queue ya maneja el guardado de partes sin conexion
+**Problema**: `fetchAndLinkEmpleado` espera la respuesta de la red antes de servir datos.
 
-### 4. `src/pages/ParteDiario.tsx`
-- La query de `personal_selector` tambien necesita un fallback offline similar al que ya tienen obras y maquinarias (usar `saveToOfflineCache`/`loadFromOfflineCache`)
+**Solucion**:
+- Cargar los datos cacheados de empleado inmediatamente al iniciar (antes de la peticion de red)
+- Agregar un timeout de 3 segundos a la peticion: si no responde, los datos cacheados ya estan disponibles y la carga termina
+- Si la red responde antes del timeout, los datos se actualizan con la version fresca
 
 ## Detalles Tecnicos
 
 ```text
-Flujo offline actual (roto):
-  App abre -> getSession() OK (localStorage) -> fetchUserData() FALLA
-  -> role = null -> ProtectedRoute muestra spinner infinito
+Flujo actual offline (lento):
+  getSession() ---- espera 30s timeout ---- falla
+  fetchUserData() ---- espera 30s timeout ---- falla, lee cache
+  useEmpleadoProfile ---- espera 30s timeout ---- falla, lee cache
+  Total: ~90 segundos
 
-Flujo offline corregido:
-  App abre -> getSession() OK (localStorage) -> fetchUserData() FALLA
-  -> fallback: cargar profile/role desde cache -> role = "maquinista"
-  -> ProtectedRoute pasa -> useEmpleadoProfile FALLA
-  -> fallback: cargar empleado desde cache -> empleado disponible
-  -> Parte Diario renderiza OK -> usuario puede crear partes offline
+Flujo corregido offline (rapido):
+  1. Lee cache de profile/role/empleado inmediatamente (0ms)
+  2. getSession() con race de 3s → timeout, usa sesion de localStorage
+  3. fetchUserData() con race de 3s → timeout, cache ya esta seteado
+  4. loading = false → app renderiza
+  Total: ~3 segundos maximo
 ```
 
-### Reutilizacion del cache existente
-Se reutilizaran las funciones `saveToOfflineCache` y `loadFromOfflineCache` de `src/hooks/useOfflineCache.ts` que ya existen en el proyecto, manteniendo consistencia con el patron actual.
+La logica de "race" se implementa con `Promise.race([peticion, timeout])` donde el timeout resuelve con un valor de fallback en 3 segundos. Esto no cancela la peticion de red — si la red vuelve, los datos se actualizan en segundo plano.
 
 ### Impacto
 - Sin cambios visuales ni de UX
-- La app se comporta identicamente cuando hay conexion
-- Offline: la app carga con datos cacheados y permite crear partes que se sincronizan al volver online
+- Con conexion: la app funciona identicamente (las peticiones responden en menos de 3s normalmente)
+- Sin conexion: la app carga en 3 segundos maximo en vez de 30-90 segundos
