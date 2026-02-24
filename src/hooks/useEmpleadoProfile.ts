@@ -26,6 +26,15 @@ export function useEmpleadoProfile() {
       return;
     }
 
+    // 1. Hydrate from cache IMMEDIATELY
+    try {
+      const cached = localStorage.getItem(`offline_cache_empleado_${userId}`);
+      if (cached) {
+        setEmpleado(JSON.parse(cached));
+        setError(null);
+      }
+    } catch {}
+
     const fetchAndLinkEmpleado = async () => {
       setLoading(true);
       setError(null);
@@ -50,7 +59,6 @@ export function useEmpleadoProfile() {
           if (legajo) {
             console.log('Attempting auto-link for legajo:', legajo, 'user_id:', user.id);
             
-            // Use secure RPC function to link
             const { data: linkResult, error: linkError } = await supabase
               .rpc('link_personal_to_user', {
                 p_legajo: String(legajo).trim(),
@@ -62,7 +70,6 @@ export function useEmpleadoProfile() {
             if (!linkError && linkResult && linkResult.length > 0 && linkResult[0].success) {
               console.log('Successfully auto-linked personal record via RPC');
               
-              // Refetch the linked record
               const { data: linkedData } = await supabase
                 .from('personal')
                 .select('*')
@@ -86,14 +93,13 @@ export function useEmpleadoProfile() {
             nombreCompleto: `${data.nombre || ''} ${data.apellido || ''}`.trim(),
           };
           setEmpleado(profile);
-          // Cache for offline fallback
           try { localStorage.setItem(`offline_cache_empleado_${userId}`, JSON.stringify(profile)); } catch {}
         } else {
           setEmpleado(null);
         }
       } catch (err) {
         console.error('Error in fetchAndLinkEmpleado:', err);
-        // Offline fallback
+        // Offline fallback (cache already hydrated above, but try again in case)
         try {
           const cached = localStorage.getItem(`offline_cache_empleado_${userId}`);
           if (cached) {
@@ -110,7 +116,16 @@ export function useEmpleadoProfile() {
       }
     };
 
-    fetchAndLinkEmpleado();
+    // Race the fetch against a 3s timeout — if offline, cache is already in state
+    const raceWithTimeout = Promise.race([
+      fetchAndLinkEmpleado(),
+      new Promise<void>((resolve) => setTimeout(() => {
+        setLoading(false);
+        resolve();
+      }, 3000)),
+    ]);
+
+    raceWithTimeout;
   }, [userId, legajo]);
 
   const rolPersonal: RolPersonal | null = empleado?.rol || null;

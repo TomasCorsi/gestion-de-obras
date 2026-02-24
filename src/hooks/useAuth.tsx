@@ -36,6 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
 
+  // Helper: race a promise against a timeout (resolves with null on timeout)
+  const raceWithTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
+    Promise.race([
+      promise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
+    ]);
+
   const fetchUserData = async (userId: string) => {
     setRoleLoading(true);
     try {
@@ -55,7 +62,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (profileResult.error) throw profileResult.error;
       setProfile(profileResult.data);
-      // Cache for offline fallback
       if (profileResult.data) {
         try { localStorage.setItem(`offline_cache_profile_${userId}`, JSON.stringify(profileResult.data)); } catch {}
       }
@@ -68,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Offline fallback: serve cached data
+      // Offline fallback: serve cached data (may already be hydrated below)
       try {
         const cachedProfile = localStorage.getItem(`offline_cache_profile_${userId}`);
         if (cachedProfile) setProfile(JSON.parse(cachedProfile));
@@ -83,20 +89,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
     
-    // Get initial session first
     const initializeAuth = async () => {
       try {
-        // getSession() ya usa el refresh token internamente si el access token expiró
-        const { data: { session } } = await supabase.auth.getSession();
+        // 1. Hydrate profile/role from cache IMMEDIATELY so ProtectedRoute unblocks fast
+        const cachedUserId = (() => {
+          try {
+            const raw = localStorage.getItem(`sb-euytcvwhrhvtwvppvawd-auth-token`);
+            if (!raw) return null;
+            const parsed = JSON.parse(raw);
+            return parsed?.user?.id ?? null;
+          } catch { return null; }
+        })();
+
+        if (cachedUserId && isMounted) {
+          try {
+            const cp = localStorage.getItem(`offline_cache_profile_${cachedUserId}`);
+            if (cp) setProfile(JSON.parse(cp));
+            const cr = localStorage.getItem(`offline_cache_role_${cachedUserId}`);
+            if (cr) setRole(cr as AppRole);
+          } catch {}
+        }
+
+        // 2. Race getSession() with a 3s timeout
+        const sessionResult = await raceWithTimeout(
+          supabase.auth.getSession(),
+          3000
+        );
         
         if (!isMounted) return;
         
-        if (session?.user) {
-          setSession(session);
-          setUser(session.user);
-          await fetchUserData(session.user.id);
+        const resolvedSession = sessionResult?.data?.session ?? null;
+        
+        if (resolvedSession?.user) {
+          setSession(resolvedSession);
+          setUser(resolvedSession.user);
+          // 3. Race fetchUserData with a 3s timeout (cache already hydrated above)
+          await raceWithTimeout(fetchUserData(resolvedSession.user.id), 3000);
+        } else if (sessionResult === null && cachedUserId) {
+          // getSession timed out but we have cached auth — try to build user from cache
+          // The Supabase SDK persists the session in localStorage; read it directly
+          try {
+            const raw = localStorage.getItem(`sb-euytcvwhrhvtwvppvawd-auth-token`);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.user) {
+                setUser(parsed.user);
+                setSession(parsed);
+              }
+            }
+          } catch {}
+          // profile/role already hydrated from step 1
         } else {
-          // No hay sesión recuperable → ir al login directamente
+          // No session at all
           setSession(null);
           setUser(null);
         }
