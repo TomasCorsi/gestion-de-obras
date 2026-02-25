@@ -256,11 +256,7 @@ export const ParteDiarioFormView = ({
   };
 
   const validateForComplete = (): boolean => {
-    if (isMaquinista && !formData.maquinaria_id) {
-      toast.error('Debes seleccionar una máquina para completar el parte');
-      return false;
-    }
-    if (showEstadoMaquina && formData.estado_maquina === 'OBSERVACION' && !formData.observacion_maquina.trim()) {
+    if (showEstadoMaquina && formData.maquinaria_id && formData.estado_maquina === 'OBSERVACION' && !formData.observacion_maquina.trim()) {
       setShowObsError(true);
       toast.error('Debés describir la observación de la máquina');
       return false;
