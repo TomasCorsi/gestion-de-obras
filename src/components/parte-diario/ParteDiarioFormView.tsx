@@ -248,7 +248,7 @@ export const ParteDiarioFormView = ({
       check_liquido_refrigerante: formData.check_liquido_refrigerante,
       check_uria: formData.check_uria,
       // New role-specific fields
-      novedades: isCapataz ? formData.novedades || null : null,
+      novedades: showNovedades ? formData.novedades || null : null,
       ausencias: isCapataz && formData.ausencias.length > 0 ? formData.ausencias : null,
       tareas: isMecanicoAyudante ? formData.tareas || null : null,
       observaciones_inconvenientes: formData.observaciones_inconvenientes || null,
