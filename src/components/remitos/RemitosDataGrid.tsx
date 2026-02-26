@@ -459,11 +459,6 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       {
-        ...keyColumn("patente_tercero", textColumn),
-        title: "Patente Tercero",
-        minWidth: 140,
-      },
-      {
         ...keyColumn("maquinaria_id", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
             <GridSelectCell
@@ -490,8 +485,13 @@ export function RemitosDataGrid({
             return found?.id || "";
           },
         }),
-        title: "Vehículo",
+        title: "Patente Local",
         minWidth: 180,
+      },
+      {
+        ...keyColumn("patente_tercero", textColumn),
+        title: "Patente Tercero",
+        minWidth: 140,
       },
     ],
     [vehiculoOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
