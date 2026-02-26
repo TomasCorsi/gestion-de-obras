@@ -20,7 +20,6 @@ export interface RemitoDB {
   row_color: string | null;
   proveedor: string | null;
   cliente: string | null;
-  // New columns
   remito_tercero: string | null;
   remito_local: string | null;
   desde: string | null;
@@ -31,6 +30,8 @@ export interface RemitoDB {
   tipo_transporte: string | null;
   maquinaria_id: string | null;
   patente_tercero: string | null;
+  cantidad_uni: number | null;
+  precio_unitario: number | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -51,7 +52,6 @@ export interface RemitoForm {
   firmado: boolean;
   evidencia_url?: string;
   observaciones?: string;
-  // New fields
   proveedor?: string;
   cliente?: string;
   remito_tercero?: string;
@@ -64,6 +64,8 @@ export interface RemitoForm {
   tipo_transporte?: string;
   maquinaria_id?: string;
   patente_tercero?: string;
+  cantidad_uni?: number | null;
+  precio_unitario?: number | null;
   row_color?: string | null;
 }
 

@@ -1534,6 +1534,7 @@ export type Database = {
       remitos: {
         Row: {
           cantidad: number
+          cantidad_uni: number | null
           cantidad_viajes: number | null
           cliente: string | null
           created_at: string
@@ -1550,6 +1551,7 @@ export type Database = {
           observaciones: string | null
           patente_tercero: string | null
           precio_total: number | null
+          precio_unitario: number | null
           proveedor: string | null
           recibido_por: string
           remito_local: string | null
@@ -1563,6 +1565,7 @@ export type Database = {
         }
         Insert: {
           cantidad: number
+          cantidad_uni?: number | null
           cantidad_viajes?: number | null
           cliente?: string | null
           created_at?: string
@@ -1579,6 +1582,7 @@ export type Database = {
           observaciones?: string | null
           patente_tercero?: string | null
           precio_total?: number | null
+          precio_unitario?: number | null
           proveedor?: string | null
           recibido_por: string
           remito_local?: string | null
@@ -1592,6 +1596,7 @@ export type Database = {
         }
         Update: {
           cantidad?: number
+          cantidad_uni?: number | null
           cantidad_viajes?: number | null
           cliente?: string | null
           created_at?: string
@@ -1608,6 +1613,7 @@ export type Database = {
           observaciones?: string | null
           patente_tercero?: string | null
           precio_total?: number | null
+          precio_unitario?: number | null
           proveedor?: string | null
           recibido_por?: string
           remito_local?: string | null
