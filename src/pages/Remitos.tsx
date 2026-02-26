@@ -66,7 +66,7 @@ const tipoMaterialOptions = [
 ];
 const tipoTransporteOptions = [
   "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu", "Patan",
-  "Hormigret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez"
+  "Hormicret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez"
 ];
 
 export default function Remitos() {
