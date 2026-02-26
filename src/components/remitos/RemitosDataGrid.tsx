@@ -38,13 +38,16 @@ interface GridRow {
   hasta: string;
   cliente: string;
   cantidad_viajes: number | null;
+  cantidad_uni: number | null;
   unidad: string;
   cantidad: number | null;
   tipo_material: string;
+  precio_unitario: number | null;
   precio_total: number | null;
   tipo_transporte: string;
   maquinaria_id: string;
   patente_tercero: string;
+  observaciones: string;
   row_color: string | null;
   _isNew?: boolean;
   _isModified?: boolean;
@@ -184,13 +187,16 @@ export function RemitosDataGrid({
         hasta: r.hasta || "",
         cliente: r.cliente || "",
         cantidad_viajes: r.cantidad_viajes || 1,
+        cantidad_uni: null as number | null,
         unidad: r.unidad || "M3",
         cantidad: r.cantidad,
         tipo_material: r.tipo_material || r.material || "",
+        precio_unitario: null as number | null,
         precio_total: r.precio_total || 0,
         tipo_transporte: r.tipo_transporte || "",
         maquinaria_id: r.maquinaria_id || "",
         patente_tercero: r.patente_tercero || "",
+        observaciones: r.observaciones || "",
         row_color: r.row_color || null,
         _isNew: false,
         _isModified: false,
@@ -310,7 +316,22 @@ export function RemitosDataGrid({
             setColumnFilters={setColumnFilters}
           />
         ), 
-        minWidth: 140 
+        minWidth: 140,
+      },
+      {
+        ...keyColumn("proveedor", textColumn),
+        title: (
+          <ColumnFilterHeader
+            column="proveedor"
+            title="Proveedor"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
+          />
+        ),
+        minWidth: 120,
       },
       {
         ...keyColumn("desde", {
@@ -368,7 +389,23 @@ export function RemitosDataGrid({
         ),
         minWidth: 130,
       },
+      {
+        ...keyColumn("cliente", textColumn),
+        title: (
+          <ColumnFilterHeader
+            column="cliente"
+            title="Cliente"
+            getUniqueValues={getUniqueValues}
+            columnFilters={columnFilters}
+            toggleColumnFilter={toggleColumnFilter}
+            clearColumnFilter={clearColumnFilter}
+            setColumnFilters={setColumnFilters}
+          />
+        ),
+        minWidth: 120,
+      },
       { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
+      { ...keyColumn("cantidad_uni", floatColumn), title: "Cant. Uni.", minWidth: 90 },
       {
         ...keyColumn("unidad", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -390,7 +427,7 @@ export function RemitosDataGrid({
         title: "Unidad",
         minWidth: 70,
       },
-      { ...keyColumn("cantidad", floatColumn), title: "Cantidad", minWidth: 80 },
+      { ...keyColumn("cantidad", floatColumn), title: "Cant. Total", minWidth: 90 },
       {
         ...keyColumn("tipo_material", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -424,6 +461,7 @@ export function RemitosDataGrid({
         ),
         minWidth: 110,
       },
+      { ...keyColumn("precio_unitario", floatColumn), title: "Precio Uni.", minWidth: 100 },
       { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100 },
       {
         ...keyColumn("tipo_transporte", {
@@ -493,6 +531,11 @@ export function RemitosDataGrid({
         title: "Patente Tercero",
         minWidth: 140,
       },
+      {
+        ...keyColumn("observaciones", textColumn),
+        title: "Descripcion",
+        minWidth: 180,
+      },
     ],
     [vehiculoOptions, maquinarias, obrasOptions, columnFilters, getUniqueValues, toggleColumnFilter, clearColumnFilter, setColumnFilters]
   );
@@ -549,7 +592,8 @@ export function RemitosDataGrid({
                   row.precio_total !== orig.precio_total ||
                   row.tipo_transporte !== orig.tipo_transporte ||
                   row.maquinaria_id !== orig.maquinaria_id ||
-                  row.patente_tercero !== orig.patente_tercero;
+                  row.patente_tercero !== orig.patente_tercero ||
+                  row.observaciones !== orig.observaciones;
 
                 if (isModified) {
                   updatedRowIds.add(row.id);
@@ -585,13 +629,16 @@ export function RemitosDataGrid({
         hasta: "",
         cliente: "",
         cantidad_viajes: 1,
+        cantidad_uni: null,
         unidad: "M3",
         cantidad: 18,
         tipo_material: "Tosca",
+        precio_unitario: null,
         precio_total: 0,
         tipo_transporte: "",
         maquinaria_id: "",
         patente_tercero: "",
+        observaciones: "",
         row_color: null,
         _isNew: true,
         _isModified: false,
@@ -636,6 +683,7 @@ export function RemitosDataGrid({
           tipo_transporte: row.tipo_transporte || null,
           maquinaria_id: row.maquinaria_id || null,
           patente_tercero: row.patente_tercero || null,
+          observaciones: row.observaciones || null,
         }));
 
       const updated = data
@@ -659,6 +707,7 @@ export function RemitosDataGrid({
             maquinaria_id: row.maquinaria_id || null,
             patente_tercero: row.patente_tercero || null,
             material: row.tipo_material || "",
+            observaciones: row.observaciones || null,
           },
         }));
 
@@ -695,13 +744,16 @@ export function RemitosDataGrid({
       hasta: "",
       cliente: "",
       cantidad_viajes: 1,
+      cantidad_uni: null,
       unidad: "M3",
       cantidad: 18,
       tipo_material: "Tosca",
+      precio_unitario: null,
       precio_total: 0,
       tipo_transporte: "",
       maquinaria_id: "",
       patente_tercero: "",
+      observaciones: "",
       row_color: null,
       _isNew: true,
       _isModified: false,
