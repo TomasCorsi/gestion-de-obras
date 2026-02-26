@@ -438,13 +438,14 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
 
   const downloadTemplate = () => {
     const headers = [
-      "remito_tercero", "remito_local", "fecha", "proveedor", "desde", "hasta", "cliente",
-      "cantidad_viajes", "unidad", "cantidad", "tipo_material", 
-      "precio_total", "tipo_transporte", "patente", "patente_tercero", "descripcion"
+      "Rem. Tercero", "Rem. Local", "Fecha", "Proveedor", "Desde", "Hasta", "Cliente",
+      "Viajes", "Cantidad Uni.", "Cantidad total", "Unidad", "Tipo",
+      "Precio Uni.", "Precio Total", "Transporte", "Patente", "Tercero", "Vehiculo", "Descripcion"
     ].join(";");
     const example = [
       "00123", "REM-2026-001", "26/01/2026", "Proveedor SA", "Cantera", "Obra Centro", "Cliente SRL",
-      "3", "TN", "45", "Tosca", "150000", "Calamina Sur", "ABC-123", "XY-456", "Observaciones"
+      "3", "10", "30", "TN", "Tosca",
+      "5000", "150000", "Calamina Sur", "ABC-123", "XY-456", "708", "Observaciones"
     ].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
