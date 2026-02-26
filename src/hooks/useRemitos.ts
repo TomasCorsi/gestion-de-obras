@@ -32,6 +32,7 @@ export interface RemitoDB {
   patente_tercero: string | null;
   cantidad_uni: number | null;
   precio_unitario: number | null;
+  precio_calc_mode: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -66,6 +67,7 @@ export interface RemitoForm {
   patente_tercero?: string;
   cantidad_uni?: number | null;
   precio_unitario?: number | null;
+  precio_calc_mode?: string | null;
   row_color?: string | null;
 }
 
