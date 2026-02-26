@@ -1,67 +1,48 @@
 
 
-# Agregar columnas y opciones al modulo de Remitos
+# Corregir importación CSV de Remitos para detectar todas las columnas
 
-## Resumen
-Agregar dos nuevas columnas a la grilla de remitos (Proveedor y Cliente), actualizar las opciones de tipos de material y transportes, y adaptar la importacion CSV con validacion.
+## Problema
+Los encabezados del CSV del usuario no coinciden con los alias configurados en el importador. Por ejemplo, "Rem. Tercero" no se detecta porque solo están los alias "remito_tercero", "rem_tercero", etc. Además, las columnas "Patente Tercero", "Descripcion", "Cantidad Uni." y "Precio Uni." no están mapeadas.
 
-## Cambios en Base de Datos
+## Encabezados del CSV del usuario
+`Rem. Tercero, Rem. Local, Fecha, Proveedor, Desde, Hasta, Cliente, Viajes, Cantidad Uni., Cantidad total, Unidad, Tipo, Precio Uni., Precio Total, Transporte, Patente Tercero, Vehiculo, Descripcion`
 
-**Migracion SQL**: Agregar dos columnas de texto a la tabla `remitos`:
-- `proveedor` (text, nullable)
-- `cliente` (text, nullable)
+## Cambios en `src/components/remitos/CSVImportDialog.tsx`
 
-## Cambios en Codigo
+### 1. Agregar aliases faltantes en `columnAliases`
 
-### 1. `src/hooks/useRemitos.ts`
-- Agregar `proveedor` y `cliente` a las interfaces `RemitoDB` y `RemitoForm`
-- Incluirlos en las operaciones de batch save y update
+| Campo | Aliases a agregar |
+|---|---|
+| remito_tercero | "rem. tercero" |
+| remito_local | "rem. local", "rem. loc.", "rem. loc" |
+| cantidad | "cantidad total", "cantidad uni.", "cant total" |
+| precio_total | "precio total" (con espacio) |
+| tipo_transporte | "transporte" (ya existe, OK) |
+| patente (vehiculo) | "vehiculo" (ya existe, OK) |
 
-### 2. `src/components/remitos/RemitosDataGrid.tsx`
+### 2. Agregar nuevas columnas al mapeo
 
-**Nuevas columnas en la grilla:**
-- **Proveedor** (columna de texto) entre Fecha y Desde
-- **Cliente** (columna de texto) entre Hasta y Viajes
+| Campo nuevo | Aliases |
+|---|---|
+| patente_tercero | "patente_tercero", "patente tercero", "pat_tercero", "pat tercero" |
+| observaciones | "observaciones", "descripcion", "descripción", "notas", "obs" |
+| precio_unitario (lectura) | "precio uni.", "precio_uni", "precio unitario", "precio_unitario" |
 
-**Actualizar opciones de `tipoMaterialOptions`:**
-- Reemplazar "Cobertura de basura" por "Cobertura de residuos"
-- Agregar: Arena, Hormigon H30, Tierra negra, Relleno, Piedra 30/50, Materiales varios
+### 3. Agregar lógica de parseo para los nuevos campos
 
-**Actualizar opciones de `tipoTransporteOptions`:**
-- Agregar: Hormigret, Lamacol, Britcom, Ramon romero gomez, Duraez
+- **patente_tercero**: leer como texto y guardarlo en el data del remito
+- **observaciones**: leer como texto y guardarlo como `observaciones`
+- **precio_unitario**: leer el valor pero usarlo solo como referencia (o calcular precio_total = precio_uni x cantidad si precio_total está vacío)
 
-**Actualizar logica de cambios:**
-- Incluir `proveedor` y `cliente` en la deteccion de modificaciones y en el payload de guardado
+### 4. Incluir campos en el objeto `data` del ParsedRow
 
-**Agregar filtros:**
-- Agregar filtros de columna para Proveedor y Cliente
+Agregar `patente_tercero` y `observaciones` al objeto que se envía a la base de datos.
 
-### 3. `src/components/remitos/CSVImportDialog.tsx`
+### 5. Actualizar la plantilla de descarga
 
-**Agregar soporte de importacion para las nuevas columnas:**
-- Agregar aliases para `proveedor` y `cliente` en el mapeo de columnas CSV
-- Incluir en la plantilla de descarga
-- Agregar normalizacion para los nuevos tipos de material y transportes
+Agregar las columnas "patente_tercero" y "descripcion" a la plantilla CSV descargable.
 
-**Validacion de datos en importacion:**
-- Si se especifica un tipo_material que no esta en la lista, mostrar advertencia pero permitir importacion
-- Si se especifica un tipo_transporte que no esta en la lista, mostrar advertencia pero permitir importacion
-- Mostrar seccion de validacion con resumen de campos reconocidos vs no reconocidos
-
-### 4. `src/pages/Remitos.tsx`
-
-**Actualizar listas de opciones:**
-- Sincronizar `tipoMaterialOptions` y `tipoTransporteOptions` con las nuevas opciones
-- Agregar campos de Proveedor y Cliente al formulario de tabla
-- Incluir en la vista de detalle y en la busqueda
-
-### 5. `src/components/remitos/RemitosDataGrid.tsx` - GridRow interface
-- Agregar `proveedor: string` y `cliente: string` al tipo GridRow
-- Incluir en initialData, handleAddRow, createRow
-
-## Lista final de tipos de material
-Residuos, Desmonte, Cascote, Escombro, Tierra, Piedra, Movimiento interno, Tosca, Cemento, Hormigon, Traslado, Cubiertas, Frezado, Cobertura de residuos, Arena, Hormigon H30, Tierra negra, Relleno, Piedra 30/50, Materiales varios
-
-## Lista final de transportes
-Calamina Sur, Geo hermanos, Diaz Neiva, japones, Cato, Tatu, Patan, Hormigret, Lamacol, Britcom, Ramon romero gomez, Duraez
+## Resumen técnico
+Solo se modifica `src/components/remitos/CSVImportDialog.tsx` para agregar aliases de columnas que coincidan con los encabezados reales del CSV del usuario, y mapear campos que no estaban incluidos (patente_tercero, observaciones/descripcion).
 
