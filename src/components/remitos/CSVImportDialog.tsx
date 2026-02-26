@@ -221,20 +221,23 @@ function parseCSV(
   
   // Map possible column names
   const columnAliases: Record<string, string[]> = {
-    remito_tercero: ['remito_tercero', 'remito tercero', 'rem_tercero', 'tercero', 'externo'],
-    remito_local: ['remito_local', 'remito local', 'rem_local', 'local', 'interno', 'numero', 'nro'],
+    remito_tercero: ['remito_tercero', 'remito tercero', 'rem_tercero', 'externo', 'rem. tercero'],
+    remito_local: ['remito_local', 'remito local', 'rem_local', 'local', 'interno', 'numero', 'nro', 'rem. local', 'rem. loc.', 'rem. loc'],
     fecha: ['fecha', 'date'],
     desde: ['desde', 'origen', 'from', 'de'],
     hasta: ['hasta', 'destino', 'to', 'a'],
     cantidad_viajes: ['cantidad_viajes', 'viajes', 'cant_viajes', 'trips'],
     unidad: ['unidad', 'unit', 'un'],
-    cantidad: ['cantidad', 'cant', 'quantity', 'amount'],
+    cantidad: ['cantidad', 'cant', 'quantity', 'amount', 'cantidad total', 'cantidad uni.', 'cant total'],
     tipo_material: ['tipo_material', 'tipo', 'material', 'type'],
-    precio_total: ['precio_total', 'precio', 'total', 'price', 'monto'],
+    precio_total: ['precio_total', 'precio total', 'precio', 'total', 'price', 'monto'],
+    precio_unitario: ['precio uni.', 'precio_uni', 'precio unitario', 'precio_unitario'],
     tipo_transporte: ['tipo_transporte', 'transporte', 'transport', 'empresa'],
     patente: ['patente', 'maquinaria', 'maquinaria_id', 'equipo', 'dominio', 'vehiculo'],
+    patente_tercero: ['patente_tercero', 'patente tercero', 'pat_tercero', 'pat tercero', 'tercero'],
     proveedor: ['proveedor', 'provider', 'supplier'],
     cliente: ['cliente', 'client', 'customer'],
+    observaciones: ['observaciones', 'descripcion', 'descripción', 'notas', 'obs'],
   };
 
   // Find column indices
@@ -298,9 +301,18 @@ function parseCSV(
     if (tipoMaterialRaw && !validMaterialTypes.has(tipo_material)) {
       warnings.push({ field: 'tipo_material', value: tipoMaterialRaw, row: i + 1 });
     }
-    // Parse precio_total
+    // Parse precio_total (fallback: precio_unitario * cantidad)
     const precioRaw = getValue('precio_total');
-    const precio_total = precioRaw ? parseFloat(precioRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
+    let precio_total = precioRaw ? parseFloat(precioRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
+    if ((!precioRaw || precio_total === 0) && cantidad > 0) {
+      const precioUniRaw = getValue('precio_unitario');
+      if (precioUniRaw) {
+        const precioUni = parseFloat(precioUniRaw.replace(',', '.').replace(/[^\d.]/g, ''));
+        if (!isNaN(precioUni) && precioUni > 0) {
+          precio_total = precioUni * cantidad;
+        }
+      }
+    }
 
     // Parse tipo_transporte
     const tipoTransporteRaw = getValue('tipo_transporte');
@@ -317,6 +329,8 @@ function parseCSV(
     const hasta = getValue('hasta');
     const proveedor = getValue('proveedor');
     const cliente = getValue('cliente');
+    const patente_tercero = getValue('patente_tercero');
+    const observaciones = getValue('observaciones');
 
     // Generate numero for legacy field
     const numero = remito_local || `IMP-${i}`;
@@ -345,6 +359,8 @@ function parseCSV(
         precio_total: isNaN(precio_total) ? 0 : precio_total,
         tipo_transporte: tipo_transporte || undefined,
         maquinaria_id: maquinaria_id || undefined,
+        patente_tercero: patente_tercero || undefined,
+        observaciones: observaciones || undefined,
       },
       patenteInput: patenteValue,
       matchMethod: patenteValue ? matchMethod : 'no_encontrada',
@@ -424,11 +440,11 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
     const headers = [
       "remito_tercero", "remito_local", "fecha", "proveedor", "desde", "hasta", "cliente",
       "cantidad_viajes", "unidad", "cantidad", "tipo_material", 
-      "precio_total", "tipo_transporte", "patente"
+      "precio_total", "tipo_transporte", "patente", "patente_tercero", "descripcion"
     ].join(";");
     const example = [
       "00123", "REM-2026-001", "26/01/2026", "Proveedor SA", "Cantera", "Obra Centro", "Cliente SRL",
-      "3", "TN", "45", "Tosca", "150000", "Calamina Sur", "ABC-123"
+      "3", "TN", "45", "Tosca", "150000", "Calamina Sur", "ABC-123", "XY-456", "Observaciones"
     ].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
