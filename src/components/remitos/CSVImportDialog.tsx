@@ -235,6 +235,7 @@ function parseCSV(
     tipo_transporte: ['tipo_transporte', 'transporte', 'transport', 'empresa'],
     patente: ['patente', 'patente local', 'maquinaria', 'maquinaria_id', 'equipo', 'dominio', 'vehiculo'],
     patente_tercero: ['patente_tercero', 'patente tercero', 'pat_tercero', 'pat tercero', 'tercero'],
+    precio_calc_mode: ['calc. precio', 'calc_precio', 'precio_calc_mode', 'calc', 'modo calculo'],
     proveedor: ['proveedor', 'provider', 'supplier'],
     cliente: ['cliente', 'client', 'customer'],
     observaciones: ['observaciones', 'descripcion', 'descripción', 'notas', 'obs'],
@@ -308,8 +309,15 @@ function parseCSV(
     const precioUniRaw = getValue('precio_unitario');
     const precio_unitario = precioUniRaw ? parseFloat(precioUniRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
 
-    // Calculate precio_total = precio_unitario x viajes
-    let precio_total = precio_unitario * (isNaN(cantidad_viajes) ? 1 : cantidad_viajes);
+    // Parse precio_calc_mode
+    const calcModeRaw = getValue('precio_calc_mode');
+    const precio_calc_mode = calcModeRaw?.toLowerCase().includes('cant') ? 'cantidad' : 'viajes';
+
+    // Calculate precio_total based on calc mode
+    const effectiveViajes = isNaN(cantidad_viajes) ? 1 : cantidad_viajes;
+    let precio_total = precio_calc_mode === 'cantidad'
+      ? precio_unitario * cantidad_uni * effectiveViajes
+      : precio_unitario * effectiveViajes;
 
     // Fallback: if precio_unitario is 0 but precio_total column has value, use it directly
     if (precio_unitario === 0) {
@@ -366,6 +374,7 @@ function parseCSV(
         cantidad_uni: isNaN(cantidad_uni) ? 0 : cantidad_uni,
         tipo_material: tipo_material || undefined,
         precio_unitario: isNaN(precio_unitario) ? 0 : precio_unitario,
+        precio_calc_mode,
         precio_total: isNaN(precio_total) ? 0 : precio_total,
         tipo_transporte: tipo_transporte || undefined,
         maquinaria_id: maquinaria_id || undefined,

@@ -1550,6 +1550,7 @@ export type Database = {
           obra_id: string
           observaciones: string | null
           patente_tercero: string | null
+          precio_calc_mode: string | null
           precio_total: number | null
           precio_unitario: number | null
           proveedor: string | null
@@ -1581,6 +1582,7 @@ export type Database = {
           obra_id: string
           observaciones?: string | null
           patente_tercero?: string | null
+          precio_calc_mode?: string | null
           precio_total?: number | null
           precio_unitario?: number | null
           proveedor?: string | null
@@ -1612,6 +1614,7 @@ export type Database = {
           obra_id?: string
           observaciones?: string | null
           patente_tercero?: string | null
+          precio_calc_mode?: string | null
           precio_total?: number | null
           precio_unitario?: number | null
           proveedor?: string | null

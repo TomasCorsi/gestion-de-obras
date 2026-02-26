@@ -43,6 +43,7 @@ interface GridRow {
   cantidad: number | null;
   tipo_material: string;
   precio_unitario: number | null;
+  precio_calc_mode: string;
   precio_total: number | null;
   tipo_transporte: string;
   maquinaria_id: string;
@@ -192,6 +193,7 @@ export function RemitosDataGrid({
         cantidad: r.cantidad,
         tipo_material: r.tipo_material || r.material || "",
         precio_unitario: r.precio_unitario ?? null,
+        precio_calc_mode: r.precio_calc_mode || "viajes",
         precio_total: r.precio_total || 0,
         tipo_transporte: r.tipo_transporte || "",
         maquinaria_id: r.maquinaria_id || "",
@@ -462,6 +464,31 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       { ...keyColumn("precio_unitario", floatColumn), title: "Precio Uni.", minWidth: 100 },
+      {
+        ...keyColumn("precio_calc_mode", {
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
+            <GridSelectCell
+              value={rowData || "viajes"}
+              onChange={setRowData}
+              options={[
+                { value: "viajes", label: "x Viajes" },
+                { value: "cantidad", label: "x Cant. Total" },
+              ]}
+              placeholder="Calc..."
+              focus={focus}
+            />
+          ),
+          deleteValue: () => "viajes",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => {
+            const lower = value.toLowerCase().trim();
+            if (lower.includes("cant") || lower === "cantidad") return "cantidad";
+            return "viajes";
+          },
+        }),
+        title: "Calc.",
+        minWidth: 110,
+      },
       { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100, disabled: true },
       {
         ...keyColumn("tipo_transporte", {
@@ -581,7 +608,10 @@ export function RemitosDataGrid({
                 row.cantidad = row.cantidad_uni * viajes;
               }
               if (row.precio_unitario != null) {
-                row.precio_total = row.precio_unitario * viajes;
+                const cantTotal = (row.cantidad_uni || 0) * viajes;
+                row.precio_total = row.precio_calc_mode === 'cantidad'
+                  ? row.precio_unitario * cantTotal
+                  : row.precio_unitario * viajes;
               }
               processedData[i] = { ...row };
             }
@@ -602,6 +632,7 @@ export function RemitosDataGrid({
                   row.cantidad !== orig.cantidad ||
                   row.tipo_material !== orig.tipo_material ||
                   row.precio_unitario !== orig.precio_unitario ||
+                  row.precio_calc_mode !== orig.precio_calc_mode ||
                   row.precio_total !== orig.precio_total ||
                   row.tipo_transporte !== orig.tipo_transporte ||
                   row.maquinaria_id !== orig.maquinaria_id ||
@@ -647,6 +678,7 @@ export function RemitosDataGrid({
         cantidad: 18,
         tipo_material: "Tosca",
         precio_unitario: null,
+        precio_calc_mode: "viajes",
         precio_total: 0,
         tipo_transporte: "",
         maquinaria_id: "",
@@ -694,6 +726,7 @@ export function RemitosDataGrid({
           cantidad_uni: row.cantidad_uni ?? null,
           tipo_material: row.tipo_material || null,
           precio_unitario: row.precio_unitario ?? null,
+          precio_calc_mode: row.precio_calc_mode || "viajes",
           precio_total: row.precio_total || 0,
           tipo_transporte: row.tipo_transporte || null,
           maquinaria_id: row.maquinaria_id || null,
@@ -719,6 +752,7 @@ export function RemitosDataGrid({
             cantidad: row.cantidad || 0,
             tipo_material: row.tipo_material || null,
             precio_unitario: row.precio_unitario ?? null,
+            precio_calc_mode: row.precio_calc_mode || "viajes",
             precio_total: row.precio_total || 0,
             tipo_transporte: row.tipo_transporte || null,
             maquinaria_id: row.maquinaria_id || null,
@@ -766,6 +800,7 @@ export function RemitosDataGrid({
       cantidad: 18,
       tipo_material: "Tosca",
       precio_unitario: null,
+      precio_calc_mode: "viajes",
       precio_total: 0,
       tipo_transporte: "",
       maquinaria_id: "",
