@@ -1,47 +1,53 @@
 
 
-# Agregar columnas faltantes a la grilla de Remitos
+# Hacer Cant. Uni. y Precio Uni. persistentes, y Cant. Total / Precio Total calculados
 
-## Columnas faltantes
-La grilla actualmente no muestra: **Proveedor**, **Cliente**, **Cantidad Uni.**, **Precio Uni.** y **Descripcion**. Se agregarán para que la grilla coincida exactamente con el formato del CSV.
+## Problema actual
+`cantidad_uni` y `precio_unitario` son campos virtuales (no se guardan en la BD). El usuario necesita que sean campos reales, y que **Cant. Total** y **Precio Total** se calculen automaticamente:
 
-## Orden final de columnas
-Rem. Tercero, Rem. Local, Fecha, Proveedor, Desde, Hasta, Cliente, Viajes, Cantidad Uni., Cantidad Total, Unidad, Tipo, Precio Uni., Precio Total, Transporte, Patente Local, Patente Tercero, Descripcion
+- **Cant. Total** = Cant. Uni. x Viajes
+- **Precio Total** = Precio Uni. x Viajes
 
-## Cambios en `src/components/remitos/RemitosDataGrid.tsx`
+## Cambios
 
-### 1. Agregar campos al GridRow interface
-- `observaciones: string` (para Descripcion)
-- `cantidad_uni: number | null` (campo calculado en la grilla, no se guarda en BD directamente)
-- `precio_unitario: number | null` (campo calculado en la grilla, no se guarda en BD directamente)
+### 1. Migracion de base de datos
+Agregar dos columnas nuevas a la tabla `remitos`:
+- `cantidad_uni NUMERIC` (nullable, default null)
+- `precio_unitario NUMERIC` (nullable, default null)
 
-### 2. Agregar columnas en el array `columns`
-Insertar en el orden correcto:
-- **Proveedor** (texto libre, con filtro) despues de Fecha
-- **Cliente** (texto libre, con filtro) despues de Hasta
-- **Cantidad Uni.** (float) antes de Cantidad Total -- valor por viaje
-- **Precio Uni.** (float) antes de Precio Total -- valor unitario
-- **Descripcion** (texto libre) al final, despues de Patente Tercero
+### 2. Actualizar `RemitosDataGrid.tsx`
 
-### 3. Logica de campos calculados
-- **Cantidad Uni.**: editable; al cambiar, recalcular `cantidad` (total) = `cantidad_uni` x `cantidad_viajes`
-- **Precio Uni.**: editable; al cambiar, recalcular `precio_total` = `precio_unitario` x `cantidad`
-- Alternativamente, si es mas simple: ambos son campos editables independientes sin calculo automatico (el usuario los llena manualmente)
+**Auto-calculo en `handleChange`**: cuando el usuario edita `cantidad_uni`, `cantidad_viajes` o `precio_unitario`, recalcular automaticamente:
+- `cantidad = cantidad_uni x cantidad_viajes`
+- `precio_total = precio_unitario x cantidad_viajes`
 
-Dado que la BD no tiene columnas `cantidad_uni` ni `precio_unitario`, se manejaran como campos virtuales de la grilla que no se persisten. Simplemente seran editables para referencia visual.
+**Hacer Cant. Total y Precio Total de solo lectura** (o bien dejarlos editables como override manual -- a definir). Lo mas logico es que sean **solo lectura** ya que se calculan.
 
-### 4. Actualizar `initialData` mapping
-Agregar `observaciones`, `proveedor`, `cliente` al mapeo (proveedor y cliente ya estan en GridRow pero no tienen columna visible). Agregar los campos virtuales `cantidad_uni` y `precio_unitario` inicializados en null/0.
+**Persistir en `handleSave`**: incluir `cantidad_uni` y `precio_unitario` en los objetos de creacion y actualizacion enviados a la BD.
 
-### 5. Actualizar `handleAddRow` y `createRow`
-Incluir los nuevos campos con valores por defecto.
+**Inicializar desde BD**: en `initialData`, leer `cantidad_uni` y `precio_unitario` desde el registro de la BD (ya no seran null por defecto si tienen valor).
 
-### 6. Actualizar `handleChange` (deteccion de modificaciones)
-Agregar comparacion de `observaciones` al chequeo de cambios.
+### 3. Actualizar `useRemitos.ts`
+Agregar `cantidad_uni` y `precio_unitario` a las interfaces `RemitoDB` y `RemitoForm` (ya existen parcialmente, verificar que coincidan con la BD).
 
-### 7. Actualizar `handleSave`
-Incluir `observaciones` en los datos enviados al guardar (created y updated). Los campos `cantidad_uni` y `precio_unitario` no se persisten ya que no existen en la BD.
+### 4. Actualizar importacion CSV (`CSVImportDialog.tsx`)
+Asegurar que al importar, `cantidad_uni` y `precio_unitario` se persistan en la BD, y que `cantidad` y `precio_total` se calculen a partir de ellos.
 
-### 8. Actualizar filtros
-Agregar "Proveedor" y "Cliente" a `filterConfigs` (ya estan en la busqueda global pero no tienen filtro de columna).
+## Seccion tecnica
+
+### Migracion SQL
+```sql
+ALTER TABLE remitos ADD COLUMN cantidad_uni NUMERIC;
+ALTER TABLE remitos ADD COLUMN precio_unitario NUMERIC;
+```
+
+### Logica de calculo en la grilla
+En el handler de cambios, despues de detectar un UPDATE, recalcular los totales:
+```
+row.cantidad = (row.cantidad_uni || 0) * (row.cantidad_viajes || 1)
+row.precio_total = (row.precio_unitario || 0) * (row.cantidad_viajes || 1)
+```
+
+### Columnas de solo lectura
+Las columnas `cantidad` y `precio_total` se marcaran como `disabled: true` en la definicion de columnas para que no sean editables directamente.
 
