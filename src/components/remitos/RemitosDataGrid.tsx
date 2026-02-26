@@ -187,11 +187,11 @@ export function RemitosDataGrid({
         hasta: r.hasta || "",
         cliente: r.cliente || "",
         cantidad_viajes: r.cantidad_viajes || 1,
-        cantidad_uni: null as number | null,
+        cantidad_uni: r.cantidad_uni ?? null,
         unidad: r.unidad || "M3",
         cantidad: r.cantidad,
         tipo_material: r.tipo_material || r.material || "",
-        precio_unitario: null as number | null,
+        precio_unitario: r.precio_unitario ?? null,
         precio_total: r.precio_total || 0,
         tipo_transporte: r.tipo_transporte || "",
         maquinaria_id: r.maquinaria_id || "",
@@ -427,7 +427,7 @@ export function RemitosDataGrid({
         title: "Unidad",
         minWidth: 70,
       },
-      { ...keyColumn("cantidad", floatColumn), title: "Cant. Total", minWidth: 90 },
+      { ...keyColumn("cantidad", floatColumn), title: "Cant. Total", minWidth: 90, disabled: true },
       {
         ...keyColumn("tipo_material", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -462,7 +462,7 @@ export function RemitosDataGrid({
         minWidth: 110,
       },
       { ...keyColumn("precio_unitario", floatColumn), title: "Precio Uni.", minWidth: 100 },
-      { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100 },
+      { ...keyColumn("precio_total", floatColumn), title: "Precio Total", minWidth: 100, disabled: true },
       {
         ...keyColumn("tipo_transporte", {
           component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
@@ -574,6 +574,17 @@ export function RemitosDataGrid({
         if (operation.type === 'UPDATE') {
           for (let i = operation.fromRowIndex; i < operation.toRowIndex; i++) {
             const row = processedData[i];
+            if (row) {
+              // Auto-calculate totals
+              const viajes = row.cantidad_viajes || 1;
+              if (row.cantidad_uni != null) {
+                row.cantidad = row.cantidad_uni * viajes;
+              }
+              if (row.precio_unitario != null) {
+                row.precio_total = row.precio_unitario * viajes;
+              }
+              processedData[i] = { ...row };
+            }
             if (row && row.id && !row.id.startsWith('temp_') && !deletedRowIds.has(row.id)) {
               const orig = initialData.find((r) => r.id === row.id);
               if (orig) {
@@ -586,9 +597,11 @@ export function RemitosDataGrid({
                   row.hasta !== orig.hasta ||
                   row.cliente !== orig.cliente ||
                   row.cantidad_viajes !== orig.cantidad_viajes ||
+                  row.cantidad_uni !== orig.cantidad_uni ||
                   row.unidad !== orig.unidad ||
                   row.cantidad !== orig.cantidad ||
                   row.tipo_material !== orig.tipo_material ||
+                  row.precio_unitario !== orig.precio_unitario ||
                   row.precio_total !== orig.precio_total ||
                   row.tipo_transporte !== orig.tipo_transporte ||
                   row.maquinaria_id !== orig.maquinaria_id ||
@@ -600,7 +613,7 @@ export function RemitosDataGrid({
                 } else {
                   updatedRowIds.delete(row.id);
                 }
-                processedData[i] = { ...row, _isModified: isModified };
+                processedData[i] = { ...processedData[i], _isModified: isModified };
               }
             }
           }
@@ -678,7 +691,9 @@ export function RemitosDataGrid({
           desde: row.desde || null,
           hasta: row.hasta || null,
           cantidad_viajes: row.cantidad_viajes || 1,
+          cantidad_uni: row.cantidad_uni ?? null,
           tipo_material: row.tipo_material || null,
+          precio_unitario: row.precio_unitario ?? null,
           precio_total: row.precio_total || 0,
           tipo_transporte: row.tipo_transporte || null,
           maquinaria_id: row.maquinaria_id || null,
@@ -699,9 +714,11 @@ export function RemitosDataGrid({
             hasta: row.hasta || null,
             cliente: row.cliente || null,
             cantidad_viajes: row.cantidad_viajes || 1,
+            cantidad_uni: row.cantidad_uni ?? null,
             unidad: row.unidad,
             cantidad: row.cantidad || 0,
             tipo_material: row.tipo_material || null,
+            precio_unitario: row.precio_unitario ?? null,
             precio_total: row.precio_total || 0,
             tipo_transporte: row.tipo_transporte || null,
             maquinaria_id: row.maquinaria_id || null,

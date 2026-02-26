@@ -289,9 +289,12 @@ function parseCSV(
     const unidadRaw = getValue('unidad');
     const unidad = normalizeValue(unidadRaw, unidadNormalize) || unidadRaw?.toUpperCase() || 'M3';
 
-    // Parse cantidad
-    const cantidadRaw = getValue('cantidad');
-    const cantidad = cantidadRaw ? parseFloat(cantidadRaw.replace(',', '.')) : 0;
+    // Parse cantidad_uni (unit quantity)
+    const cantidadUniRaw = getValue('cantidad');
+    const cantidad_uni = cantidadUniRaw ? parseFloat(cantidadUniRaw.replace(',', '.')) : 0;
+
+    // Calculate cantidad (total) = cantidad_uni x viajes
+    const cantidad = cantidad_uni * (isNaN(cantidad_viajes) ? 1 : cantidad_viajes);
 
     // Parse tipo_material
     const tipoMaterialRaw = getValue('tipo_material');
@@ -301,15 +304,20 @@ function parseCSV(
     if (tipoMaterialRaw && !validMaterialTypes.has(tipo_material)) {
       warnings.push({ field: 'tipo_material', value: tipoMaterialRaw, row: i + 1 });
     }
-    // Parse precio_total (fallback: precio_unitario * cantidad)
-    const precioRaw = getValue('precio_total');
-    let precio_total = precioRaw ? parseFloat(precioRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
-    if ((!precioRaw || precio_total === 0) && cantidad > 0) {
-      const precioUniRaw = getValue('precio_unitario');
-      if (precioUniRaw) {
-        const precioUni = parseFloat(precioUniRaw.replace(',', '.').replace(/[^\d.]/g, ''));
-        if (!isNaN(precioUni) && precioUni > 0) {
-          precio_total = precioUni * cantidad;
+    // Parse precio_unitario
+    const precioUniRaw = getValue('precio_unitario');
+    const precio_unitario = precioUniRaw ? parseFloat(precioUniRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
+
+    // Calculate precio_total = precio_unitario x viajes
+    let precio_total = precio_unitario * (isNaN(cantidad_viajes) ? 1 : cantidad_viajes);
+
+    // Fallback: if precio_unitario is 0 but precio_total column has value, use it directly
+    if (precio_unitario === 0) {
+      const precioTotalRaw = getValue('precio_total');
+      if (precioTotalRaw) {
+        const parsed = parseFloat(precioTotalRaw.replace(',', '.').replace(/[^\d.]/g, ''));
+        if (!isNaN(parsed) && parsed > 0) {
+          precio_total = parsed;
         }
       }
     }
@@ -344,7 +352,7 @@ function parseCSV(
       data: {
         numero,
         fecha: fecha || new Date().toISOString().split('T')[0],
-        obra_id: '', // Will be empty - user can set later
+        obra_id: '',
         material: tipo_material,
         cantidad: isNaN(cantidad) ? 0 : cantidad,
         unidad: ['TN', 'KG', 'M3', 'M2', 'U'].includes(unidad) ? unidad : 'M3',
@@ -355,12 +363,16 @@ function parseCSV(
         desde: desde || undefined,
         hasta: hasta || undefined,
         cantidad_viajes: isNaN(cantidad_viajes) ? 1 : cantidad_viajes,
+        cantidad_uni: isNaN(cantidad_uni) ? 0 : cantidad_uni,
         tipo_material: tipo_material || undefined,
+        precio_unitario: isNaN(precio_unitario) ? 0 : precio_unitario,
         precio_total: isNaN(precio_total) ? 0 : precio_total,
         tipo_transporte: tipo_transporte || undefined,
         maquinaria_id: maquinaria_id || undefined,
         patente_tercero: patente_tercero || undefined,
         observaciones: observaciones || undefined,
+        proveedor: proveedor || undefined,
+        cliente: cliente || undefined,
       },
       patenteInput: patenteValue,
       matchMethod: patenteValue ? matchMethod : 'no_encontrada',
