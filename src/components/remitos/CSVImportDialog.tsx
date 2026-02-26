@@ -168,7 +168,7 @@ const tipoTransporteNormalize: Record<string, string> = {
   'tatu': 'Tatu',
   'patan': 'Patan',
   'patán': 'Patan',
-  'hormigret': 'Hormigret',
+  'hormicret': 'Hormicret',
   'lamacol': 'Lamacol',
   'britcom': 'Britcom',
   'ramon romero gomez': 'Ramon romero gomez',

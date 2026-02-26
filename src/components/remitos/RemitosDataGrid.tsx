@@ -118,7 +118,7 @@ const tipoTransporteOptions = [
   { value: "Cato", label: "Cato" },
   { value: "Tatu", label: "Tatu" },
   { value: "Patan", label: "Patan" },
-  { value: "Hormigret", label: "Hormigret" },
+  { value: "Hormicret", label: "Hormicret" },
   { value: "Lamacol", label: "Lamacol" },
   { value: "Britcom", label: "Britcom" },
   { value: "Ramon romero gomez", label: "Ramon romero gomez" },
