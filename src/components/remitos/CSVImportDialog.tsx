@@ -233,7 +233,7 @@ function parseCSV(
     precio_total: ['precio_total', 'precio total', 'precio', 'total', 'price', 'monto'],
     precio_unitario: ['precio uni.', 'precio_uni', 'precio unitario', 'precio_unitario'],
     tipo_transporte: ['tipo_transporte', 'transporte', 'transport', 'empresa'],
-    patente: ['patente', 'maquinaria', 'maquinaria_id', 'equipo', 'dominio', 'vehiculo'],
+    patente: ['patente', 'patente local', 'maquinaria', 'maquinaria_id', 'equipo', 'dominio', 'vehiculo'],
     patente_tercero: ['patente_tercero', 'patente tercero', 'pat_tercero', 'pat tercero', 'tercero'],
     proveedor: ['proveedor', 'provider', 'supplier'],
     cliente: ['cliente', 'client', 'customer'],
@@ -440,12 +440,12 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
     const headers = [
       "Rem. Tercero", "Rem. Local", "Fecha", "Proveedor", "Desde", "Hasta", "Cliente",
       "Viajes", "Cantidad Uni.", "Cantidad total", "Unidad", "Tipo",
-      "Precio Uni.", "Precio Total", "Transporte", "Patente", "Tercero", "Vehiculo", "Descripcion"
+      "Precio Uni.", "Precio Total", "Transporte", "Patente Local", "Patente Tercero", "Descripcion"
     ].join(";");
     const example = [
       "00123", "REM-2026-001", "26/01/2026", "Proveedor SA", "Cantera", "Obra Centro", "Cliente SRL",
       "3", "10", "30", "TN", "Tosca",
-      "5000", "150000", "Calamina Sur", "ABC-123", "XY-456", "708", "Observaciones"
+      "5000", "150000", "Calamina Sur", "ABC-123", "XY-456", "Observaciones"
     ].join(";");
     const content = `${headers}\n${example}`;
     const bom = "\uFEFF";
