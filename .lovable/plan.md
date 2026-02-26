@@ -1,53 +1,70 @@
 
 
-# Hacer Cant. Uni. y Precio Uni. persistentes, y Cant. Total / Precio Total calculados
+# Agregar selector de modo de calculo de Precio Total por fila
 
-## Problema actual
-`cantidad_uni` y `precio_unitario` son campos virtuales (no se guardan en la BD). El usuario necesita que sean campos reales, y que **Cant. Total** y **Precio Total** se calculen automaticamente:
+## Problema
+Actualmente, Precio Total siempre se calcula como `Precio Uni. x Viajes`. Pero a veces el usuario necesita que sea `Precio Uni. x Cant. Total`. Esto debe poder elegirse caso por caso en cada fila.
 
-- **Cant. Total** = Cant. Uni. x Viajes
-- **Precio Total** = Precio Uni. x Viajes
+## Solucion
+Agregar una nueva columna **"Calc. Precio"** (o similar) con un selector que permita elegir entre dos modos de calculo por fila.
 
 ## Cambios
 
 ### 1. Migracion de base de datos
-Agregar dos columnas nuevas a la tabla `remitos`:
-- `cantidad_uni NUMERIC` (nullable, default null)
-- `precio_unitario NUMERIC` (nullable, default null)
+Agregar una columna a la tabla `remitos`:
+```text
+precio_calc_mode TEXT DEFAULT 'viajes'
+```
+Valores posibles: `'viajes'` (Precio Uni. x Viajes) o `'cantidad'` (Precio Uni. x Cant. Total).
 
 ### 2. Actualizar `RemitosDataGrid.tsx`
 
-**Auto-calculo en `handleChange`**: cuando el usuario edita `cantidad_uni`, `cantidad_viajes` o `precio_unitario`, recalcular automaticamente:
-- `cantidad = cantidad_uni x cantidad_viajes`
-- `precio_total = precio_unitario x cantidad_viajes`
+**Nueva columna "Calc."**: un selector con dos opciones:
+- "x Viajes" (default)
+- "x Cant. Total"
 
-**Hacer Cant. Total y Precio Total de solo lectura** (o bien dejarlos editables como override manual -- a definir). Lo mas logico es que sean **solo lectura** ya que se calculan.
+Se ubicara entre "Precio Uni." y "Precio Total".
 
-**Persistir en `handleSave`**: incluir `cantidad_uni` y `precio_unitario` en los objetos de creacion y actualizacion enviados a la BD.
+**Logica de auto-calculo actualizada**:
+```text
+Si modo = 'viajes':   Precio Total = Precio Uni. x Viajes
+Si modo = 'cantidad': Precio Total = Precio Uni. x Cant. Total
+```
 
-**Inicializar desde BD**: en `initialData`, leer `cantidad_uni` y `precio_unitario` desde el registro de la BD (ya no seran null por defecto si tienen valor).
+Donde Cant. Total = Cant. Uni. x Viajes (esto no cambia).
+
+**Actualizar `handleChange`**: al cambiar `cantidad_uni`, `cantidad_viajes`, `precio_unitario` o `precio_calc_mode`, recalcular segun el modo seleccionado.
+
+**Actualizar `handleAddRow`**: valor por defecto `precio_calc_mode: 'viajes'`.
+
+**Actualizar `handleSave`**: incluir `precio_calc_mode` en los datos enviados a la BD.
 
 ### 3. Actualizar `useRemitos.ts`
-Agregar `cantidad_uni` y `precio_unitario` a las interfaces `RemitoDB` y `RemitoForm` (ya existen parcialmente, verificar que coincidan con la BD).
+Agregar `precio_calc_mode: string | null` a `RemitoDB` y `RemitoForm`.
 
-### 4. Actualizar importacion CSV (`CSVImportDialog.tsx`)
-Asegurar que al importar, `cantidad_uni` y `precio_unitario` se persistan en la BD, y que `cantidad` y `precio_total` se calculen a partir de ellos.
+### 4. Actualizar importacion CSV
+Agregar soporte para una columna opcional "Calc. Precio" en el CSV. Si no esta presente, usar `'viajes'` como default.
 
 ## Seccion tecnica
 
 ### Migracion SQL
 ```sql
-ALTER TABLE remitos ADD COLUMN cantidad_uni NUMERIC;
-ALTER TABLE remitos ADD COLUMN precio_unitario NUMERIC;
+ALTER TABLE remitos ADD COLUMN precio_calc_mode text DEFAULT 'viajes';
 ```
 
-### Logica de calculo en la grilla
-En el handler de cambios, despues de detectar un UPDATE, recalcular los totales:
-```
-row.cantidad = (row.cantidad_uni || 0) * (row.cantidad_viajes || 1)
-row.precio_total = (row.precio_unitario || 0) * (row.cantidad_viajes || 1)
+### Logica de calculo
+```text
+viajes = row.cantidad_viajes || 1
+cant_total = (row.cantidad_uni || 0) * viajes
+
+if (row.precio_unitario != null) {
+  if (row.precio_calc_mode === 'cantidad') {
+    row.precio_total = row.precio_unitario * cant_total
+  } else {
+    row.precio_total = row.precio_unitario * viajes
+  }
+}
 ```
 
-### Columnas de solo lectura
-Las columnas `cantidad` y `precio_total` se marcaran como `disabled: true` en la definicion de columnas para que no sean editables directamente.
-
+### Orden de columnas actualizado
+Rem. Tercero, Rem. Local, Fecha, Proveedor, Desde, Hasta, Cliente, Viajes, Cant. Uni., Cant. Total, Unidad, Tipo, Precio Uni., **Calc.**, Precio Total, Transporte, Patente Local, Patente Tercero, Descripcion
