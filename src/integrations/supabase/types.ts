@@ -1535,6 +1535,7 @@ export type Database = {
         Row: {
           cantidad: number
           cantidad_viajes: number | null
+          cliente: string | null
           created_at: string
           desde: string | null
           evidencia_url: string | null
@@ -1549,6 +1550,7 @@ export type Database = {
           observaciones: string | null
           patente_tercero: string | null
           precio_total: number | null
+          proveedor: string | null
           recibido_por: string
           remito_local: string | null
           remito_tercero: string | null
@@ -1562,6 +1564,7 @@ export type Database = {
         Insert: {
           cantidad: number
           cantidad_viajes?: number | null
+          cliente?: string | null
           created_at?: string
           desde?: string | null
           evidencia_url?: string | null
@@ -1576,6 +1579,7 @@ export type Database = {
           observaciones?: string | null
           patente_tercero?: string | null
           precio_total?: number | null
+          proveedor?: string | null
           recibido_por: string
           remito_local?: string | null
           remito_tercero?: string | null
@@ -1589,6 +1593,7 @@ export type Database = {
         Update: {
           cantidad?: number
           cantidad_viajes?: number | null
+          cliente?: string | null
           created_at?: string
           desde?: string | null
           evidencia_url?: string | null
@@ -1603,6 +1608,7 @@ export type Database = {
           observaciones?: string | null
           patente_tercero?: string | null
           precio_total?: number | null
+          proveedor?: string | null
           recibido_por?: string
           remito_local?: string | null
           remito_tercero?: string | null

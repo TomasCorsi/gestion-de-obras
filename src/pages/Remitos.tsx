@@ -62,10 +62,11 @@ const unidadOptions = ["TN", "KG", "M3", "M2", "U"];
 const tipoMaterialOptions = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
   "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado", "Cubiertas", "Frezado",
-  "Cobertura de basura"
+  "Cobertura de residuos", "Arena", "Hormigon H30", "Tierra negra", "Relleno", "Piedra 30/50", "Materiales varios"
 ];
 const tipoTransporteOptions = [
-  "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu", "Patan"
+  "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu", "Patan",
+  "Hormigret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez"
 ];
 
 export default function Remitos() {
@@ -141,7 +142,9 @@ export default function Remitos() {
       (r.remito_local?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.tipo_material?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.tipo_transporte?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (r.tipo_transporte?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (r.proveedor?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      (r.cliente?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     );
   }, [remitos, filters, searchTerm]);
 
@@ -447,8 +450,10 @@ export default function Remitos() {
                 <TableHead className="text-muted-foreground font-medium">Rem. Tercero</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Rem. Local</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Proveedor</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Desde</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Hasta</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Cliente</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Viajes</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Cant.</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Tipo</TableHead>
@@ -475,8 +480,10 @@ export default function Remitos() {
                     </span>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{formatDate(remito.fecha)}</TableCell>
+                  <TableCell className="text-foreground">{remito.proveedor || "-"}</TableCell>
                   <TableCell className="text-foreground">{remito.desde || "-"}</TableCell>
                   <TableCell className="text-foreground">{remito.hasta || "-"}</TableCell>
+                  <TableCell className="text-foreground">{remito.cliente || "-"}</TableCell>
                   <TableCell className="font-mono text-foreground">{remito.cantidad_viajes || 1}</TableCell>
                   <TableCell className="font-mono text-foreground">
                     {remito.cantidad} {remito.unidad}
@@ -559,6 +566,16 @@ export default function Remitos() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="proveedor">Proveedor</Label>
+              <Input
+                id="proveedor"
+                value={formData.proveedor}
+                onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Proveedor"
+              />
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="desde">Desde</Label>
               <Input
                 id="desde"
@@ -576,6 +593,16 @@ export default function Remitos() {
                 onChange={(e) => setFormData({ ...formData, hasta: e.target.value })}
                 className="bg-muted border-border"
                 placeholder="Destino"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cliente">Cliente</Label>
+              <Input
+                id="cliente"
+                value={formData.cliente}
+                onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Cliente"
               />
             </div>
             <div className="space-y-2">
@@ -702,6 +729,8 @@ export default function Remitos() {
               <DetailRow label="Remito Tercero" value={selectedRemito.remito_tercero || "-"} />
               <DetailRow label="Remito Local" value={selectedRemito.remito_local || selectedRemito.numero} />
               <DetailRow label="Fecha" value={formatDate(selectedRemito.fecha)} />
+              <DetailRow label="Proveedor" value={selectedRemito.proveedor || "-"} />
+              <DetailRow label="Cliente" value={selectedRemito.cliente || "-"} />
             </DetailSection>
             <DetailSection title="Ruta">
               <DetailRow label="Desde" value={selectedRemito.desde || "-"} />

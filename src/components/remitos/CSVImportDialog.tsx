@@ -30,9 +30,16 @@ interface ParsedRow {
   row: number;
 }
 
+interface ValidationWarning {
+  field: string;
+  value: string;
+  row: number;
+}
+
 interface ParseResult {
   valid: ParsedRow[];
   errors: { row: number; message: string }[];
+  warnings: ValidationWarning[];
 }
 
 function detectSeparator(line: string): string {
@@ -133,7 +140,19 @@ const tipoMaterialNormalize: Record<string, string> = {
   'traslado': 'Traslado',
   'cubiertas': 'Cubiertas',
   'frezado': 'Frezado',
+  'cobertura de residuos': 'Cobertura de residuos',
+  'cobertura de basura': 'Cobertura de residuos',
+  'arena': 'Arena',
+  'hormigon h30': 'Hormigon H30',
+  'hormigón h30': 'Hormigon H30',
+  'tierra negra': 'Tierra negra',
+  'relleno': 'Relleno',
+  'piedra 30/50': 'Piedra 30/50',
+  'materiales varios': 'Materiales varios',
 };
+
+// Valid material types for validation
+const validMaterialTypes = new Set(Object.values(tipoMaterialNormalize));
 
 // Transport type normalization
 const tipoTransporteNormalize: Record<string, string> = {
@@ -149,7 +168,16 @@ const tipoTransporteNormalize: Record<string, string> = {
   'tatu': 'Tatu',
   'patan': 'Patan',
   'patán': 'Patan',
+  'hormigret': 'Hormigret',
+  'lamacol': 'Lamacol',
+  'britcom': 'Britcom',
+  'ramon romero gomez': 'Ramon romero gomez',
+  'ramon romero': 'Ramon romero gomez',
+  'duraez': 'Duraez',
 };
+
+// Valid transport types for validation
+const validTransportTypes = new Set(Object.values(tipoTransporteNormalize));
 
 // Unit normalization
 const unidadNormalize: Record<string, string> = {
@@ -183,7 +211,7 @@ function parseCSV(
 ): ParseResult {
   const lines = text.trim().split("\n");
   if (lines.length < 2) {
-    return { valid: [], errors: [{ row: 0, message: "El archivo debe tener al menos una fila de encabezados y una de datos" }] };
+    return { valid: [], errors: [{ row: 0, message: "El archivo debe tener al menos una fila de encabezados y una de datos" }], warnings: [] };
   }
 
   const firstLine = lines[0];
@@ -205,6 +233,8 @@ function parseCSV(
     precio_total: ['precio_total', 'precio', 'total', 'price', 'monto'],
     tipo_transporte: ['tipo_transporte', 'transporte', 'transport', 'empresa'],
     patente: ['patente', 'maquinaria', 'maquinaria_id', 'equipo', 'dominio', 'vehiculo'],
+    proveedor: ['proveedor', 'provider', 'supplier'],
+    cliente: ['cliente', 'client', 'customer'],
   };
 
   // Find column indices
@@ -221,6 +251,7 @@ function parseCSV(
 
   const valid: ParsedRow[] = [];
   const errors: { row: number; message: string }[] = [];
+  const warnings: ValidationWarning[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
@@ -262,7 +293,11 @@ function parseCSV(
     // Parse tipo_material
     const tipoMaterialRaw = getValue('tipo_material');
     const tipo_material = normalizeValue(tipoMaterialRaw, tipoMaterialNormalize) || tipoMaterialRaw || '';
-
+    
+    // Warn if material type is not recognized
+    if (tipoMaterialRaw && !validMaterialTypes.has(tipo_material)) {
+      warnings.push({ field: 'tipo_material', value: tipoMaterialRaw, row: i + 1 });
+    }
     // Parse precio_total
     const precioRaw = getValue('precio_total');
     const precio_total = precioRaw ? parseFloat(precioRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
@@ -271,11 +306,17 @@ function parseCSV(
     const tipoTransporteRaw = getValue('tipo_transporte');
     const tipo_transporte = normalizeValue(tipoTransporteRaw, tipoTransporteNormalize) || tipoTransporteRaw || '';
 
+    // Warn if transport type is not recognized
+    if (tipoTransporteRaw && !validTransportTypes.has(tipo_transporte)) {
+      warnings.push({ field: 'tipo_transporte', value: tipoTransporteRaw, row: i + 1 });
+    }
     // Get text fields
     const remito_tercero = getValue('remito_tercero');
     const remito_local = getValue('remito_local');
     const desde = getValue('desde');
     const hasta = getValue('hasta');
+    const proveedor = getValue('proveedor');
+    const cliente = getValue('cliente');
 
     // Generate numero for legacy field
     const numero = remito_local || `IMP-${i}`;
@@ -311,7 +352,7 @@ function parseCSV(
     });
   }
 
-  return { valid, errors };
+  return { valid, errors, warnings };
 }
 
 const matchMethodConfig: Record<MatchMethod, { label: string; icon: React.ElementType; className: string }> = {
@@ -381,12 +422,12 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
 
   const downloadTemplate = () => {
     const headers = [
-      "remito_tercero", "remito_local", "fecha", "desde", "hasta", 
+      "remito_tercero", "remito_local", "fecha", "proveedor", "desde", "hasta", "cliente",
       "cantidad_viajes", "unidad", "cantidad", "tipo_material", 
       "precio_total", "tipo_transporte", "patente"
     ].join(";");
     const example = [
-      "00123", "REM-2026-001", "26/01/2026", "Cantera", "Obra Centro",
+      "00123", "REM-2026-001", "26/01/2026", "Proveedor SA", "Cantera", "Obra Centro", "Cliente SRL",
       "3", "TN", "45", "Tosca", "150000", "Calamina Sur", "ABC-123"
     ].join(";");
     const content = `${headers}\n${example}`;
@@ -476,7 +517,25 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
                 )}
               </div>
 
-              {/* Match Method Stats */}
+              {/* Validation Warnings */}
+              {parseResult.warnings.length > 0 && (
+                <div className="p-3 rounded-lg border border-amber-500/30 bg-amber-500/10">
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400 mb-1">
+                    ⚠️ {parseResult.warnings.length} valores no reconocidos (se importarán tal cual)
+                  </p>
+                  <div className="max-h-24 overflow-y-auto text-xs space-y-0.5">
+                    {parseResult.warnings.slice(0, 15).map((w, idx) => (
+                      <p key={idx} className="text-muted-foreground">
+                        Fila {w.row}: {w.field === 'tipo_material' ? 'Material' : 'Transporte'} "{w.value}" no está en la lista
+                      </p>
+                    ))}
+                    {parseResult.warnings.length > 15 && (
+                      <p className="text-muted-foreground">...y {parseResult.warnings.length - 15} más</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {Object.keys(matchStats).length > 0 && (
                 <div className="flex flex-wrap gap-3">
                   {Object.entries(matchStats).map(([method, count]) => {

@@ -18,6 +18,8 @@ export interface RemitoDB {
   created_at: string;
   updated_at: string;
   row_color: string | null;
+  proveedor: string | null;
+  cliente: string | null;
   // New columns
   remito_tercero: string | null;
   remito_local: string | null;
@@ -50,6 +52,8 @@ export interface RemitoForm {
   evidencia_url?: string;
   observaciones?: string;
   // New fields
+  proveedor?: string;
+  cliente?: string;
   remito_tercero?: string;
   remito_local?: string;
   desde?: string;

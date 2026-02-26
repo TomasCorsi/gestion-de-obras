@@ -33,8 +33,10 @@ interface GridRow {
   remito_tercero: string;
   remito_local: string;
   fecha: string | null;
+  proveedor: string;
   desde: string;
   hasta: string;
+  cliente: string;
   cantidad_viajes: number | null;
   unidad: string;
   cantidad: number | null;
@@ -98,7 +100,13 @@ const tipoMaterialOptions = [
   { value: "Traslado", label: "Traslado" },
   { value: "Cubiertas", label: "Cubiertas" },
   { value: "Frezado", label: "Frezado" },
-  { value: "Cobertura de basura", label: "Cobertura de basura" },
+  { value: "Cobertura de residuos", label: "Cobertura de residuos" },
+  { value: "Arena", label: "Arena" },
+  { value: "Hormigon H30", label: "Hormigon H30" },
+  { value: "Tierra negra", label: "Tierra negra" },
+  { value: "Relleno", label: "Relleno" },
+  { value: "Piedra 30/50", label: "Piedra 30/50" },
+  { value: "Materiales varios", label: "Materiales varios" },
 ];
 
 const tipoTransporteOptions = [
@@ -110,6 +118,11 @@ const tipoTransporteOptions = [
   { value: "Cato", label: "Cato" },
   { value: "Tatu", label: "Tatu" },
   { value: "Patan", label: "Patan" },
+  { value: "Hormigret", label: "Hormigret" },
+  { value: "Lamacol", label: "Lamacol" },
+  { value: "Britcom", label: "Britcom" },
+  { value: "Ramon romero gomez", label: "Ramon romero gomez" },
+  { value: "Duraez", label: "Duraez" },
 ];
 
 export function RemitosDataGrid({
@@ -166,8 +179,10 @@ export function RemitosDataGrid({
         remito_tercero: r.remito_tercero || "",
         remito_local: r.remito_local || r.numero || "",
         fecha: r.fecha,
+        proveedor: r.proveedor || "",
         desde: r.desde || "",
         hasta: r.hasta || "",
+        cliente: r.cliente || "",
         cantidad_viajes: r.cantidad_viajes || 1,
         unidad: r.unidad || "M3",
         cantidad: r.cantidad,
@@ -198,8 +213,10 @@ export function RemitosDataGrid({
       title: "Fecha",
       getValue: (row: GridRow) => row.fecha ? formatDate(row.fecha) : ""
     },
+    { column: "proveedor", title: "Proveedor" },
     { column: "desde", title: "Desde" },
     { column: "hasta", title: "Hasta" },
+    { column: "cliente", title: "Cliente" },
     { column: "tipo_material", title: "Tipo Material" },
     { column: "tipo_transporte", title: "Transporte" },
   ], []);
@@ -219,7 +236,7 @@ export function RemitosDataGrid({
   } = useGridFilters(
     data,
     filterConfigs,
-    ["remito_tercero", "remito_local", "desde", "hasta", "tipo_material", "tipo_transporte"] as (keyof GridRow)[]
+    ["remito_tercero", "remito_local", "proveedor", "desde", "hasta", "cliente", "tipo_material", "tipo_transporte"] as (keyof GridRow)[]
   );
 
   // Extend search to include patente
@@ -230,12 +247,14 @@ export function RemitosDataGrid({
     return filteredData.filter((row) => {
       if (row.remito_tercero?.toLowerCase().includes(searchLower)) return true;
       if (row.remito_local?.toLowerCase().includes(searchLower)) return true;
+      if (row.proveedor?.toLowerCase().includes(searchLower)) return true;
       if (row.desde?.toLowerCase().includes(searchLower)) return true;
       if (row.hasta?.toLowerCase().includes(searchLower)) return true;
+      if (row.cliente?.toLowerCase().includes(searchLower)) return true;
       if (row.tipo_material?.toLowerCase().includes(searchLower)) return true;
       if (row.tipo_transporte?.toLowerCase().includes(searchLower)) return true;
       if (row.patente_tercero?.toLowerCase().includes(searchLower)) return true;
-      
+
       // Check maquinaria patente
       const maq = maquinarias.find(m => m.id === row.maquinaria_id);
       if (maq?.patente?.toLowerCase().includes(searchLower)) return true;
@@ -519,8 +538,10 @@ export function RemitosDataGrid({
                   row.remito_tercero !== orig.remito_tercero ||
                   row.remito_local !== orig.remito_local ||
                   row.fecha !== orig.fecha ||
+                  row.proveedor !== orig.proveedor ||
                   row.desde !== orig.desde ||
                   row.hasta !== orig.hasta ||
+                  row.cliente !== orig.cliente ||
                   row.cantidad_viajes !== orig.cantidad_viajes ||
                   row.unidad !== orig.unidad ||
                   row.cantidad !== orig.cantidad ||
@@ -529,7 +550,7 @@ export function RemitosDataGrid({
                   row.tipo_transporte !== orig.tipo_transporte ||
                   row.maquinaria_id !== orig.maquinaria_id ||
                   row.patente_tercero !== orig.patente_tercero;
-                
+
                 if (isModified) {
                   updatedRowIds.add(row.id);
                 } else {
@@ -559,8 +580,10 @@ export function RemitosDataGrid({
         remito_tercero: "",
         remito_local: "",
         fecha: new Date().toISOString().split("T")[0],
+        proveedor: "",
         desde: "",
         hasta: "",
+        cliente: "",
         cantidad_viajes: 1,
         unidad: "M3",
         cantidad: 18,
@@ -601,6 +624,8 @@ export function RemitosDataGrid({
           unidad: row.unidad,
           recibido_por: "",
           firmado: false,
+          proveedor: row.proveedor || null,
+          cliente: row.cliente || null,
           remito_tercero: row.remito_tercero || null,
           remito_local: row.remito_local || null,
           desde: row.desde || null,
@@ -621,8 +646,10 @@ export function RemitosDataGrid({
             remito_tercero: row.remito_tercero || null,
             remito_local: row.remito_local || null,
             fecha: row.fecha,
+            proveedor: row.proveedor || null,
             desde: row.desde || null,
             hasta: row.hasta || null,
+            cliente: row.cliente || null,
             cantidad_viajes: row.cantidad_viajes || 1,
             unidad: row.unidad,
             cantidad: row.cantidad || 0,
@@ -663,8 +690,10 @@ export function RemitosDataGrid({
       remito_tercero: "",
       remito_local: "",
       fecha: null,
+      proveedor: "",
       desde: "",
       hasta: "",
+      cliente: "",
       cantidad_viajes: 1,
       unidad: "M3",
       cantidad: 18,
