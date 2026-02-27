@@ -26,7 +26,7 @@ const TIPOS: TipoOption[] = [
 ];
 
 const ESTADOS: EstadoOption[] = [
-  { value: "programado", label: "Programado", emoji: "📅", color: "border-muted-foreground bg-muted text-muted-foreground" },
+  { value: "pendiente", label: "Pendiente", emoji: "📋", color: "border-muted-foreground bg-muted text-muted-foreground" },
   { value: "en_proceso", label: "En proceso", emoji: "⚙️", color: "border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-400" },
   { value: "completado", label: "Completado", emoji: "✅", color: "border-green-500 bg-green-500/10 text-green-700 dark:text-green-400" },
 ];
@@ -45,7 +45,7 @@ export const MecanicoMantenimientoForm = ({
   const [fecha, setFecha] = useState(today);
   const [maquinariaId, setMaquinariaId] = useState(obsPreload?.maquinaria_id || "");
   const [tipo, setTipo] = useState<TipoMantenimiento>(obsPreload ? "correctivo" : "preventivo");
-  const [estado, setEstado] = useState<EstadoMantenimiento>("en_proceso");
+  const [estado, setEstado] = useState<EstadoMantenimiento>("pendiente");
   const [descripcion, setDescripcion] = useState("");
   const [repuestos, setRepuestos] = useState("");
   const [tecnico, setTecnico] = useState(nombreMecanico || "");

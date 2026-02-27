@@ -386,7 +386,7 @@ export function ObservacionesCampoTab() {
     window.dispatchEvent(new CustomEvent("crear-mantenimiento-desde-reporte", {
       detail: {
         maquinaria_id: obs.maquinaria_id,
-        descripcion: `Reporte de campo (${formatDate(obs.fecha_reporte)}): ${obs.observacion}`,
+        alerta_campo: `Reporte de campo (${formatDate(obs.fecha_reporte)}): ${obs.observacion}`,
         tipo: "correctivo",
         observacion_reporte_id: obs.id,
       },
