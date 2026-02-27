@@ -763,6 +763,10 @@ export type Database = {
       }
       mantenimientos: {
         Row: {
+          adjunto_url: string | null
+          alerta_campo: string | null
+          checklist_cambio: Json | null
+          checklist_chequeo: Json | null
           costo_mano_obra: number
           costo_repuestos: number
           costo_total: number
@@ -772,16 +776,25 @@ export type Database = {
           fecha: string
           horas_maquina: number
           id: string
+          informe_tecnico: string | null
+          kilometros: number | null
           maquinaria_id: string
           observacion_reporte_id: string | null
           observaciones: string | null
           proximo_mantenimiento: string | null
+          proximo_service_hr: number | null
+          proximo_service_km: number | null
           repuestos: string | null
           tecnico: string
+          tecnico_id: string | null
           tipo: Database["public"]["Enums"]["tipo_mantenimiento"]
           updated_at: string
         }
         Insert: {
+          adjunto_url?: string | null
+          alerta_campo?: string | null
+          checklist_cambio?: Json | null
+          checklist_chequeo?: Json | null
           costo_mano_obra?: number
           costo_repuestos?: number
           costo_total?: number
@@ -791,16 +804,25 @@ export type Database = {
           fecha: string
           horas_maquina: number
           id?: string
+          informe_tecnico?: string | null
+          kilometros?: number | null
           maquinaria_id: string
           observacion_reporte_id?: string | null
           observaciones?: string | null
           proximo_mantenimiento?: string | null
+          proximo_service_hr?: number | null
+          proximo_service_km?: number | null
           repuestos?: string | null
           tecnico: string
+          tecnico_id?: string | null
           tipo: Database["public"]["Enums"]["tipo_mantenimiento"]
           updated_at?: string
         }
         Update: {
+          adjunto_url?: string | null
+          alerta_campo?: string | null
+          checklist_cambio?: Json | null
+          checklist_chequeo?: Json | null
           costo_mano_obra?: number
           costo_repuestos?: number
           costo_total?: number
@@ -810,12 +832,17 @@ export type Database = {
           fecha?: string
           horas_maquina?: number
           id?: string
+          informe_tecnico?: string | null
+          kilometros?: number | null
           maquinaria_id?: string
           observacion_reporte_id?: string | null
           observaciones?: string | null
           proximo_mantenimiento?: string | null
+          proximo_service_hr?: number | null
+          proximo_service_km?: number | null
           repuestos?: string | null
           tecnico?: string
+          tecnico_id?: string | null
           tipo?: Database["public"]["Enums"]["tipo_mantenimiento"]
           updated_at?: string
         }
@@ -832,6 +859,27 @@ export type Database = {
             columns: ["observacion_reporte_id"]
             isOneToOne: false
             referencedRelation: "observaciones_maquina_estado"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
             referencedColumns: ["id"]
           },
         ]
@@ -1969,7 +2017,11 @@ export type Database = {
         | "aprobada"
         | "rechazada"
         | "vencida"
-      estado_mantenimiento: "programado" | "en_proceso" | "completado"
+      estado_mantenimiento:
+        | "programado"
+        | "en_proceso"
+        | "completado"
+        | "pendiente"
       estado_maquinaria: "operativa" | "mantenimiento" | "inactiva" | "en_uso"
       estado_obra: "activa" | "pendiente" | "finalizada" | "pausada"
       estado_presentismo:
@@ -2151,7 +2203,12 @@ export const Constants = {
         "rechazada",
         "vencida",
       ],
-      estado_mantenimiento: ["programado", "en_proceso", "completado"],
+      estado_mantenimiento: [
+        "programado",
+        "en_proceso",
+        "completado",
+        "pendiente",
+      ],
       estado_maquinaria: ["operativa", "mantenimiento", "inactiva", "en_uso"],
       estado_obra: ["activa", "pendiente", "finalizada", "pausada"],
       estado_presentismo: [
