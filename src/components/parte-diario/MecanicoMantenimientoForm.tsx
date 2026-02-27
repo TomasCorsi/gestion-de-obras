@@ -46,14 +46,14 @@ export const MecanicoMantenimientoForm = ({
   const [maquinariaId, setMaquinariaId] = useState(obsPreload?.maquinaria_id || "");
   const [tipo, setTipo] = useState<TipoMantenimiento>(obsPreload ? "correctivo" : "preventivo");
   const [estado, setEstado] = useState<EstadoMantenimiento>("en_proceso");
-  const [descripcion, setDescripcion] = useState(obsPreload?.observacion || "");
+  const [descripcion, setDescripcion] = useState("");
   const [repuestos, setRepuestos] = useState("");
   const [tecnico, setTecnico] = useState(nombreMecanico || "");
   const [horasMaquina, setHorasMaquina] = useState("");
   const [costoRepuestos, setCostoRepuestos] = useState("0");
   const [costoManoObra, setCostoManoObra] = useState("0");
   const [proximoMantenimiento, setProximoMantenimiento] = useState("");
-  const [observaciones, setObservaciones] = useState("");
+  const [observaciones, setObservaciones] = useState(obsPreload ? `Reporte de campo: ${obsPreload.observacion}` : "");
   const [isSaving, setIsSaving] = useState(false);
   const [maquinaSearch, setMaquinaSearch] = useState("");
   const [showMaquinaDropdown, setShowMaquinaDropdown] = useState(false);
@@ -151,6 +151,20 @@ export const MecanicoMantenimientoForm = ({
 
       {/* Form */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 pb-32">
+
+        {/* Banner alerta de campo */}
+        {obsPreload && (
+          <div className="rounded-lg border border-orange-500/50 bg-orange-500/10 p-4 space-y-1.5">
+            <p className="text-sm font-semibold text-orange-700 dark:text-orange-400">⚠️ Alerta de campo</p>
+            <p className="text-sm text-foreground italic">"{obsPreload.observacion}"</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
+              {obsPreload.parte_diario?.personal && (
+                <span>Reportado por: {[obsPreload.parte_diario.personal.nombre, obsPreload.parte_diario.personal.apellido].filter(Boolean).join(" ")}</span>
+              )}
+              <span>Fecha: {format(new Date(obsPreload.fecha_reporte), "dd/MM/yyyy")}</span>
+            </div>
+          </div>
+        )}
 
         {/* Fecha */}
         <div className="space-y-1.5">
