@@ -4,9 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
 import { useMantenimientos, type MantenimientoForm, type TipoMantenimiento, type EstadoMantenimiento } from "@/hooks/useMantenimientos";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import {
+  CHECKLIST_CAMBIO_ITEMS,
+  CHECKLIST_CHEQUEO_ITEMS,
+  emptyChecklistCambio,
+  emptyChecklistChequeo,
+  type ChecklistCambio,
+  type ChecklistChequeo,
+} from "@/components/mantenimiento/mantenimientoConstants";
 import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 
 interface MecanicoMantenimientoFormProps {
@@ -20,8 +29,8 @@ type TipoOption = { value: TipoMantenimiento; label: string; emoji: string; colo
 type EstadoOption = { value: EstadoMantenimiento; label: string; emoji: string; color: string };
 
 const TIPOS: TipoOption[] = [
-  { value: "preventivo", label: "Preventivo", emoji: "🛡️", color: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400" },
-  { value: "correctivo", label: "Correctivo", emoji: "🔧", color: "border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-400" },
+  { value: "preventivo", label: "Service", emoji: "🛡️", color: "border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-400" },
+  { value: "correctivo", label: "Reparación", emoji: "🔧", color: "border-orange-500 bg-orange-500/10 text-orange-700 dark:text-orange-400" },
   { value: "emergencia", label: "Emergencia", emoji: "🚨", color: "border-destructive bg-destructive/10 text-destructive" },
 ];
 
@@ -47,16 +56,23 @@ export const MecanicoMantenimientoForm = ({
   const [tipo, setTipo] = useState<TipoMantenimiento>(obsPreload ? "correctivo" : "preventivo");
   const [estado, setEstado] = useState<EstadoMantenimiento>("pendiente");
   const [descripcion, setDescripcion] = useState("");
+  const [informeTecnico, setInformeTecnico] = useState("");
   const [repuestos, setRepuestos] = useState("");
   const [tecnico, setTecnico] = useState(nombreMecanico || "");
   const [horasMaquina, setHorasMaquina] = useState("");
+  const [kilometros, setKilometros] = useState("");
   const [costoRepuestos, setCostoRepuestos] = useState("0");
   const [costoManoObra, setCostoManoObra] = useState("0");
   const [proximoMantenimiento, setProximoMantenimiento] = useState("");
+  const [proximoKm, setProximoKm] = useState("");
+  const [proximoHr, setProximoHr] = useState("");
+  const [alertaCampo, setAlertaCampo] = useState("");
   const [observaciones, setObservaciones] = useState(obsPreload ? `Reporte de campo: ${obsPreload.observacion}` : "");
   const [isSaving, setIsSaving] = useState(false);
   const [maquinaSearch, setMaquinaSearch] = useState("");
   const [showMaquinaDropdown, setShowMaquinaDropdown] = useState(false);
+  const [checkCambio, setCheckCambio] = useState<ChecklistCambio>(emptyChecklistCambio());
+  const [checkChequeo, setCheckChequeo] = useState<ChecklistChequeo>(emptyChecklistChequeo());
 
   // Pre-fill machine name in search when coming from obs
   useEffect(() => {
@@ -66,13 +82,12 @@ export const MecanicoMantenimientoForm = ({
     }
   }, [obsPreload]);
 
-  // Sync tecnico with logged-in mechanic's name (handles async prop loading)
+  // Sync tecnico with logged-in mechanic's name
   useEffect(() => {
-    if (nombreMecanico) {
-      setTecnico(nombreMecanico);
-    }
+    if (nombreMecanico) setTecnico(nombreMecanico);
   }, [nombreMecanico]);
 
+  const isService = tipo === "preventivo";
   const costoTotal = (parseFloat(costoRepuestos) || 0) + (parseFloat(costoManoObra) || 0);
 
   const maquinariasFiltradas = maquinarias.filter(m => {
@@ -95,23 +110,29 @@ export const MecanicoMantenimientoForm = ({
   };
 
   const handleSubmit = async () => {
-    if (!maquinariaId) { return; }
-    if (!descripcion.trim()) { return; }
-    if (!tecnico.trim()) { return; }
+    const mainText = isService ? informeTecnico.trim() : descripcion.trim();
+    if (!maquinariaId || !mainText || !tecnico.trim()) return;
 
     const data: MantenimientoForm = {
       fecha,
       maquinaria_id: maquinariaId,
       tipo,
       estado,
-      descripcion: descripcion.trim(),
+      descripcion: isService ? (informeTecnico.trim() || "Service") : descripcion.trim(),
+      informe_tecnico: isService ? informeTecnico.trim() : undefined,
+      checklist_cambio: isService ? checkCambio : undefined,
+      checklist_chequeo: isService ? checkChequeo : undefined,
       repuestos: repuestos.trim() || undefined,
       tecnico: tecnico.trim(),
       horas_maquina: parseFloat(horasMaquina) || 0,
+      kilometros: parseFloat(kilometros) || 0,
       costo_repuestos: parseFloat(costoRepuestos) || 0,
       costo_mano_obra: parseFloat(costoManoObra) || 0,
       costo_total: costoTotal,
       proximo_mantenimiento: proximoMantenimiento || undefined,
+      proximo_service_km: parseFloat(proximoKm) || undefined,
+      proximo_service_hr: parseFloat(proximoHr) || undefined,
+      alerta_campo: alertaCampo.trim() || undefined,
       observaciones: observaciones.trim() || undefined,
       observacion_reporte_id: obsPreload?.id,
     };
@@ -119,15 +140,13 @@ export const MecanicoMantenimientoForm = ({
     setIsSaving(true);
     try {
       const result = await createMantenimiento(data);
-      if (result) {
-        onSuccess();
-      }
+      if (result) onSuccess();
     } finally {
       setIsSaving(false);
     }
   };
 
-  const isValid = maquinariaId && descripcion.trim() && tecnico.trim();
+  const isValid = maquinariaId && tecnico.trim() && (isService ? informeTecnico.trim() : descripcion.trim());
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -138,7 +157,7 @@ export const MecanicoMantenimientoForm = ({
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">
-            {obsPreload ? "Mantenimiento Correctivo" : "Nuevo Mantenimiento"}
+            {obsPreload ? "Reparación" : isService ? "Nuevo Service" : "Nueva Reparación"}
           </h1>
           {obsPreload?.maquinaria && (
             <p className="text-xs text-muted-foreground truncate">
@@ -169,12 +188,7 @@ export const MecanicoMantenimientoForm = ({
         {/* Fecha */}
         <div className="space-y-1.5">
           <Label className="text-sm font-semibold">Fecha *</Label>
-          <Input
-            type="date"
-            value={fecha}
-            onChange={e => setFecha(e.target.value)}
-            className="h-12 text-base"
-          />
+          <Input type="date" value={fecha} onChange={e => setFecha(e.target.value)} className="h-12 text-base" />
         </div>
 
         {/* Máquina */}
@@ -184,55 +198,32 @@ export const MecanicoMantenimientoForm = ({
             <Input
               placeholder="Buscar por código, nombre, patente..."
               value={maquinaSearch}
-              onChange={e => {
-                setMaquinaSearch(e.target.value);
-                setMaquinariaId("");
-                setShowMaquinaDropdown(true);
-              }}
+              onChange={e => { setMaquinaSearch(e.target.value); setMaquinariaId(""); setShowMaquinaDropdown(true); }}
               onFocus={() => setShowMaquinaDropdown(true)}
               className="h-12 text-base"
             />
             {showMaquinaDropdown && maquinariasFiltradas.length > 0 && !maquinariaId && (
               <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-52 overflow-y-auto">
                 {maquinariasFiltradas.map(m => (
-                  <button
-                    key={m.id}
-                    className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border/50 last:border-0"
-                    onMouseDown={() => handleSelectMaquinaria(m)}
-                  >
-                    <p className="font-semibold text-sm text-foreground">
-                      {m.codigo || m.nombre || m.tipo}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {[m.tipo, m.patente, m.marca].filter(Boolean).join(" · ")}
-                    </p>
+                  <button key={m.id} className="w-full text-left px-4 py-3 hover:bg-muted transition-colors border-b border-border/50 last:border-0" onMouseDown={() => handleSelectMaquinaria(m)}>
+                    <p className="font-semibold text-sm text-foreground">{m.codigo || m.nombre || m.tipo}</p>
+                    <p className="text-xs text-muted-foreground">{[m.tipo, m.patente, m.marca].filter(Boolean).join(" · ")}</p>
                   </button>
                 ))}
               </div>
             )}
           </div>
-          {selectedMaquinaria && (
-            <p className="text-xs text-green-600 font-medium px-1">
-              ✓ {selectedMaquinaria.codigo || selectedMaquinaria.nombre} seleccionada
-            </p>
-          )}
-          {!maquinariaId && maquinaSearch && (
-            <p className="text-xs text-destructive px-1">Seleccioná una máquina de la lista</p>
-          )}
+          {selectedMaquinaria && <p className="text-xs text-green-600 font-medium px-1">✓ {selectedMaquinaria.codigo || selectedMaquinaria.nombre} seleccionada</p>}
+          {!maquinariaId && maquinaSearch && <p className="text-xs text-destructive px-1">Seleccioná una máquina de la lista</p>}
         </div>
 
         {/* Tipo */}
         <div className="space-y-2">
-          <Label className="text-sm font-semibold">Tipo de Mantenimiento *</Label>
+          <Label className="text-sm font-semibold">Tipo *</Label>
           <div className="grid grid-cols-3 gap-2">
             {TIPOS.map(t => (
-              <button
-                key={t.value}
-                onClick={() => setTipo(t.value)}
-                className={`border-2 rounded-xl py-3 px-2 flex flex-col items-center gap-1 transition-all ${
-                  tipo === t.value ? t.color + " border-2" : "border-border bg-card text-muted-foreground"
-                }`}
-              >
+              <button key={t.value} onClick={() => setTipo(t.value)}
+                className={`border-2 rounded-xl py-3 px-2 flex flex-col items-center gap-1 transition-all ${tipo === t.value ? t.color + " border-2" : "border-border bg-card text-muted-foreground"}`}>
                 <span className="text-xl">{t.emoji}</span>
                 <span className="text-xs font-semibold leading-tight text-center">{t.label}</span>
               </button>
@@ -245,13 +236,8 @@ export const MecanicoMantenimientoForm = ({
           <Label className="text-sm font-semibold">Estado *</Label>
           <div className="grid grid-cols-3 gap-2">
             {ESTADOS.map(s => (
-              <button
-                key={s.value}
-                onClick={() => setEstado(s.value)}
-                className={`border-2 rounded-xl py-3 px-2 flex flex-col items-center gap-1 transition-all ${
-                  estado === s.value ? s.color + " border-2" : "border-border bg-card text-muted-foreground"
-                }`}
-              >
+              <button key={s.value} onClick={() => setEstado(s.value)}
+                className={`border-2 rounded-xl py-3 px-2 flex flex-col items-center gap-1 transition-all ${estado === s.value ? s.color + " border-2" : "border-border bg-card text-muted-foreground"}`}>
                 <span className="text-xl">{s.emoji}</span>
                 <span className="text-xs font-semibold leading-tight text-center">{s.label}</span>
               </button>
@@ -259,51 +245,85 @@ export const MecanicoMantenimientoForm = ({
           </div>
         </div>
 
-        {/* Descripción */}
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Descripción del trabajo *</Label>
-          <Textarea
-            placeholder="Describí el trabajo realizado o a realizar..."
-            value={descripcion}
-            onChange={e => setDescripcion(e.target.value)}
-            className="min-h-[100px] text-base resize-none"
-          />
-        </div>
+        {/* ===== SERVICE: Checklists ===== */}
+        {isService && (
+          <>
+            {/* Checklist Cambio */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">🔄 Checklist de Cambio</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {CHECKLIST_CAMBIO_ITEMS.map(item => (
+                  <label key={item.key} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card cursor-pointer">
+                    <Checkbox
+                      checked={checkCambio[item.key] || false}
+                      onCheckedChange={(v) => setCheckCambio(prev => ({ ...prev, [item.key]: !!v }))}
+                    />
+                    <span className="text-xs leading-tight">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-        {/* Técnico */}
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Técnico</Label>
-          <Input
-            value={tecnico}
-            readOnly
-            placeholder="Cargando nombre..."
-            className="h-12 text-base bg-muted cursor-default"
-          />
-          <p className="text-xs text-muted-foreground px-1">✓ Completado automáticamente según el usuario logueado</p>
-        </div>
+            {/* Checklist Chequeo */}
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">🔍 Checklist de Chequeo</Label>
+              <div className="grid grid-cols-1 gap-1.5">
+                {CHECKLIST_CHEQUEO_ITEMS.map(item => (
+                  <label key={item.key} className="flex items-center gap-2 p-2.5 rounded-lg border border-border bg-card cursor-pointer">
+                    <Checkbox
+                      checked={checkChequeo[item.key] || false}
+                      onCheckedChange={(v) => setCheckChequeo(prev => ({ ...prev, [item.key]: !!v }))}
+                    />
+                    <span className="text-xs leading-tight">{item.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
 
-        {/* Horas máquina */}
-        <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Horas de máquina</Label>
-          <Input
-            type="number"
-            placeholder="0"
-            value={horasMaquina}
-            onChange={e => setHorasMaquina(e.target.value)}
-            className="h-12 text-base"
-            inputMode="decimal"
-          />
-        </div>
+            {/* Informe técnico */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-semibold">Informe técnico *</Label>
+              <Textarea placeholder="Describí el informe del service..." value={informeTecnico} onChange={e => setInformeTecnico(e.target.value)} className="min-h-[100px] text-base resize-none" />
+            </div>
+          </>
+        )}
+
+        {/* ===== REPARACIÓN: Tareas ===== */}
+        {!isService && (
+          <div className="space-y-1.5">
+            <Label className="text-sm font-semibold">Tareas realizadas *</Label>
+            <Textarea placeholder="Describí las tareas realizadas..." value={descripcion} onChange={e => setDescripcion(e.target.value)} className="min-h-[100px] text-base resize-none" />
+          </div>
+        )}
 
         {/* Repuestos */}
         <div className="space-y-1.5">
-          <Label className="text-sm font-semibold">Repuestos utilizados <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-          <Textarea
-            placeholder="Listá los repuestos usados..."
-            value={repuestos}
-            onChange={e => setRepuestos(e.target.value)}
-            className="min-h-[80px] text-base resize-none"
-          />
+          <Label className="text-sm font-semibold">Repuestos <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+          <Textarea placeholder="Listá los repuestos usados..." value={repuestos} onChange={e => setRepuestos(e.target.value)} className="min-h-[80px] text-base resize-none" />
+        </div>
+
+        {/* Horas máquina + Kilómetros */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Horas máquina</Label>
+            <Input type="number" placeholder="0" value={horasMaquina} onChange={e => setHorasMaquina(e.target.value)} className="h-12 text-base" inputMode="decimal" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Kilómetros</Label>
+            <Input type="number" placeholder="0" value={kilometros} onChange={e => setKilometros(e.target.value)} className="h-12 text-base" inputMode="decimal" />
+          </div>
+        </div>
+
+        {/* Próximo Service KM + HR */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Próx. Service KM</Label>
+            <Input type="number" placeholder="0" value={proximoKm} onChange={e => setProximoKm(e.target.value)} className="h-12 text-base" inputMode="decimal" />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-semibold">Próx. Service HR</Label>
+            <Input type="number" placeholder="0" value={proximoHr} onChange={e => setProximoHr(e.target.value)} className="h-12 text-base" inputMode="decimal" />
+          </div>
         </div>
 
         {/* Costos */}
@@ -312,33 +332,17 @@ export const MecanicoMantenimientoForm = ({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Repuestos ($)</p>
-              <Input
-                type="number"
-                placeholder="0"
-                value={costoRepuestos}
-                onChange={e => setCostoRepuestos(e.target.value)}
-                className="h-12 text-base"
-                inputMode="decimal"
-              />
+              <Input type="number" placeholder="0" value={costoRepuestos} onChange={e => setCostoRepuestos(e.target.value)} className="h-12 text-base" inputMode="decimal" />
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Mano de obra ($)</p>
-              <Input
-                type="number"
-                placeholder="0"
-                value={costoManoObra}
-                onChange={e => setCostoManoObra(e.target.value)}
-                className="h-12 text-base"
-                inputMode="decimal"
-              />
+              <Input type="number" placeholder="0" value={costoManoObra} onChange={e => setCostoManoObra(e.target.value)} className="h-12 text-base" inputMode="decimal" />
             </div>
           </div>
           {costoTotal > 0 && (
             <div className="flex items-center gap-2 bg-primary/10 rounded-lg px-4 py-2.5">
               <Calculator className="w-4 h-4 text-primary" />
-              <span className="text-sm font-semibold text-primary">
-                Total: ${costoTotal.toLocaleString("es-AR")}
-              </span>
+              <span className="text-sm font-semibold text-primary">Total: ${costoTotal.toLocaleString("es-AR")}</span>
             </div>
           )}
         </div>
@@ -346,53 +350,40 @@ export const MecanicoMantenimientoForm = ({
         {/* Próximo mantenimiento */}
         <div className="space-y-1.5">
           <Label className="text-sm font-semibold">Próximo mantenimiento <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-          <Input
-            type="date"
-            value={proximoMantenimiento}
-            onChange={e => setProximoMantenimiento(e.target.value)}
-            className="h-12 text-base"
+          <Input type="date" value={proximoMantenimiento} onChange={e => setProximoMantenimiento(e.target.value)} className="h-12 text-base" />
+        </div>
+
+        {/* Alerta de campo */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-semibold">Alerta de campo <span className="text-muted-foreground font-normal">(opcional)</span></Label>
+          <Textarea
+            placeholder="Registrar alerta o advertencia..."
+            value={alertaCampo}
+            onChange={e => setAlertaCampo(e.target.value)}
+            className={`min-h-[60px] text-base resize-none ${alertaCampo.trim() ? "border-destructive bg-destructive/5" : ""}`}
           />
         </div>
 
         {/* Observaciones */}
         <div className="space-y-1.5">
           <Label className="text-sm font-semibold">Observaciones <span className="text-muted-foreground font-normal">(opcional)</span></Label>
-          <Textarea
-            placeholder="Notas adicionales..."
-            value={observaciones}
-            onChange={e => setObservaciones(e.target.value)}
-            className="min-h-[80px] text-base resize-none"
-          />
+          <Textarea placeholder="Notas adicionales..." value={observaciones} onChange={e => setObservaciones(e.target.value)} className="min-h-[80px] text-base resize-none" />
+        </div>
+
+        {/* Técnico */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-semibold">Técnico</Label>
+          <Input value={tecnico} readOnly placeholder="Cargando nombre..." className="h-12 text-base bg-muted cursor-default" />
+          <p className="text-xs text-muted-foreground px-1">✓ Completado automáticamente</p>
         </div>
       </div>
 
       {/* Sticky footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-4 pb-safe">
         <div className="max-w-lg mx-auto flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onBack}
-            className="flex-1 h-13"
-            disabled={isSaving}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            className="flex-1 h-13 text-base font-semibold"
-            disabled={!isValid || isSaving}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              <>
-                <Wrench className="w-4 h-4 mr-2" />
-                Guardar
-              </>
-            )}
+          <Button variant="outline" onClick={onBack} className="flex-1 h-13" disabled={isSaving}>Cancelar</Button>
+          <Button onClick={handleSubmit} className="flex-1 h-13 text-base font-semibold" disabled={!isValid || isSaving}>
+            {isSaving ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>) : (<><Wrench className="w-4 h-4 mr-2" />Guardar</>)}
           </Button>
         </div>
       </div>
