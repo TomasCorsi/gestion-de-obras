@@ -1,70 +1,38 @@
 
-
-# Agregar selector de modo de calculo de Precio Total por fila
+# Separar observacion del maquinista del campo de descripcion del trabajo
 
 ## Problema
-Actualmente, Precio Total siempre se calcula como `Precio Uni. x Viajes`. Pero a veces el usuario necesita que sea `Precio Uni. x Cant. Total`. Esto debe poder elegirse caso por caso en cada fila.
-
-## Solucion
-Agregar una nueva columna **"Calc. Precio"** (o similar) con un selector que permita elegir entre dos modos de calculo por fila.
+Cuando se crea un mantenimiento desde una alerta de campo, la observacion del maquinista/chofer se carga en el campo "Descripcion del trabajo". Ese campo es para que el mecanico describa el trabajo que hizo, no para la observacion original.
 
 ## Cambios
 
-### 1. Migracion de base de datos
-Agregar una columna a la tabla `remitos`:
+### Archivo: `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
+
+1. **Mover la observacion pre-cargada**: Cambiar la linea 49 para que `descripcion` inicie vacia y `observaciones` reciba el texto de la alerta de campo:
+   - `descripcion` inicia en `""` (vacio, para que el mecanico escriba el trabajo)
+   - `observaciones` inicia con `obsPreload?.observacion || ""` (la observacion original del maquinista)
+
+2. **Mostrar la observacion original como referencia**: Agregar un bloque informativo (read-only) arriba del formulario cuando viene de una alerta, mostrando la observacion del maquinista para que el mecanico la tenga presente mientras completa la descripcion del trabajo.
+
+### Detalle tecnico
+
+Cambios en el estado inicial:
 ```text
-precio_calc_mode TEXT DEFAULT 'viajes'
+// Antes (linea 49)
+descripcion = obsPreload?.observacion || ""
+observaciones = ""
+
+// Despues
+descripcion = ""
+observaciones = obsPreload ? ("Reporte de campo: " + obsPreload.observacion) : ""
 ```
-Valores posibles: `'viajes'` (Precio Uni. x Viajes) o `'cantidad'` (Precio Uni. x Cant. Total).
 
-### 2. Actualizar `RemitosDataGrid.tsx`
-
-**Nueva columna "Calc."**: un selector con dos opciones:
-- "x Viajes" (default)
-- "x Cant. Total"
-
-Se ubicara entre "Precio Uni." y "Precio Total".
-
-**Logica de auto-calculo actualizada**:
+Agregar un banner informativo despues del header cuando `obsPreload` existe:
 ```text
-Si modo = 'viajes':   Precio Total = Precio Uni. x Viajes
-Si modo = 'cantidad': Precio Total = Precio Uni. x Cant. Total
+Alerta de campo:
+"[texto de la observacion del maquinista]"
+- Reportado por: [nombre apellido]
+- Fecha: [fecha reporte]
 ```
 
-Donde Cant. Total = Cant. Uni. x Viajes (esto no cambia).
-
-**Actualizar `handleChange`**: al cambiar `cantidad_uni`, `cantidad_viajes`, `precio_unitario` o `precio_calc_mode`, recalcular segun el modo seleccionado.
-
-**Actualizar `handleAddRow`**: valor por defecto `precio_calc_mode: 'viajes'`.
-
-**Actualizar `handleSave`**: incluir `precio_calc_mode` en los datos enviados a la BD.
-
-### 3. Actualizar `useRemitos.ts`
-Agregar `precio_calc_mode: string | null` a `RemitoDB` y `RemitoForm`.
-
-### 4. Actualizar importacion CSV
-Agregar soporte para una columna opcional "Calc. Precio" en el CSV. Si no esta presente, usar `'viajes'` como default.
-
-## Seccion tecnica
-
-### Migracion SQL
-```sql
-ALTER TABLE remitos ADD COLUMN precio_calc_mode text DEFAULT 'viajes';
-```
-
-### Logica de calculo
-```text
-viajes = row.cantidad_viajes || 1
-cant_total = (row.cantidad_uni || 0) * viajes
-
-if (row.precio_unitario != null) {
-  if (row.precio_calc_mode === 'cantidad') {
-    row.precio_total = row.precio_unitario * cant_total
-  } else {
-    row.precio_total = row.precio_unitario * viajes
-  }
-}
-```
-
-### Orden de columnas actualizado
-Rem. Tercero, Rem. Local, Fecha, Proveedor, Desde, Hasta, Cliente, Viajes, Cant. Uni., Cant. Total, Unidad, Tipo, Precio Uni., **Calc.**, Precio Total, Transporte, Patente Local, Patente Tercero, Descripcion
+Esto le da contexto al mecanico sin contaminar el campo de descripcion del trabajo.
