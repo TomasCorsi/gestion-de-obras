@@ -1,67 +1,40 @@
 
-
-# Fix Importacion Masiva de Remitos
+# Fix: Error de clave duplicada al importar remitos
 
 ## Problema
 
-El importador CSV tiene 4 bugs que impiden cargar el archivo correctamente:
+El error es: `duplicate key value violates unique constraint "remitos_numero_key"`
 
-1. **Cantidad duplicada**: El alias `cantidad` mapea a la columna "Cantidad total" del CSV, y luego el codigo la multiplica de nuevo por viajes. Ejemplo: fila con 6 viajes y total 162 M3 calcula 162 x 6 = 972 (incorrecto).
-2. **Cantidad Uni. ignorada**: No existe un alias separado para "Cantidad Uni.", asi que esa columna nunca se lee. El valor unitario (ej: 27) se pierde.
-3. **Patentes compuestas fallan**: Valores como `955-camion-ab 629 jd` solo extraen "955" como codigo. Si no existe, no intenta buscar la patente "ab 629 jd".
-4. **Patente no encontrada bloquea la fila**: Se genera un error en vez de un warning, impidiendo importar filas donde la maquinaria no esta en la base de datos.
+El CSV tiene filas con el mismo valor de "Rem. Local" (por ejemplo, el numero 71162 aparece en las filas 20 y 23 del CSV). El campo `numero` en la base de datos tiene una restriccion UNIQUE, y como el importador usa `remito_local` como `numero`, cuando hay duplicados la insercion falla completamente.
+
+Esto es un problema de diseno: el campo `numero` fue pensado como identificador unico, pero en la realidad operativa un mismo remito local puede aparecer en multiples filas (por ejemplo, un remito que cubre dos destinos diferentes).
 
 ## Solucion
 
-### Archivo: `src/components/remitos/CSVImportDialog.tsx`
+### 1. Eliminar la restriccion UNIQUE del campo `numero` (migracion de base de datos)
 
-#### 1. Separar aliases de cantidad_uni y cantidad_total
-
-Reemplazar el alias unico `cantidad` por dos claves:
-
-```text
-cantidad_uni: ['cantidad uni.', 'cantidad uni', 'cant uni', 'cant. uni.', 'cant uni.']
-cantidad_total: ['cantidad total', 'cant total', 'cantidad', 'cant', 'quantity', 'amount']
+```sql
+ALTER TABLE public.remitos DROP CONSTRAINT remitos_numero_key;
 ```
 
-#### 2. Actualizar logica de calculo
+El campo `numero` es un campo legacy que no deberia restringir la carga. Los identificadores reales son `remito_local` y `remito_tercero`.
+
+### 2. Generar `numero` unico en el importador como respaldo
+
+Aunque se elimine la constraint, conviene generar valores unicos para evitar confusion:
 
 ```text
-// Leer ambas columnas
-const cantidadUniRaw = getValue('cantidad_uni');
-const cantidadTotalRaw = getValue('cantidad_total');
-
-const effectiveViajes = isNaN(cantidad_viajes) ? 1 : cantidad_viajes;
-
-// Si hay cantidad_total en CSV, usarla directo como total
-// Si solo hay cantidad_uni, calcular total = uni * viajes
-const cantidad_uni_parsed = cantidadUniRaw ? parseNumber(cantidadUniRaw) : 0;
-const cantidad_total_parsed = cantidadTotalRaw ? parseNumber(cantidadTotalRaw) : 0;
-
-const cantidad_uni = cantidad_uni_parsed || (cantidad_total_parsed && effectiveViajes > 0 
-  ? cantidad_total_parsed / effectiveViajes : 0);
-const cantidad = cantidad_total_parsed || (cantidad_uni_parsed * effectiveViajes);
+// En vez de: numero = remito_local || `IMP-${i}`
+// Usar: numero = remito_local ? `${remito_local}-${i}` : `IMP-${Date.now()}-${i}`
 ```
 
-#### 3. Mejorar busqueda de patentes compuestas
+Esto garantiza que cada fila tenga un `numero` distinto incluso si comparten el mismo `remito_local`.
 
-En `findMaquinariaId`, despues de intentar por codigo, extraer la patente de formatos como `955-camion-ab 629 jd`:
+### 3. Cambiar el batch insert a insercion con upsert o row-by-row con manejo de errores
 
-```text
-// Extraer patente de formato compuesto: "955-camion-ab 629 jd"
-const parts = trimmed.split('-');
-if (parts.length >= 3) {
-  const patentePart = parts.slice(2).join('-').trim().toUpperCase();
-  const normalizedPatente = patentePart.replace(/[-\s]/g, '');
-  if (patentesMap[patentePart]) return patente match;
-  if (patentesMap[normalizedPatente]) return patente match;
-}
-```
-
-#### 4. Cambiar error de patente a warning
-
-Reemplazar el `errors.push` por `warnings.push` cuando la patente no se encuentra, para que la fila se importe igual (sin maquinaria asignada) en vez de ser rechazada.
+Como respaldo adicional, cambiar la estrategia de insercion en el hook `useRemitos.ts` para que si una fila falla, no bloquee las demas. Usar insercion individual con conteo de exitos/errores en vez de un unico `insert([...all])`.
 
 ### Archivos a modificar
-1. `src/components/remitos/CSVImportDialog.tsx` -- todos los cambios anteriores
-
+1. **Migracion SQL** -- eliminar constraint `remitos_numero_key`
+2. **`src/components/remitos/CSVImportDialog.tsx`** -- generar `numero` unico por fila
+3. **`src/hooks/useRemitos.ts`** -- insercion resiliente (fila por fila con manejo de errores, o batch con `ON CONFLICT`)
