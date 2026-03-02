@@ -1,71 +1,54 @@
 
 
-# Auto-deteccion de Obras y Clientes en Importacion CSV de Remitos
+# Fix Importacion CSV de Remitos - obra_id nullable + parsing bugs
 
-## Objetivo
+## Problema principal
 
-Mejorar la importacion masiva de remitos para que las columnas "Desde", "Hasta" y "Cliente" del CSV se matcheen automaticamente contra los registros de la base de datos (obras y clientes respectivamente). Ademas, convertir la columna "Cliente" en la grilla a un selector con autocompletado (igual que "Desde" y "Hasta").
+La tabla `remitos` tiene `obra_id uuid NOT NULL`, pero los remitos no necesitan un `obra_id` porque la obra se registra en las columnas de texto `desde` y `hasta`. El importador CSV asigna `obra_id: ''` (string vacio) que falla como UUID.
 
 ## Cambios
 
-### 1. Agregar `useClientes` al modulo de Remitos
+### 1. Migracion de base de datos: hacer `obra_id` nullable
 
-**Archivo:** `src/pages/Remitos.tsx`
+```sql
+ALTER TABLE public.remitos ALTER COLUMN obra_id DROP NOT NULL;
+```
 
-- Importar `useClientes` y obtener la lista de clientes
-- Crear un `clientesMap` (nombre normalizado -> nombre real) similar a como se hace con `maquinariasMap`
-- Crear `obrasMap` (nombre normalizado -> nombre real) a partir de las obras existentes
-- Pasar ambos mapas al `CSVImportDialog` y las opciones de clientes al `RemitosDataGrid`
+Esto permite insertar remitos sin `obra_id`, ya que la informacion de obra esta en `desde` y `hasta`.
 
-### 2. Actualizar CSVImportDialog para matchear obras y clientes
+### 2. Fix BOM character en CSVImportDialog
 
 **Archivo:** `src/components/remitos/CSVImportDialog.tsx`
 
-- Agregar props: `obrasMap` (Record de nombre normalizado -> nombre obra) y `clientesMap` (Record de nombre normalizado -> nombre cliente)
-- En la funcion `parseCSV`, para los campos `desde` y `hasta`:
-  - Busqueda exacta case-insensitive contra nombres de obras
-  - Busqueda parcial (contiene) como fallback
-  - Si no matchea, dejar el valor original y generar un warning
-- Para el campo `cliente`:
-  - Busqueda exacta case-insensitive contra nombres de clientes
-  - Busqueda parcial como fallback
-  - Si no matchea, dejar el valor original y generar un warning
-- Agregar nueva seccion de estadisticas de matching en la preview (similar a la de maquinarias): cuantas obras y clientes fueron detectados vs no encontrados
-- Agregar warnings visuales para las filas con obras/clientes no reconocidos
-
-### 3. Convertir columna "Cliente" a selector con autocompletado en la grilla
-
-**Archivo:** `src/components/remitos/RemitosDataGrid.tsx`
-
-- Agregar prop `clientes` (lista de clientes del hook)
-- Crear `clienteOptions` con los nombres de clientes activos
-- Cambiar la columna "cliente" de `textColumn` a un `GridSelectCell` (igual que "Desde" y "Hasta"), permitiendo autocompletado al escribir
-
-### Detalles tecnicos
-
-**Logica de matching para obras:**
+Al inicio del parsing, limpiar el BOM (`\uFEFF`) del texto:
 ```text
-1. Exacto case-insensitive: "obra centro" -> "Obra Centro"
-2. Parcial (el valor del CSV esta contenido en el nombre de la obra o viceversa)
-3. Sin match -> warning + se mantiene el texto original
+text = text.replace(/^\uFEFF/, '')
 ```
+Sin esto, el primer header `rem. tercero` no matchea con su alias.
 
-**Logica de matching para clientes:**
-```text
-1. Exacto case-insensitive: "cliente srl" -> "Cliente SRL"
-2. Parcial (contiene)
-3. Sin match -> warning + se mantiene el texto original
-```
+### 3. Fix obra_id en datos importados
 
-**Props nuevas del CSVImportDialog:**
-- `obrasMap: Record<string, string>` -- nombre normalizado (lowercase) -> nombre real
-- `clientesMap: Record<string, string>` -- nombre normalizado (lowercase) -> nombre real
+**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
 
-**Props nuevas del RemitosDataGrid:**
-- `clientes: ClienteDB[]` -- para generar las opciones del selector de cliente
+Cambiar `obra_id: ''` a `obra_id: undefined` para que no se envie un string vacio al insert. Tambien actualizar el tipo `RemitoForm` para que `obra_id` sea opcional.
 
-**Archivos a modificar:**
-1. `src/pages/Remitos.tsx` -- agregar useClientes, crear mapas, pasar props
-2. `src/components/remitos/CSVImportDialog.tsx` -- logica de matching de obras/clientes
-3. `src/components/remitos/RemitosDataGrid.tsx` -- columna cliente como GridSelectCell
+### 4. Fix parsing de precios con separador de miles
+
+**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
+
+Crear funcion `parseNumber` que maneje formatos como `$ 2,000.00` y `2.000,50`:
+- Quitar simbolo `$` y espacios
+- Detectar si la coma es decimal o separador de miles
+- Retornar el numero correcto
+
+### 5. Hacer obra_id opcional en RemitoForm
+
+**Archivo:** `src/hooks/useRemitos.ts`
+
+Cambiar `obra_id: string` a `obra_id?: string` en la interfaz `RemitoForm` para que no sea obligatorio al crear remitos desde el CSV.
+
+### Archivos a modificar
+1. **Migracion SQL** -- `ALTER TABLE remitos ALTER COLUMN obra_id DROP NOT NULL`
+2. `src/components/remitos/CSVImportDialog.tsx` -- BOM fix, obra_id undefined, parseNumber
+3. `src/hooks/useRemitos.ts` -- obra_id opcional en RemitoForm
 
