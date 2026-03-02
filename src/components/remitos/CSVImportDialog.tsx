@@ -121,6 +121,19 @@ function findMaquinariaId(
     }
   }
   
+  // 6. Extraer patente de formato compuesto: "955-camion-ab 629 jd"
+  const parts = trimmed.split('-');
+  if (parts.length >= 3) {
+    const patentePart = parts.slice(2).join('-').trim().toUpperCase();
+    const normalizedPatentePart = patentePart.replace(/[-\s]/g, '');
+    if (patentesMap[patentePart]) {
+      return { id: patentesMap[patentePart], method: 'patente' };
+    }
+    if (patentesMap[normalizedPatentePart]) {
+      return { id: patentesMap[normalizedPatentePart], method: 'patente' };
+    }
+  }
+  
   return { id: undefined, method: 'no_encontrada' };
 }
 
@@ -272,7 +285,8 @@ function parseCSV(
     hasta: ['hasta', 'destino', 'to', 'a'],
     cantidad_viajes: ['cantidad_viajes', 'viajes', 'cant_viajes', 'trips'],
     unidad: ['unidad', 'unit', 'un'],
-    cantidad: ['cantidad', 'cant', 'quantity', 'amount', 'cantidad total', 'cantidad uni.', 'cant total'],
+    cantidad_uni_col: ['cantidad uni.', 'cantidad uni', 'cant uni', 'cant. uni.', 'cant uni.'],
+    cantidad_total_col: ['cantidad total', 'cant total', 'cantidad', 'cant', 'quantity', 'amount'],
     tipo_material: ['tipo_material', 'tipo', 'material', 'type'],
     precio_total: ['precio_total', 'precio total', 'precio', 'total', 'price', 'monto'],
     precio_unitario: ['precio uni.', 'precio_uni', 'precio unitario', 'precio_unitario'],
@@ -323,7 +337,7 @@ function parseCSV(
       : { id: undefined, method: 'no_encontrada' as MatchMethod };
     
     if (patenteValue && !maquinaria_id) {
-      errors.push({ row: i + 1, message: `Patente/Maquinaria no encontrada: ${patenteValue}` });
+      warnings.push({ field: 'patente', value: patenteValue, row: i + 1 });
     }
 
     // Parse cantidad_viajes
@@ -334,12 +348,17 @@ function parseCSV(
     const unidadRaw = getValue('unidad');
     const unidad = normalizeValue(unidadRaw, unidadNormalize) || unidadRaw?.toUpperCase() || 'M3';
 
-    // Parse cantidad_uni (unit quantity)
-    const cantidadUniRaw = getValue('cantidad');
-    const cantidad_uni = cantidadUniRaw ? parseNumber(cantidadUniRaw) : 0;
+    // Parse cantidad_uni and cantidad_total separately
+    const cantidadUniRaw = getValue('cantidad_uni_col');
+    const cantidadTotalRaw = getValue('cantidad_total_col');
+    const cantidad_uni_parsed = cantidadUniRaw ? parseNumber(cantidadUniRaw) : 0;
+    const cantidad_total_parsed = cantidadTotalRaw ? parseNumber(cantidadTotalRaw) : 0;
+    const effectiveViajesCant = isNaN(cantidad_viajes) ? 1 : cantidad_viajes;
 
-    // Calculate cantidad (total) = cantidad_uni x viajes
-    const cantidad = cantidad_uni * (isNaN(cantidad_viajes) ? 1 : cantidad_viajes);
+    // If CSV has cantidad_total, use it directly. Otherwise calculate from uni * viajes.
+    const cantidad_uni = cantidad_uni_parsed || (cantidad_total_parsed && effectiveViajesCant > 0 
+      ? cantidad_total_parsed / effectiveViajesCant : 0);
+    const cantidad = cantidad_total_parsed || (cantidad_uni_parsed * effectiveViajesCant);
 
     // Parse tipo_material
     const tipoMaterialRaw = getValue('tipo_material');
