@@ -1,54 +1,67 @@
 
 
-# Fix Importacion CSV de Remitos - obra_id nullable + parsing bugs
+# Fix Importacion Masiva de Remitos
 
-## Problema principal
+## Problema
 
-La tabla `remitos` tiene `obra_id uuid NOT NULL`, pero los remitos no necesitan un `obra_id` porque la obra se registra en las columnas de texto `desde` y `hasta`. El importador CSV asigna `obra_id: ''` (string vacio) que falla como UUID.
+El importador CSV tiene 4 bugs que impiden cargar el archivo correctamente:
 
-## Cambios
+1. **Cantidad duplicada**: El alias `cantidad` mapea a la columna "Cantidad total" del CSV, y luego el codigo la multiplica de nuevo por viajes. Ejemplo: fila con 6 viajes y total 162 M3 calcula 162 x 6 = 972 (incorrecto).
+2. **Cantidad Uni. ignorada**: No existe un alias separado para "Cantidad Uni.", asi que esa columna nunca se lee. El valor unitario (ej: 27) se pierde.
+3. **Patentes compuestas fallan**: Valores como `955-camion-ab 629 jd` solo extraen "955" como codigo. Si no existe, no intenta buscar la patente "ab 629 jd".
+4. **Patente no encontrada bloquea la fila**: Se genera un error en vez de un warning, impidiendo importar filas donde la maquinaria no esta en la base de datos.
 
-### 1. Migracion de base de datos: hacer `obra_id` nullable
+## Solucion
 
-```sql
-ALTER TABLE public.remitos ALTER COLUMN obra_id DROP NOT NULL;
-```
+### Archivo: `src/components/remitos/CSVImportDialog.tsx`
 
-Esto permite insertar remitos sin `obra_id`, ya que la informacion de obra esta en `desde` y `hasta`.
+#### 1. Separar aliases de cantidad_uni y cantidad_total
 
-### 2. Fix BOM character en CSVImportDialog
+Reemplazar el alias unico `cantidad` por dos claves:
 
-**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
-
-Al inicio del parsing, limpiar el BOM (`\uFEFF`) del texto:
 ```text
-text = text.replace(/^\uFEFF/, '')
+cantidad_uni: ['cantidad uni.', 'cantidad uni', 'cant uni', 'cant. uni.', 'cant uni.']
+cantidad_total: ['cantidad total', 'cant total', 'cantidad', 'cant', 'quantity', 'amount']
 ```
-Sin esto, el primer header `rem. tercero` no matchea con su alias.
 
-### 3. Fix obra_id en datos importados
+#### 2. Actualizar logica de calculo
 
-**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
+```text
+// Leer ambas columnas
+const cantidadUniRaw = getValue('cantidad_uni');
+const cantidadTotalRaw = getValue('cantidad_total');
 
-Cambiar `obra_id: ''` a `obra_id: undefined` para que no se envie un string vacio al insert. Tambien actualizar el tipo `RemitoForm` para que `obra_id` sea opcional.
+const effectiveViajes = isNaN(cantidad_viajes) ? 1 : cantidad_viajes;
 
-### 4. Fix parsing de precios con separador de miles
+// Si hay cantidad_total en CSV, usarla directo como total
+// Si solo hay cantidad_uni, calcular total = uni * viajes
+const cantidad_uni_parsed = cantidadUniRaw ? parseNumber(cantidadUniRaw) : 0;
+const cantidad_total_parsed = cantidadTotalRaw ? parseNumber(cantidadTotalRaw) : 0;
 
-**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
+const cantidad_uni = cantidad_uni_parsed || (cantidad_total_parsed && effectiveViajes > 0 
+  ? cantidad_total_parsed / effectiveViajes : 0);
+const cantidad = cantidad_total_parsed || (cantidad_uni_parsed * effectiveViajes);
+```
 
-Crear funcion `parseNumber` que maneje formatos como `$ 2,000.00` y `2.000,50`:
-- Quitar simbolo `$` y espacios
-- Detectar si la coma es decimal o separador de miles
-- Retornar el numero correcto
+#### 3. Mejorar busqueda de patentes compuestas
 
-### 5. Hacer obra_id opcional en RemitoForm
+En `findMaquinariaId`, despues de intentar por codigo, extraer la patente de formatos como `955-camion-ab 629 jd`:
 
-**Archivo:** `src/hooks/useRemitos.ts`
+```text
+// Extraer patente de formato compuesto: "955-camion-ab 629 jd"
+const parts = trimmed.split('-');
+if (parts.length >= 3) {
+  const patentePart = parts.slice(2).join('-').trim().toUpperCase();
+  const normalizedPatente = patentePart.replace(/[-\s]/g, '');
+  if (patentesMap[patentePart]) return patente match;
+  if (patentesMap[normalizedPatente]) return patente match;
+}
+```
 
-Cambiar `obra_id: string` a `obra_id?: string` en la interfaz `RemitoForm` para que no sea obligatorio al crear remitos desde el CSV.
+#### 4. Cambiar error de patente a warning
+
+Reemplazar el `errors.push` por `warnings.push` cuando la patente no se encuentra, para que la fila se importe igual (sin maquinaria asignada) en vez de ser rechazada.
 
 ### Archivos a modificar
-1. **Migracion SQL** -- `ALTER TABLE remitos ALTER COLUMN obra_id DROP NOT NULL`
-2. `src/components/remitos/CSVImportDialog.tsx` -- BOM fix, obra_id undefined, parseNumber
-3. `src/hooks/useRemitos.ts` -- obra_id opcional en RemitoForm
+1. `src/components/remitos/CSVImportDialog.tsx` -- todos los cambios anteriores
 
