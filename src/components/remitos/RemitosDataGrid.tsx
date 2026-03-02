@@ -13,6 +13,7 @@ import { Save, Plus, Loader2, RotateCcw, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import { ClienteDB } from "@/hooks/useClientes";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
@@ -59,6 +60,7 @@ interface RemitosDataGridProps {
   remitos: RemitoWithRelations[];
   maquinarias: MaquinariaWithRelations[];
   obras: ObraWithRelations[];
+  clientes?: ClienteDB[];
   onSave: (changes: {
     created: RemitoForm[];
     updated: { id: string; data: Partial<RemitoForm> }[];
@@ -133,6 +135,7 @@ export function RemitosDataGrid({
   remitos,
   maquinarias,
   obras,
+  clientes,
   onSave,
   generateNumero,
   fullScreen = false,
@@ -392,7 +395,26 @@ export function RemitosDataGrid({
         minWidth: 130,
       },
       {
-        ...keyColumn("cliente", textColumn),
+        ...keyColumn("cliente", {
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => {
+            const clienteOptions = [
+              { value: "", label: "Seleccionar..." },
+              ...(clientes || []).filter(c => c.activo).map(c => ({ value: c.nombre, label: c.nombre })),
+            ];
+            return (
+              <GridSelectCell
+                value={rowData}
+                onChange={setRowData}
+                options={clienteOptions}
+                placeholder="Cliente..."
+                focus={focus}
+              />
+            );
+          },
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => value,
+        }),
         title: (
           <ColumnFilterHeader
             column="cliente"
@@ -404,7 +426,7 @@ export function RemitosDataGrid({
             setColumnFilters={setColumnFilters}
           />
         ),
-        minWidth: 120,
+        minWidth: 140,
       },
       { ...keyColumn("cantidad_viajes", intColumn), title: "Viajes", minWidth: 70 },
       { ...keyColumn("cantidad_uni", floatColumn), title: "Cant. Uni.", minWidth: 90 },

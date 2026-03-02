@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Upload, FileText, AlertCircle, CheckCircle, Download, Hash, CreditCard, Type, HelpCircle } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle, Download, Hash, CreditCard, Type, HelpCircle, MapPin, Users } from "lucide-react";
 import { toast } from "sonner";
 import { RemitoForm } from "@/hooks/useRemitos";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,6 +19,8 @@ interface CSVImportDialogProps {
   onImport: (remitos: RemitoForm[]) => Promise<void>;
   maquinariasMap: Record<string, string>; // codigo -> id
   patentesMap: Record<string, string>; // patente normalizada -> id
+  obrasMap: Record<string, string>; // nombre normalizado -> nombre real
+  clientesMap: Record<string, string>; // nombre normalizado -> nombre real
 }
 
 type MatchMethod = 'codigo' | 'patente' | 'no_encontrada';
@@ -204,10 +206,26 @@ function normalizeValue(value: string, map: Record<string, string>): string | un
   return map[lower];
 }
 
+function matchFromMap(value: string, map: Record<string, string>): { matched: string; found: boolean } {
+  if (!value) return { matched: '', found: false };
+  const lower = value.trim().toLowerCase();
+  // Exact match
+  if (map[lower]) return { matched: map[lower], found: true };
+  // Partial match: CSV value contained in DB name or vice-versa
+  for (const [key, realName] of Object.entries(map)) {
+    if (key.includes(lower) || lower.includes(key)) {
+      return { matched: realName, found: true };
+    }
+  }
+  return { matched: value.trim(), found: false };
+}
+
 function parseCSV(
   text: string,
   maquinariasMap: Record<string, string>,
-  patentesMap: Record<string, string>
+  patentesMap: Record<string, string>,
+  obrasMap: Record<string, string>,
+  clientesMap: Record<string, string>
 ): ParseResult {
   const lines = text.trim().split("\n");
   if (lines.length < 2) {
@@ -341,10 +359,32 @@ function parseCSV(
     // Get text fields
     const remito_tercero = getValue('remito_tercero');
     const remito_local = getValue('remito_local');
-    const desde = getValue('desde');
-    const hasta = getValue('hasta');
+    
+    // Match desde/hasta against obras
+    const desdeRaw = getValue('desde');
+    const hastaRaw = getValue('hasta');
+    const desdeMatch = matchFromMap(desdeRaw, obrasMap);
+    const hastaMatch = matchFromMap(hastaRaw, obrasMap);
+    const desde = desdeMatch.matched;
+    const hasta = hastaMatch.matched;
+    
+    if (desdeRaw && !desdeMatch.found) {
+      warnings.push({ field: 'obra_desde', value: desdeRaw, row: i + 1 });
+    }
+    if (hastaRaw && !hastaMatch.found) {
+      warnings.push({ field: 'obra_hasta', value: hastaRaw, row: i + 1 });
+    }
+    
+    // Match cliente against clientes
+    const clienteRaw = getValue('cliente');
+    const clienteMatch = matchFromMap(clienteRaw, clientesMap);
+    const cliente = clienteMatch.matched;
+    
+    if (clienteRaw && !clienteMatch.found) {
+      warnings.push({ field: 'cliente', value: clienteRaw, row: i + 1 });
+    }
+    
     const proveedor = getValue('proveedor');
-    const cliente = getValue('cliente');
     const patente_tercero = getValue('patente_tercero');
     const observaciones = getValue('observaciones');
 
@@ -410,7 +450,7 @@ const matchMethodConfig: Record<MatchMethod, { label: string; icon: React.Elemen
   },
 };
 
-export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinariasMap, patentesMap }: CSVImportDialogProps) {
+export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinariasMap, patentesMap, obrasMap, clientesMap }: CSVImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -429,7 +469,7 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
 
     setFile(selectedFile);
     const text = await selectedFile.text();
-    const result = parseCSV(text, maquinariasMap, patentesMap);
+    const result = parseCSV(text, maquinariasMap, patentesMap, obrasMap, clientesMap);
     setParseResult(result);
   };
 
@@ -486,6 +526,21 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
     }
     return acc;
   }, {} as Record<MatchMethod, number>) || {};
+
+  // Stats for obras/clientes matching
+  const obrasMatchStats = useMemo(() => {
+    if (!parseResult) return { matched: 0, unmatched: 0 };
+    const obraWarnings = parseResult.warnings.filter(w => w.field === 'obra_desde' || w.field === 'obra_hasta');
+    const totalObraFields = parseResult.valid.filter(r => r.data.desde || r.data.hasta).length;
+    return { matched: totalObraFields * 2 - obraWarnings.length, unmatched: obraWarnings.length };
+  }, [parseResult]);
+
+  const clientesMatchStats = useMemo(() => {
+    if (!parseResult) return { matched: 0, unmatched: 0 };
+    const clienteWarnings = parseResult.warnings.filter(w => w.field === 'cliente');
+    const totalClientes = parseResult.valid.filter(r => r.data.cliente).length;
+    return { matched: totalClientes - clienteWarnings.length, unmatched: clienteWarnings.length };
+  }, [parseResult]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -564,7 +619,7 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
                   <div className="max-h-24 overflow-y-auto text-xs space-y-0.5">
                     {parseResult.warnings.slice(0, 15).map((w, idx) => (
                       <p key={idx} className="text-muted-foreground">
-                        Fila {w.row}: {w.field === 'tipo_material' ? 'Material' : 'Transporte'} "{w.value}" no está en la lista
+                        Fila {w.row}: {w.field === 'tipo_material' ? 'Material' : w.field === 'tipo_transporte' ? 'Transporte' : w.field === 'obra_desde' ? 'Obra (Desde)' : w.field === 'obra_hasta' ? 'Obra (Hasta)' : 'Cliente'} "{w.value}" no encontrado
                       </p>
                     ))}
                     {parseResult.warnings.length > 15 && (
@@ -590,6 +645,36 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
                       </Badge>
                     );
                   })}
+                </div>
+              )}
+
+              {/* Obras & Clientes matching stats */}
+              {parseResult.valid.length > 0 && (obrasMatchStats.matched > 0 || obrasMatchStats.unmatched > 0 || clientesMatchStats.matched > 0 || clientesMatchStats.unmatched > 0) && (
+                <div className="flex flex-wrap gap-3">
+                  {obrasMatchStats.matched > 0 && (
+                    <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      {obrasMatchStats.matched} obras detectadas
+                    </Badge>
+                  )}
+                  {obrasMatchStats.unmatched > 0 && (
+                    <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      {obrasMatchStats.unmatched} obras no encontradas
+                    </Badge>
+                  )}
+                  {clientesMatchStats.matched > 0 && (
+                    <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                      <Users className="w-4 h-4 mr-2" />
+                      {clientesMatchStats.matched} clientes detectados
+                    </Badge>
+                  )}
+                  {clientesMatchStats.unmatched > 0 && (
+                    <Badge variant="outline" className="px-3 py-1.5 text-sm font-medium bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                      <Users className="w-4 h-4 mr-2" />
+                      {clientesMatchStats.unmatched} clientes no encontrados
+                    </Badge>
+                  )}
                 </div>
               )}
 

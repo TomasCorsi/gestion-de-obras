@@ -44,6 +44,7 @@ import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { useClientes } from "@/hooks/useClientes";
 import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { toast } from "sonner";
@@ -73,6 +74,7 @@ export default function Remitos() {
   const { remitos, loading, createRemito, updateRemito, deleteRemito, batchSave, updateRowColor } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
+  const { clientes } = useClientes();
   
   const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [viewMode, setViewMode] = useState<"table" | "grid">("grid");
@@ -110,6 +112,22 @@ export default function Remitos() {
     });
     return map;
   }, [maquinarias]);
+
+  const obrasMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    obras.forEach(o => {
+      map[o.nombre.toLowerCase().trim()] = o.nombre;
+    });
+    return map;
+  }, [obras]);
+
+  const clientesMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    clientes.filter(c => c.activo).forEach(c => {
+      map[c.nombre.toLowerCase().trim()] = c.nombre;
+    });
+    return map;
+  }, [clientes]);
 
   const [formData, setFormData] = useState<RemitoForm>({
     numero: "",
@@ -328,6 +346,7 @@ export default function Remitos() {
             remitos={filteredRemitos}
             maquinarias={maquinarias}
             obras={obras}
+            clientes={clientes}
             onSave={handleGridSave}
             generateNumero={generateNumero}
             fullScreen
@@ -349,6 +368,8 @@ export default function Remitos() {
           }}
           maquinariasMap={maquinariasMap}
           patentesMap={patentesMap}
+          obrasMap={obrasMap}
+          clientesMap={clientesMap}
         />
       </div>
     );
@@ -772,6 +793,8 @@ export default function Remitos() {
         }}
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}
+        obrasMap={obrasMap}
+        clientesMap={clientesMap}
       />
     </MainLayout>
   );
