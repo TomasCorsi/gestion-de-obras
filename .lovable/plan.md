@@ -1,53 +1,78 @@
 
 
-# Fix: Error al importar remitos
+# Actualizar formulario mobile de Mantenimiento para Mecánicos
 
 ## Problema
 
-Cuando se importan remitos desde CSV, la insercion falla porque el campo `obra_id` se envia como string vacio (`''`), pero la base de datos requiere un UUID valido (columna NOT NULL de tipo UUID). Tambien `material` y `recibido_por` pueden quedar vacios y son NOT NULL.
+El formulario de "Nuevo Mantenimiento" que ven los mecánicos desde `/parte-diario` en celular (`MecanicoMantenimientoForm.tsx`) no fue actualizado con los nuevos campos del rediseno. Sigue mostrando el formulario viejo sin:
+- Diferenciacion entre Service y Reparacion
+- Checklists de Cambio (6 items) y Chequeo (19 items) para Services
+- Campos de Kilometros, Proximo Service KM/HR
+- Campo de Informe Tecnico y Alerta de Campo con estilo visual
+- Subida de adjuntos
 
 ## Solucion
 
-Agregar un selector de obra obligatorio en el dialogo de importacion, que se aplique a todos los remitos importados. Esto es consistente con el flujo normal donde los remitos se asocian a una obra.
+Reescribir `MecanicoMantenimientoForm.tsx` para que adapte su contenido segun el tipo seleccionado, reutilizando las constantes de `mantenimientoConstants.ts`.
 
-### Cambios
+### Cambios en el formulario
 
-**Archivo: `src/components/remitos/CSVImportDialog.tsx`**
+1. **Selector de tipo** (Service / Reparacion / Emergencia) - ya existe, se mantiene
+2. **Si el tipo es "preventivo" (Service)**:
+   - Mostrar seccion "Checklist de Cambio" con 6 checkboxes en grilla de 2 columnas (optimizado mobile)
+   - Mostrar seccion "Checklist de Chequeo" con 19 checkboxes en grilla de 1-2 columnas
+   - Mostrar campo "Informe tecnico" (textarea) en lugar de "Descripcion del trabajo"
+3. **Si el tipo es "correctivo" o "emergencia" (Reparacion)**:
+   - Mostrar campo "Tareas realizadas" (textarea grande) - el campo "Descripcion" actual
+4. **Campos nuevos para ambos tipos**:
+   - Kilometros (numerico, inputMode decimal)
+   - Proximo service KM (numerico)
+   - Proximo service HR (numerico)
+   - Alerta de campo (textarea con borde rojo/amarillo si tiene contenido)
+5. **Reorganizar los campos existentes**: Horas maquina y Kilometros en grilla de 2 columnas; Proximo Service KM y HR en otra grilla de 2 columnas
 
-1. Agregar la prop `obras` al componente (lista de obras disponibles)
-2. Agregar un estado `selectedObraId` con un selector de obra obligatorio antes del boton de importar
-3. Al construir cada `RemitoForm`, asignar `obra_id: selectedObraId` en lugar de `''`
-4. Rellenar `recibido_por` con un valor por defecto (ej: `'CSV Import'`) si esta vacio, ya que es NOT NULL
-5. Rellenar `material` con el `tipo_material` o un valor por defecto si esta vacio
-6. Deshabilitar el boton "Importar" hasta que se seleccione una obra
-
-**Archivo: `src/pages/Remitos.tsx`**
-
-7. Pasar la prop `obras` al componente `RemitosCSVImportDialog` en ambas instancias (linea 339 y 764)
-
-### Detalle tecnico
+### Estructura visual mobile
 
 ```text
-CSVImportDialog (modificado)
-  + prop: obras: { id: string; nombre: string }[]
-  + estado: selectedObraId: string
-  + UI: Select de obra antes del boton Importar
-  + logica: obra_id se toma del selector, no del CSV
-  + logica: recibido_por = 'Importacion CSV' si vacio
-  + logica: material = tipo_material || 'Sin especificar' si vacio
-  + validacion: boton importar deshabilitado sin obra seleccionada
+[Header con boton volver]
+
+[Banner alerta campo si viene de obs]
+
+[Fecha]
+[Maquina (buscador)]
+[Tipo: Preventivo | Correctivo | Emergencia]
+[Estado: Pendiente | En proceso | Completado]
+
+--- Si Service ---
+[Checklist de Cambio - 6 items, grid 2 cols]
+[Checklist de Chequeo - 19 items, grid 1 col]
+[Informe tecnico (textarea)]
+
+--- Si Reparacion ---
+[Tareas realizadas (textarea)]
+
+--- Comun ---
+[Repuestos (textarea)]
+[Horas maquina | Kilometros] (grid 2 cols)
+[Prox. Service KM | Prox. Service HR] (grid 2 cols)
+[Costos repuestos | Mano obra] (grid 2 cols)
+[Alerta de campo (textarea, borde rojo si tiene texto)]
+[Observaciones (textarea)]
+[Tecnico (readonly, autocompletado)]
+
+[Sticky footer: Cancelar | Guardar]
 ```
 
-En la funcion `handleImport`, antes de llamar `onImport`, se mapean los datos para inyectar el `obra_id` seleccionado:
+### Detalles tecnicos
 
-```typescript
-const remitosConObra = parseResult.valid.map(row => ({
-  ...row.data,
-  obra_id: selectedObraId,
-  recibido_por: row.data.recibido_por || 'Importación CSV',
-  material: row.data.material || row.data.tipo_material || 'Sin especificar',
-}));
-await onImport(remitosConObra);
-```
+**Archivo a modificar:** `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
 
-Esto resuelve el error de UUID invalido y los campos NOT NULL vacios sin cambiar la estructura de la base de datos.
+- Importar `CHECKLIST_CAMBIO_ITEMS`, `CHECKLIST_CHEQUEO_ITEMS`, `emptyChecklistCambio`, `emptyChecklistChequeo` desde `mantenimientoConstants.ts`
+- Importar `Checkbox` desde `@/components/ui/checkbox`
+- Agregar estados: `checkCambio`, `checkChequeo`, `kilometros`, `proximoKm`, `proximoHr`, `informeTecnico`, `alertaCampo`
+- Renderizar condicionalmente las secciones de checklist solo cuando `tipo === "preventivo"`
+- Incluir los nuevos campos en el payload de `handleSubmit` enviando `checklist_cambio`, `checklist_chequeo`, `kilometros`, `proximo_service_km`, `proximo_service_hr`, `informe_tecnico`, `alerta_campo`
+- El campo "Descripcion del trabajo" se renombra a "Informe tecnico" para Service o "Tareas realizadas" para Reparacion
+- Los checklists usan grillas compactas optimizadas para pantallas de celular (grid-cols-1 para chequeo de 19 items, grid-cols-2 para cambio de 6 items)
+- El campo de alerta de campo muestra borde rojo cuando tiene contenido (misma logica que en ServiceForm desktop)
+
