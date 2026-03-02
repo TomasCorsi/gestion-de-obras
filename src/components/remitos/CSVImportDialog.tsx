@@ -12,6 +12,14 @@ import { Upload, FileText, AlertCircle, CheckCircle, Download, Hash, CreditCard,
 import { toast } from "sonner";
 import { RemitoForm } from "@/hooks/useRemitos";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 interface CSVImportDialogProps {
   open: boolean;
@@ -19,6 +27,7 @@ interface CSVImportDialogProps {
   onImport: (remitos: RemitoForm[]) => Promise<void>;
   maquinariasMap: Record<string, string>; // codigo -> id
   patentesMap: Record<string, string>; // patente normalizada -> id
+  obras: { id: string; nombre: string }[];
 }
 
 type MatchMethod = 'codigo' | 'patente' | 'no_encontrada';
@@ -410,10 +419,11 @@ const matchMethodConfig: Record<MatchMethod, { label: string; icon: React.Elemen
   },
 };
 
-export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinariasMap, patentesMap }: CSVImportDialogProps) {
+export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinariasMap, patentesMap, obras }: CSVImportDialogProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parseResult, setParseResult] = useState<ParseResult | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [selectedObraId, setSelectedObraId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -434,11 +444,17 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
   };
 
   const handleImport = async () => {
-    if (!parseResult || parseResult.valid.length === 0) return;
+    if (!parseResult || parseResult.valid.length === 0 || !selectedObraId) return;
 
     setIsImporting(true);
     try {
-      await onImport(parseResult.valid.map(row => row.data));
+      const remitosConObra = parseResult.valid.map(row => ({
+        ...row.data,
+        obra_id: selectedObraId,
+        recibido_por: row.data.recibido_por || 'Importación CSV',
+        material: row.data.material || row.data.tipo_material || 'Sin especificar',
+      }));
+      await onImport(remitosConObra);
       toast.success(`${parseResult.valid.length} remitos importados correctamente`);
       handleClose();
     } catch (error) {
@@ -451,6 +467,7 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
   const handleClose = () => {
     setFile(null);
     setParseResult(null);
+    setSelectedObraId("");
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -673,6 +690,32 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
             </div>
           )}
 
+          {/* Obra Selector */}
+          {parseResult && parseResult.valid.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="obra-select" className="text-sm font-medium">
+                Obra destino <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedObraId} onValueChange={setSelectedObraId}>
+                <SelectTrigger id="obra-select">
+                  <SelectValue placeholder="Seleccionar obra..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {obras.map((obra) => (
+                    <SelectItem key={obra.id} value={obra.id}>
+                      {obra.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!selectedObraId && (
+                <p className="text-xs text-muted-foreground">
+                  Seleccioná una obra para asociar todos los remitos importados
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2 justify-end pt-4">
             <Button variant="outline" onClick={handleClose}>
@@ -680,7 +723,7 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!parseResult || parseResult.valid.length === 0 || isImporting}
+              disabled={!parseResult || parseResult.valid.length === 0 || !selectedObraId || isImporting}
             >
               {isImporting ? "Importando..." : `Importar ${parseResult?.valid.length || 0} registros`}
             </Button>
