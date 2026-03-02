@@ -349,6 +349,7 @@ export default function Remitos() {
           }}
           maquinariasMap={maquinariasMap}
           patentesMap={patentesMap}
+          obras={obras}
         />
       </div>
     );
@@ -772,6 +773,7 @@ export default function Remitos() {
         }}
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}
+        obras={obras}
       />
     </MainLayout>
   );
