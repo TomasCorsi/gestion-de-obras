@@ -7,7 +7,7 @@ export interface RemitoDB {
   numero: string;
   viaje_id: string | null;
   fecha: string;
-  obra_id: string;
+  obra_id: string | null;
   material: string;
   cantidad: number;
   unidad: string;
@@ -45,7 +45,7 @@ export interface RemitoForm {
   numero: string;
   viaje_id?: string;
   fecha: string;
-  obra_id: string;
+  obra_id?: string;
   material: string;
   cantidad: number;
   unidad: string;

@@ -1595,7 +1595,7 @@ export type Database = {
           maquinaria_id: string | null
           material: string
           numero: string
-          obra_id: string
+          obra_id: string | null
           observaciones: string | null
           patente_tercero: string | null
           precio_calc_mode: string | null
@@ -1627,7 +1627,7 @@ export type Database = {
           maquinaria_id?: string | null
           material: string
           numero: string
-          obra_id: string
+          obra_id?: string | null
           observaciones?: string | null
           patente_tercero?: string | null
           precio_calc_mode?: string | null
@@ -1659,7 +1659,7 @@ export type Database = {
           maquinaria_id?: string | null
           material?: string
           numero?: string
-          obra_id?: string
+          obra_id?: string | null
           observaciones?: string | null
           patente_tercero?: string | null
           precio_calc_mode?: string | null
