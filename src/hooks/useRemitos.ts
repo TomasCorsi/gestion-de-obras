@@ -169,17 +169,17 @@ export function useRemitos() {
       const results = { created: 0, updated: 0, deleted: 0, errors: 0 };
       const promises: Promise<void>[] = [];
 
-      // Batch insert (single call)
-      if (changes.created.length > 0) {
+      // Row-by-row insert for resilience
+      for (const record of changes.created) {
         const insertPromise = (async () => {
           const { error } = await supabase
             .from("remitos")
-            .insert(changes.created);
+            .insert([record]);
           if (error) {
-            console.error("Error batch insert:", error);
+            console.error("Error inserting remito:", error);
             results.errors++;
           } else {
-            results.created = changes.created.length;
+            results.created++;
           }
         })();
         promises.push(insertPromise);
