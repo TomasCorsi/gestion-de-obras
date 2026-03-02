@@ -1,78 +1,71 @@
 
 
-# Actualizar formulario mobile de Mantenimiento para Mecánicos
+# Auto-deteccion de Obras y Clientes en Importacion CSV de Remitos
 
-## Problema
+## Objetivo
 
-El formulario de "Nuevo Mantenimiento" que ven los mecánicos desde `/parte-diario` en celular (`MecanicoMantenimientoForm.tsx`) no fue actualizado con los nuevos campos del rediseno. Sigue mostrando el formulario viejo sin:
-- Diferenciacion entre Service y Reparacion
-- Checklists de Cambio (6 items) y Chequeo (19 items) para Services
-- Campos de Kilometros, Proximo Service KM/HR
-- Campo de Informe Tecnico y Alerta de Campo con estilo visual
-- Subida de adjuntos
+Mejorar la importacion masiva de remitos para que las columnas "Desde", "Hasta" y "Cliente" del CSV se matcheen automaticamente contra los registros de la base de datos (obras y clientes respectivamente). Ademas, convertir la columna "Cliente" en la grilla a un selector con autocompletado (igual que "Desde" y "Hasta").
 
-## Solucion
+## Cambios
 
-Reescribir `MecanicoMantenimientoForm.tsx` para que adapte su contenido segun el tipo seleccionado, reutilizando las constantes de `mantenimientoConstants.ts`.
+### 1. Agregar `useClientes` al modulo de Remitos
 
-### Cambios en el formulario
+**Archivo:** `src/pages/Remitos.tsx`
 
-1. **Selector de tipo** (Service / Reparacion / Emergencia) - ya existe, se mantiene
-2. **Si el tipo es "preventivo" (Service)**:
-   - Mostrar seccion "Checklist de Cambio" con 6 checkboxes en grilla de 2 columnas (optimizado mobile)
-   - Mostrar seccion "Checklist de Chequeo" con 19 checkboxes en grilla de 1-2 columnas
-   - Mostrar campo "Informe tecnico" (textarea) en lugar de "Descripcion del trabajo"
-3. **Si el tipo es "correctivo" o "emergencia" (Reparacion)**:
-   - Mostrar campo "Tareas realizadas" (textarea grande) - el campo "Descripcion" actual
-4. **Campos nuevos para ambos tipos**:
-   - Kilometros (numerico, inputMode decimal)
-   - Proximo service KM (numerico)
-   - Proximo service HR (numerico)
-   - Alerta de campo (textarea con borde rojo/amarillo si tiene contenido)
-5. **Reorganizar los campos existentes**: Horas maquina y Kilometros en grilla de 2 columnas; Proximo Service KM y HR en otra grilla de 2 columnas
+- Importar `useClientes` y obtener la lista de clientes
+- Crear un `clientesMap` (nombre normalizado -> nombre real) similar a como se hace con `maquinariasMap`
+- Crear `obrasMap` (nombre normalizado -> nombre real) a partir de las obras existentes
+- Pasar ambos mapas al `CSVImportDialog` y las opciones de clientes al `RemitosDataGrid`
 
-### Estructura visual mobile
+### 2. Actualizar CSVImportDialog para matchear obras y clientes
 
-```text
-[Header con boton volver]
+**Archivo:** `src/components/remitos/CSVImportDialog.tsx`
 
-[Banner alerta campo si viene de obs]
+- Agregar props: `obrasMap` (Record de nombre normalizado -> nombre obra) y `clientesMap` (Record de nombre normalizado -> nombre cliente)
+- En la funcion `parseCSV`, para los campos `desde` y `hasta`:
+  - Busqueda exacta case-insensitive contra nombres de obras
+  - Busqueda parcial (contiene) como fallback
+  - Si no matchea, dejar el valor original y generar un warning
+- Para el campo `cliente`:
+  - Busqueda exacta case-insensitive contra nombres de clientes
+  - Busqueda parcial como fallback
+  - Si no matchea, dejar el valor original y generar un warning
+- Agregar nueva seccion de estadisticas de matching en la preview (similar a la de maquinarias): cuantas obras y clientes fueron detectados vs no encontrados
+- Agregar warnings visuales para las filas con obras/clientes no reconocidos
 
-[Fecha]
-[Maquina (buscador)]
-[Tipo: Preventivo | Correctivo | Emergencia]
-[Estado: Pendiente | En proceso | Completado]
+### 3. Convertir columna "Cliente" a selector con autocompletado en la grilla
 
---- Si Service ---
-[Checklist de Cambio - 6 items, grid 2 cols]
-[Checklist de Chequeo - 19 items, grid 1 col]
-[Informe tecnico (textarea)]
+**Archivo:** `src/components/remitos/RemitosDataGrid.tsx`
 
---- Si Reparacion ---
-[Tareas realizadas (textarea)]
-
---- Comun ---
-[Repuestos (textarea)]
-[Horas maquina | Kilometros] (grid 2 cols)
-[Prox. Service KM | Prox. Service HR] (grid 2 cols)
-[Costos repuestos | Mano obra] (grid 2 cols)
-[Alerta de campo (textarea, borde rojo si tiene texto)]
-[Observaciones (textarea)]
-[Tecnico (readonly, autocompletado)]
-
-[Sticky footer: Cancelar | Guardar]
-```
+- Agregar prop `clientes` (lista de clientes del hook)
+- Crear `clienteOptions` con los nombres de clientes activos
+- Cambiar la columna "cliente" de `textColumn` a un `GridSelectCell` (igual que "Desde" y "Hasta"), permitiendo autocompletado al escribir
 
 ### Detalles tecnicos
 
-**Archivo a modificar:** `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
+**Logica de matching para obras:**
+```text
+1. Exacto case-insensitive: "obra centro" -> "Obra Centro"
+2. Parcial (el valor del CSV esta contenido en el nombre de la obra o viceversa)
+3. Sin match -> warning + se mantiene el texto original
+```
 
-- Importar `CHECKLIST_CAMBIO_ITEMS`, `CHECKLIST_CHEQUEO_ITEMS`, `emptyChecklistCambio`, `emptyChecklistChequeo` desde `mantenimientoConstants.ts`
-- Importar `Checkbox` desde `@/components/ui/checkbox`
-- Agregar estados: `checkCambio`, `checkChequeo`, `kilometros`, `proximoKm`, `proximoHr`, `informeTecnico`, `alertaCampo`
-- Renderizar condicionalmente las secciones de checklist solo cuando `tipo === "preventivo"`
-- Incluir los nuevos campos en el payload de `handleSubmit` enviando `checklist_cambio`, `checklist_chequeo`, `kilometros`, `proximo_service_km`, `proximo_service_hr`, `informe_tecnico`, `alerta_campo`
-- El campo "Descripcion del trabajo" se renombra a "Informe tecnico" para Service o "Tareas realizadas" para Reparacion
-- Los checklists usan grillas compactas optimizadas para pantallas de celular (grid-cols-1 para chequeo de 19 items, grid-cols-2 para cambio de 6 items)
-- El campo de alerta de campo muestra borde rojo cuando tiene contenido (misma logica que en ServiceForm desktop)
+**Logica de matching para clientes:**
+```text
+1. Exacto case-insensitive: "cliente srl" -> "Cliente SRL"
+2. Parcial (contiene)
+3. Sin match -> warning + se mantiene el texto original
+```
+
+**Props nuevas del CSVImportDialog:**
+- `obrasMap: Record<string, string>` -- nombre normalizado (lowercase) -> nombre real
+- `clientesMap: Record<string, string>` -- nombre normalizado (lowercase) -> nombre real
+
+**Props nuevas del RemitosDataGrid:**
+- `clientes: ClienteDB[]` -- para generar las opciones del selector de cliente
+
+**Archivos a modificar:**
+1. `src/pages/Remitos.tsx` -- agregar useClientes, crear mapas, pasar props
+2. `src/components/remitos/CSVImportDialog.tsx` -- logica de matching de obras/clientes
+3. `src/components/remitos/RemitosDataGrid.tsx` -- columna cliente como GridSelectCell
 
