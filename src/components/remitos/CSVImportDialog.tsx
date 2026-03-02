@@ -220,6 +220,30 @@ function matchFromMap(value: string, map: Record<string, string>): { matched: st
   return { matched: value.trim(), found: false };
 }
 
+function parseNumber(raw: string): number {
+  if (!raw) return 0;
+  // Remove currency symbols, spaces
+  let cleaned = raw.replace(/[$\s]/g, '');
+  if (!cleaned) return 0;
+  
+  const lastComma = cleaned.lastIndexOf(',');
+  const lastDot = cleaned.lastIndexOf('.');
+  
+  if (lastComma > lastDot) {
+    // Format: 2.000,50 (comma is decimal)
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  } else if (lastDot > lastComma) {
+    // Format: 2,000.50 (dot is decimal)
+    cleaned = cleaned.replace(/,/g, '');
+  } else {
+    // Only one or neither: just replace comma with dot
+    cleaned = cleaned.replace(',', '.');
+  }
+  
+  const result = parseFloat(cleaned);
+  return isNaN(result) ? 0 : result;
+}
+
 function parseCSV(
   text: string,
   maquinariasMap: Record<string, string>,
@@ -227,6 +251,8 @@ function parseCSV(
   obrasMap: Record<string, string>,
   clientesMap: Record<string, string>
 ): ParseResult {
+  // Strip BOM character
+  text = text.replace(/^\uFEFF/, '');
   const lines = text.trim().split("\n");
   if (lines.length < 2) {
     return { valid: [], errors: [{ row: 0, message: "El archivo debe tener al menos una fila de encabezados y una de datos" }], warnings: [] };
@@ -310,7 +336,7 @@ function parseCSV(
 
     // Parse cantidad_uni (unit quantity)
     const cantidadUniRaw = getValue('cantidad');
-    const cantidad_uni = cantidadUniRaw ? parseFloat(cantidadUniRaw.replace(',', '.')) : 0;
+    const cantidad_uni = cantidadUniRaw ? parseNumber(cantidadUniRaw) : 0;
 
     // Calculate cantidad (total) = cantidad_uni x viajes
     const cantidad = cantidad_uni * (isNaN(cantidad_viajes) ? 1 : cantidad_viajes);
@@ -325,7 +351,7 @@ function parseCSV(
     }
     // Parse precio_unitario
     const precioUniRaw = getValue('precio_unitario');
-    const precio_unitario = precioUniRaw ? parseFloat(precioUniRaw.replace(',', '.').replace(/[^\d.]/g, '')) : 0;
+    const precio_unitario = precioUniRaw ? parseNumber(precioUniRaw) : 0;
 
     // Parse precio_calc_mode
     const calcModeRaw = getValue('precio_calc_mode');
@@ -341,7 +367,7 @@ function parseCSV(
     if (precio_unitario === 0) {
       const precioTotalRaw = getValue('precio_total');
       if (precioTotalRaw) {
-        const parsed = parseFloat(precioTotalRaw.replace(',', '.').replace(/[^\d.]/g, ''));
+        const parsed = parseNumber(precioTotalRaw);
         if (!isNaN(parsed) && parsed > 0) {
           precio_total = parsed;
         }
@@ -400,7 +426,7 @@ function parseCSV(
       data: {
         numero,
         fecha: fecha || new Date().toISOString().split('T')[0],
-        obra_id: '',
+        obra_id: undefined,
         material: tipo_material,
         cantidad: isNaN(cantidad) ? 0 : cantidad,
         unidad: ['TN', 'KG', 'M3', 'M2', 'U'].includes(unidad) ? unidad : 'M3',
