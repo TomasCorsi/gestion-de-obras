@@ -384,6 +384,7 @@ function generateServicioPDF(
   });
 
   const tableData: any[] = [];
+  const headerRowIndices = new Set<number>();
   const sortedCategories = [...itemsByCategory.keys()].sort();
 
   sortedCategories.forEach((catName) => {
@@ -391,6 +392,7 @@ function generateServicioPDF(
     if (catItems.length === 0) return;
 
     // Category header row
+    headerRowIndices.add(tableData.length);
     tableData.push([{
       content: catName.toUpperCase(),
       colSpan: 5,
@@ -413,6 +415,7 @@ function generateServicioPDF(
 
       // Sub category row (only if there's an etapa name)
       if (etapaName) {
+        headerRowIndices.add(tableData.length);
         tableData.push([{
           content: "  " + etapaName.toUpperCase(),
           colSpan: 5,
@@ -439,6 +442,7 @@ function generateServicioPDF(
     ]);
   });
 
+  const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
     head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal"]],
@@ -454,6 +458,19 @@ function generateServicioPDF(
       4: { cellWidth: 28, halign: "right" },
     },
     margin: { left: margin, right: margin },
+    willDrawCell: (data: any) => {
+      if (data.section === "body" && data.column.index === 0 && headerRowIndices.has(data.row.index)) {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const bottomMargin = 15;
+        const minSpaceNeeded = 20; // header + at least 1 data row
+        if (data.cell.y + minSpaceNeeded > pageHeight - bottomMargin && !pageBreakApplied.has(data.row.index)) {
+          pageBreakApplied.add(data.row.index);
+          doc.addPage();
+          data.cell.y = 15;
+          data.cursor.y = 15;
+        }
+      }
+    },
   });
 
   yPos = (doc as any).lastAutoTable.finalY + 6;
@@ -488,6 +505,7 @@ function generateObraPDF(
   });
 
   const tableData: any[] = [];
+  const headerRowIndices = new Set<number>();
   const sortedEtapas = [...itemsByEtapa.keys()].sort((a, b) => {
     if (etapaOrdenMap) {
       const oa = etapaOrdenMap[a] ?? 999999;
@@ -513,6 +531,7 @@ function generateObraPDF(
 
     // Insert category header row if category changed
     if (currentCategory && currentCategory !== lastCategory) {
+      headerRowIndices.add(tableData.length);
       tableData.push([{
         content: currentCategory.toUpperCase(),
         colSpan: 11,
@@ -522,6 +541,7 @@ function generateObraPDF(
     }
 
     // Sub category row
+    headerRowIndices.add(tableData.length);
     tableData.push([{
       content: "  " + etapaName.toUpperCase(),
       colSpan: 11,
@@ -574,6 +594,7 @@ function generateObraPDF(
     ]);
   });
 
+  const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
     head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum."]],
@@ -595,6 +616,19 @@ function generateObraPDF(
       10: { cellWidth: 18, halign: "right" },
     },
     margin: { left: margin, right: margin },
+    willDrawCell: (data: any) => {
+      if (data.section === "body" && data.column.index === 0 && headerRowIndices.has(data.row.index)) {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const bottomMargin = 15;
+        const minSpaceNeeded = 20;
+        if (data.cell.y + minSpaceNeeded > pageHeight - bottomMargin && !pageBreakApplied.has(data.row.index)) {
+          pageBreakApplied.add(data.row.index);
+          doc.addPage();
+          data.cell.y = 15;
+          data.cursor.y = 15;
+        }
+      }
+    },
   });
 
   yPos = (doc as any).lastAutoTable.finalY + 6;
