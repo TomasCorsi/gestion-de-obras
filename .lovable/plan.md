@@ -1,26 +1,28 @@
 
 
-# Subtotales por categoría en los totales del PDF
+# Agregar edición y eliminación en Gastos > Repartidor
 
 ## Cambio
 
-Modificar las funciones de generación de totales en `src/utils/generateCertificadoPDF.ts` para que el bloque de totales muestre subtotales desglosados por categoría (ej: "Subtotal Ejecución de obra", "Subtotal Alquiler de Maquinas") en lugar de solo "Subtotal Obra" o "Subtotal Servicio".
+Agregar botones de editar y eliminar en cada fila de la tabla administrativa de `CombustibleRepartidorTab`, reutilizando el diálogo `CargaCombustibleRepartidorDialog` ya existente y el hook `useCargasRepartidor` para las mutaciones.
 
 ## Detalle técnico
 
-### Archivo: `src/utils/generateCertificadoPDF.ts`
+### Archivo: `src/components/gastos/CombustibleRepartidorTab.tsx`
 
-**1. Función `generateMixtoPDF` (líneas 681-703)**
-- En lugar de calcular un único `obraSubtotal` y `servicioSubtotal`, agrupar los ítems de cada sección por categoría usando `categoriaMap`
-- Generar una línea de subtotal por cada categoría que tenga ítems (ej: "Subtotal Ejecución de obra:", "Subtotal Alquiler de Maquinas:")
-- Mantener la línea de anticipo sobre obra después de los subtotales de categorías de obra
-- Mantener "Subtotal General", "IVA" y "TOTAL" al final
+1. **Importar** `CargaCombustibleRepartidorDialog`, `DeleteConfirmDialog`, y las mutaciones de `useCargasRepartidor` (solo se necesitan `updateCarga` y `deleteCarga` — se puede instanciar el hook con `parteDiarioId=null, repartidorId=null` y usar las mutaciones directamente, o importar `supabase` directamente para las operaciones)
 
-**2. Función `generateServicioPDF` (líneas 478-485)**
-- Agregar subtotales por categoría antes del subtotal general en el bloque de totales
+2. **Agregar estado local**:
+   - `editingCarga` / `deletingCarga` para controlar qué registro se edita/elimina
+   - `showEditDialog` para abrir/cerrar el diálogo
 
-**3. Función `generateObraPDF` (líneas 636-653)**
-- Agregar subtotales por categoría antes de los totales de avance
+3. **Agregar columna "Acciones"** al final de la tabla con botones de lápiz (editar) y papelera (eliminar) en cada fila
 
-El resultado visual será similar a la imagen de referencia pero con los nombres de categoría reales.
+4. **Renderizar** `CargaCombustibleRepartidorDialog` y `DeleteConfirmDialog` — requiere pasar listas de personal, maquinarias y obras (se importan los hooks `usePersonal`, `useMaquinarias`, `useObras`)
+
+5. **Invalidar queries** después de editar/eliminar para refrescar la tabla
+
+### Archivo: `src/hooks/useCargasRepartidorAll.ts`
+
+Agregar mutaciones `updateCarga` y `deleteCarga` directamente en este hook (similar a `useCargasRepartidor`) para que `CombustibleRepartidorTab` no dependa de un `parteDiarioId`.
 
