@@ -338,7 +338,7 @@ function renderTotalsBox(
   doc: jsPDF, margin: number, pageWidth: number, yPos: number,
   lines: { label: string; value: string; bold?: boolean; separator?: boolean }[]
 ): number {
-  const boxWidth = 80;
+  const boxWidth = 95;
   const boxX = pageWidth - margin - boxWidth;
   const lineHeight = 5;
   const padding = 4;
@@ -477,11 +477,21 @@ function generateServicioPDF(
 
   // Totals
   if (!skipTotals) {
-    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, [
-      { label: "Subtotal:", value: formatCurrency(certificado.subtotal) },
-      { label: "IVA (21%):", value: formatCurrency(certificado.iva) },
-      { label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true },
-    ]);
+    const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
+
+    // Category subtotals
+    sortedCategories.forEach((catName) => {
+      const catItems = itemsByCategory.get(catName) || [];
+      if (catItems.length === 0) return;
+      const catSubtotal = catItems.reduce((s, i) => s + i.subtotal, 0);
+      totalsLines.push({ label: `Subtotal ${catName}:`, value: formatCurrency(catSubtotal) });
+    });
+
+    totalsLines.push({ label: "Subtotal General:", value: formatCurrency(certificado.subtotal), bold: true });
+    totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+    totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
+
+    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
   }
 
   return yPos;
@@ -635,11 +645,21 @@ function generateObraPDF(
 
   // Totals
   if (!skipTotals) {
-    const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [
-      { label: "Avance Anterior:", value: formatCurrency(totalAvAnterior) },
-      { label: "Avance Actual:", value: formatCurrency(totalAvActual) },
-      { label: "Avance Acumulado:", value: formatCurrency(totalAvAcumulado), bold: true },
-    ];
+    const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
+
+    // Category subtotals
+    const catTotalsMap = new Map<string, number>();
+    items.forEach((item) => {
+      const cat = (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "General";
+      catTotalsMap.set(cat, (catTotalsMap.get(cat) || 0) + item.subtotal);
+    });
+    [...catTotalsMap.keys()].sort().forEach((catName) => {
+      totalsLines.push({ label: `Subtotal ${catName}:`, value: formatCurrency(catTotalsMap.get(catName)!) });
+    });
+
+    totalsLines.push({ label: "Avance Anterior:", value: formatCurrency(totalAvAnterior) });
+    totalsLines.push({ label: "Avance Actual:", value: formatCurrency(totalAvActual) });
+    totalsLines.push({ label: "Avance Acumulado:", value: formatCurrency(totalAvAcumulado), bold: true });
 
     if (certificado.anticipo_porcentaje > 0) {
       const anticipoMonto = Math.round(totalAvAcumulado * (certificado.anticipo_porcentaje / 100));
@@ -679,22 +699,27 @@ function generateMixtoPDF(
   }
 
   // --- TOTALES UNIFICADOS AL FINAL ---
-  const obraSubtotal = obraItems.reduce((s, i) => s + i.subtotal, 0);
-  const servicioSubtotal = servicioItems.reduce((s, i) => s + i.subtotal, 0);
-  const totalSub = obraSubtotal + servicioSubtotal;
+  const allItems = [...obraItems, ...servicioItems];
+  const catTotalsMap = new Map<string, number>();
+  allItems.forEach((item) => {
+    const cat = (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "General";
+    catTotalsMap.set(cat, (catTotalsMap.get(cat) || 0) + item.subtotal);
+  });
+  const totalSub = allItems.reduce((s, i) => s + i.subtotal, 0);
 
   const totalsLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
 
-  if (obraItems.length > 0) {
-    totalsLines.push({ label: "Subtotal Obra:", value: formatCurrency(obraSubtotal) });
-    if (certificado.anticipo_porcentaje > 0) {
-      const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
-      totalsLines.push({ label: `  Anticipo (${certificado.anticipo_porcentaje}%) s/ Obra:`, value: `- ${formatCurrency(anticipoMonto)}` });
-    }
+  // Category subtotals
+  [...catTotalsMap.keys()].sort().forEach((catName) => {
+    totalsLines.push({ label: `Subtotal ${catName}:`, value: formatCurrency(catTotalsMap.get(catName)!) });
+  });
+
+  if (certificado.anticipo_porcentaje > 0 && obraItems.length > 0) {
+    const obraSubtotal = obraItems.reduce((s, i) => s + i.subtotal, 0);
+    const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
+    totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%) s/ Obra:`, value: `- ${formatCurrency(anticipoMonto)}` });
   }
-  if (servicioItems.length > 0) {
-    totalsLines.push({ label: "Subtotal Servicio:", value: formatCurrency(servicioSubtotal) });
-  }
+
   totalsLines.push({ label: "Subtotal General:", value: formatCurrency(totalSub), bold: true });
 
   totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
