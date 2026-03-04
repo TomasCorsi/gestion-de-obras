@@ -838,6 +838,7 @@ export default function Certificados() {
                                       <TableHead>Unidad</TableHead>
                                       <TableHead className="text-right">P. Unitario</TableHead>
                                       <TableHead className="text-right">Cant. Total</TableHead>
+                                      <TableHead>Categoría</TableHead>
                                       <TableHead>Sub Categoría</TableHead>
                                       <TableHead>Estado</TableHead>
                                       <TableHead className="text-right">Acciones</TableHead>
@@ -894,6 +895,7 @@ export default function Certificados() {
                                       <TableHead>Unidad</TableHead>
                                       <TableHead className="text-right">P. Unitario</TableHead>
                                       <TableHead className="text-right">Cant. Total</TableHead>
+                                      <TableHead>Categoría</TableHead>
                                       <TableHead>Sub Categoría</TableHead>
                                       <TableHead>Estado</TableHead>
                                       <TableHead className="text-right">Acciones</TableHead>
@@ -2009,6 +2011,18 @@ function ConceptoRow({
           onBlur={handleBlurCantTotal}
           className="h-8 text-sm text-right border-transparent bg-transparent hover:border-input focus:border-input w-20"
         />
+      </TableCell>
+      <TableCell className="p-1">
+        <Select value={concepto.categoria} onValueChange={(v) => onUpdate({ categoria: v })}>
+          <SelectTrigger className="h-8 text-sm border-transparent bg-transparent hover:border-input focus:border-input w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIAS_CERTIFICADO.map((cat) => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </TableCell>
       <TableCell className="p-1">
         <Input
