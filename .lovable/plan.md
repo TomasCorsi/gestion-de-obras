@@ -1,56 +1,29 @@
 
 
-# Sección Servicio con Sub Categorías (estilo Cotizaciones)
+# Evitar títulos de sub categoría huérfanos en PDF
 
-## Objetivo
+## Problema
 
-Transformar la grilla plana de servicio en una estructura agrupada por sub categorías editables, similar al sistema de rubros de Cotizaciones. El usuario podrá crear grupos con nombre libre (ej: "Alquiler de maquinas - Semana 1") y agregar conceptos dentro de cada grupo.
+Cuando una sub categoría (ej: "SEMANA 2") queda al final de una página, el título se renderiza solo sin sus filas de contenido, que pasan a la página siguiente. Esto es un problema clásico de "orphan header" en jsPDF-autotable.
 
-## Diseño
+## Solución
 
-```text
-┌─────────────────────────────────────────────────┐
-│ [+ Agregar Sub Categoría]                       │
-├─────────────────────────────────────────────────┤
-│ ▼ 1. Alquiler de maquinas - Semana 1    [🗑️]   │
-│ ┌───────────┬────┬─────┬────────┬──────────┐    │
-│ │Descripción│Uni.│Cant.│P.Unit. │ Subtotal │    │
-│ │[Combobox ]│ HR │  8  │ 5000   │  $40.000 │    │
-│ │[Combobox ]│ HR │  4  │ 3000   │  $12.000 │    │
-│ │              [+ Agregar concepto]         │    │
-│ └──────────────────────────────────────────┘    │
-│                          Subtotal: $52.000      │
-│                                                 │
-│ ▼ 2. Alquiler de maquinas - Semana 2    [🗑️]   │
-│ ...                                             │
-├─────────────────────────────────────────────────┤
-│                        Total Servicio: $104.000 │
-└─────────────────────────────────────────────────┘
-```
+jsPDF-autotable tiene una opción `rowPageBreak: 'avoid'` pero no resuelve headers de grupo. La solución correcta es usar el callback `willDrawCell` de autoTable para detectar cuando una fila de encabezado de grupo (categoría o sub categoría) queda cerca del final de la página, y forzar un salto de página antes de dibujarla.
 
-## Cambios
+### Cambio en `generateServicioPDF` (`src/utils/generateCertificadoPDF.ts`)
 
-### 1. `CertificadoServiceGrid.tsx` — Reestructurar con grupos colapsables
+Agregar la opción `didParseCell` o `willDrawCell` al `autoTable` call (línea ~442) para identificar las filas de encabezado de grupo (categoría y sub categoría) y usar `pageBreakBefore` para evitar que queden solas:
 
-Reemplazar la tabla plana por un sistema de grupos usando `Collapsible`:
+1. Marcar las filas de categoría y sub categoría en `tableData` con un flag (agregando metadata al array para saber cuáles son headers de grupo)
+2. Usar el hook `willDrawCell` para verificar si la fila es un header de grupo y si queda menos de ~20mm hasta el final de la página. Si es así, forzar un salto de página.
 
-- **Estado nuevo**: lista de sub categorías `{ nombre: string, open: boolean }[]`
-- Cada item tendrá un campo `grupo_index` (number) para asociarlo a su sub categoría
-- **Botón "Agregar Sub Categoría"**: crea un grupo nuevo con nombre editable
-- **Dentro de cada grupo**: tabla con las columnas actuales (Descripción con Combobox, Unidad, Cantidad, P. Unitario, Subtotal) + botón "Agregar concepto"
-- Se eliminan las columnas de Categoría y Sub Categoría del nivel de item (ya que la agrupación se hace a nivel de grupo)
-- **Totales**: subtotal por grupo + total general
+Alternativa más simple: usar la propiedad `rowPageBreak: 'avoid'` junto con agrupar cada sub categoría header + sus items en un bloque que autoTable no separe. Pero la forma más confiable es trackear los índices de las filas header y usar `showHead: 'everyPage'` + el callback.
 
-### 2. Modelo de datos
+**Implementación concreta**: Guardar los índices de filas que son headers de grupo, y en el `willDrawPage` / `didDrawCell` callback, verificar si el header quedaría solo. La forma más directa en jsPDF-autotable es agregar `minCellHeight` o usar `rowPageBreak`. Sin embargo, lo más robusto es:
 
-Los items seguirán siendo una lista plana de `CertificadoItemForm[]` — se usa el campo `etapa` para almacenar el nombre del grupo/sub categoría. Así se mantiene compatibilidad con el guardado y la vista de detalle existente sin cambios en la base de datos.
+- Trackear los row indices de headers de categoría/sub categoría
+- En `willDrawCell`, si es la primera celda de un header row y la posición Y + altura mínima necesaria (~15mm para header + al menos 1 fila) excede el límite de página, insertar un page break
 
-Al agregar un concepto dentro de un grupo, se setea `item.etapa = grupoNombre` automáticamente.
-
-### 3. `Certificados.tsx` — Sin cambios estructurales
-
-El componente padre sigue pasando y recibiendo `CertificadoItemForm[]`. La agrupación es interna al grid.
-
-### Archivos a modificar
-1. `src/components/certificados/CertificadoServiceGrid.tsx` — reestructurar con sub categorías colapsables
+### Archivo a modificar
+1. `src/utils/generateCertificadoPDF.ts` — agregar lógica anti-orphan en `generateServicioPDF` y `generateObraPDF`
 
