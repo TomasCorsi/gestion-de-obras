@@ -523,15 +523,17 @@ export default function Certificados() {
   };
 
   const avanceActualTotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
+  // For anticipo: only consider obra items
+  const obraItemsDraft = itemsDraft.filter((i) => tipoCert === "obra" || i.seccion === "obra");
+  const avanceActualObra = obraItemsDraft.reduce((s, i) => s + i.subtotal, 0);
   const avanceAnteriorTotal = (tipoCert === "obra" || tipoCert === "mixto")
-    ? itemsDraft
-        .filter((i) => tipoCert === "obra" || i.seccion === "obra")
+    ? obraItemsDraft
         .reduce((s, i) => {
           const ac = getAcumuladoForItem(i.concepto_id);
           return s + ac.avance_anterior;
         }, 0)
     : 0;
-  const avanceAcumuladoTotal = avanceAnteriorTotal + avanceActualTotal;
+  const avanceAcumuladoTotal = avanceAnteriorTotal + avanceActualObra;
   const anticipoMonto = Math.round(avanceAcumuladoTotal * (anticipoPorcentaje / 100));
   const totalAPagar = avanceActualTotal;
 
@@ -1302,7 +1304,8 @@ export default function Certificados() {
                       const servicioSubtotal = draftMixtoServicio.reduce((s, i) => s + i.subtotal, 0);
                       const totalSub = obraSubtotal + servicioSubtotal;
                       const totalIva = Math.round(totalSub * 0.21 * 100) / 100;
-                      const totalFinal = totalSub + totalIva;
+                      const anticipoMixto = Math.round(obraSubtotal * (anticipoPorcentaje / 100));
+                      const totalFinal = totalSub - anticipoMixto + totalIva;
                       return (
                         <>
                           <div className="flex justify-between text-sm">

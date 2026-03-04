@@ -660,7 +660,7 @@ function generateMixtoPDF(
   totalsLines.push({ label: "Subtotal General:", value: formatCurrency(totalSub), bold: true });
 
   if (certificado.anticipo_porcentaje > 0) {
-    const anticipoMonto = Math.round(totalSub * (certificado.anticipo_porcentaje / 100));
+    const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
     totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
   }
 
