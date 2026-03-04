@@ -653,16 +653,15 @@ function generateMixtoPDF(
 
   if (obraItems.length > 0) {
     totalsLines.push({ label: "Subtotal Obra:", value: formatCurrency(obraSubtotal) });
+    if (certificado.anticipo_porcentaje > 0) {
+      const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
+      totalsLines.push({ label: `  Anticipo (${certificado.anticipo_porcentaje}%) s/ Obra:`, value: `- ${formatCurrency(anticipoMonto)}` });
+    }
   }
   if (servicioItems.length > 0) {
     totalsLines.push({ label: "Subtotal Servicio:", value: formatCurrency(servicioSubtotal) });
   }
   totalsLines.push({ label: "Subtotal General:", value: formatCurrency(totalSub), bold: true });
-
-  if (certificado.anticipo_porcentaje > 0) {
-    const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
-    totalsLines.push({ label: `Anticipo (${certificado.anticipo_porcentaje}%):`, value: `- ${formatCurrency(anticipoMonto)}` });
-  }
 
   totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
   totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
