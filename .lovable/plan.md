@@ -1,40 +1,43 @@
 
-# Fix: Error de clave duplicada al importar remitos
 
-## Problema
+# Certificado: No auto-poblar conceptos + Descripcion con buscador
 
-El error es: `duplicate key value violates unique constraint "remitos_numero_key"`
+## Problema actual
 
-El CSV tiene filas con el mismo valor de "Rem. Local" (por ejemplo, el numero 71162 aparece en las filas 20 y 23 del CSV). El campo `numero` en la base de datos tiene una restriccion UNIQUE, y como el importador usa `remito_local` como `numero`, cuando hay duplicados la insercion falla completamente.
+Al crear un certificado nuevo, `openCrearCertificado` llama a `buildDraftForTipo()` que pre-carga todos los conceptos activos como filas. El usuario quiere empezar con la grilla vacia y agregar conceptos manualmente, seleccionandolos desde un desplegable con buscador.
 
-Esto es un problema de diseno: el campo `numero` fue pensado como identificador unico, pero en la realidad operativa un mismo remito local puede aparecer en multiples filas (por ejemplo, un remito que cubre dos destinos diferentes).
+## Cambios
 
-## Solucion
+### 1. `src/pages/Certificados.tsx` — Iniciar con grilla vacia
 
-### 1. Eliminar la restriccion UNIQUE del campo `numero` (migracion de base de datos)
+En `openCrearCertificado`, reemplazar `setItemsDraft(buildDraftForTipo(initialTipo))` por `setItemsDraft([])` para que el formulario arranque sin filas.
 
-```sql
-ALTER TABLE public.remitos DROP CONSTRAINT remitos_numero_key;
+Tambien, cuando el usuario cambia el tipo de certificado, no reconstruir el draft automaticamente si estamos creando (no editando). Solo reconstruir si estamos editando.
+
+### 2. `src/components/certificados/CertificadoServiceGrid.tsx` — Combobox en Descripcion
+
+Pasar la lista de conceptos disponibles como prop (`conceptos`). Reemplazar el `<Input>` de descripcion por el componente `<Combobox>` existente, que ya tiene buscador integrado.
+
+Cuando el usuario selecciona un concepto del desplegable:
+- Auto-completar `unidad`, `precio_unitario` y `categoria` desde el concepto seleccionado
+- Guardar el `concepto_id` en la fila
+- Permitir tambien escribir texto libre (opcion "Otro / personalizado" al final del listado)
+
+**Props nuevas de CertificadoServiceGrid:**
+```typescript
+conceptos: CertificadoConcepto[];  // lista de conceptos disponibles para el combobox
 ```
 
-El campo `numero` es un campo legacy que no deberia restringir la carga. Los identificadores reales son `remito_local` y `remito_tercero`.
+**Opciones del Combobox:**
+- Se construyen desde `conceptos.filter(c => c.activo)`, mostrando `nombre` como label
+- Al seleccionar, se llena automaticamente unidad, precio_unitario, categoria y concepto_id
+- Se incluye una opcion "Personalizado" que permite escribir manualmente
 
-### 2. Generar `numero` unico en el importador como respaldo
+### 3. Pasar conceptos al grid desde `Certificados.tsx`
 
-Aunque se elimine la constraint, conviene generar valores unicos para evitar confusion:
-
-```text
-// En vez de: numero = remito_local || `IMP-${i}`
-// Usar: numero = remito_local ? `${remito_local}-${i}` : `IMP-${Date.now()}-${i}`
-```
-
-Esto garantiza que cada fila tenga un `numero` distinto incluso si comparten el mismo `remito_local`.
-
-### 3. Cambiar el batch insert a insercion con upsert o row-by-row con manejo de errores
-
-Como respaldo adicional, cambiar la estrategia de insercion en el hook `useRemitos.ts` para que si una fila falla, no bloquee las demas. Usar insercion individual con conteo de exitos/errores en vez de un unico `insert([...all])`.
+Donde se renderiza `<CertificadoServiceGrid>`, agregar la prop `conceptos={conceptos}`.
 
 ### Archivos a modificar
-1. **Migracion SQL** -- eliminar constraint `remitos_numero_key`
-2. **`src/components/remitos/CSVImportDialog.tsx`** -- generar `numero` unico por fila
-3. **`src/hooks/useRemitos.ts`** -- insercion resiliente (fila por fila con manejo de errores, o batch con `ON CONFLICT`)
+1. `src/pages/Certificados.tsx` — iniciar draft vacio, pasar conceptos al grid
+2. `src/components/certificados/CertificadoServiceGrid.tsx` — reemplazar Input por Combobox en columna Descripcion
+
