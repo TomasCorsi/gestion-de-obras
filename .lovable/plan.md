@@ -1,39 +1,56 @@
 
 
-# Anticipo solo en seccion Obra
+# Sección Servicio con Sub Categorías (estilo Cotizaciones)
 
-## Problema
+## Objetivo
 
-El anticipo se aplica actualmente sobre el total general (obra + servicio) en los certificados mixtos, tanto en la UI como en el PDF. Debe aplicarse unicamente sobre la seccion de obra.
+Transformar la grilla plana de servicio en una estructura agrupada por sub categorías editables, similar al sistema de rubros de Cotizaciones. El usuario podrá crear grupos con nombre libre (ej: "Alquiler de maquinas - Semana 1") y agregar conceptos dentro de cada grupo.
+
+## Diseño
+
+```text
+┌─────────────────────────────────────────────────┐
+│ [+ Agregar Sub Categoría]                       │
+├─────────────────────────────────────────────────┤
+│ ▼ 1. Alquiler de maquinas - Semana 1    [🗑️]   │
+│ ┌───────────┬────┬─────┬────────┬──────────┐    │
+│ │Descripción│Uni.│Cant.│P.Unit. │ Subtotal │    │
+│ │[Combobox ]│ HR │  8  │ 5000   │  $40.000 │    │
+│ │[Combobox ]│ HR │  4  │ 3000   │  $12.000 │    │
+│ │              [+ Agregar concepto]         │    │
+│ └──────────────────────────────────────────┘    │
+│                          Subtotal: $52.000      │
+│                                                 │
+│ ▼ 2. Alquiler de maquinas - Semana 2    [🗑️]   │
+│ ...                                             │
+├─────────────────────────────────────────────────┤
+│                        Total Servicio: $104.000 │
+└─────────────────────────────────────────────────┘
+```
 
 ## Cambios
 
-### 1. `src/pages/Certificados.tsx` — UI de totales mixto
+### 1. `CertificadoServiceGrid.tsx` — Reestructurar con grupos colapsables
 
-**Linea ~1319**: El anticipo en la seccion mixta ya usa `obraSubtotal` correctamente para el calculo. Sin embargo, revisar que el anticipo no se reste del total general sino solo de la parte obra. Actualmente `totalFinal = totalSub + totalIva` no descuenta el anticipo. Se debe restar el anticipo del total final:
+Reemplazar la tabla plana por un sistema de grupos usando `Collapsible`:
 
-```
-const anticipoMonto = Math.round(obraSubtotal * (anticipoPorcentaje / 100));
-const totalFinal = totalSub - anticipoMonto + totalIva;
-```
+- **Estado nuevo**: lista de sub categorías `{ nombre: string, open: boolean }[]`
+- Cada item tendrá un campo `grupo_index` (number) para asociarlo a su sub categoría
+- **Botón "Agregar Sub Categoría"**: crea un grupo nuevo con nombre editable
+- **Dentro de cada grupo**: tabla con las columnas actuales (Descripción con Combobox, Unidad, Cantidad, P. Unitario, Subtotal) + botón "Agregar concepto"
+- Se eliminan las columnas de Categoría y Sub Categoría del nivel de item (ya que la agrupación se hace a nivel de grupo)
+- **Totales**: subtotal por grupo + total general
 
-**Lineas ~525-535** (calculo global para tipo "obra" puro): Cambiar `avanceAcumuladoTotal` para que solo considere items de obra (no servicio). Actualmente `avanceActualTotal` suma todos los items — para tipo "obra" puro esto esta bien, pero el `anticipoMonto` global debe basarse solo en items de obra.
+### 2. Modelo de datos
 
-### 2. `src/utils/generateCertificadoPDF.ts` — PDF mixto
+Los items seguirán siendo una lista plana de `CertificadoItemForm[]` — se usa el campo `etapa` para almacenar el nombre del grupo/sub categoría. Así se mantiene compatibilidad con el guardado y la vista de detalle existente sin cambios en la base de datos.
 
-**Linea ~663**: Cambiar el calculo de anticipo de `totalSub` a `obraSubtotal`:
+Al agregar un concepto dentro de un grupo, se setea `item.etapa = grupoNombre` automáticamente.
 
-```typescript
-const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
-```
+### 3. `Certificados.tsx` — Sin cambios estructurales
 
-Y ajustar el total final para que descuente el anticipo.
-
-### 3. Vista de certificado (detalle/lectura)
-
-Verificar la seccion de vista de certificados (~linea 1733) donde se muestra el anticipo para certificados mixtos guardados, y asegurar que tambien use solo el subtotal de obra.
+El componente padre sigue pasando y recibiendo `CertificadoItemForm[]`. La agrupación es interna al grid.
 
 ### Archivos a modificar
-1. `src/pages/Certificados.tsx` — calculo anticipo en UI (creacion/edicion y vista)
-2. `src/utils/generateCertificadoPDF.ts` — calculo anticipo en PDF mixto
+1. `src/components/certificados/CertificadoServiceGrid.tsx` — reestructurar con sub categorías colapsables
 
