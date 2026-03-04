@@ -1742,16 +1742,16 @@ export default function Certificados() {
                                   <span>Subtotal Obra</span>
                                   <span className="font-medium">{formatCurrency(obraSubtotal)}</span>
                                 </div>
+                                {viewCert.anticipo_porcentaje > 0 && (
+                                  <div className="flex justify-between text-sm pl-4 text-muted-foreground">
+                                    <span>Anticipo ({viewCert.anticipo_porcentaje}%) s/ Obra</span>
+                                    <span>- {formatCurrency(viewAnticipo)}</span>
+                                  </div>
+                                )}
                                 <div className="flex justify-between text-sm">
                                   <span>Subtotal Servicio</span>
                                   <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                                 </div>
-                                {viewCert.anticipo_porcentaje > 0 && (
-                                  <div className="flex justify-between text-sm">
-                                    <span>Anticipo ({viewCert.anticipo_porcentaje}%)</span>
-                                    <span className="text-muted-foreground">- {formatCurrency(viewAnticipo)}</span>
-                                  </div>
-                                )}
                                 <div className="flex justify-between text-sm">
                                   <span>IVA 21%</span>
                                   <span>{formatCurrency(viewCert.iva)}</span>
