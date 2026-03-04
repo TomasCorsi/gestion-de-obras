@@ -85,6 +85,7 @@ export interface CertificadoItemForm {
 
 export const CATEGORIAS_CERTIFICADO = [
   "Alquiler de Maquinas",
+  "Ejecución de obra",
   "Materiales",
   "Transporte",
   "Servicios",
