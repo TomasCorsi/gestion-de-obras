@@ -1,43 +1,33 @@
 
 
-# Certificado: No auto-poblar conceptos + Descripcion con buscador
-
-## Problema actual
-
-Al crear un certificado nuevo, `openCrearCertificado` llama a `buildDraftForTipo()` que pre-carga todos los conceptos activos como filas. El usuario quiere empezar con la grilla vacia y agregar conceptos manualmente, seleccionandolos desde un desplegable con buscador.
+# Filtrar conceptos por tipo en el desplegable + Auto-cargar obra
 
 ## Cambios
 
-### 1. `src/pages/Certificados.tsx` — Iniciar con grilla vacia
+### 1. `src/pages/Certificados.tsx` — Auto-cargar conceptos de obra al crear
 
-En `openCrearCertificado`, reemplazar `setItemsDraft(buildDraftForTipo(initialTipo))` por `setItemsDraft([])` para que el formulario arranque sin filas.
+En `openCrearCertificado`, en vez de iniciar con draft vacío para todos los tipos, cargar automáticamente los conceptos de tipo "obra" cuando el tipo inicial es "obra", y dejar vacío solo para "servicio":
 
-Tambien, cuando el usuario cambia el tipo de certificado, no reconstruir el draft automaticamente si estamos creando (no editando). Solo reconstruir si estamos editando.
+- Cuando `tipoCert` es `"servicio"`: draft vacío (como está ahora)
+- Cuando `tipoCert` es `"obra"`: auto-poblar con `buildDraftForTipo("obra")`
+- Cuando `tipoCert` es `"mixto"`: auto-poblar solo la sección obra, dejar servicio vacía
 
-### 2. `src/components/certificados/CertificadoServiceGrid.tsx` — Combobox en Descripcion
+Actualizar también el `useEffect` que escucha cambios de `tipoCert` para aplicar la misma lógica incluso al crear (no solo al editar).
 
-Pasar la lista de conceptos disponibles como prop (`conceptos`). Reemplazar el `<Input>` de descripcion por el componente `<Combobox>` existente, que ya tiene buscador integrado.
+### 2. `src/pages/Certificados.tsx` — Filtrar conceptos pasados al grid de servicio
 
-Cuando el usuario selecciona un concepto del desplegable:
-- Auto-completar `unidad`, `precio_unitario` y `categoria` desde el concepto seleccionado
-- Guardar el `concepto_id` en la fila
-- Permitir tambien escribir texto libre (opcion "Otro / personalizado" al final del listado)
+Donde se renderiza `<CertificadoServiceGrid>`, filtrar la prop `conceptos` para pasar solo los de tipo `"servicio"`:
 
-**Props nuevas de CertificadoServiceGrid:**
-```typescript
-conceptos: CertificadoConcepto[];  // lista de conceptos disponibles para el combobox
+```
+conceptos={conceptos.filter(c => c.tipo === 'servicio')}
 ```
 
-**Opciones del Combobox:**
-- Se construyen desde `conceptos.filter(c => c.activo)`, mostrando `nombre` como label
-- Al seleccionar, se llena automaticamente unidad, precio_unitario, categoria y concepto_id
-- Se incluye una opcion "Personalizado" que permite escribir manualmente
+Esto aplica en las dos instancias del grid: tipo "servicio" puro (línea ~1012) y sección servicio del mixto (línea ~1202).
 
-### 3. Pasar conceptos al grid desde `Certificados.tsx`
+### 3. `src/components/certificados/CertificadoServiceGrid.tsx` — Sin cambios
 
-Donde se renderiza `<CertificadoServiceGrid>`, agregar la prop `conceptos={conceptos}`.
+El grid ya funciona correctamente con la lista de conceptos que recibe; solo necesitamos filtrarla desde el padre.
 
 ### Archivos a modificar
-1. `src/pages/Certificados.tsx` — iniciar draft vacio, pasar conceptos al grid
-2. `src/components/certificados/CertificadoServiceGrid.tsx` — reemplazar Input por Combobox en columna Descripcion
+1. `src/pages/Certificados.tsx` — lógica de draft inicial + filtro de conceptos por tipo
 
