@@ -302,6 +302,21 @@ export default function Certificados() {
     }));
   };
 
+  const buildObraDraft = () => {
+    return conceptos.filter((c) => c.activo && c.tipo === "obra").map((c) => ({
+      concepto_id: c.id,
+      descripcion: c.nombre,
+      unidad: c.unidad,
+      cantidad: 0,
+      precio_unitario: c.precio_unitario,
+      subtotal: 0,
+      categoria: c.categoria,
+      etapa: c.etapa,
+      cantidad_total: c.cantidad_total,
+      seccion: null as string | null,
+    }));
+  };
+
   const openCrearCertificado = () => {
     const initialTipo: TipoCertificado = "servicio";
     setItemsDraft([]);
@@ -396,11 +411,33 @@ export default function Certificados() {
     setItemsDraft((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Rebuild draft when tipoCert changes (only when editing, not creating)
+  // Rebuild draft when tipoCert changes
   useEffect(() => {
-    if (crearOpen && editingCertId) {
-      // Only rebuild for edits — new certs start empty
+    if (!crearOpen) return;
+    if (editingCertId) {
+      // Editing: rebuild from all concepts
       setItemsDraft(buildDraftForTipo(tipoCert));
+    } else {
+      // Creating: auto-populate obra concepts, leave servicio empty
+      if (tipoCert === "obra") {
+        setItemsDraft(buildObraDraft());
+      } else if (tipoCert === "mixto") {
+        const obraDraft = conceptos.filter((c) => c.activo && c.tipo === "obra").map((c) => ({
+          concepto_id: c.id,
+          descripcion: c.nombre,
+          unidad: c.unidad,
+          cantidad: 0,
+          precio_unitario: c.precio_unitario,
+          subtotal: 0,
+          categoria: c.categoria,
+          etapa: c.etapa,
+          cantidad_total: c.cantidad_total,
+          seccion: "obra" as const,
+        }));
+        setItemsDraft(obraDraft); // servicio section starts empty
+      } else {
+        setItemsDraft([]);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipoCert]);
@@ -1009,7 +1046,7 @@ export default function Certificados() {
                     <CertificadoServiceGrid
                       items={itemsDraft.filter((i) => !i.seccion)}
                       seccion={null}
-                      conceptos={conceptos}
+                      conceptos={conceptos.filter(c => c.tipo === 'servicio')}
                       onItemsChange={(newServiceItems) => {
                         const otherItems = itemsDraft.filter((i) => i.seccion != null);
                         setItemsDraft([...otherItems, ...newServiceItems]);
@@ -1199,7 +1236,7 @@ export default function Certificados() {
                           <CertificadoServiceGrid
                             items={draftMixtoServicio}
                             seccion="servicio"
-                            conceptos={conceptos}
+                            conceptos={conceptos.filter(c => c.tipo === 'servicio')}
                             onItemsChange={(newServiceItems) => {
                               const obraItems = itemsDraft.filter((i) => i.seccion === "obra");
                               setItemsDraft([...obraItems, ...newServiceItems]);
