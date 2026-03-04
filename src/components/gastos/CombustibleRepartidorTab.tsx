@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Search, Fuel, Droplets, Download, CalendarDays, X, DollarSign, Save, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Fuel, Droplets, Download, CalendarDays, X, DollarSign, Save, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,8 +19,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
+import { useCargasRepartidorAll, type CargaRepartidorFull } from "@/hooks/useCargasRepartidorAll";
 import { usePreciosMes, usePreciosTodos } from "@/hooks/usePreciosMes";
+import { usePersonal } from "@/hooks/usePersonal";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { useObras } from "@/hooks/useObras";
+import { CargaCombustibleRepartidorDialog } from "@/components/parte-diario/CargaCombustibleRepartidorDialog";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -189,7 +195,10 @@ function PreciosMesPanel({
 }
 
 export function CombustibleRepartidorTab() {
-  const { cargas, isLoading } = useCargasRepartidorAll();
+  const { cargas, isLoading, updateCarga, deleteCarga, isUpdating, isDeleting } = useCargasRepartidorAll();
+  const { personal } = usePersonal();
+  const { maquinarias } = useMaquinarias();
+  const { obras } = useObras();
 
   const currentYear = new Date().getFullYear();
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
@@ -198,6 +207,11 @@ export function CombustibleRepartidorTab() {
   const [mes, setMes] = useState<string | undefined>(undefined);
   const [year, setYear] = useState(currentYear);
   const [fechaFiltro, setFechaFiltro] = useState<string>("");
+
+  // Edit / Delete state
+  const [editingCarga, setEditingCarga] = useState<CargaRepartidorFull | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [deletingCarga, setDeletingCarga] = useState<CargaRepartidorFull | null>(null);
 
   const years = useMemo(() => {
     const result = [];
@@ -421,13 +435,14 @@ export function CombustibleRepartidorTab() {
               <TableHead className="text-muted-foreground font-medium text-right">Precio U.</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Costo</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Horas</TableHead>
-              <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
-            </TableRow>
+               <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
+               <TableHead className="text-muted-foreground font-medium w-20"></TableHead>
+             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
                   <Fuel className="w-10 h-10 mx-auto mb-2 opacity-40" />
                   <p>No hay entregas de repartidor registradas</p>
                 </TableCell>
@@ -464,6 +479,29 @@ export function CombustibleRepartidorTab() {
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">{carga.horas || "-"}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{carga.km || "-"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => {
+                            setEditingCarga(carga);
+                            setShowEditDialog(true);
+                          }}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeletingCarga(carga)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 );
               })
@@ -472,18 +510,52 @@ export function CombustibleRepartidorTab() {
           {filtered.length > 0 && hayCostos && (
             <TableFooter>
               <TableRow className="border-border">
-                <TableCell colSpan={9} className="text-right font-semibold text-foreground">
+                <TableCell colSpan={10} className="text-right font-semibold text-foreground">
                   Total del período:
                 </TableCell>
                 <TableCell className="text-right font-bold text-primary text-base">
                   {formatPeso(totalCosto)}
                 </TableCell>
-                <TableCell colSpan={2} />
+                <TableCell colSpan={3} />
               </TableRow>
             </TableFooter>
           )}
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <CargaCombustibleRepartidorDialog
+        open={showEditDialog}
+        onOpenChange={(open) => {
+          setShowEditDialog(open);
+          if (!open) setEditingCarga(null);
+        }}
+        carga={editingCarga as any}
+        fechaParte={editingCarga?.fecha || new Date().toISOString().split("T")[0]}
+        personal={personal}
+        maquinarias={maquinarias}
+        obras={obras}
+        onSave={async (data) => {
+          if (!editingCarga) return;
+          await updateCarga({ id: editingCarga.id, ...data });
+          setShowEditDialog(false);
+          setEditingCarga(null);
+        }}
+        isSaving={isUpdating}
+      />
+
+      {/* Delete Dialog */}
+      <DeleteConfirmDialog
+        open={!!deletingCarga}
+        onOpenChange={(open) => { if (!open) setDeletingCarga(null); }}
+        onConfirm={async () => {
+          if (!deletingCarga) return;
+          await deleteCarga(deletingCarga.id);
+          setDeletingCarga(null);
+        }}
+        title="¿Eliminar entrega?"
+        description="Se eliminará permanentemente esta entrega de combustible/insumo."
+      />
     </div>
   );
 }
