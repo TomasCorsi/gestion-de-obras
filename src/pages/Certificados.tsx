@@ -1941,147 +1941,126 @@ function ConceptoRow({
   onUpdate: (u: { precio_unitario?: number; activo?: boolean; categoria?: string; nombre?: string; unidad?: string; cantidad_total?: number; etapa?: string | null }) => void;
   onDelete: () => void;
 }) {
-  const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    nombre: concepto.nombre,
-    unidad: concepto.unidad,
-    precio_unitario: String(concepto.precio_unitario),
-    categoria: concepto.categoria,
-    cantidad_total: String(concepto.cantidad_total || ""),
-    etapa: concepto.etapa || "",
-  });
+  const [nombre, setNombre] = useState(concepto.nombre);
+  const [precio, setPrecio] = useState(String(concepto.precio_unitario));
+  const [cantTotal, setCantTotal] = useState(String(concepto.cantidad_total || ""));
+  const [etapa, setEtapa] = useState(concepto.etapa || "");
 
-  const handleSaveEdit = () => {
-    onUpdate({
-      nombre: editForm.nombre,
-      unidad: editForm.unidad,
-      precio_unitario: Number(editForm.precio_unitario),
-      categoria: editForm.categoria,
-      cantidad_total: Number(editForm.cantidad_total) || 0,
-      etapa: editForm.etapa || null,
-    });
-    setEditDialogOpen(false);
+  // Sync local state when concepto changes from outside
+  useEffect(() => {
+    setNombre(concepto.nombre);
+    setPrecio(String(concepto.precio_unitario));
+    setCantTotal(String(concepto.cantidad_total || ""));
+    setEtapa(concepto.etapa || "");
+  }, [concepto.nombre, concepto.precio_unitario, concepto.cantidad_total, concepto.etapa]);
+
+  const handleBlurNombre = () => {
+    if (nombre.trim() && nombre !== concepto.nombre) onUpdate({ nombre: nombre.trim() });
+  };
+  const handleBlurPrecio = () => {
+    const v = Number(precio);
+    if (!isNaN(v) && v !== concepto.precio_unitario) onUpdate({ precio_unitario: v });
+  };
+  const handleBlurCantTotal = () => {
+    const v = Number(cantTotal) || 0;
+    if (v !== concepto.cantidad_total) onUpdate({ cantidad_total: v });
+  };
+  const handleBlurEtapa = () => {
+    const v = etapa.trim() || null;
+    if (v !== (concepto.etapa || null)) onUpdate({ etapa: v });
   };
 
   return (
-    <>
-      <TableRow className={!concepto.activo ? "opacity-50" : ""}>
-        <TableCell className="font-medium">{concepto.nombre}</TableCell>
-        <TableCell>{concepto.unidad}</TableCell>
-        <TableCell className="text-right">{formatCurrency(concepto.precio_unitario)}</TableCell>
-        <TableCell className="text-right">{concepto.cantidad_total > 0 ? concepto.cantidad_total.toLocaleString("es-AR") : "-"}</TableCell>
-        <TableCell className="text-muted-foreground text-sm">{concepto.etapa || "-"}</TableCell>
-        <TableCell>
-          <Badge
-            variant="secondary"
-            className={
-              concepto.activo
-                ? "bg-green-500/15 text-green-700 dark:text-green-400 cursor-pointer"
-                : "bg-muted text-muted-foreground cursor-pointer"
-            }
-            onClick={() => onUpdate({ activo: !concepto.activo })}
-          >
-            {concepto.activo ? "Activo" : "Inactivo"}
-          </Badge>
-        </TableCell>
-        <TableCell className="text-right">
-          <TooltipProvider>
+    <TableRow className={!concepto.activo ? "opacity-50" : ""}>
+      <TableCell className="p-1">
+        <Input
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          onBlur={handleBlurNombre}
+          className="h-8 text-sm border-transparent bg-transparent hover:border-input focus:border-input"
+        />
+      </TableCell>
+      <TableCell className="p-1">
+        <Select value={concepto.unidad} onValueChange={(v) => onUpdate({ unidad: v })}>
+          <SelectTrigger className="h-8 text-sm border-transparent bg-transparent hover:border-input focus:border-input w-20">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"].map((u) => (
+              <SelectItem key={u} value={u}>{u}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell className="p-1">
+        <Input
+          type="number"
+          value={precio}
+          onChange={(e) => setPrecio(e.target.value)}
+          onBlur={handleBlurPrecio}
+          className="h-8 text-sm text-right border-transparent bg-transparent hover:border-input focus:border-input w-28"
+        />
+      </TableCell>
+      <TableCell className="p-1">
+        <Input
+          type="number"
+          value={cantTotal}
+          onChange={(e) => setCantTotal(e.target.value)}
+          onBlur={handleBlurCantTotal}
+          className="h-8 text-sm text-right border-transparent bg-transparent hover:border-input focus:border-input w-20"
+        />
+      </TableCell>
+      <TableCell className="p-1">
+        <Input
+          value={etapa}
+          onChange={(e) => setEtapa(e.target.value)}
+          onBlur={handleBlurEtapa}
+          placeholder="-"
+          className="h-8 text-sm border-transparent bg-transparent hover:border-input focus:border-input"
+        />
+      </TableCell>
+      <TableCell className="p-1">
+        <Badge
+          variant="secondary"
+          className={
+            concepto.activo
+              ? "bg-green-500/15 text-green-700 dark:text-green-400 cursor-pointer"
+              : "bg-muted text-muted-foreground cursor-pointer"
+          }
+          onClick={() => onUpdate({ activo: !concepto.activo })}
+        >
+          {concepto.activo ? "Activo" : "Inactivo"}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-right p-1">
+        <TooltipProvider>
+          <AlertDialog>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={() => setEditDialogOpen(true)}>
-                  <Pencil className="w-4 h-4" />
-                </Button>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Trash2 className="w-4 h-4 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
               </TooltipTrigger>
-              <TooltipContent>Editar concepto</TooltipContent>
+              <TooltipContent>Eliminar</TooltipContent>
             </Tooltip>
-
-            <AlertDialog>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                </TooltipTrigger>
-                <TooltipContent>Eliminar</TooltipContent>
-              </Tooltip>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Eliminar concepto</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    ¿Eliminar "{concepto.nombre}"? Esto no afecta certificados ya emitidos.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete}>Eliminar</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </TooltipProvider>
-        </TableCell>
-      </TableRow>
-
-      {/* Edit Concepto Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Concepto</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Nombre</Label>
-              <Input value={editForm.nombre} onChange={(e) => setEditForm((p) => ({ ...p, nombre: e.target.value }))} placeholder="Ej: Horas Retro" />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Categoría</Label>
-                <Select value={editForm.categoria} onValueChange={(v) => setEditForm((p) => ({ ...p, categoria: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIAS_CERTIFICADO.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Sub Categoría (opcional)</Label>
-                <Input value={editForm.etapa} onChange={(e) => setEditForm((p) => ({ ...p, etapa: e.target.value }))} placeholder="Ej: ETAPA 2" />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label>Unidad</Label>
-                <Select value={editForm.unidad} onValueChange={(v) => setEditForm((p) => ({ ...p, unidad: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Unidad" /></SelectTrigger>
-                  <SelectContent>
-                    {["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"].map((u) => (
-                      <SelectItem key={u} value={u}>{u}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Precio Unitario</Label>
-                <Input type="number" value={editForm.precio_unitario} onChange={(e) => setEditForm((p) => ({ ...p, precio_unitario: e.target.value }))} placeholder="0" />
-              </div>
-              <div>
-                <Label>Cant. Total</Label>
-                <Input type="number" value={editForm.cantidad_total} onChange={(e) => setEditForm((p) => ({ ...p, cantidad_total: e.target.value }))} placeholder="0" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSaveEdit} disabled={!editForm.nombre || !editForm.unidad}>
-              Guardar cambios
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eliminar concepto</AlertDialogTitle>
+                <AlertDialogDescription>
+                  ¿Eliminar "{concepto.nombre}"? Esto no afecta certificados ya emitidos.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={onDelete}>Eliminar</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </TooltipProvider>
+      </TableCell>
+    </TableRow>
   );
 }
 
