@@ -1,33 +1,39 @@
 
 
-# Filtrar conceptos por tipo en el desplegable + Auto-cargar obra
+# Anticipo solo en seccion Obra
+
+## Problema
+
+El anticipo se aplica actualmente sobre el total general (obra + servicio) en los certificados mixtos, tanto en la UI como en el PDF. Debe aplicarse unicamente sobre la seccion de obra.
 
 ## Cambios
 
-### 1. `src/pages/Certificados.tsx` — Auto-cargar conceptos de obra al crear
+### 1. `src/pages/Certificados.tsx` — UI de totales mixto
 
-En `openCrearCertificado`, en vez de iniciar con draft vacío para todos los tipos, cargar automáticamente los conceptos de tipo "obra" cuando el tipo inicial es "obra", y dejar vacío solo para "servicio":
-
-- Cuando `tipoCert` es `"servicio"`: draft vacío (como está ahora)
-- Cuando `tipoCert` es `"obra"`: auto-poblar con `buildDraftForTipo("obra")`
-- Cuando `tipoCert` es `"mixto"`: auto-poblar solo la sección obra, dejar servicio vacía
-
-Actualizar también el `useEffect` que escucha cambios de `tipoCert` para aplicar la misma lógica incluso al crear (no solo al editar).
-
-### 2. `src/pages/Certificados.tsx` — Filtrar conceptos pasados al grid de servicio
-
-Donde se renderiza `<CertificadoServiceGrid>`, filtrar la prop `conceptos` para pasar solo los de tipo `"servicio"`:
+**Linea ~1319**: El anticipo en la seccion mixta ya usa `obraSubtotal` correctamente para el calculo. Sin embargo, revisar que el anticipo no se reste del total general sino solo de la parte obra. Actualmente `totalFinal = totalSub + totalIva` no descuenta el anticipo. Se debe restar el anticipo del total final:
 
 ```
-conceptos={conceptos.filter(c => c.tipo === 'servicio')}
+const anticipoMonto = Math.round(obraSubtotal * (anticipoPorcentaje / 100));
+const totalFinal = totalSub - anticipoMonto + totalIva;
 ```
 
-Esto aplica en las dos instancias del grid: tipo "servicio" puro (línea ~1012) y sección servicio del mixto (línea ~1202).
+**Lineas ~525-535** (calculo global para tipo "obra" puro): Cambiar `avanceAcumuladoTotal` para que solo considere items de obra (no servicio). Actualmente `avanceActualTotal` suma todos los items — para tipo "obra" puro esto esta bien, pero el `anticipoMonto` global debe basarse solo en items de obra.
 
-### 3. `src/components/certificados/CertificadoServiceGrid.tsx` — Sin cambios
+### 2. `src/utils/generateCertificadoPDF.ts` — PDF mixto
 
-El grid ya funciona correctamente con la lista de conceptos que recibe; solo necesitamos filtrarla desde el padre.
+**Linea ~663**: Cambiar el calculo de anticipo de `totalSub` a `obraSubtotal`:
+
+```typescript
+const anticipoMonto = Math.round(obraSubtotal * (certificado.anticipo_porcentaje / 100));
+```
+
+Y ajustar el total final para que descuente el anticipo.
+
+### 3. Vista de certificado (detalle/lectura)
+
+Verificar la seccion de vista de certificados (~linea 1733) donde se muestra el anticipo para certificados mixtos guardados, y asegurar que tambien use solo el subtotal de obra.
 
 ### Archivos a modificar
-1. `src/pages/Certificados.tsx` — lógica de draft inicial + filtro de conceptos por tipo
+1. `src/pages/Certificados.tsx` — calculo anticipo en UI (creacion/edicion y vista)
+2. `src/utils/generateCertificadoPDF.ts` — calculo anticipo en PDF mixto
 
