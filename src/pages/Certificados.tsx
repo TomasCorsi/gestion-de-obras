@@ -304,7 +304,7 @@ export default function Certificados() {
 
   const openCrearCertificado = () => {
     const initialTipo: TipoCertificado = "servicio";
-    setItemsDraft(buildDraftForTipo(initialTipo));
+    setItemsDraft([]);
     setPeriodo(format(new Date(), "yyyy-MM"));
     setObservaciones("");
     setEditingCertId(null);
@@ -396,9 +396,10 @@ export default function Certificados() {
     setItemsDraft((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // Rebuild draft when tipoCert changes (only for new certificates)
+  // Rebuild draft when tipoCert changes (only when editing, not creating)
   useEffect(() => {
-    if (crearOpen && !editingCertId) {
+    if (crearOpen && editingCertId) {
+      // Only rebuild for edits — new certs start empty
       setItemsDraft(buildDraftForTipo(tipoCert));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1008,6 +1009,7 @@ export default function Certificados() {
                     <CertificadoServiceGrid
                       items={itemsDraft.filter((i) => !i.seccion)}
                       seccion={null}
+                      conceptos={conceptos}
                       onItemsChange={(newServiceItems) => {
                         const otherItems = itemsDraft.filter((i) => i.seccion != null);
                         setItemsDraft([...otherItems, ...newServiceItems]);
@@ -1197,6 +1199,7 @@ export default function Certificados() {
                           <CertificadoServiceGrid
                             items={draftMixtoServicio}
                             seccion="servicio"
+                            conceptos={conceptos}
                             onItemsChange={(newServiceItems) => {
                               const obraItems = itemsDraft.filter((i) => i.seccion === "obra");
                               setItemsDraft([...obraItems, ...newServiceItems]);

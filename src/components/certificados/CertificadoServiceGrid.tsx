@@ -1,15 +1,18 @@
-import { useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Trash2, Plus } from "lucide-react";
-import { CATEGORIAS_CERTIFICADO, type CertificadoItemForm } from "@/hooks/useCertificados";
+import { CATEGORIAS_CERTIFICADO, type CertificadoItemForm, type CertificadoConcepto } from "@/hooks/useCertificados";
 
 const UNIDADES = ["HR", "DIA", "M3", "M2", "ML", "TN", "LT", "VJ", "UN", "GL"];
 
 const formatCurrency = (n: number) =>
   new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 0 }).format(n);
+
+const CUSTOM_VALUE = "__custom__";
 
 export interface ServiceGridRow {
   descripcion: string;
@@ -23,10 +26,30 @@ export interface ServiceGridRow {
 interface CertificadoServiceGridProps {
   items: CertificadoItemForm[];
   seccion: string | null;
+  conceptos?: CertificadoConcepto[];
   onItemsChange: (items: CertificadoItemForm[]) => void;
 }
 
-export function CertificadoServiceGrid({ items, seccion, onItemsChange }: CertificadoServiceGridProps) {
+export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItemsChange }: CertificadoServiceGridProps) {
+  const [customInputIdx, setCustomInputIdx] = useState<number | null>(null);
+
+  const conceptoOptions: ComboboxOption[] = useMemo(() => {
+    const activos = conceptos.filter((c) => c.activo);
+    const opts: ComboboxOption[] = activos.map((c) => ({
+      value: c.id,
+      label: c.nombre,
+      searchValue: `${c.nombre} ${c.categoria} ${c.etapa || ""}`,
+    }));
+    opts.push({ value: CUSTOM_VALUE, label: "✏️ Personalizado (texto libre)" });
+    return opts;
+  }, [conceptos]);
+
+  const conceptoMap = useMemo(() => {
+    const map = new Map<string, CertificadoConcepto>();
+    conceptos.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [conceptos]);
+
   const updateField = useCallback(
     (index: number, field: string, value: string | number) => {
       const updated = items.map((item, i) => {
@@ -42,11 +65,47 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
     [items, onItemsChange]
   );
 
+  const handleConceptoSelect = useCallback(
+    (index: number, conceptoId: string) => {
+      if (conceptoId === CUSTOM_VALUE) {
+        setCustomInputIdx(index);
+        // Clear concepto_id and let user type
+        const updated = items.map((item, i) => {
+          if (i !== index) return item;
+          return { ...item, concepto_id: null, descripcion: "" };
+        });
+        onItemsChange(updated);
+        return;
+      }
+      setCustomInputIdx(null);
+      const c = conceptoMap.get(conceptoId);
+      if (!c) return;
+      const updated = items.map((item, i) => {
+        if (i !== index) return item;
+        const subtotal = (item.cantidad || 0) * c.precio_unitario;
+        return {
+          ...item,
+          concepto_id: c.id,
+          descripcion: c.nombre,
+          unidad: c.unidad,
+          precio_unitario: c.precio_unitario,
+          categoria: c.categoria,
+          etapa: c.etapa,
+          cantidad_total: c.cantidad_total,
+          subtotal,
+        };
+      });
+      onItemsChange(updated);
+    },
+    [items, onItemsChange, conceptoMap]
+  );
+
   const deleteRow = useCallback(
     (index: number) => {
+      if (customInputIdx === index) setCustomInputIdx(null);
       onItemsChange(items.filter((_, i) => i !== index));
     },
-    [items, onItemsChange]
+    [items, onItemsChange, customInputIdx]
   );
 
   const addRow = useCallback(() => {
@@ -73,7 +132,7 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[180px]">Descripción</TableHead>
+              <TableHead className="min-w-[200px]">Descripción</TableHead>
               <TableHead className="min-w-[130px]">Categoría</TableHead>
               <TableHead className="min-w-[110px]">Sub Categoría</TableHead>
               <TableHead className="min-w-[90px]">Unidad</TableHead>
@@ -87,12 +146,25 @@ export function CertificadoServiceGrid({ items, seccion, onItemsChange }: Certif
             {items.map((item, index) => (
               <TableRow key={index}>
                 <TableCell className="p-1">
-                  <Input
-                    value={item.descripcion}
-                    onChange={(e) => updateField(index, "descripcion", e.target.value)}
-                    className="h-8 text-xs"
-                    placeholder="Descripción..."
-                  />
+                  {customInputIdx === index ? (
+                    <Input
+                      value={item.descripcion}
+                      onChange={(e) => updateField(index, "descripcion", e.target.value)}
+                      className="h-8 text-xs"
+                      placeholder="Descripción libre..."
+                      autoFocus
+                    />
+                  ) : (
+                    <Combobox
+                      options={conceptoOptions}
+                      value={item.concepto_id || ""}
+                      onValueChange={(v) => handleConceptoSelect(index, v)}
+                      placeholder="Seleccionar concepto..."
+                      searchPlaceholder="Buscar concepto..."
+                      emptyText="No se encontraron conceptos."
+                      className="h-8 text-xs"
+                    />
+                  )}
                 </TableCell>
                 <TableCell className="p-1">
                   <Select
