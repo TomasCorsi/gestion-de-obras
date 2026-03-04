@@ -1312,16 +1312,16 @@ export default function Certificados() {
                             <span>Subtotal Obra</span>
                             <span className="font-medium">{formatCurrency(obraSubtotal)}</span>
                           </div>
+                          {anticipoPorcentaje > 0 && (
+                            <div className="flex justify-between text-sm pl-4 text-muted-foreground">
+                              <span>Anticipo ({anticipoPorcentaje}%) s/ Obra</span>
+                              <span>- {formatCurrency(Math.round(obraSubtotal * (anticipoPorcentaje / 100)))}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-sm">
                             <span>Subtotal Servicio</span>
                             <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                           </div>
-                          {anticipoPorcentaje > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span>Anticipo ({anticipoPorcentaje}%)</span>
-                              <span className="text-muted-foreground">- {formatCurrency(Math.round(obraSubtotal * (anticipoPorcentaje / 100)))}</span>
-                            </div>
-                          )}
                           <div className="flex justify-between text-sm">
                             <span>IVA 21%</span>
                             <span>{formatCurrency(totalIva)}</span>
