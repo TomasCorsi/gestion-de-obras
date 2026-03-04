@@ -1,25 +1,26 @@
 
 
-# Edición inline de conceptos en la tabla
+# Subtotales por categoría en los totales del PDF
 
 ## Cambio
 
-Reemplazar el componente `ConceptoRow` (líneas 1935-2085 de `src/pages/Certificados.tsx`) para que las celdas de la tabla sean editables directamente, sin necesidad de abrir un diálogo con el lápiz.
+Modificar las funciones de generación de totales en `src/utils/generateCertificadoPDF.ts` para que el bloque de totales muestre subtotales desglosados por categoría (ej: "Subtotal Ejecución de obra", "Subtotal Alquiler de Maquinas") en lugar de solo "Subtotal Obra" o "Subtotal Servicio".
 
-### Comportamiento nuevo
+## Detalle técnico
 
-- **Nombre**: `Input` inline editable, se guarda al perder foco (onBlur)
-- **Unidad**: `Select` inline (ya visible, sin click extra)
-- **Precio Unitario**: `Input type="number"` inline, se guarda al perder foco
-- **Cant. Total**: `Input type="number"` inline, se guarda al perder foco
-- **Sub Categoría**: `Input` inline, se guarda al perder foco
-- **Estado (Activo/Inactivo)**: Ya es clickeable (Badge toggle), se mantiene igual
-- **Acciones**: Se elimina el botón de lápiz (ya no hace falta), se mantiene el botón de eliminar
+### Archivo: `src/utils/generateCertificadoPDF.ts`
 
-Cada campo llama a `onUpdate({ campo: nuevoValor })` en el `onBlur` del input, solo si el valor cambió respecto al original. Esto evita llamadas innecesarias a la API.
+**1. Función `generateMixtoPDF` (líneas 681-703)**
+- En lugar de calcular un único `obraSubtotal` y `servicioSubtotal`, agrupar los ítems de cada sección por categoría usando `categoriaMap`
+- Generar una línea de subtotal por cada categoría que tenga ítems (ej: "Subtotal Ejecución de obra:", "Subtotal Alquiler de Maquinas:")
+- Mantener la línea de anticipo sobre obra después de los subtotales de categorías de obra
+- Mantener "Subtotal General", "IVA" y "TOTAL" al final
 
-Se elimina el diálogo de edición (`editDialogOpen`, `editForm`, `handleSaveEdit`) ya que no será necesario.
+**2. Función `generateServicioPDF` (líneas 478-485)**
+- Agregar subtotales por categoría antes del subtotal general en el bloque de totales
 
-### Archivo a modificar
-1. `src/pages/Certificados.tsx` — reescribir `ConceptoRow` con inputs inline
+**3. Función `generateObraPDF` (líneas 636-653)**
+- Agregar subtotales por categoría antes de los totales de avance
+
+El resultado visual será similar a la imagen de referencia pero con los nombres de categoría reales.
 
