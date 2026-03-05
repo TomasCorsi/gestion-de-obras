@@ -11,7 +11,7 @@ import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 
-type AppRole = "admin" | "capataz" | "maquinista" | "ayudante";
+type AppRole = "admin" | "capataz" | "maquinista" | "ayudante" | "remitero";
 
 interface PersonalRecord {
   id: string;
@@ -35,6 +35,7 @@ const roleLabels: Record<AppRole, string> = {
   capataz: "Capataz",
   maquinista: "Maquinista",
   ayudante: "Ayudante",
+  remitero: "Remitero",
 };
 
 const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline" | "destructive"> = {
@@ -42,6 +43,7 @@ const roleBadgeVariants: Record<AppRole, "default" | "secondary" | "outline" | "
   capataz: "secondary",
   maquinista: "outline",
   ayudante: "destructive",
+  remitero: "secondary",
 };
 
 export function UserManagement() {
@@ -273,6 +275,7 @@ export function UserManagement() {
                             <SelectItem value="capataz">Capataz</SelectItem>
                             <SelectItem value="maquinista">Maquinista</SelectItem>
                             <SelectItem value="ayudante">Ayudante</SelectItem>
+                            <SelectItem value="remitero">Remitero</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
