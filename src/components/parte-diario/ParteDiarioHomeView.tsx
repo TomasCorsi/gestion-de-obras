@@ -25,6 +25,14 @@ interface ParteDiarioHomeViewProps {
   selectedDate?: Date;
   isToday?: boolean;
   mantenimientosPendientes?: MantenimientoWithRelations[];
+  // Mechanic history props
+  selectedDateMecanico?: Date;
+  isTodayMecanico?: boolean;
+  mantenimientosDia?: MantenimientoWithRelations[];
+  onPrevDayMec?: () => void;
+  onNextDayMec?: () => void;
+  onEditMantenimiento?: (mant: MantenimientoWithRelations) => void;
+  onDeleteMantenimiento?: (mant: MantenimientoWithRelations) => void;
   onPrevDay?: () => void;
   onNextDay?: () => void;
   onNewParte: () => void;
@@ -56,6 +64,13 @@ export const ParteDiarioHomeView = ({
   selectedDate = new Date(),
   isToday: isTodayProp = true,
   mantenimientosPendientes = [],
+  selectedDateMecanico = new Date(),
+  isTodayMecanico = true,
+  mantenimientosDia = [],
+  onPrevDayMec,
+  onNextDayMec,
+  onEditMantenimiento,
+  onDeleteMantenimiento,
   onPrevDay,
   onNextDay,
   onNewParte,
@@ -217,6 +232,89 @@ export const ParteDiarioHomeView = ({
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <p className="text-sm text-muted-foreground">
                 {isTodayProp ? 'No registraste entregas hoy' : 'Sin entregas este día'}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mechanic maintenance history with date navigator */}
+      {isMecanico && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" size="icon" onClick={onPrevDayMec} className="h-8 w-8">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <div className="text-center">
+              <span className="text-sm font-semibold">
+                {isTodayMecanico && <span className="text-primary mr-1">Hoy •</span>}
+                {format(selectedDateMecanico, "EEE d MMM yyyy", { locale: es })}
+              </span>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onNextDayMec} className="h-8 w-8" disabled={isTodayMecanico}>
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </div>
+
+          {mantenimientosDia.length > 0 ? (
+            <>
+              <p className="text-xs text-muted-foreground text-center">
+                {mantenimientosDia.length} mantenimiento{mantenimientosDia.length !== 1 ? 's' : ''}
+              </p>
+              <div className="space-y-2">
+                {mantenimientosDia.map(mant => {
+                  const tipoConf = TIPO_CONFIG[mant.tipo as keyof typeof TIPO_CONFIG];
+                  const estadoConf = ESTADO_CONFIG[mant.estado as keyof typeof ESTADO_CONFIG];
+                  return (
+                    <div
+                      key={mant.id}
+                      className="bg-card border border-border rounded-xl p-3 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm text-foreground truncate">
+                            {mant.maquinaria?.codigo || mant.maquinaria?.nombre || "Máquina"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                            {mant.descripcion === "Pendiente de completar" ? "Sin descripción aún" : mant.descripcion}
+                          </p>
+                          <div className="flex gap-1 mt-1.5">
+                            <Badge variant="outline" className={`text-[10px] ${tipoConf?.className || ''}`}>
+                              {tipoConf?.label || mant.tipo}
+                            </Badge>
+                            <Badge variant="outline" className={`text-[10px] ${estadoConf?.className || ''}`}>
+                              {estadoConf?.label || mant.estado}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onEditMantenimiento?.(mant)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onDeleteMantenimiento?.(mant)}
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-3 text-center">
+              <p className="text-sm text-muted-foreground">
+                {isTodayMecanico ? 'Sin mantenimientos hoy' : 'Sin mantenimientos este día'}
               </p>
             </div>
           )}

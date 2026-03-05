@@ -103,10 +103,49 @@ const ParteDiario = () => {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [obsPreload, setObsPreload] = useState<ObservacionMaquina | null>(null);
   const [editingMantenimiento, setEditingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
+  const [deletingMantenimiento, setDeletingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
+  const [selectedDateMec, setSelectedDateMec] = useState<Date>(new Date());
+  const { deleteMantenimiento } = useMantenimientos();
+
+  // todayStr needed by both repartidor and mechanic
+  const todayStr = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  })();
 
   const mantenimientosPendientes = useMemo(() => {
     return mantenimientos.filter(m => m.estado === 'pendiente');
   }, [mantenimientos]);
+
+  // Mechanic date nav
+  const selectedDateMecStr = useMemo(() => {
+    return `${selectedDateMec.getFullYear()}-${String(selectedDateMec.getMonth() + 1).padStart(2, '0')}-${String(selectedDateMec.getDate()).padStart(2, '0')}`;
+  }, [selectedDateMec]);
+  const isTodayMec = selectedDateMecStr === todayStr;
+
+  const mantenimientosDia = useMemo(() => {
+    if (!empleado) return [];
+    return mantenimientos.filter(m => m.tecnico_id === empleado.id && m.fecha === selectedDateMecStr);
+  }, [mantenimientos, empleado, selectedDateMecStr]);
+
+  const handlePrevDayMec = useCallback(() => {
+    setSelectedDateMec(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() - 1);
+      return d;
+    });
+  }, []);
+
+  const handleNextDayMec = useCallback(() => {
+    setSelectedDateMec(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + 1);
+      const today = new Date();
+      const todayLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      const dLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      return dLocal > todayLocal ? prev : d;
+    });
+  }, []);
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
@@ -126,10 +165,6 @@ const ParteDiario = () => {
   } = useCargasRepartidor(null, isRepartidor ? empleado?.id : null);
 
   // Filter deliveries by selected date (using local date to avoid UTC timezone bugs)
-  const todayStr = (() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
   const selectedDateStr = useMemo(() => {
     return `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
   }, [selectedDate]);
@@ -319,7 +354,28 @@ const ParteDiario = () => {
               mantenimientosPendientes={mantenimientosPendientes}
               onRetomarMantenimiento={handleRetomarMantenimiento}
               isDiscarding={isDeleting}
+              selectedDateMecanico={selectedDateMec}
+              isTodayMecanico={isTodayMec}
+              mantenimientosDia={mantenimientosDia}
+              onPrevDayMec={handlePrevDayMec}
+              onNextDayMec={handleNextDayMec}
+              onEditMantenimiento={handleRetomarMantenimiento}
+              onDeleteMantenimiento={(mant) => setDeletingMantenimiento(mant)}
             />
+            {isMecanico && (
+              <DeleteConfirmDialog
+                open={!!deletingMantenimiento}
+                onOpenChange={(open) => { if (!open) setDeletingMantenimiento(null); }}
+                onConfirm={async () => {
+                  if (deletingMantenimiento) {
+                    await deleteMantenimiento(deletingMantenimiento.id);
+                    setDeletingMantenimiento(null);
+                  }
+                }}
+                title="¿Eliminar mantenimiento?"
+                description="Se eliminará permanentemente este registro de mantenimiento."
+              />
+            )}
             {isRepartidor && (
               <>
                 <CargaCombustibleRepartidorDialog
