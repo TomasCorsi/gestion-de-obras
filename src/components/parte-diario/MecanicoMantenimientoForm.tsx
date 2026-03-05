@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Wrench, Loader2, Calculator } from "lucide-react";
+import { ArrowLeft, Wrench, Loader2, Calculator, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { format } from "date-fns";
-import { useMantenimientos, type MantenimientoForm, type TipoMantenimiento, type EstadoMantenimiento } from "@/hooks/useMantenimientos";
+import { useMantenimientos, type MantenimientoForm, type TipoMantenimiento, type EstadoMantenimiento, type MantenimientoWithRelations } from "@/hooks/useMantenimientos";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import {
   CHECKLIST_CAMBIO_ITEMS,
@@ -23,6 +23,7 @@ interface MecanicoMantenimientoFormProps {
   onSuccess: () => void;
   obsPreload?: ObservacionMaquina | null;
   nombreMecanico?: string;
+  editData?: MantenimientoWithRelations | null;
 }
 
 type TipoOption = { value: TipoMantenimiento; label: string; emoji: string; color: string };
@@ -45,47 +46,52 @@ export const MecanicoMantenimientoForm = ({
   onSuccess,
   obsPreload,
   nombreMecanico,
+  editData,
 }: MecanicoMantenimientoFormProps) => {
-  const { createMantenimiento } = useMantenimientos();
+  const { createMantenimiento, updateMantenimiento } = useMantenimientos();
   const { maquinarias } = useMaquinarias();
 
+  const isEditing = !!editData;
   const today = format(new Date(), "yyyy-MM-dd");
 
-  const [fecha, setFecha] = useState(today);
-  const [maquinariaId, setMaquinariaId] = useState(obsPreload?.maquinaria_id || "");
-  const [tipo, setTipo] = useState<TipoMantenimiento>(obsPreload ? "correctivo" : "preventivo");
-  const [estado, setEstado] = useState<EstadoMantenimiento>("pendiente");
-  const [descripcion, setDescripcion] = useState("");
-  const [informeTecnico, setInformeTecnico] = useState("");
-  const [repuestos, setRepuestos] = useState("");
-  const [tecnico, setTecnico] = useState(nombreMecanico || "");
-  const [horasMaquina, setHorasMaquina] = useState("");
-  const [kilometros, setKilometros] = useState("");
-  const [costoRepuestos, setCostoRepuestos] = useState("0");
-  const [costoManoObra, setCostoManoObra] = useState("0");
-  const [proximoMantenimiento, setProximoMantenimiento] = useState("");
-  const [proximoKm, setProximoKm] = useState("");
-  const [proximoHr, setProximoHr] = useState("");
-  const [alertaCampo, setAlertaCampo] = useState("");
-  const [observaciones, setObservaciones] = useState(obsPreload ? `Reporte de campo: ${obsPreload.observacion}` : "");
+  const [fecha, setFecha] = useState(editData?.fecha || today);
+  const [maquinariaId, setMaquinariaId] = useState(editData?.maquinaria_id || obsPreload?.maquinaria_id || "");
+  const [tipo, setTipo] = useState<TipoMantenimiento>(editData?.tipo as TipoMantenimiento || (obsPreload ? "correctivo" : "preventivo"));
+  const [estado, setEstado] = useState<EstadoMantenimiento>(editData?.estado as EstadoMantenimiento || "pendiente");
+  const [descripcion, setDescripcion] = useState(editData?.descripcion === "Pendiente de completar" ? "" : (editData?.descripcion || ""));
+  const [informeTecnico, setInformeTecnico] = useState(editData?.informe_tecnico || "");
+  const [repuestos, setRepuestos] = useState(editData?.repuestos || "");
+  const [tecnico, setTecnico] = useState(editData?.tecnico || nombreMecanico || "");
+  const [horasMaquina, setHorasMaquina] = useState(editData?.horas_maquina ? String(editData.horas_maquina) : "");
+  const [kilometros, setKilometros] = useState(editData?.kilometros ? String(editData.kilometros) : "");
+  const [costoRepuestos, setCostoRepuestos] = useState(editData?.costo_repuestos ? String(editData.costo_repuestos) : "0");
+  const [costoManoObra, setCostoManoObra] = useState(editData?.costo_mano_obra ? String(editData.costo_mano_obra) : "0");
+  const [proximoMantenimiento, setProximoMantenimiento] = useState(editData?.proximo_mantenimiento || "");
+  const [proximoKm, setProximoKm] = useState(editData?.proximo_service_km ? String(editData.proximo_service_km) : "");
+  const [proximoHr, setProximoHr] = useState(editData?.proximo_service_hr ? String(editData.proximo_service_hr) : "");
+  const [alertaCampo, setAlertaCampo] = useState(editData?.alerta_campo || "");
+  const [observaciones, setObservaciones] = useState(editData?.observaciones || (obsPreload ? `Reporte de campo: ${obsPreload.observacion}` : ""));
   const [isSaving, setIsSaving] = useState(false);
   const [maquinaSearch, setMaquinaSearch] = useState("");
   const [showMaquinaDropdown, setShowMaquinaDropdown] = useState(false);
-  const [checkCambio, setCheckCambio] = useState<ChecklistCambio>(emptyChecklistCambio());
-  const [checkChequeo, setCheckChequeo] = useState<ChecklistChequeo>(emptyChecklistChequeo());
+  const [checkCambio, setCheckCambio] = useState<ChecklistCambio>(editData?.checklist_cambio as ChecklistCambio || emptyChecklistCambio());
+  const [checkChequeo, setCheckChequeo] = useState<ChecklistChequeo>(editData?.checklist_chequeo as ChecklistChequeo || emptyChecklistChequeo());
 
-  // Pre-fill machine name in search when coming from obs
+  // Pre-fill machine name in search when coming from obs or editData
   useEffect(() => {
-    if (obsPreload?.maquinaria) {
+    if (editData?.maquinaria) {
+      const m = editData.maquinaria;
+      setMaquinaSearch([m.codigo, m.nombre].filter(Boolean).join(" · "));
+    } else if (obsPreload?.maquinaria) {
       const m = obsPreload.maquinaria;
       setMaquinaSearch([m.codigo, m.nombre, m.patente].filter(Boolean).join(" · "));
     }
-  }, [obsPreload]);
+  }, [obsPreload, editData]);
 
-  // Sync tecnico with logged-in mechanic's name
+  // Sync tecnico with logged-in mechanic's name (only if not editing)
   useEffect(() => {
-    if (nombreMecanico) setTecnico(nombreMecanico);
-  }, [nombreMecanico]);
+    if (nombreMecanico && !editData) setTecnico(nombreMecanico);
+  }, [nombreMecanico, editData]);
 
   const isService = tipo === "preventivo";
   const costoTotal = (parseFloat(costoRepuestos) || 0) + (parseFloat(costoManoObra) || 0);
@@ -109,44 +115,70 @@ export const MecanicoMantenimientoForm = ({
     setShowMaquinaDropdown(false);
   };
 
-  const handleSubmit = async () => {
-    const mainText = isService ? informeTecnico.trim() : descripcion.trim();
-    if (!maquinariaId || !mainText || !tecnico.trim()) return;
+  const buildPayload = (estadoOverride?: EstadoMantenimiento): MantenimientoForm => ({
+    fecha,
+    maquinaria_id: maquinariaId,
+    tipo,
+    estado: estadoOverride || estado,
+    descripcion: isService
+      ? (informeTecnico.trim() || "Pendiente de completar")
+      : (descripcion.trim() || "Pendiente de completar"),
+    informe_tecnico: isService ? (informeTecnico.trim() || undefined) : undefined,
+    checklist_cambio: isService ? checkCambio : undefined,
+    checklist_chequeo: isService ? checkChequeo : undefined,
+    repuestos: repuestos.trim() || undefined,
+    tecnico: tecnico.trim() || nombreMecanico || "Pendiente",
+    horas_maquina: parseFloat(horasMaquina) || 0,
+    kilometros: parseFloat(kilometros) || 0,
+    costo_repuestos: parseFloat(costoRepuestos) || 0,
+    costo_mano_obra: parseFloat(costoManoObra) || 0,
+    costo_total: costoTotal,
+    proximo_mantenimiento: proximoMantenimiento || undefined,
+    proximo_service_km: parseFloat(proximoKm) || undefined,
+    proximo_service_hr: parseFloat(proximoHr) || undefined,
+    alerta_campo: alertaCampo.trim() || undefined,
+    observaciones: observaciones.trim() || undefined,
+    observacion_reporte_id: obsPreload?.id || editData?.observacion_reporte_id || undefined,
+  });
 
-    const data: MantenimientoForm = {
-      fecha,
-      maquinaria_id: maquinariaId,
-      tipo,
-      estado,
-      descripcion: isService ? (informeTecnico.trim() || "Service") : descripcion.trim(),
-      informe_tecnico: isService ? informeTecnico.trim() : undefined,
-      checklist_cambio: isService ? checkCambio : undefined,
-      checklist_chequeo: isService ? checkChequeo : undefined,
-      repuestos: repuestos.trim() || undefined,
-      tecnico: tecnico.trim(),
-      horas_maquina: parseFloat(horasMaquina) || 0,
-      kilometros: parseFloat(kilometros) || 0,
-      costo_repuestos: parseFloat(costoRepuestos) || 0,
-      costo_mano_obra: parseFloat(costoManoObra) || 0,
-      costo_total: costoTotal,
-      proximo_mantenimiento: proximoMantenimiento || undefined,
-      proximo_service_km: parseFloat(proximoKm) || undefined,
-      proximo_service_hr: parseFloat(proximoHr) || undefined,
-      alerta_campo: alertaCampo.trim() || undefined,
-      observaciones: observaciones.trim() || undefined,
-      observacion_reporte_id: obsPreload?.id,
-    };
-
+  const handleSaveParcial = async () => {
+    if (!maquinariaId) return;
+    const data = buildPayload("pendiente");
     setIsSaving(true);
     try {
-      const result = await createMantenimiento(data);
-      if (result) onSuccess();
+      if (isEditing) {
+        const ok = await updateMantenimiento(editData.id, data);
+        if (ok) onSuccess();
+      } else {
+        const result = await createMantenimiento(data);
+        if (result) onSuccess();
+      }
     } finally {
       setIsSaving(false);
     }
   };
 
-  const isValid = maquinariaId && tecnico.trim() && (isService ? informeTecnico.trim() : descripcion.trim());
+  const handleFinalizar = async () => {
+    const mainText = isService ? informeTecnico.trim() : descripcion.trim();
+    if (!maquinariaId || !mainText || !tecnico.trim()) return;
+    const finalEstado = estado === "pendiente" ? "en_proceso" : estado;
+    const data = buildPayload(finalEstado);
+    setIsSaving(true);
+    try {
+      if (isEditing) {
+        const ok = await updateMantenimiento(editData.id, data);
+        if (ok) onSuccess();
+      } else {
+        const result = await createMantenimiento(data);
+        if (result) onSuccess();
+      }
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const isValidParcial = !!maquinariaId;
+  const isValidFull = maquinariaId && tecnico.trim() && (isService ? informeTecnico.trim() : descripcion.trim());
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -157,7 +189,7 @@ export const MecanicoMantenimientoForm = ({
         </Button>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold truncate">
-            {obsPreload ? "Reparación" : isService ? "Nuevo Service" : "Nueva Reparación"}
+            {isEditing ? "Continuar Mantenimiento" : obsPreload ? "Reparación" : isService ? "Nuevo Service" : "Nueva Reparación"}
           </h1>
           {obsPreload?.maquinaria && (
             <p className="text-xs text-muted-foreground truncate">
@@ -381,9 +413,12 @@ export const MecanicoMantenimientoForm = ({
       {/* Sticky footer */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border px-4 py-4 pb-safe">
         <div className="max-w-lg mx-auto flex gap-3">
-          <Button variant="outline" onClick={onBack} className="flex-1 h-13" disabled={isSaving}>Cancelar</Button>
-          <Button onClick={handleSubmit} className="flex-1 h-13 text-base font-semibold" disabled={!isValid || isSaving}>
-            {isSaving ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin" />Guardando...</>) : (<><Wrench className="w-4 h-4 mr-2" />Guardar</>)}
+          <Button variant="outline" onClick={onBack} className="shrink-0 h-13" disabled={isSaving}>Cancelar</Button>
+          <Button variant="outline" onClick={handleSaveParcial} className="flex-1 h-13 text-sm font-semibold" disabled={!isValidParcial || isSaving}>
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-1" />Guardar parcial</>}
+          </Button>
+          <Button onClick={handleFinalizar} className="flex-1 h-13 text-sm font-semibold" disabled={!isValidFull || isSaving}>
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Wrench className="w-4 h-4 mr-1" />Finalizar</>}
           </Button>
         </div>
       </div>

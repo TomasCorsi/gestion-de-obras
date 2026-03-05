@@ -1,11 +1,14 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { format, parseISO, isToday as isDateToday } from "date-fns";
 import { es } from "date-fns/locale";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
+import type { MantenimientoWithRelations } from "@/hooks/useMantenimientos";
+import { TIPO_CONFIG, ESTADO_CONFIG } from "@/components/mantenimiento/mantenimientoConstants";
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
@@ -21,6 +24,7 @@ interface ParteDiarioHomeViewProps {
   isDeletingCarga?: boolean;
   selectedDate?: Date;
   isToday?: boolean;
+  mantenimientosPendientes?: MantenimientoWithRelations[];
   onPrevDay?: () => void;
   onNextDay?: () => void;
   onNewParte: () => void;
@@ -33,6 +37,7 @@ interface ParteDiarioHomeViewProps {
   onDeleteCarga?: (carga: CargaRepartidor) => void;
   onVerAlertas?: () => void;
   onNuevoMantenimiento?: () => void;
+  onRetomarMantenimiento?: (mant: MantenimientoWithRelations) => void;
   isDiscarding?: boolean;
 }
 
@@ -50,6 +55,7 @@ export const ParteDiarioHomeView = ({
   isDeletingCarga = false,
   selectedDate = new Date(),
   isToday: isTodayProp = true,
+  mantenimientosPendientes = [],
   onPrevDay,
   onNextDay,
   onNewParte,
@@ -62,6 +68,7 @@ export const ParteDiarioHomeView = ({
   onDeleteCarga,
   onVerAlertas,
   onNuevoMantenimiento,
+  onRetomarMantenimiento,
   isDiscarding = false,
 }: ParteDiarioHomeViewProps) => {
   return (
@@ -138,7 +145,45 @@ export const ParteDiarioHomeView = ({
         </div>
       )}
 
-      {/* Date navigator + Entregas list for repartidor */}
+      {/* Pending mantenimientos for mechanic */}
+      {isMecanico && mantenimientosPendientes.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide px-1">
+            <Clock className="w-3 h-3 inline mr-1" />
+            Mantenimientos pendientes · {mantenimientosPendientes.length}
+          </p>
+          {mantenimientosPendientes.map(mant => {
+            const tipoConf = TIPO_CONFIG[mant.tipo as keyof typeof TIPO_CONFIG];
+            return (
+              <button
+                key={mant.id}
+                onClick={() => onRetomarMantenimiento?.(mant)}
+                className="w-full text-left bg-card border border-border rounded-xl p-3 shadow-sm hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground truncate">
+                      {mant.maquinaria?.codigo || mant.maquinaria?.nombre || "Máquina"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                      {mant.descripcion === "Pendiente de completar" ? "Sin descripción aún" : mant.descripcion}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {format(parseISO(mant.fecha), "d MMM", { locale: es })}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <Badge variant="outline" className={`text-[10px] ${tipoConf?.className || ''}`}>
+                      {tipoConf?.label || mant.tipo}
+                    </Badge>
+                    <span className="text-xs text-primary font-medium">Continuar →</span>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
       {isRepartidor && (
         <div className="space-y-2">
           {/* Date navigator */}
