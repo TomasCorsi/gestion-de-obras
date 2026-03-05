@@ -21,6 +21,7 @@ import { CargaCombustibleRepartidorDialog } from "@/components/parte-diario/Carg
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useObservacionesMaquina } from "@/hooks/useObservacionesMaquina";
 import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
+import { useMantenimientos, type MantenimientoWithRelations } from "@/hooks/useMantenimientos";
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -56,6 +57,7 @@ const ParteDiario = () => {
   const { obras: obrasFromDB = [] } = useObras();
   const { maquinarias: maquinariasFromDB = [] } = useMaquinarias();
   const { pendientes: alertasPendientes } = useObservacionesMaquina();
+  const { mantenimientos } = useMantenimientos();
 
   // Offline cache: save when we have fresh data, fall back to cache when empty
   useEffect(() => {
@@ -100,6 +102,11 @@ const ParteDiario = () => {
   const [deletingCarga, setDeletingCarga] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [obsPreload, setObsPreload] = useState<ObservacionMaquina | null>(null);
+  const [editingMantenimiento, setEditingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
+
+  const mantenimientosPendientes = useMemo(() => {
+    return mantenimientos.filter(m => m.estado === 'pendiente');
+  }, [mantenimientos]);
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
@@ -260,12 +267,20 @@ const ParteDiario = () => {
 
   const handleBackFromMantenimiento = () => {
     setObsPreload(null);
+    setEditingMantenimiento(null);
     setView('home');
   };
 
   const handleMantenimientoSuccess = () => {
     setObsPreload(null);
+    setEditingMantenimiento(null);
     setView('home');
+  };
+
+  const handleRetomarMantenimiento = (mant: MantenimientoWithRelations) => {
+    setEditingMantenimiento(mant);
+    setObsPreload(null);
+    setView('mantenimiento');
   };
 
   return (
@@ -301,6 +316,8 @@ const ParteDiario = () => {
               onDeleteCarga={(carga) => setDeletingCarga(carga)}
               onVerAlertas={handleGoToAlerts}
               onNuevoMantenimiento={() => handleGoToMantenimiento()}
+              mantenimientosPendientes={mantenimientosPendientes}
+              onRetomarMantenimiento={handleRetomarMantenimiento}
               isDiscarding={isDeleting}
             />
             {isRepartidor && (
@@ -356,6 +373,7 @@ const ParteDiario = () => {
             onSuccess={handleMantenimientoSuccess}
             obsPreload={obsPreload}
             nombreMecanico={empleado.nombreCompleto}
+            editData={editingMantenimiento}
           />
         )}
 
