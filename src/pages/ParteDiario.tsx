@@ -429,6 +429,7 @@ const ParteDiario = () => {
             onSuccess={handleMantenimientoSuccess}
             obsPreload={obsPreload}
             nombreMecanico={empleado.nombreCompleto}
+            empleadoId={empleado.id}
             editData={editingMantenimiento}
           />
         )}

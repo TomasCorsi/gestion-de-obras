@@ -23,6 +23,7 @@ interface MecanicoMantenimientoFormProps {
   onSuccess: () => void;
   obsPreload?: ObservacionMaquina | null;
   nombreMecanico?: string;
+  empleadoId?: string;
   editData?: MantenimientoWithRelations | null;
 }
 
@@ -46,6 +47,7 @@ export const MecanicoMantenimientoForm = ({
   onSuccess,
   obsPreload,
   nombreMecanico,
+  empleadoId,
   editData,
 }: MecanicoMantenimientoFormProps) => {
   const { createMantenimiento, updateMantenimiento } = useMantenimientos();
@@ -139,6 +141,7 @@ export const MecanicoMantenimientoForm = ({
     alerta_campo: alertaCampo.trim() || undefined,
     observaciones: observaciones.trim() || undefined,
     observacion_reporte_id: obsPreload?.id || editData?.observacion_reporte_id || undefined,
+    tecnico_id: empleadoId || editData?.tecnico_id || undefined,
   });
 
   const handleSaveParcial = async () => {
