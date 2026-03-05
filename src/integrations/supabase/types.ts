@@ -1055,6 +1055,7 @@ export type Database = {
           fecha_inicio: string | null
           id: string
           nombre: string
+          numero: string | null
           responsable_id: string | null
           ubicacion: string | null
           updated_at: string
@@ -1068,6 +1069,7 @@ export type Database = {
           fecha_inicio?: string | null
           id?: string
           nombre: string
+          numero?: string | null
           responsable_id?: string | null
           ubicacion?: string | null
           updated_at?: string
@@ -1081,6 +1083,7 @@ export type Database = {
           fecha_inicio?: string | null
           id?: string
           nombre?: string
+          numero?: string | null
           responsable_id?: string | null
           ubicacion?: string | null
           updated_at?: string
