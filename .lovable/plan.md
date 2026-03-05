@@ -1,31 +1,26 @@
 
 
-# Nuevo rol "Remitero" - Solo acceso a Remitos
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Resumen
-Crear un nuevo rol de aplicación `remitero` que solo tenga acceso a la sección de Remitos con permisos completos de lectura y escritura (CRUD).
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambios necesarios
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 1. Base de datos
-- **Agregar valor al enum `app_role`**: `ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'remitero'`
-- **RLS en tabla `remitos`**: Agregar política para que `remitero` pueda hacer CRUD completo (INSERT, SELECT, UPDATE, DELETE)
-- **RLS en tablas auxiliares**: Agregar políticas SELECT para `remitero` en `obras`, `maquinarias` y `clientes` (necesarias para los selectores/dropdowns del formulario de remitos)
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-### 2. Auth (`src/hooks/useAuth.tsx`)
-- Agregar `'remitero'` al tipo `AppRole`
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-### 3. Navegación - Redirección automática
-- **`src/pages/Index.tsx`**: Redirigir a `remitero` directamente a `/remitos` (igual que se hace con otros roles no-admin)
-- **`src/components/layout/Sidebar.tsx`**: Agregar `'remitero'` a los roles permitidos del item "Remitos"
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-### 4. Rutas (`src/App.tsx`)
-- Agregar `'remitero'` a `requiredRoles` de la ruta `/remitos`
-
-### 5. Trigger de registro (`handle_new_user`)
-- No requiere cambio: el rol `remitero` se asignaría manualmente desde Configuración, no automáticamente al registrarse
-
-### 6. Componentes de navegación
-- **`src/pages/Index.tsx`** (apps array): Agregar `'remitero'` solo al item de Remitos
-- **`src/components/layout/TopNavbar.tsx`**: El navbar ya funciona para todos los roles autenticados
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
