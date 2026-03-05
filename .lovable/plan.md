@@ -1,25 +1,24 @@
 
 
-# Fix: Botón de agregar filas tapado en grilla de Remitos
+# Fix: Fecha aparece vacía en grilla de Remitos
 
 ## Problema
-En modo pantalla completa, el botón "+" de `react-datasheet-grid` (que aparece abajo de la grilla para agregar filas) queda tapado porque el cálculo de altura del grid no tiene en cuenta todo el espacio ocupado por la toolbar, el texto de ayuda y el padding del contenedor.
-
-## Causa
-`gridHeight = window.innerHeight - 180` no descuenta correctamente:
-- Padding del contenedor (`p-4` = 32px arriba+abajo)
-- Toolbar de filtros + botones (~40px)
-- Texto de ayuda (~24px)
-- Header superior (~60px)
+La grilla usa `isoDateColumn` de `react-datasheet-grid`, que internamente usa un `<input type="date">` nativo del navegador. Esto causa problemas de timezone: al seleccionar una fecha, se convierte a UTC con `toISOString()`, lo que puede desplazar el día y hacer que el valor se pierda o muestre vacío.
 
 ## Solución
+Reemplazar `isoDateColumn` por el componente custom `dateColumn` que ya existe en `src/components/shared/dateColumn.tsx`. Este componente:
+- Usa un input de texto con formato `dd/mm/aaaa` (más natural para Argentina)
+- Parsea y formatea fechas en timezone local sin conversión UTC
+- Ya maneja correctamente copiar/pegar y navegación por teclado
 
-### `src/components/remitos/RemitosDataGrid.tsx` (línea 838)
-Aumentar el offset de 180 a ~230 para que la grilla no se desborde del viewport y el botón de agregar filas quede visible:
+## Cambio en `src/components/remitos/RemitosDataGrid.tsx`
 
+1. **Import**: Quitar `isoDateColumn` del import de `react-datasheet-grid`. Agregar import de `dateColumn` desde `@/components/shared/dateColumn`.
+
+2. **Columna fecha** (linea ~312): Cambiar `isoDateColumn` por `dateColumn`:
 ```typescript
-const gridHeight = fullScreen ? window.innerHeight - 230 : 500;
+{ ...keyColumn("fecha", dateColumn), title: ..., minWidth: 120 }
 ```
 
-Esto da espacio suficiente para que el botón "+" nativo de la grilla y la scrollbar horizontal no se superpongan ni queden fuera de vista.
+Esto es un cambio de 2 líneas que resuelve el problema de raíz.
 
