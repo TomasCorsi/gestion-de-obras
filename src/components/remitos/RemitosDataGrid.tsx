@@ -150,7 +150,7 @@ export function RemitosDataGrid({
   const obrasOptions = useMemo(() => {
     const options = obras.map((o) => ({
       value: o.nombre,
-      label: o.nombre,
+      label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
     }));
     return [{ value: "", label: "Seleccionar..." }, ...options];
   }, [obras]);
