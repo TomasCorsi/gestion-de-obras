@@ -5,6 +5,7 @@ import {
   floatColumn,
   keyColumn,
   intColumn,
+  isoDateColumn,
 } from "react-datasheet-grid";
 import "react-datasheet-grid/dist/style.css";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
 import { GridFilterToolbar, ColumnFilterHeader, useGridFilters, ColumnFilterConfig } from "@/components/shared/GridFilterToolbar";
 import { formatDate } from "@/lib/utils";
-import { dateColumn } from "@/components/shared/dateColumn";
 
 // Type for react-datasheet-grid operations
 interface Operation {
@@ -309,7 +309,7 @@ export function RemitosDataGrid({
       { ...keyColumn("remito_tercero", textColumn), title: "Rem. Tercero", minWidth: 110 },
       { ...keyColumn("remito_local", textColumn), title: "Rem. Local", minWidth: 110 },
       { 
-        ...keyColumn("fecha", dateColumn), 
+        ...keyColumn("fecha", isoDateColumn), 
         title: (
           <ColumnFilterHeader
             column="fecha"
