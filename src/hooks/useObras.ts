@@ -7,6 +7,7 @@ export type EstadoObra = "activa" | "pendiente" | "finalizada" | "pausada";
 export interface ObraDB {
   id: string;
   nombre: string;
+  numero: string | null;
   ubicacion: string | null;
   descripcion: string | null;
   estado: EstadoObra;
@@ -25,6 +26,7 @@ export interface ObraWithRelations extends ObraDB {
 
 export interface ObraForm {
   nombre: string;
+  numero?: string;
   ubicacion?: string;
   descripcion?: string;
   estado: EstadoObra;
@@ -64,6 +66,7 @@ export function useObras() {
     mutationFn: async (obra: ObraForm) => {
       const insertData = {
         nombre: obra.nombre,
+        numero: obra.numero || null,
         estado: obra.estado,
         ubicacion: obra.ubicacion || null,
         descripcion: obra.descripcion || null,

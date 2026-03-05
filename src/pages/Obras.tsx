@@ -70,6 +70,7 @@ export default function Obras() {
 
   const [formData, setFormData] = useState<ObraForm>({
     nombre: "",
+    numero: "",
     ubicacion: "",
     descripcion: "",
     estado: "pendiente",
@@ -84,9 +85,11 @@ export default function Obras() {
   );
 
   const filteredObras = obras.filter((obra) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      obra.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (obra.ubicacion?.toLowerCase() || "").includes(searchTerm.toLowerCase());
+      obra.nombre.toLowerCase().includes(term) ||
+      (obra.numero?.toLowerCase() || "").includes(term) ||
+      (obra.ubicacion?.toLowerCase() || "").includes(term);
     const matchesEstado = estadoFilter === "todos" || obra.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
@@ -95,6 +98,7 @@ export default function Obras() {
     setIsEditing(false);
     setFormData({
       nombre: "",
+      numero: "",
       ubicacion: "",
       descripcion: "",
       estado: "pendiente",
@@ -111,6 +115,7 @@ export default function Obras() {
     setSelectedObra(obra);
     setFormData({
       nombre: obra.nombre,
+      numero: obra.numero || "",
       ubicacion: obra.ubicacion || "",
       descripcion: obra.descripcion || "",
       estado: obra.estado,
@@ -246,7 +251,12 @@ export default function Obras() {
                       <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
                         <Building2 className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="font-medium text-foreground">{obra.nombre}</span>
+                      <div>
+                        <span className="font-medium text-foreground">{obra.nombre}</span>
+                        {obra.numero && (
+                          <p className="text-xs text-muted-foreground">N° {obra.numero}</p>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
@@ -306,7 +316,7 @@ export default function Obras() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2 space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="nombre">Obra *</Label>
               <Input
                 id="nombre"
@@ -315,6 +325,16 @@ export default function Obras() {
                 className="bg-muted border-border"
                 required
                 placeholder="Nombre de la obra"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="numero">N° de Obra</Label>
+              <Input
+                id="numero"
+                value={formData.numero}
+                onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                className="bg-muted border-border"
+                placeholder="Ej: 001, OB-2025-01"
               />
             </div>
             <div className="space-y-2">
@@ -430,6 +450,7 @@ export default function Obras() {
           <div className="space-y-4">
             <DetailSection title="Información General">
               <DetailRow label="Obra" value={selectedObra.nombre} />
+              <DetailRow label="N° de Obra" value={selectedObra.numero || "-"} />
               <DetailRow label="Cliente" value={selectedObra.cliente?.nombre || "-"} />
               <DetailRow label="Estado" value={estadoConfig[selectedObra.estado].label} />
               <DetailRow label="Responsable" value={selectedObra.responsable ? `${selectedObra.responsable.nombre} ${selectedObra.responsable.apellido}` : "-"} />
