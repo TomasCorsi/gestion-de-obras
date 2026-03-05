@@ -835,7 +835,7 @@ export function RemitosDataGrid({
     };
   }, [createdRowIds]);
 
-  const gridHeight = fullScreen ? window.innerHeight - 180 : 500;
+  const gridHeight = fullScreen ? window.innerHeight - 230 : 500;
   
   // Callback when cell becomes active - capture snapshot
   const handleActiveCellChange = useCallback(({ cell }: { cell: { col: number; row: number } | null }) => {
