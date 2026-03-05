@@ -24,7 +24,7 @@ import { TopNavbar } from "@/components/layout/TopNavbar";
 
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
 
 interface AppItem {
   icon: React.ElementType;
@@ -98,10 +98,10 @@ const apps: AppItem[] = [
     iconColor: "text-amber-500",
     bgColor: "bg-amber-500/15",
     description: "Gestión de remitos",
-    roles: ['admin', 'capataz', 'maquinista']
+    roles: ['admin', 'capataz', 'maquinista', 'remitero']
   },
   { 
-    icon: HardHat, 
+    icon: HardHat,
     label: "Personal", 
     path: "/personal", 
     iconColor: "text-green-500",
@@ -178,10 +178,14 @@ const Index = () => {
   const { hasRole, loading: loadingAuth, role } = useAuth();
   const navigate = useNavigate();
 
-  // Redirigir usuarios no-admin a /parte-diario
+  // Redirigir usuarios no-admin a su sección correspondiente
   useEffect(() => {
     if (!loadingAuth && role && role !== 'admin') {
-      navigate('/parte-diario', { replace: true });
+      if (role === 'remitero') {
+        navigate('/remitos', { replace: true });
+      } else {
+        navigate('/parte-diario', { replace: true });
+      }
     }
   }, [role, loadingAuth, navigate]);
 

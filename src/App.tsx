@@ -107,7 +107,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/remitos" element={
-                <ProtectedRoute requiredRoles={['admin']}>
+                <ProtectedRoute requiredRoles={['admin', 'remitero']}>
                   <Remitos />
                 </ProtectedRoute>
               } />
@@ -166,7 +166,7 @@ const App = () => (
 
               {/* Mi Perfil - accessible to all authenticated users */}
               <Route path="/mi-perfil" element={
-                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante']}>
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante', 'remitero']}>
                   <MiPerfil />
                 </ProtectedRoute>
               } />

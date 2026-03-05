@@ -27,7 +27,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
 
 interface MenuItem {
   icon: typeof LayoutDashboard;
@@ -45,7 +45,7 @@ const menuItems: MenuItem[] = [
   { icon: HardHat, label: "Personal", path: "/personal", roles: ['admin', 'capataz'] },
   { icon: Truck, label: "Maquinarias", path: "/maquinarias", roles: ['admin', 'capataz'] },
   { icon: Route, label: "Viajes", path: "/viajes", roles: ['admin', 'capataz', 'maquinista'] },
-  { icon: Receipt, label: "Remitos", path: "/remitos", roles: ['admin', 'capataz', 'maquinista'] },
+  { icon: Receipt, label: "Remitos", path: "/remitos", roles: ['admin', 'capataz', 'maquinista', 'remitero'] },
   { icon: Wallet, label: "Gastos", path: "/gastos", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
   { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: Package, label: "Stock", path: "/stock", roles: ['admin', 'capataz', 'maquinista'] },
