@@ -22,166 +22,160 @@ interface EPPPDFData {
 }
 
 export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFData) {
-  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 15;
-  let y = 15;
+  const margin = 10;
+  const boxW = pageW - margin * 2;
+  let y = 10;
 
-  // Title
-  doc.setFontSize(11);
-  doc.setFont("helvetica", "bold");
-  doc.text("ENTREGA DE ROPA DE TRABAJO Y", pageW / 2, y, { align: "center" });
-  y += 5;
-  doc.text("ELEMENTOS DE PROTECCIÓN PERSONAL", pageW / 2, y, { align: "center" });
-  y += 5;
+  const fechaFormatted = new Date(fecha + "T12:00:00").toLocaleDateString("es-AR");
+  const rolLabel = ROL_LABELS[personal.rol] || personal.rol;
+  const productNames = items.map((i) => i.producto).join(", ");
+
+  // --- Top right: Resolución ---
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.text("Resolución 299/11, Anexo I", pageW / 2, y, { align: "center" });
-  y += 8;
+  doc.setFont("helvetica", "bolditalic");
+  doc.text("Resolución 299/11, Anexo I", pageW - margin, y + 2, { align: "right" });
 
-  // Company data box
+  // --- Title bar ---
+  y += 5;
+  doc.setFillColor(220, 220, 220);
+  doc.rect(margin, y, boxW, 7, "F");
   doc.setDrawColor(0);
   doc.setLineWidth(0.3);
-  const boxW = pageW - margin * 2;
-  doc.rect(margin, y, boxW, 28);
+  doc.rect(margin, y, boxW, 7);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text("ENTREGA DE ROPA DE TRABAJO Y ELEMENTOS DE PROTECCIÓN PERSONAL", pageW / 2, y + 5, { align: "center" });
+  y += 7;
 
+  // --- Company data rows ---
+  const rowH = 6;
+  const fs = 8;
+
+  // Row 1: Razón Social + CUIT
+  doc.rect(margin, y, boxW, rowH);
+  doc.setFontSize(fs);
+  doc.setFont("helvetica", "normal");
+  const midX = margin + boxW * 0.65;
+  doc.line(midX, y, midX, y + rowH);
+  drawField(doc, margin + 2, y + 4.5, "(1)", "Razón Social:", "CALAMINA SUR S.A", fs);
+  drawField(doc, midX + 2, y + 4.5, "(2)", "C.U.I.T.:", "30-71457642-5", fs);
+  y += rowH;
+
+  // Row 2: Dirección + Localidad + CP + Provincia
+  doc.rect(margin, y, boxW, rowH);
+  const col2 = margin + boxW * 0.35;
+  const col3 = margin + boxW * 0.55;
+  const col4 = margin + boxW * 0.7;
+  doc.line(col2, y, col2, y + rowH);
+  doc.line(col3, y, col3, y + rowH);
+  doc.line(col4, y, col4, y + rowH);
+  drawField(doc, margin + 2, y + 4.5, "(3)", "Dirección:", "MARIANO CASTEX 499", fs);
+  drawField(doc, col2 + 2, y + 4.5, "(4)", "Localidad:", "CANNING", fs);
+  drawField(doc, col3 + 2, y + 4.5, "(5)", "C.P.:", "1804", fs);
+  drawField(doc, col4 + 2, y + 4.5, "(6)", "Provincia:", "BUENOS AIRES", fs);
+  y += rowH;
+
+  // Row 3: Nombre + DNI
+  doc.rect(margin, y, boxW, rowH);
+  const dniCol = margin + boxW * 0.7;
+  doc.line(dniCol, y, dniCol, y + rowH);
+  const fullName = `${personal.apellido || ""} ${personal.nombre || ""}`.trim().toUpperCase();
+  drawField(doc, margin + 2, y + 4.5, "(7)", "Nombre y Apellido del Trabajador:", fullName, fs);
+  drawField(doc, dniCol + 2, y + 4.5, "(8)", "D.N.I.:", personal.dni || "-", fs);
+  y += rowH;
+
+  // Row 4: Puesto + Descripción EPP
+  const row4H = 14;
+  doc.rect(margin, y, boxW, row4H);
+  const descCol = margin + boxW * 0.35;
+  doc.line(descCol, y, descCol, y + row4H);
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.text("(9)", margin + 2, y + 4);
+  doc.text("Descripción breve del puesto/s de trabajo en el/los cuales se desempeña el trabajador:", margin + 7, y + 4);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text(rolLabel, margin + 5, y + 10);
+
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.text("(10)", descCol + 2, y + 4);
+  doc.text("Elementos de protección personal, necesarios para el trabajador, según el puesto de trabajo:", descCol + 9, y + 4);
   doc.setFontSize(8);
-  const col1 = margin + 3;
-  const col2 = margin + boxW / 2 + 3;
-  let by = y + 5;
-
   doc.setFont("helvetica", "bold");
-  doc.text("Razón Social:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("CALAMINA SUR S.R.L.", col1 + 28, by);
+  const descLines = doc.splitTextToSize(productNames + ".", boxW * 0.65 - 10);
+  doc.text(descLines, descCol + 5, y + 9);
+  y += row4H;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("CUIT:", col2, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("30-71811533-0", col2 + 12, by);
-
-  by += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text("Dirección:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("Av. del Libertador 1000", col1 + 22, by);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Localidad:", col2, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("Bahía Blanca", col2 + 22, by);
-
-  by += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text("CP:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("8000", col1 + 10, by);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Provincia:", col2, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("Buenos Aires", col2 + 22, by);
-
-  by += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text("Actividad:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text("Construcción", col1 + 22, by);
-
-  y += 32;
-
-  // Employee data box
-  doc.rect(margin, y, boxW, 18);
-  by = y + 5;
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Nombre y Apellido:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${personal.nombre || ""} ${personal.apellido || ""}`.trim(), col1 + 38, by);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("D.N.I.:", col2, by);
-  doc.setFont("helvetica", "normal");
-  doc.text(personal.dni || "-", col2 + 14, by);
-
-  by += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text("Puesto de Trabajo:", col1, by);
-  doc.setFont("helvetica", "normal");
-  doc.text(ROL_LABELS[personal.rol] || personal.rol, col1 + 38, by);
-
-  by += 5;
-  doc.setFont("helvetica", "bold");
-  doc.text("Descripción del E.P.P. entregado:", col1, by);
-
-  y += 22;
-
-  // Description paragraph
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "normal");
-  const descText =
-    "Hago entrega de los Elementos de Protección Personal que se detallan a continuación, los cuales deberán ser utilizados obligatoriamente durante la jornada laboral, de acuerdo a la tarea asignada y conforme a lo establecido en la Ley 19.587 y su Decreto Reglamentario 351/79 y la Resolución SRT 299/11.";
-  const splitDesc = doc.splitTextToSize(descText, boxW - 6);
-  doc.text(splitDesc, col1, y);
-  y += splitDesc.length * 3.5 + 3;
-
-  // Items table
-  const fechaFormatted = new Date(fecha + "T12:00:00").toLocaleDateString("es-AR");
+  // --- Items table ---
+  y += 1;
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     head: [
-      ["N°", "Producto", "Tipo / Modelo", "Marca", "Cert.", "Cant.", "Fecha Entrega", "Firma Trabajador"],
+      [
+        { content: "", styles: { cellWidth: 8 } },
+        { content: "(11)\nProducto", styles: { cellWidth: 38 } },
+        { content: "(12)\nTipo // Modelo", styles: { cellWidth: 50 } },
+        { content: "(13)\nMarca", styles: { cellWidth: 35 } },
+        { content: "(14) Posee\ncertificación\nSI // NO", styles: { cellWidth: 22, halign: "center" } },
+        { content: "(15)\nCantidad", styles: { cellWidth: 20, halign: "center" } },
+        { content: "(16)\nFecha de entrega", styles: { cellWidth: 30, halign: "center" } },
+        { content: "(17)\nFirma del trabajador", styles: { cellWidth: 50 } },
+      ],
     ],
     body: items.map((item, i) => [
       (i + 1).toString(),
-      item.producto,
-      item.tipo_modelo || "",
-      item.marca || "",
+      item.producto.toUpperCase(),
+      (item.tipo_modelo || "").toUpperCase(),
+      (item.marca || "").toUpperCase(),
       item.posee_certificacion ? "SI" : "NO",
       item.cantidad.toString(),
       fechaFormatted,
-      "", // Firma en blanco
+      "",
     ]),
-    styles: { fontSize: 7.5, cellPadding: 2 },
-    headStyles: { fillColor: [60, 60, 60], textColor: 255, fontSize: 7.5, fontStyle: "bold" },
+    styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.3 },
+    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontSize: 7, fontStyle: "bold", lineColor: [0, 0, 0], lineWidth: 0.3 },
+    bodyStyles: { textColor: [0, 0, 0] },
     columnStyles: {
-      0: { cellWidth: 10, halign: "center" },
-      1: { cellWidth: 32 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 22 },
-      4: { cellWidth: 12, halign: "center" },
-      5: { cellWidth: 12, halign: "center" },
-      6: { cellWidth: 24, halign: "center" },
-      7: { cellWidth: 30 },
+      0: { halign: "center", fontStyle: "bold" },
+      4: { halign: "center" },
+      5: { halign: "center" },
+      6: { halign: "center" },
     },
     theme: "grid",
   });
 
-  y = (doc as any).lastAutoTable.finalY + 10;
+  y = (doc as any).lastAutoTable.finalY + 15;
 
-  // Add empty rows for additional items
-  const emptyRows = Math.max(0, 4 - items.length);
-  if (emptyRows > 0 && y < 230) {
-    // Already handled by the table
-  }
+  // --- Signature blocks ---
+  const pageH = doc.internal.pageSize.getHeight();
+  const sigY = Math.min(Math.max(y, pageH - 40), pageH - 25);
 
-  // Signature blocks at bottom
-  const sigY = Math.max(y + 15, 240);
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.line(margin, sigY, margin + 70, sigY);
+  doc.text("Firma y aclaración del Empleador", margin, sigY + 4);
 
-  if (sigY < doc.internal.pageSize.getHeight() - 30) {
-    doc.setFontSize(8);
-    doc.setFont("helvetica", "normal");
-
-    // Employer signature
-    doc.line(margin, sigY, margin + 60, sigY);
-    doc.text("Firma y aclaración del Empleador", margin, sigY + 4);
-
-    // Employee signature
-    doc.line(pageW - margin - 60, sigY, pageW - margin, sigY);
-    doc.text("Firma y aclaración del Trabajador", pageW - margin - 60, sigY + 4);
-  }
+  doc.line(pageW - margin - 70, sigY, pageW - margin, sigY);
+  doc.text("Firma y aclaración del Trabajador", pageW - margin - 70, sigY + 4);
 
   doc.save(`EPP_${personal.apellido || "empleado"}_${personal.nombre || ""}_${fecha}.pdf`);
+}
+
+function drawField(doc: jsPDF, x: number, y: number, num: string, label: string, value: string, fs: number) {
+  doc.setFontSize(6);
+  doc.setFont("helvetica", "normal");
+  doc.text(num, x, y);
+  const numW = doc.getTextWidth(num) + 1;
+  doc.setFontSize(fs);
+  doc.setFont("helvetica", "bold");
+  doc.text(label, x + numW, y);
+  const labelW = doc.getTextWidth(label) + 2;
+  doc.setFont("helvetica", "normal");
+  doc.text(value, x + numW + labelW, y);
 }
