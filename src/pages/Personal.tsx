@@ -40,6 +40,7 @@ import {
   Users,
   Palmtree,
   FileText,
+  ShieldCheck,
   Building,
   Wallet,
 } from "lucide-react";
