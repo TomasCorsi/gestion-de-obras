@@ -1,27 +1,26 @@
 
 
-# Unificar modo grilla dentro del modo tabla de Remitos
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Idea
-En lugar de tener dos modos separados (tabla read-only con fullscreen toggle vs grilla editable), integrar la grilla simplificada (`RemitosSimpleGrid`) directamente dentro del layout principal (`MainLayout`) del modo tabla. Así todo queda en una sola vista con los filtros, stats y la grilla editable juntos.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambios en `src/pages/Remitos.tsx`
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-1. **Eliminar el modo fullscreen** — Remover el bloque condicional `if (viewMode === "grid")` (líneas 300-373) que renderiza la grilla en pantalla completa con `fixed inset-0 z-50`.
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-2. **Reemplazar la tabla read-only** (líneas 465-560) por el `RemitosSimpleGrid` directamente dentro del `MainLayout`, debajo de los filtros y stats existentes.
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-3. **Eliminar el toggle Tabla/Grilla** — Ya no hacen falta dos modos. Queda una sola vista con:
-   - `FilterBar` + barra de búsqueda (ya existentes)
-   - Stats cards (ya existentes)  
-   - `RemitosSimpleGrid` editable (reemplaza la tabla read-only)
-   - Botones de Importar y Agregar fila (dentro del grid)
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-4. **Eliminar el botón "Nuevo Remito"** del header — La grilla ya tiene su propio botón "Agregar fila".
-
-5. **Eliminar estados y lógica del form dialog** (`formOpen`, `handleNew`, `handleEdit`, `handleSubmit`, el `FormDialog` completo) ya que la edición se hace inline en la grilla.
-
-6. **Mantener** el `DetailDialog` (ver detalle) y `DeleteConfirmDialog` por si se necesitan desde otro lugar, o eliminarlos si quedan sin uso.
-
-El resultado es una sola pantalla con filtros arriba, KPIs, y la grilla editable inline abajo — todo integrado sin cambiar de modo.
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
