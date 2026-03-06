@@ -72,6 +72,25 @@ export function EntregaEPPTab() {
   };
 
   const [generatingMasivo, setGeneratingMasivo] = useState(false);
+  const ALL_ROLES = [
+    { value: "capataz", label: "Capataz" },
+    { value: "maquinista", label: "Maquinista" },
+    { value: "chofer", label: "Chofer" },
+    { value: "administrativo", label: "Administrativo" },
+    { value: "ayudante", label: "Ayudante" },
+    { value: "sereno", label: "Sereno" },
+    { value: "mecanico", label: "Mecánico" },
+    { value: "topografo", label: "Topógrafo" },
+    { value: "repartidor_calecita", label: "Repartidor Calecita" },
+  ];
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(ALL_ROLES.map((r) => r.value));
+
+  const toggleRole = (role: string) => {
+    setSelectedRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
+    );
+  };
+
 
   const handleSaveTemplate = () => {
     localStorage.setItem("epp-items-template", JSON.stringify(items));
@@ -84,19 +103,23 @@ export function EntregaEPPTab() {
       toast.error("Agregá al menos un producto en la plantilla");
       return;
     }
-    const empleadosActivos = personal.filter((p) => p.activo);
-    if (empleadosActivos.length === 0) {
-      toast.error("No hay empleados activos");
+    if (selectedRoles.length === 0) {
+      toast.error("Seleccioná al menos un rol");
+      return;
+    }
+    const empleadosFiltrados = personal.filter((p) => p.activo && selectedRoles.includes(p.rol));
+    if (empleadosFiltrados.length === 0) {
+      toast.error("No hay empleados activos con los roles seleccionados");
       return;
     }
     setGeneratingMasivo(true);
     try {
       await generateEntregaEPPMasivoPDF({
-        empleados: empleadosActivos,
+        empleados: empleadosFiltrados,
         items: validItems,
         fecha,
       });
-      toast.success(`PDF generado con ${empleadosActivos.length} certificados`);
+      toast.success(`PDF generado con ${empleadosFiltrados.length} certificados`);
     } catch {
       toast.error("Error al generar PDF masivo");
     } finally {
@@ -281,14 +304,43 @@ export function EntregaEPPTab() {
       </div>
 
       {/* Bulk generation */}
-      <div className="card-industrial p-6 space-y-3">
+      <div className="card-industrial p-6 space-y-4">
         <h4 className="font-medium text-foreground">Generación Masiva</h4>
         <p className="text-sm text-muted-foreground">
-          Genera un único PDF con un certificado por cada empleado activo ({personal.filter((p) => p.activo).length} empleados), usando la plantilla de elementos actual y la fecha seleccionada. No registra entregas en el sistema.
+          Genera un único PDF con un certificado por cada empleado activo de los roles seleccionados, usando la plantilla y fecha actuales.
         </p>
+        <div className="space-y-2">
+          <Label>Roles a incluir</Label>
+          <div className="flex flex-wrap gap-2">
+            {ALL_ROLES.map((role) => {
+              const count = personal.filter((p) => p.activo && p.rol === role.value).length;
+              const isSelected = selectedRoles.includes(role.value);
+              return (
+                <button
+                  key={role.value}
+                  type="button"
+                  onClick={() => toggleRole(role.value)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium border transition-colors ${
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted text-muted-foreground border-border hover:bg-accent"
+                  }`}
+                >
+                  {role.label}
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-[1.25rem] px-1 text-xs">
+                    {count}
+                  </Badge>
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {personal.filter((p) => p.activo && selectedRoles.includes(p.rol)).length} empleados seleccionados
+          </p>
+        </div>
         <Button
           onClick={handleGenerarMasivo}
-          disabled={generatingMasivo}
+          disabled={generatingMasivo || selectedRoles.length === 0}
           variant="outline"
         >
           <Files className="w-4 h-4 mr-2" />
