@@ -110,36 +110,43 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
   y += rh;
 
   // ─── Row 4: Puesto + Descripción EPP ───
-  const r4h = 16;
+  const r4h = 22;
   doc.rect(margin, y, boxW, r4h);
   const splitR4 = margin + boxW * 0.30;
   doc.line(splitR4, y, splitR4, y + r4h);
 
   // Left: puesto
+  const leftColW = boxW * 0.30 - 6;
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
   doc.text("(9)", margin + 2, y + 4);
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(0);
-  doc.text("Descripción breve del puesto/s de trabajo en el/los cuales se desempeña el trabajador:", margin + 8, y + 4);
+  const label9 = "Descripción breve del puesto/s de trabajo en el/los cuales se desempeña el trabajador:";
+  const label9Lines = doc.splitTextToSize(label9, leftColW);
+  doc.text(label9Lines, margin + 8, y + 4);
+  const label9H = label9Lines.length * 2.5;
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text(rolLabel, margin + 5, y + 11);
+  doc.text(rolLabel, margin + 5, y + 5 + label9H + 4);
 
   // Right: EPP list
+  const rightColW = boxW * 0.70 - 6;
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(100);
   doc.text("(10)", splitR4 + 2, y + 4);
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(0);
-  doc.text("Elementos de protección personal, necesarios para el trabajador, según el puesto de trabajo:", splitR4 + 9, y + 4);
+  const label10 = "Elementos de protección personal, necesarios para el trabajador, según el puesto de trabajo:";
+  const label10Lines = doc.splitTextToSize(label10, rightColW - 12);
+  doc.text(label10Lines, splitR4 + 9, y + 4);
+  const label10H = label10Lines.length * 2.5;
   doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
-  const eppDescW = boxW * 0.70 - 8;
-  const eppLines = doc.splitTextToSize(productNames + ".", eppDescW);
-  doc.text(eppLines, splitR4 + 5, y + 9);
+  const eppLines = doc.splitTextToSize(productNames + ".", rightColW - 4);
+  doc.text(eppLines, splitR4 + 5, y + 5 + label10H + 2);
   doc.setTextColor(0);
   y += r4h;
 
@@ -148,19 +155,30 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
 
   autoTable(doc, {
     startY: y,
+    tableWidth: boxW,
     margin: { left: margin, right: margin },
     head: [
       [
-        { content: "", styles: { cellWidth: 10 } },
-        { content: "(11)\nProducto", styles: { cellWidth: 36 } },
-        { content: "(12)\nTipo // Modelo", styles: { cellWidth: 48 } },
-        { content: "(13)\nMarca", styles: { cellWidth: 36 } },
-        { content: "(14) Posee\ncertificación\nSI // NO", styles: { cellWidth: 24, halign: "center" as const } },
-        { content: "(15)\nCantidad", styles: { cellWidth: 20, halign: "center" as const } },
-        { content: "(16)\nFecha de entrega", styles: { cellWidth: 32, halign: "center" as const } },
-        { content: "(17)\nFirma del trabajador", styles: { cellWidth: 47 } },
+        "",
+        "(11)\nProducto",
+        "(12)\nTipo // Modelo",
+        "(13)\nMarca",
+        { content: "(14) Posee\ncertificación\nSI // NO", styles: { halign: "center" as const } },
+        { content: "(15)\nCantidad", styles: { halign: "center" as const } },
+        { content: "(16)\nFecha de entrega", styles: { halign: "center" as const } },
+        "(17)\nFirma del trabajador",
       ],
     ],
+    columnStyles: {
+      0: { cellWidth: boxW * 0.035, halign: "center", fontStyle: "bold" },
+      1: { cellWidth: boxW * 0.15 },
+      2: { cellWidth: boxW * 0.18 },
+      3: { cellWidth: boxW * 0.13 },
+      4: { cellWidth: boxW * 0.09, halign: "center" },
+      5: { cellWidth: boxW * 0.07, halign: "center" },
+      6: { cellWidth: boxW * 0.12, halign: "center" },
+      7: { cellWidth: boxW * 0.225 },
+    },
     body: items.map((item, i) => [
       (i + 1).toString(),
       item.producto.toUpperCase(),
