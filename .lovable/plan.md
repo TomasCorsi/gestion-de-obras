@@ -1,31 +1,26 @@
 
 
-# Generación Masiva de Certificados EPP
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Objetivo
-Agregar un botón "Generar PDF Masivo" que genere un solo PDF con una página por cada empleado activo, usando la plantilla de items actual.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambios
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 1. `src/utils/generateEntregaEPPPDF.ts`
-- Refactorizar: extraer la lógica de renderizado de una página a una función interna `renderEPPPage(doc, personal, items, fecha, firmaImg)` que reciba el documento ya creado.
-- La función `generateEntregaEPPPDF` existente sigue funcionando igual (crea doc, renderiza 1 página, guarda).
-- Nueva función exportada `generateEntregaEPPMasivoPDF({ empleados, items, fecha })`:
-  - Crea un solo `jsPDF` landscape.
-  - Carga la firma una sola vez.
-  - Itera los empleados: para cada uno llama `renderEPPPage`, y entre empleados agrega `doc.addPage()`.
-  - Guarda como `EPP_Masivo_{fecha}.pdf`.
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-### 2. `src/components/personal/EntregaEPPTab.tsx`
-- Agregar un nuevo bloque de UI "Generación Masiva" debajo de la tabla de items con:
-  - Checkbox para filtrar empleados activos (default: todos los activos).
-  - Botón "Generar PDF Masivo" con icono `FileStack` o `Files`.
-- Handler `handleGenerarMasivo`: toma los items actuales de la plantilla, todos los empleados activos, y llama `generateEntregaEPPMasivoPDF`.
-- No registra entregas en la base de datos (solo genera el PDF para impresión).
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-## Flujo del usuario
-1. Configura la plantilla de EPP (productos, marcas, etc.)
-2. Selecciona la fecha
-3. Click en "Generar PDF Masivo"
-4. Se descarga un PDF con N páginas, una por empleado activo
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
+
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
