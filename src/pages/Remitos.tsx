@@ -342,15 +342,13 @@ export default function Remitos() {
         
         {/* Full screen grid */}
         <div className="flex-1 overflow-hidden p-4">
-          <RemitosDataGrid
+          <RemitosSimpleGrid
             remitos={filteredRemitos}
             maquinarias={maquinarias}
             obras={obras}
             clientes={clientes}
             onSave={handleGridSave}
             generateNumero={generateNumero}
-            fullScreen
-            onColorChange={updateRowColor}
           />
         </div>
 
