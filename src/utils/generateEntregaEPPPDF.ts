@@ -205,12 +205,6 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
       lineWidth: 0.3,
       valign: "middle",
     },
-    columnStyles: {
-      0: { halign: "center", fontStyle: "bold" },
-      4: { halign: "center" },
-      5: { halign: "center" },
-      6: { halign: "center" },
-    },
     theme: "grid",
   });
 
