@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, FileText, Download, Save } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Save, Files } from "lucide-react";
 import { usePersonal, PersonalDB } from "@/hooks/usePersonal";
 import {
   useEntregasEPP,
@@ -21,7 +21,7 @@ import {
   EntregaEPPItemForm,
   EntregaEPPItem,
 } from "@/hooks/useEntregasEPP";
-import { generateEntregaEPPPDF } from "@/utils/generateEntregaEPPPDF";
+import { generateEntregaEPPPDF, generateEntregaEPPMasivoPDF } from "@/utils/generateEntregaEPPPDF";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";

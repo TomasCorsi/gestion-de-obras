@@ -22,6 +22,12 @@ interface EPPPDFData {
   fecha: string;
 }
 
+interface EPPMasivoPDFData {
+  empleados: PersonalDB[];
+  items: Array<{ producto: string; tipo_modelo: string; marca: string; posee_certificacion: boolean; cantidad: number }>;
+  fecha: string;
+}
+
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -31,8 +37,21 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFData) {
-  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+type ItemLike = {
+  producto: string;
+  tipo_modelo?: string | null;
+  marca?: string | null;
+  posee_certificacion?: boolean | null;
+  cantidad: number;
+};
+
+function renderEPPPage(
+  doc: jsPDF,
+  personal: PersonalDB,
+  items: ItemLike[],
+  fecha: string,
+  firmaImg: HTMLImageElement | null
+) {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 12;
@@ -76,7 +95,7 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
     doc.text(value, x + nw + lw, fy);
   };
 
-  const rh = 7; // row height
+  const rh = 7;
 
   // ─── Row 1: Razón Social + CUIT ───
   doc.setLineWidth(0.3);
@@ -115,7 +134,6 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
   const splitR4 = margin + boxW * 0.30;
   doc.line(splitR4, y, splitR4, y + r4h);
 
-  // Left: puesto
   const leftColW = boxW * 0.30 - 6;
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
@@ -131,7 +149,6 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
   doc.setFont("helvetica", "bold");
   doc.text(rolLabel, margin + 5, y + 5 + label9H + 4);
 
-  // Right: EPP list
   const rightColW = boxW * 0.70 - 6;
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
@@ -213,29 +230,53 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
   // ─── Signature blocks ───
   const sigY = Math.max(y + 20, pageH - 35);
 
-  // Load and add employer signature image
-  try {
-    const firmaImg = await loadImage(firmaPresidente);
+  if (firmaImg) {
     const firmaAspect = firmaImg.naturalWidth / firmaImg.naturalHeight;
     const firmaH = 18;
     const firmaW = firmaH * firmaAspect;
     doc.addImage(firmaImg, "PNG", margin + 10, sigY - firmaH - 2, firmaW, firmaH);
-  } catch {
-    // silently skip if image fails
   }
 
   doc.setDrawColor(0);
   doc.setLineWidth(0.4);
 
-  // Employer
   doc.line(margin, sigY, margin + 75, sigY);
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.text("Firma y aclaración del Empleador", margin + 5, sigY + 4);
 
-  // Employee
   doc.line(pageW - margin - 75, sigY, pageW - margin, sigY);
   doc.text("Firma y aclaración del Trabajador", pageW - margin - 70, sigY + 4);
+}
 
+export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFData) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+  let firmaImg: HTMLImageElement | null = null;
+  try {
+    firmaImg = await loadImage(firmaPresidente);
+  } catch {
+    // silently skip
+  }
+
+  renderEPPPage(doc, personal, items, fecha, firmaImg);
   doc.save(`EPP_${personal.apellido || "empleado"}_${personal.nombre || ""}_${fecha}.pdf`);
+}
+
+export async function generateEntregaEPPMasivoPDF({ empleados, items, fecha }: EPPMasivoPDFData) {
+  const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+
+  let firmaImg: HTMLImageElement | null = null;
+  try {
+    firmaImg = await loadImage(firmaPresidente);
+  } catch {
+    // silently skip
+  }
+
+  for (let i = 0; i < empleados.length; i++) {
+    if (i > 0) doc.addPage();
+    renderEPPPage(doc, empleados[i], items, fecha, firmaImg);
+  }
+
+  doc.save(`EPP_Masivo_${fecha}.pdf`);
 }
