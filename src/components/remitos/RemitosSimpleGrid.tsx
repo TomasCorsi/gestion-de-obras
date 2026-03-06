@@ -54,6 +54,7 @@ const TIPO_MATERIAL_OPTIONS = [
   "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado",
   "Cubiertas", "Frezado", "Cobertura de residuos", "Arena", "Hormigon H30",
   "Tierra negra", "Relleno", "Piedra 30/50", "Materiales varios",
+  "Raices", "Traslado interno", "Barro",
 ];
 
 const TIPO_TRANSPORTE_OPTIONS = [
@@ -378,7 +379,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[100px]">Rem. Local</TableHead>
               <TableHead className="text-xs min-w-[160px]">Desde</TableHead>
               <TableHead className="text-xs min-w-[160px]">Hasta</TableHead>
-              <TableHead className="text-xs min-w-[120px]">Material</TableHead>
+              <TableHead className="text-xs min-w-[120px]">Tipo</TableHead>
               <TableHead className="text-xs min-w-[120px]">Transporte</TableHead>
               <TableHead className="text-xs min-w-[160px]">Vehículo</TableHead>
               <TableHead className="text-xs min-w-[100px]">Pat. Tercero</TableHead>
@@ -465,7 +466,7 @@ export function RemitosSimpleGrid({
                     }
                   >
                     <SelectTrigger className="h-7 text-xs">
-                      <SelectValue placeholder="Material..." />
+                      <SelectValue placeholder="Tipo..." />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="_empty">Seleccionar...</SelectItem>
