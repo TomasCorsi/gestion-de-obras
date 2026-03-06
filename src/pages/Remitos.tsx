@@ -61,6 +61,9 @@ export default function Remitos() {
     const map: Record<string, string> = {};
     obras.forEach(o => {
       map[o.nombre.toLowerCase().trim()] = o.nombre;
+      if (o.numero) {
+        map[o.numero.toLowerCase().trim()] = o.nombre;
+      }
     });
     return map;
   }, [obras]);
@@ -70,8 +73,13 @@ export default function Remitos() {
     clientes.filter(c => c.activo).forEach(c => {
       map[c.nombre.toLowerCase().trim()] = c.nombre;
     });
+    obras.forEach(o => {
+      if (o.numero && o.cliente?.nombre) {
+        map[o.numero.toLowerCase().trim()] = o.cliente.nombre;
+      }
+    });
     return map;
-  }, [clientes]);
+  }, [clientes, obras]);
 
   const filteredRemitos = useMemo(() => {
     const dateFiltered = filterByDateAndObra(

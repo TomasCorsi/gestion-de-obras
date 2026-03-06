@@ -1,51 +1,26 @@
 
 
-# Detectar obras por número y cliente por número de obra en el importador de Remitos
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Cambios
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-### 1. `src/pages/Remitos.tsx` - Ampliar `obrasMap` para incluir número de obra
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-Actualmente `obrasMap` solo mapea `nombre.toLowerCase() -> nombre`. Agregar también el `numero` de la obra como clave:
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
 ```typescript
-const obrasMap = useMemo(() => {
-  const map: Record<string, string> = {};
-  obras.forEach(o => {
-    map[o.nombre.toLowerCase().trim()] = o.nombre;
-    if (o.numero) {
-      map[o.numero.toLowerCase().trim()] = o.nombre;
-    }
-  });
-  return map;
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
 }, [obras]);
 ```
 
-Esto permite que cuando en el CSV el campo "Desde" o "Hasta" tenga un número de obra (ej: "001"), el `matchFromMap` lo encuentre y devuelva el nombre real de la obra.
-
-### 2. `src/pages/Remitos.tsx` - Ampliar `clientesMap` para incluir número de obra como clave → cliente vinculado
-
-Crear un mapa adicional que vincule número de obra con el cliente asociado. Dado que `clientesMap` se pasa como `Record<string, string>`, podemos agregar entradas donde la clave sea el número de obra y el valor sea el nombre del cliente vinculado a esa obra:
-
-```typescript
-const clientesMap = useMemo(() => {
-  const map: Record<string, string> = {};
-  clientes.filter(c => c.activo).forEach(c => {
-    map[c.nombre.toLowerCase().trim()] = c.nombre;
-  });
-  // Agregar lookup por número de obra -> cliente de esa obra
-  obras.forEach(o => {
-    if (o.numero && o.cliente?.nombre) {
-      map[o.numero.toLowerCase().trim()] = o.cliente.nombre;
-    }
-  });
-  return map;
-}, [clientes, obras]);
-```
-
-Esto permite que si en el CSV el campo "Cliente" tiene un número de obra, se resuelva automáticamente al cliente vinculado a esa obra.
-
-### Sin cambios en `CSVImportDialog.tsx`
-
-La función `matchFromMap` ya hace búsqueda exacta y parcial sobre las claves del mapa, por lo que al agregar las nuevas entradas en los mapas, el matching funciona automáticamente.
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
