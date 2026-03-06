@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, FileText, Download } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Save } from "lucide-react";
 import { usePersonal, PersonalDB } from "@/hooks/usePersonal";
 import {
   useEntregasEPP,
@@ -30,7 +30,13 @@ export function EntregaEPPTab() {
   const { personal, loading: personalLoading } = usePersonal();
   const [selectedPersonalId, setSelectedPersonalId] = useState("");
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
-  const [items, setItems] = useState<EntregaEPPItemForm[]>([...DEFAULT_EPP_ITEMS]);
+  const [items, setItems] = useState<EntregaEPPItemForm[]>(() => {
+    try {
+      const saved = localStorage.getItem("epp-items-template");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [...DEFAULT_EPP_ITEMS];
+  });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { entregas, isLoading, createEntrega, isCreating, fetchItems, deleteEntrega } =
@@ -65,27 +71,9 @@ export function EntregaEPPTab() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSave = async () => {
-    if (!selectedPersonalId) {
-      toast.error("Seleccioná un empleado");
-      return;
-    }
-    const validItems = items.filter((i) => i.producto.trim());
-    if (validItems.length === 0) {
-      toast.error("Agregá al menos un producto");
-      return;
-    }
-
-    try {
-      await createEntrega({
-        personalId: selectedPersonalId,
-        fecha,
-        items: validItems,
-      });
-      toast.success("Entrega guardada correctamente");
-    } catch {
-      // error handled by hook
-    }
+  const handleSaveTemplate = () => {
+    localStorage.setItem("epp-items-template", JSON.stringify(items));
+    toast.success("Plantilla de elementos guardada");
   };
 
   const handleSaveAndPDF = async () => {
@@ -248,10 +236,10 @@ export function EntregaEPPTab() {
         <div className="p-4 border-t border-border flex justify-end gap-2">
           <Button
             variant="outline"
-            onClick={handleSave}
-            disabled={isCreating || !selectedPersonalId}
+            onClick={handleSaveTemplate}
           >
-            {isCreating ? "Guardando..." : "Guardar"}
+            <Save className="w-4 h-4 mr-1" />
+            Guardar Plantilla
           </Button>
           <Button
             onClick={handleSaveAndPDF}
