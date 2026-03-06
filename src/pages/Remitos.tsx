@@ -45,7 +45,7 @@ import { useRemitos, RemitoWithRelations, RemitoForm } from "@/hooks/useRemitos"
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
-import { RemitosDataGrid } from "@/components/remitos/RemitosDataGrid";
+import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
@@ -342,15 +342,13 @@ export default function Remitos() {
         
         {/* Full screen grid */}
         <div className="flex-1 overflow-hidden p-4">
-          <RemitosDataGrid
+          <RemitosSimpleGrid
             remitos={filteredRemitos}
             maquinarias={maquinarias}
             obras={obras}
             clientes={clientes}
             onSave={handleGridSave}
             generateNumero={generateNumero}
-            fullScreen
-            onColorChange={updateRowColor}
           />
         </div>
 
