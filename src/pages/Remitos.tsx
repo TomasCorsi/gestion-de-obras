@@ -22,7 +22,7 @@ import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { toast } from "sonner";
 
 export default function Remitos() {
-  const { remitos, loading, batchSave } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -224,6 +224,8 @@ export default function Remitos() {
           if (results.errors > 0) {
             throw new Error(`${results.errors} errores durante la importación`);
           }
+          // Force explicit refetch after bulk import to ensure grid updates
+          setTimeout(() => fetchRemitos(), 500);
         }}
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}

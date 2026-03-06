@@ -154,6 +154,16 @@ export function RemitosSimpleGrid({
     prevRemitosRef.current = remitos;
 
     setRows((prev) => {
+      const prevDbCount = prev.filter((r) => !r._isNew).length;
+      const newDbCount = remitos.length;
+      const bulkThreshold = 5;
+
+      // Detect bulk import: many new rows arrived at once → full reset
+      if (newDbCount - prevDbCount >= bulkThreshold) {
+        toast.info(`${newDbCount - prevDbCount} remitos nuevos cargados`);
+        return remitos.map(remitoToLocal);
+      }
+
       // Identify rows the user is actively editing
       const modifiedLocalIds = new Set(
         prev.filter((r) => r._isModified || r._isNew).map((r) => r._localId)
@@ -179,7 +189,7 @@ export function RemitosSimpleGrid({
 
       // Only show toast if row count actually changed (new external data)
       if (merged.length !== prev.length) {
-        const diff = remitos.length - prev.filter((r) => !r._isNew).length;
+        const diff = newDbCount - prevDbCount;
         if (diff > 0) {
           toast.info(`${diff} remito${diff > 1 ? "s" : ""} nuevo${diff > 1 ? "s" : ""} cargado${diff > 1 ? "s" : ""}`);
         }
