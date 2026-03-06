@@ -420,6 +420,10 @@ export default function Personal() {
         <TabsContent value="liquidaciones">
           <LiquidacionesTab personal={personal} />
         </TabsContent>
+
+        <TabsContent value="epp">
+          <EntregaEPPTab />
+        </TabsContent>
       </Tabs>
 
       {/* Form Dialog */}
