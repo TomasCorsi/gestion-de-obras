@@ -71,9 +71,37 @@ export function EntregaEPPTab() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const [generatingMasivo, setGeneratingMasivo] = useState(false);
+
   const handleSaveTemplate = () => {
     localStorage.setItem("epp-items-template", JSON.stringify(items));
     toast.success("Plantilla de elementos guardada");
+  };
+
+  const handleGenerarMasivo = async () => {
+    const validItems = items.filter((i) => i.producto.trim());
+    if (validItems.length === 0) {
+      toast.error("Agregá al menos un producto en la plantilla");
+      return;
+    }
+    const empleadosActivos = personal.filter((p) => p.activo);
+    if (empleadosActivos.length === 0) {
+      toast.error("No hay empleados activos");
+      return;
+    }
+    setGeneratingMasivo(true);
+    try {
+      await generateEntregaEPPMasivoPDF({
+        empleados: empleadosActivos,
+        items: validItems,
+        fecha,
+      });
+      toast.success(`PDF generado con ${empleadosActivos.length} certificados`);
+    } catch {
+      toast.error("Error al generar PDF masivo");
+    } finally {
+      setGeneratingMasivo(false);
+    }
   };
 
   const handleSaveAndPDF = async () => {
@@ -250,6 +278,22 @@ export function EntregaEPPTab() {
             {isCreating ? "Guardando..." : "Guardar y Generar PDF"}
           </Button>
         </div>
+      </div>
+
+      {/* Bulk generation */}
+      <div className="card-industrial p-6 space-y-3">
+        <h4 className="font-medium text-foreground">Generación Masiva</h4>
+        <p className="text-sm text-muted-foreground">
+          Genera un único PDF con un certificado por cada empleado activo ({personal.filter((p) => p.activo).length} empleados), usando la plantilla de elementos actual y la fecha seleccionada. No registra entregas en el sistema.
+        </p>
+        <Button
+          onClick={handleGenerarMasivo}
+          disabled={generatingMasivo}
+          variant="outline"
+        >
+          <Files className="w-4 h-4 mr-2" />
+          {generatingMasivo ? "Generando..." : "Generar PDF Masivo"}
+        </Button>
       </div>
 
       {/* History */}
