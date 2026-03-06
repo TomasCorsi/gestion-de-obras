@@ -65,6 +65,29 @@ export function EntregaEPPTab() {
     setItems((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleSave = async () => {
+    if (!selectedPersonalId) {
+      toast.error("Seleccioná un empleado");
+      return;
+    }
+    const validItems = items.filter((i) => i.producto.trim());
+    if (validItems.length === 0) {
+      toast.error("Agregá al menos un producto");
+      return;
+    }
+
+    try {
+      await createEntrega({
+        personalId: selectedPersonalId,
+        fecha,
+        items: validItems,
+      });
+      toast.success("Entrega guardada correctamente");
+    } catch {
+      // error handled by hook
+    }
+  };
+
   const handleSaveAndPDF = async () => {
     if (!selectedPersonalId) {
       toast.error("Seleccioná un empleado");
