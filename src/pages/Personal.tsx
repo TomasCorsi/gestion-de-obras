@@ -40,6 +40,7 @@ import {
   Users,
   Palmtree,
   FileText,
+  ShieldCheck,
   Building,
   Wallet,
 } from "lucide-react";
@@ -56,6 +57,7 @@ import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
+import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -227,6 +229,10 @@ export default function Personal() {
           <TabsTrigger value="liquidaciones" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <Wallet className="w-4 h-4 mr-2" />
             Liquidaciones
+          </TabsTrigger>
+          <TabsTrigger value="epp" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <ShieldCheck className="w-4 h-4 mr-2" />
+            EPP
           </TabsTrigger>
         </TabsList>
 
@@ -413,6 +419,10 @@ export default function Personal() {
 
         <TabsContent value="liquidaciones">
           <LiquidacionesTab personal={personal} />
+        </TabsContent>
+
+        <TabsContent value="epp">
+          <EntregaEPPTab />
         </TabsContent>
       </Tabs>
 

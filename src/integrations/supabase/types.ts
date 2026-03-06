@@ -683,6 +683,93 @@ export type Database = {
           },
         ]
       }
+      entrega_epp_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          entrega_id: string
+          id: string
+          marca: string | null
+          posee_certificacion: boolean | null
+          producto: string
+          tipo_modelo: string | null
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string
+          entrega_id: string
+          id?: string
+          marca?: string | null
+          posee_certificacion?: boolean | null
+          producto: string
+          tipo_modelo?: string | null
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          entrega_id?: string
+          id?: string
+          marca?: string | null
+          posee_certificacion?: boolean | null
+          producto?: string
+          tipo_modelo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entrega_epp_items_entrega_id_fkey"
+            columns: ["entrega_id"]
+            isOneToOne: false
+            referencedRelation: "entregas_epp"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entregas_epp: {
+        Row: {
+          created_at: string
+          fecha: string
+          id: string
+          personal_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fecha?: string
+          id?: string
+          personal_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fecha?: string
+          id?: string
+          personal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entregas_epp_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregas_epp_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "entregas_epp_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       horas_maquina: {
         Row: {
           created_at: string
