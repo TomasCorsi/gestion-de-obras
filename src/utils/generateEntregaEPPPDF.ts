@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import firmaPresidente from "@/assets/firma-presidente.png";
 import type { EntregaEPPItem } from "@/hooks/useEntregasEPP";
 import type { PersonalDB } from "@/hooks/usePersonal";
 
@@ -21,111 +22,143 @@ interface EPPPDFData {
   fecha: string;
 }
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
 export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFData) {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 10;
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 12;
   const boxW = pageW - margin * 2;
-  let y = 10;
+  let y = 8;
 
   const fechaFormatted = new Date(fecha + "T12:00:00").toLocaleDateString("es-AR");
   const rolLabel = ROL_LABELS[personal.rol] || personal.rol;
   const productNames = items.map((i) => i.producto).join(", ");
+  const fullName = `${personal.apellido || ""} ${personal.nombre || ""}`.trim().toUpperCase();
 
-  // --- Top right: Resolución ---
+  // ─── Resolución top-right ───
   doc.setFontSize(9);
   doc.setFont("helvetica", "bolditalic");
-  doc.text("Resolución 299/11, Anexo I", pageW - margin, y + 2, { align: "right" });
+  doc.text("Resolución 299/11, Anexo I", pageW - margin, y + 3, { align: "right" });
 
-  // --- Title bar ---
-  y += 5;
-  doc.setFillColor(220, 220, 220);
-  doc.rect(margin, y, boxW, 7, "F");
+  // ─── Title bar ───
+  y += 7;
+  doc.setFillColor(230, 230, 230);
   doc.setDrawColor(0);
+  doc.setLineWidth(0.4);
+  doc.rect(margin, y, boxW, 8, "FD");
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("ENTREGA DE ROPA DE TRABAJO Y ELEMENTOS DE PROTECCIÓN PERSONAL", pageW / 2, y + 5.5, { align: "center" });
+  y += 8;
+
+  // ─── Helper to draw a labeled field ───
+  const field = (x: number, fy: number, num: string, label: string, value: string) => {
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100);
+    doc.text(`(${num})`, x, fy);
+    const nw = doc.getTextWidth(`(${num})`) + 1;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(0);
+    doc.text(`${label}  `, x + nw, fy);
+    const lw = doc.getTextWidth(`${label}  `);
+    doc.setFont("helvetica", "normal");
+    doc.text(value, x + nw + lw, fy);
+  };
+
+  const rh = 7; // row height
+
+  // ─── Row 1: Razón Social + CUIT ───
   doc.setLineWidth(0.3);
-  doc.rect(margin, y, boxW, 7);
+  doc.rect(margin, y, boxW, rh);
+  const splitR1 = margin + boxW * 0.7;
+  doc.line(splitR1, y, splitR1, y + rh);
+  field(margin + 2, y + 5, "1", "Razón Social:", "CALAMINA SUR S.A");
+  field(splitR1 + 2, y + 5, "2", "C.U.I.T.:", "30-71457642-5");
+  y += rh;
+
+  // ─── Row 2: Dirección + Localidad + CP + Provincia ───
+  doc.rect(margin, y, boxW, rh);
+  const c2a = margin + boxW * 0.30;
+  const c2b = margin + boxW * 0.50;
+  const c2c = margin + boxW * 0.62;
+  doc.line(c2a, y, c2a, y + rh);
+  doc.line(c2b, y, c2b, y + rh);
+  doc.line(c2c, y, c2c, y + rh);
+  field(margin + 2, y + 5, "3", "Dirección:", "MARIANO CASTEX 499");
+  field(c2a + 2, y + 5, "4", "Localidad:", "CANNING");
+  field(c2b + 2, y + 5, "5", "C.P.:", "1804");
+  field(c2c + 2, y + 5, "6", "Provincia:", "BUENOS AIRES");
+  y += rh;
+
+  // ─── Row 3: Nombre + DNI ───
+  doc.rect(margin, y, boxW, rh);
+  const splitR3 = margin + boxW * 0.75;
+  doc.line(splitR3, y, splitR3, y + rh);
+  field(margin + 2, y + 5, "7", "Nombre y Apellido del Trabajador:", fullName);
+  field(splitR3 + 2, y + 5, "8", "D.N.I.:", personal.dni || "-");
+  y += rh;
+
+  // ─── Row 4: Puesto + Descripción EPP ───
+  const r4h = 16;
+  doc.rect(margin, y, boxW, r4h);
+  const splitR4 = margin + boxW * 0.30;
+  doc.line(splitR4, y, splitR4, y + r4h);
+
+  // Left: puesto
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100);
+  doc.text("(9)", margin + 2, y + 4);
+  doc.setFontSize(7);
+  doc.setTextColor(0);
+  doc.text("Descripción breve del puesto/s de trabajo en el/los cuales se desempeña el trabajador:", margin + 8, y + 4);
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.text("ENTREGA DE ROPA DE TRABAJO Y ELEMENTOS DE PROTECCIÓN PERSONAL", pageW / 2, y + 5, { align: "center" });
-  y += 7;
+  doc.text(rolLabel, margin + 5, y + 11);
 
-  // --- Company data rows ---
-  const rowH = 6;
-  const fs = 8;
-
-  // Row 1: Razón Social + CUIT
-  doc.rect(margin, y, boxW, rowH);
-  doc.setFontSize(fs);
+  // Right: EPP list
+  doc.setFontSize(6.5);
   doc.setFont("helvetica", "normal");
-  const midX = margin + boxW * 0.65;
-  doc.line(midX, y, midX, y + rowH);
-  drawField(doc, margin + 2, y + 4.5, "(1)", "Razón Social:", "CALAMINA SUR S.A", fs);
-  drawField(doc, midX + 2, y + 4.5, "(2)", "C.U.I.T.:", "30-71457642-5", fs);
-  y += rowH;
-
-  // Row 2: Dirección + Localidad + CP + Provincia
-  doc.rect(margin, y, boxW, rowH);
-  const col2 = margin + boxW * 0.35;
-  const col3 = margin + boxW * 0.55;
-  const col4 = margin + boxW * 0.7;
-  doc.line(col2, y, col2, y + rowH);
-  doc.line(col3, y, col3, y + rowH);
-  doc.line(col4, y, col4, y + rowH);
-  drawField(doc, margin + 2, y + 4.5, "(3)", "Dirección:", "MARIANO CASTEX 499", fs);
-  drawField(doc, col2 + 2, y + 4.5, "(4)", "Localidad:", "CANNING", fs);
-  drawField(doc, col3 + 2, y + 4.5, "(5)", "C.P.:", "1804", fs);
-  drawField(doc, col4 + 2, y + 4.5, "(6)", "Provincia:", "BUENOS AIRES", fs);
-  y += rowH;
-
-  // Row 3: Nombre + DNI
-  doc.rect(margin, y, boxW, rowH);
-  const dniCol = margin + boxW * 0.7;
-  doc.line(dniCol, y, dniCol, y + rowH);
-  const fullName = `${personal.apellido || ""} ${personal.nombre || ""}`.trim().toUpperCase();
-  drawField(doc, margin + 2, y + 4.5, "(7)", "Nombre y Apellido del Trabajador:", fullName, fs);
-  drawField(doc, dniCol + 2, y + 4.5, "(8)", "D.N.I.:", personal.dni || "-", fs);
-  y += rowH;
-
-  // Row 4: Puesto + Descripción EPP
-  const row4H = 14;
-  doc.rect(margin, y, boxW, row4H);
-  const descCol = margin + boxW * 0.35;
-  doc.line(descCol, y, descCol, y + row4H);
-
+  doc.setTextColor(100);
+  doc.text("(10)", splitR4 + 2, y + 4);
   doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("(9)", margin + 2, y + 4);
-  doc.text("Descripción breve del puesto/s de trabajo en el/los cuales se desempeña el trabajador:", margin + 7, y + 4);
-  doc.setFontSize(9);
+  doc.setTextColor(0);
+  doc.text("Elementos de protección personal, necesarios para el trabajador, según el puesto de trabajo:", splitR4 + 9, y + 4);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "bold");
-  doc.text(rolLabel, margin + 5, y + 10);
+  const eppDescW = boxW * 0.70 - 8;
+  const eppLines = doc.splitTextToSize(productNames + ".", eppDescW);
+  doc.text(eppLines, splitR4 + 5, y + 9);
+  doc.setTextColor(0);
+  y += r4h;
 
-  doc.setFontSize(7);
-  doc.setFont("helvetica", "normal");
-  doc.text("(10)", descCol + 2, y + 4);
-  doc.text("Elementos de protección personal, necesarios para el trabajador, según el puesto de trabajo:", descCol + 9, y + 4);
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  const descLines = doc.splitTextToSize(productNames + ".", boxW * 0.65 - 10);
-  doc.text(descLines, descCol + 5, y + 9);
-  y += row4H;
-
-  // --- Items table ---
-  y += 1;
+  // ─── Items table ───
+  y += 2;
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     head: [
       [
-        { content: "", styles: { cellWidth: 8 } },
-        { content: "(11)\nProducto", styles: { cellWidth: 38 } },
-        { content: "(12)\nTipo // Modelo", styles: { cellWidth: 50 } },
-        { content: "(13)\nMarca", styles: { cellWidth: 35 } },
-        { content: "(14) Posee\ncertificación\nSI // NO", styles: { cellWidth: 22, halign: "center" } },
-        { content: "(15)\nCantidad", styles: { cellWidth: 20, halign: "center" } },
-        { content: "(16)\nFecha de entrega", styles: { cellWidth: 30, halign: "center" } },
-        { content: "(17)\nFirma del trabajador", styles: { cellWidth: 50 } },
+        { content: "", styles: { cellWidth: 10 } },
+        { content: "(11)\nProducto", styles: { cellWidth: 36 } },
+        { content: "(12)\nTipo // Modelo", styles: { cellWidth: 48 } },
+        { content: "(13)\nMarca", styles: { cellWidth: 36 } },
+        { content: "(14) Posee\ncertificación\nSI // NO", styles: { cellWidth: 24, halign: "center" as const } },
+        { content: "(15)\nCantidad", styles: { cellWidth: 20, halign: "center" as const } },
+        { content: "(16)\nFecha de entrega", styles: { cellWidth: 32, halign: "center" as const } },
+        { content: "(17)\nFirma del trabajador", styles: { cellWidth: 47 } },
       ],
     ],
     body: items.map((item, i) => [
@@ -138,9 +171,22 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
       fechaFormatted,
       "",
     ]),
-    styles: { fontSize: 8, cellPadding: 2, lineColor: [0, 0, 0], lineWidth: 0.3 },
-    headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], fontSize: 7, fontStyle: "bold", lineColor: [0, 0, 0], lineWidth: 0.3 },
-    bodyStyles: { textColor: [0, 0, 0] },
+    styles: {
+      fontSize: 8.5,
+      cellPadding: 2.5,
+      lineColor: [0, 0, 0],
+      lineWidth: 0.3,
+      textColor: [0, 0, 0],
+    },
+    headStyles: {
+      fillColor: [245, 245, 245],
+      textColor: [0, 0, 0],
+      fontSize: 7.5,
+      fontStyle: "bold",
+      lineColor: [0, 0, 0],
+      lineWidth: 0.3,
+      valign: "middle",
+    },
     columnStyles: {
       0: { halign: "center", fontStyle: "bold" },
       4: { halign: "center" },
@@ -150,32 +196,34 @@ export async function generateEntregaEPPPDF({ personal, items, fecha }: EPPPDFDa
     theme: "grid",
   });
 
-  y = (doc as any).lastAutoTable.finalY + 15;
+  y = (doc as any).lastAutoTable.finalY;
 
-  // --- Signature blocks ---
-  const pageH = doc.internal.pageSize.getHeight();
-  const sigY = Math.min(Math.max(y, pageH - 40), pageH - 25);
+  // ─── Signature blocks ───
+  const sigY = Math.max(y + 20, pageH - 35);
 
+  // Load and add employer signature image
+  try {
+    const firmaImg = await loadImage(firmaPresidente);
+    const firmaAspect = firmaImg.naturalWidth / firmaImg.naturalHeight;
+    const firmaH = 18;
+    const firmaW = firmaH * firmaAspect;
+    doc.addImage(firmaImg, "PNG", margin + 10, sigY - firmaH - 2, firmaW, firmaH);
+  } catch {
+    // silently skip if image fails
+  }
+
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.4);
+
+  // Employer
+  doc.line(margin, sigY, margin + 75, sigY);
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.line(margin, sigY, margin + 70, sigY);
-  doc.text("Firma y aclaración del Empleador", margin, sigY + 4);
+  doc.text("Firma y aclaración del Empleador", margin + 5, sigY + 4);
 
-  doc.line(pageW - margin - 70, sigY, pageW - margin, sigY);
+  // Employee
+  doc.line(pageW - margin - 75, sigY, pageW - margin, sigY);
   doc.text("Firma y aclaración del Trabajador", pageW - margin - 70, sigY + 4);
 
   doc.save(`EPP_${personal.apellido || "empleado"}_${personal.nombre || ""}_${fecha}.pdf`);
-}
-
-function drawField(doc: jsPDF, x: number, y: number, num: string, label: string, value: string, fs: number) {
-  doc.setFontSize(6);
-  doc.setFont("helvetica", "normal");
-  doc.text(num, x, y);
-  const numW = doc.getTextWidth(num) + 1;
-  doc.setFontSize(fs);
-  doc.setFont("helvetica", "bold");
-  doc.text(label, x + numW, y);
-  const labelW = doc.getTextWidth(label) + 2;
-  doc.setFont("helvetica", "normal");
-  doc.text(value, x + numW + labelW, y);
 }
