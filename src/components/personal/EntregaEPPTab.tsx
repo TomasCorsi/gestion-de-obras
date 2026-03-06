@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Plus, Trash2, FileText, Download } from "lucide-react";
+import { Plus, Trash2, FileText, Download, Save } from "lucide-react";
 import { usePersonal, PersonalDB } from "@/hooks/usePersonal";
 import {
   useEntregasEPP,
@@ -30,7 +30,13 @@ export function EntregaEPPTab() {
   const { personal, loading: personalLoading } = usePersonal();
   const [selectedPersonalId, setSelectedPersonalId] = useState("");
   const [fecha, setFecha] = useState(new Date().toISOString().split("T")[0]);
-  const [items, setItems] = useState<EntregaEPPItemForm[]>([...DEFAULT_EPP_ITEMS]);
+  const [items, setItems] = useState<EntregaEPPItemForm[]>(() => {
+    try {
+      const saved = localStorage.getItem("epp-items-template");
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return [...DEFAULT_EPP_ITEMS];
+  });
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { entregas, isLoading, createEntrega, isCreating, fetchItems, deleteEntrega } =
