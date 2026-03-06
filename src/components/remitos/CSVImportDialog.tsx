@@ -164,6 +164,10 @@ const tipoMaterialNormalize: Record<string, string> = {
   'relleno': 'Relleno',
   'piedra 30/50': 'Piedra 30/50',
   'materiales varios': 'Materiales varios',
+  'raices': 'Raices',
+  'raíces': 'Raices',
+  'traslado interno': 'Traslado interno',
+  'barro': 'Barro',
 };
 
 // Valid material types for validation
@@ -420,9 +424,16 @@ function parseCSV(
       warnings.push({ field: 'obra_hasta', value: hastaRaw, row: i + 1 });
     }
     
-    // Match cliente against clientes
+    // Match cliente: first try clientesMap, then try obrasMap (by numero/nombre -> resolve to obra name as client)
     const clienteRaw = getValue('cliente');
-    const clienteMatch = matchFromMap(clienteRaw, clientesMap);
+    let clienteMatch = matchFromMap(clienteRaw, clientesMap);
+    if (!clienteMatch.found && clienteRaw) {
+      // Fallback: try matching against obras (e.g. by numero de obra)
+      const obraMatch = matchFromMap(clienteRaw, obrasMap);
+      if (obraMatch.found) {
+        clienteMatch = obraMatch;
+      }
+    }
     const cliente = clienteMatch.matched;
     
     if (clienteRaw && !clienteMatch.found) {
