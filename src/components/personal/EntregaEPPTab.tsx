@@ -236,10 +236,10 @@ export function EntregaEPPTab() {
         <div className="p-4 border-t border-border flex justify-end gap-2">
           <Button
             variant="outline"
-            onClick={handleSave}
-            disabled={isCreating || !selectedPersonalId}
+            onClick={handleSaveTemplate}
           >
-            {isCreating ? "Guardando..." : "Guardar"}
+            <Save className="w-4 h-4 mr-1" />
+            Guardar Plantilla
           </Button>
           <Button
             onClick={handleSaveAndPDF}
