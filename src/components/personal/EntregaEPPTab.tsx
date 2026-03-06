@@ -245,7 +245,14 @@ export function EntregaEPPTab() {
             ))}
           </TableBody>
         </Table>
-        <div className="p-4 border-t border-border flex justify-end">
+        <div className="p-4 border-t border-border flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={handleSave}
+            disabled={isCreating || !selectedPersonalId}
+          >
+            {isCreating ? "Guardando..." : "Guardar"}
+          </Button>
           <Button
             onClick={handleSaveAndPDF}
             disabled={isCreating || !selectedPersonalId}
