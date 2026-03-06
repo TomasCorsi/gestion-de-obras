@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -88,6 +89,23 @@ const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
 
 export function useRemitos() {
   const queryClient = useQueryClient();
+
+  // Realtime subscription: auto-refresh when remitos change in DB
+  useEffect(() => {
+    const channel = supabase
+      .channel('remitos-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'remitos' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['remitos'] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const { 
     data: remitos = [], 

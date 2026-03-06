@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from "react";
+import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import {
   Table,
   TableHeader,
@@ -145,6 +145,48 @@ export function RemitosSimpleGrid({
   );
   const [isSaving, setIsSaving] = useState(false);
   const deletedIds = useRef<Set<string>>(new Set());
+  const prevRemitosRef = useRef(remitos);
+
+  // Smart merge: sync DB changes without losing local edits
+  useEffect(() => {
+    if (remitos === prevRemitosRef.current) return;
+    prevRemitosRef.current = remitos;
+
+    setRows((prev) => {
+      // Identify rows the user is actively editing
+      const modifiedLocalIds = new Set(
+        prev.filter((r) => r._isModified || r._isNew).map((r) => r._localId)
+      );
+
+      // If no edits, just replace everything
+      if (modifiedLocalIds.size === 0) {
+        return remitos.map(remitoToLocal);
+      }
+
+      // Keep user-edited/new rows untouched
+      const userEditing = prev.filter((r) => modifiedLocalIds.has(r._localId));
+
+      // Build updated rows from DB, excluding ones being edited
+      const editingDbIds = new Set(
+        userEditing.filter((r) => r.id).map((r) => r.id)
+      );
+      const fromDB = remitos
+        .filter((r) => !editingDbIds.has(r.id))
+        .map(remitoToLocal);
+
+      const merged = [...fromDB, ...userEditing];
+
+      // Only show toast if row count actually changed (new external data)
+      if (merged.length !== prev.length) {
+        const diff = remitos.length - prev.filter((r) => !r._isNew).length;
+        if (diff > 0) {
+          toast.info(`${diff} remito${diff > 1 ? "s" : ""} nuevo${diff > 1 ? "s" : ""} cargado${diff > 1 ? "s" : ""}`);
+        }
+      }
+
+      return merged;
+    });
+  }, [remitos]);
 
   const obrasOptions: ComboboxOption[] = useMemo(() => {
     return obras.map((o) => ({
