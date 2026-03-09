@@ -20,6 +20,7 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
+import { RemitoQuickFormDialog } from "@/components/remitos/RemitoQuickFormDialog";
 import { toast } from "sonner";
 
 export default function Remitos() {
