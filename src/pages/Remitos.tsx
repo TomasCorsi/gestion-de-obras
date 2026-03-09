@@ -242,6 +242,23 @@ export default function Remitos() {
         obrasMap={obrasMap}
         clientesMap={clientesMap}
       />
+
+      {/* Quick Form Dialog */}
+      <RemitoQuickFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        obras={obras}
+        maquinarias={maquinarias}
+        clientes={clientes}
+        generateNumero={generateNumero}
+        onSubmit={async (remito) => {
+          const results = await batchSave({ created: [remito], updated: [], deleted: [] });
+          if (results.errors > 0) {
+            throw new Error("Error al guardar el remito");
+          }
+          toast.success("Remito creado exitosamente");
+        }}
+      />
     </MainLayout>
   );
 }
