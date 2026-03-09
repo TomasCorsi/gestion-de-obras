@@ -88,7 +88,30 @@ interface RemitosSimpleGridProps {
 let localIdCounter = 0;
 const nextLocalId = () => `local-${++localIdCounter}-${Date.now()}`;
 
-function remitoToLocal(r: RemitoWithRelations): LocalRow {
+function remitoToLocal(r: RemitoWithRelations, obras?: ObraWithRelations[]): LocalRow {
+  // Auto-calculate clientes from desde/hasta for existing remitos
+  let clienteOrigen = r.cliente || "";
+  let clienteDestino = (r as any).cliente_destino || "";
+
+  if (obras) {
+    if (r.desde) {
+      const obraDesde = obras.find(o => o.nombre === r.desde);
+      if (obraDesde && isObraExterna(obraDesde.numero)) {
+        clienteOrigen = obraDesde.cliente?.nombre || clienteOrigen;
+      } else {
+        clienteOrigen = "";
+      }
+    }
+    if (r.hasta) {
+      const obraHasta = obras.find(o => o.nombre === r.hasta);
+      if (obraHasta && isObraExterna(obraHasta.numero)) {
+        clienteDestino = obraHasta.cliente?.nombre || clienteDestino;
+      } else {
+        clienteDestino = "";
+      }
+    }
+  }
+
   return {
     _localId: r.id,
     _isNew: false,
@@ -103,8 +126,8 @@ function remitoToLocal(r: RemitoWithRelations): LocalRow {
     tipo_transporte: r.tipo_transporte || "",
     maquinaria_id: r.maquinaria_id || "",
     patente_tercero: r.patente_tercero || "",
-    cliente: r.cliente || "",
-    cliente_destino: (r as any).cliente_destino || "",
+    cliente: clienteOrigen,
+    cliente_destino: clienteDestino,
     cantidad_viajes: r.cantidad_viajes || 1,
     cantidad_uni: r.cantidad_uni ?? null,
     cantidad: r.cantidad,
