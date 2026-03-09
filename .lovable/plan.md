@@ -1,26 +1,20 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Hacer el formulario de Nuevo Remito responsive y scrollable
 
 ## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+El dialog usa `max-w-2xl` y un grid fijo de 3 columnas sin scroll. En pantallas chicas (mobile/tablet) el contenido se corta y no se puede acceder a todos los campos.
 
 ## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+### Editar `src/components/remitos/RemitoQuickFormDialog.tsx`
 
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+1. **DialogContent**: Agregar `max-h-[90vh] overflow-y-auto` para que sea scrollable cuando el contenido excede la pantalla
+2. **Grid responsive**: Cambiar `grid-cols-3` a `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` para que en mobile sea 1 columna, en tablet 2, y en desktop 3
+3. **Observaciones**: Ajustar `col-span` responsive (`col-span-1 sm:col-span-2 md:col-span-3`)
+4. **Padding/gap**: Reducir gap en mobile con `gap-2 md:gap-3`
+5. **DialogFooter**: Agregar `sticky bottom-0 bg-card pt-2` para que los botones siempre estén visibles al hacer scroll
 
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
-```
-
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+### Archivo
+- **Editar**: `src/components/remitos/RemitoQuickFormDialog.tsx`
 
