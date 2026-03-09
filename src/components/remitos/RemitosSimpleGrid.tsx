@@ -343,6 +343,7 @@ export function RemitosSimpleGrid({
           maquinaria_id: row.maquinaria_id || undefined,
           patente_tercero: row.patente_tercero || undefined,
           cliente: row.cliente || undefined,
+          cliente_destino: row.cliente_destino || undefined,
           cantidad_viajes: row.cantidad_viajes,
           cantidad_uni: row.cantidad_uni,
           precio_unitario: row.precio_unitario,
