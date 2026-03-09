@@ -39,6 +39,7 @@ interface LocalRow {
   maquinaria_id: string;
   patente_tercero: string;
   cliente: string;
+  cliente_destino: string;
   cantidad_viajes: number;
   cantidad_uni: number | null;
   cantidad: number;
@@ -47,6 +48,13 @@ interface LocalRow {
   observaciones: string;
   unidad: string;
   proveedor: string;
+}
+
+// Helper: classify obra by number
+function isObraExterna(numero: string | null): boolean {
+  if (!numero) return false;
+  const num = parseInt(numero, 10);
+  return !isNaN(num) && num >= 300;
 }
 
 const TIPO_MATERIAL_OPTIONS = [
