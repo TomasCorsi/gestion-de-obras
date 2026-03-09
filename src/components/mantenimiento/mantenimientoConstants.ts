@@ -1,13 +1,15 @@
-export const CHECKLIST_CAMBIO_ITEMS = [
+type ChecklistItemDef = { key: string; label: string; hasLitros?: boolean };
+
+export const CHECKLIST_CAMBIO_ITEMS: readonly ChecklistItemDef[] = [
   { key: "aceite_motor", label: "Aceite de motor", hasLitros: true },
   { key: "filtro_aceite_motor", label: "Filtro de aceite de motor" },
   { key: "filtro_combustible", label: "Filtro de combustible" },
   { key: "filtro_aire_secundario", label: "Filtro de aire secundario" },
   { key: "filtro_aire_primario", label: "Filtro de aire primario" },
   { key: "filtro_convertidor", label: "Filtro convertidor" },
-] as const;
+];
 
-export const CHECKLIST_CHEQUEO_ITEMS = [
+export const CHECKLIST_CHEQUEO_ITEMS: readonly ChecklistItemDef[] = [
   { key: "nivel_aceite_hidraulico", label: "Nivel de aceite hidráulico", hasLitros: true },
   { key: "nivel_liquido_frenos", label: "Nivel de líquido de frenos", hasLitros: true },
   { key: "nivel_agua_refrigerante", label: "Nivel de agua refrigerante", hasLitros: true },
@@ -27,7 +29,7 @@ export const CHECKLIST_CHEQUEO_ITEMS = [
   { key: "estado_toma_aire", label: "Estado de toma de aire" },
   { key: "tornillos_flojos", label: "Tornillos flojos" },
   { key: "chequeos_radiadores", label: "Chequeos de radiadores" },
-] as const;
+];
 
 // A checklist value can be boolean (legacy) or an object with litros
 export type ChecklistValue = boolean | { ok: boolean; litros?: number };
