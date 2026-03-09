@@ -231,7 +231,7 @@ export function RemitosSimpleGrid({
 
       return merged;
     });
-  }, [remitos]);
+  }, [remitos, toLocal]);
 
   const obrasOptions: ComboboxOption[] = useMemo(() => {
     return obras.map((o) => ({
