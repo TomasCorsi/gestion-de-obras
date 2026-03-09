@@ -382,7 +382,9 @@ export function RemitosSimpleGrid({
         updated,
         deleted: Array.from(deletedIds.current),
       });
+      // Reset local state completely so realtime refetch becomes source of truth
       deletedIds.current.clear();
+      setRows(remitos.map(toLocal));
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Error al guardar");
