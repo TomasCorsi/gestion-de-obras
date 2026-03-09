@@ -656,7 +656,7 @@ export function RemitosSimpleGrid({
             {rows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={17}
+                  colSpan={18}
                   className="text-center text-muted-foreground text-xs py-8"
                 >
                   Sin remitos. Hacé clic en "Agregar fila" para comenzar.
