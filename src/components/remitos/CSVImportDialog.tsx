@@ -299,7 +299,8 @@ function parseCSV(
     patente_tercero: ['patente_tercero', 'patente tercero', 'pat_tercero', 'pat tercero', 'tercero'],
     precio_calc_mode: ['calc. precio', 'calc_precio', 'precio_calc_mode', 'calc', 'modo calculo'],
     proveedor: ['proveedor', 'provider', 'supplier'],
-    cliente: ['cliente', 'client', 'customer'],
+    cliente: ['cliente', 'client', 'customer', 'cliente origen', 'cli origen', 'cli. origen'],
+    cliente_destino: ['cliente_destino', 'cliente destino', 'cli destino', 'cli. destino'],
     observaciones: ['observaciones', 'descripcion', 'descripción', 'notas', 'obs'],
   };
 
@@ -440,6 +441,15 @@ function parseCSV(
       warnings.push({ field: 'cliente', value: clienteRaw, row: i + 1 });
     }
     
+    // Match cliente_destino
+    const clienteDestinoRaw = getValue('cliente_destino');
+    let clienteDestinoMatch = matchFromMap(clienteDestinoRaw, clientesMap);
+    if (!clienteDestinoMatch.found && clienteDestinoRaw) {
+      const obraMatch = matchFromMap(clienteDestinoRaw, obrasMap);
+      if (obraMatch.found) clienteDestinoMatch = obraMatch;
+    }
+    const cliente_destino = clienteDestinoMatch.matched;
+
     const proveedor = getValue('proveedor');
     const patente_tercero = getValue('patente_tercero');
     const observaciones = getValue('observaciones');
@@ -478,6 +488,7 @@ function parseCSV(
         observaciones: observaciones || undefined,
         proveedor: proveedor || undefined,
         cliente: cliente || undefined,
+        cliente_destino: cliente_destino || undefined,
       },
       patenteInput: patenteValue,
       matchMethod: patenteValue ? matchMethod : 'no_encontrada',

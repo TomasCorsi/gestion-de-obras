@@ -39,6 +39,7 @@ interface LocalRow {
   maquinaria_id: string;
   patente_tercero: string;
   cliente: string;
+  cliente_destino: string;
   cantidad_viajes: number;
   cantidad_uni: number | null;
   cantidad: number;
@@ -47,6 +48,13 @@ interface LocalRow {
   observaciones: string;
   unidad: string;
   proveedor: string;
+}
+
+// Helper: classify obra by number
+function isObraExterna(numero: string | null): boolean {
+  if (!numero) return false;
+  const num = parseInt(numero, 10);
+  return !isNaN(num) && num >= 300;
 }
 
 const TIPO_MATERIAL_OPTIONS = [
@@ -96,6 +104,7 @@ function remitoToLocal(r: RemitoWithRelations): LocalRow {
     maquinaria_id: r.maquinaria_id || "",
     patente_tercero: r.patente_tercero || "",
     cliente: r.cliente || "",
+    cliente_destino: (r as any).cliente_destino || "",
     cantidad_viajes: r.cantidad_viajes || 1,
     cantidad_uni: r.cantidad_uni ?? null,
     cantidad: r.cantidad,
@@ -122,6 +131,7 @@ function createEmptyRow(numero: string): LocalRow {
     maquinaria_id: "",
     patente_tercero: "",
     cliente: "",
+    cliente_destino: "",
     cantidad_viajes: 0,
     cantidad_uni: null,
     cantidad: 0,
@@ -228,12 +238,30 @@ export function RemitosSimpleGrid({
     }));
   }, [clientes]);
 
+  const getClienteForObra = useCallback((obraNombre: string): string => {
+    const obra = obras.find(o => o.nombre === obraNombre);
+    if (obra && isObraExterna(obra.numero)) {
+      return obra.cliente?.nombre || "";
+    }
+    return "";
+  }, [obras]);
+
   const updateRow = useCallback(
     (localId: string, field: keyof LocalRow, value: string | number | null) => {
       setRows((prev) =>
         prev.map((row) => {
           if (row._localId !== localId) return row;
           const updated = { ...row, [field]: value, _isModified: true };
+
+          // Auto-fill cliente when "desde" changes
+          if (field === "desde") {
+            updated.cliente = getClienteForObra(value as string);
+          }
+          // Auto-fill cliente_destino when "hasta" changes
+          if (field === "hasta") {
+            updated.cliente_destino = getClienteForObra(value as string);
+          }
+
           // Auto-calculate precio_total
           const viajes = updated.cantidad_viajes || 1;
           const cantUni = updated.cantidad_uni ?? 0;
@@ -244,7 +272,7 @@ export function RemitosSimpleGrid({
         })
       );
     },
-    []
+    [getClienteForObra]
   );
 
   const addRow = useCallback(() => {
@@ -315,6 +343,7 @@ export function RemitosSimpleGrid({
           maquinaria_id: row.maquinaria_id || undefined,
           patente_tercero: row.patente_tercero || undefined,
           cliente: row.cliente || undefined,
+          cliente_destino: row.cliente_destino || undefined,
           cantidad_viajes: row.cantidad_viajes,
           cantidad_uni: row.cantidad_uni,
           precio_unitario: row.precio_unitario,
@@ -394,7 +423,8 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[120px]">Transporte</TableHead>
               <TableHead className="text-xs min-w-[160px]">Vehículo</TableHead>
               <TableHead className="text-xs min-w-[100px]">Pat. Tercero</TableHead>
-              <TableHead className="text-xs min-w-[140px]">Cliente</TableHead>
+              <TableHead className="text-xs min-w-[140px]">Cli. Origen</TableHead>
+              <TableHead className="text-xs min-w-[140px]">Cli. Destino</TableHead>
               <TableHead className="text-xs min-w-[65px] text-right">Viajes</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Uni.</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Total</TableHead>
@@ -544,7 +574,19 @@ export function RemitosSimpleGrid({
                     onValueChange={(v) =>
                       updateRow(row._localId, "cliente", v)
                     }
-                    placeholder="Cliente..."
+                    placeholder="Cli. Origen..."
+                    searchPlaceholder="Buscar cliente..."
+                    className="h-7 text-xs"
+                  />
+                </TableCell>
+                <TableCell className="p-1">
+                  <Combobox
+                    options={clienteOptions}
+                    value={row.cliente_destino}
+                    onValueChange={(v) =>
+                      updateRow(row._localId, "cliente_destino", v)
+                    }
+                    placeholder="Cli. Destino..."
                     searchPlaceholder="Buscar cliente..."
                     className="h-7 text-xs"
                   />
@@ -656,7 +698,7 @@ export function RemitosSimpleGrid({
             {rows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={18}
+                  colSpan={19}
                   className="text-center text-muted-foreground text-xs py-8"
                 >
                   Sin remitos. Hacé clic en "Agregar fila" para comenzar.

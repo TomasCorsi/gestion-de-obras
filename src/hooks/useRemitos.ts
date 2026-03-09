@@ -21,6 +21,7 @@ export interface RemitoDB {
   row_color: string | null;
   proveedor: string | null;
   cliente: string | null;
+  cliente_destino: string | null;
   remito_tercero: string | null;
   remito_local: string | null;
   desde: string | null;
@@ -56,6 +57,7 @@ export interface RemitoForm {
   observaciones?: string;
   proveedor?: string;
   cliente?: string;
+  cliente_destino?: string;
   remito_tercero?: string;
   remito_local?: string;
   desde?: string;

@@ -63,6 +63,20 @@ export function RemitoQuickFormDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
+  function isObraExterna(numero: string | null): boolean {
+    if (!numero) return false;
+    const num = parseInt(numero, 10);
+    return !isNaN(num) && num >= 300;
+  }
+
+  function getClienteForObra(obraNombre: string): string {
+    const obra = obras.find(o => o.nombre === obraNombre);
+    if (obra && isObraExterna(obra.numero)) {
+      return obra.cliente?.nombre || "";
+    }
+    return "";
+  }
+
   function getInitialForm() {
     return {
       fecha: today(),
@@ -75,6 +89,7 @@ export function RemitoQuickFormDialog({
       maquinaria_id: "",
       patente_tercero: "",
       cliente: "",
+      cliente_destino: "",
       cantidad_viajes: 1,
       cantidad: 0,
       cantidad_uni: 0,
@@ -94,14 +109,22 @@ export function RemitoQuickFormDialog({
   const set = (field: string, value: any) =>
     setForm((prev) => {
       const next = { ...prev, [field]: value };
+
+      // Auto-fill cliente when "desde" changes
+      if (field === "desde") {
+        next.cliente = getClienteForObra(value as string);
+      }
+      // Auto-fill cliente_destino when "hasta" changes
+      if (field === "hasta") {
+        next.cliente_destino = getClienteForObra(value as string);
+      }
+
       // Auto-calc precio_total
-      if (["cantidad_viajes", "cantidad", "precio_unitario", "precio_calc_mode"].includes(field) || field === field) {
-        const mode = next.precio_calc_mode;
-        if (mode === "viajes") {
-          next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
-        } else {
-          next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
-        }
+      const mode = next.precio_calc_mode;
+      if (mode === "viajes") {
+        next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
+      } else {
+        next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
       }
       return next;
     });
@@ -141,6 +164,7 @@ export function RemitoQuickFormDialog({
         maquinaria_id: form.maquinaria_id || undefined,
         patente_tercero: form.patente_tercero || undefined,
         cliente: form.cliente || undefined,
+        cliente_destino: form.cliente_destino || undefined,
         cantidad_viajes: form.cantidad_viajes,
         cantidad_uni: form.cantidad_uni || null,
         precio_unitario: form.precio_unitario || null,
@@ -190,8 +214,14 @@ export function RemitoQuickFormDialog({
             <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => set("hasta", v)} placeholder="Obra destino..." />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Cliente</Label>
-            <Combobox options={clienteOptions} value={form.cliente} onValueChange={(v) => set("cliente", v)} placeholder="Cliente..." />
+            <Label className="text-xs">Cli. Origen</Label>
+            <Combobox options={clienteOptions} value={form.cliente} onValueChange={(v) => set("cliente", v)} placeholder="Cli. Origen..." />
+          </div>
+
+          {/* Row 2b */}
+          <div className="space-y-1">
+            <Label className="text-xs">Cli. Destino</Label>
+            <Combobox options={clienteOptions} value={form.cliente_destino} onValueChange={(v) => set("cliente_destino", v)} placeholder="Cli. Destino..." />
           </div>
 
           {/* Row 3 */}

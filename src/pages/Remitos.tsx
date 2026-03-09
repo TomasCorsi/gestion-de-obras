@@ -97,7 +97,8 @@ export default function Remitos() {
       (r.tipo_material?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (r.tipo_transporte?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
       (r.proveedor?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.cliente?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+      (r.cliente?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+      ((r as any).cliente_destino?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     );
   }, [remitos, filters, searchTerm]);
 
