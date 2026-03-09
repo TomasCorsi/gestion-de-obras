@@ -400,6 +400,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[80px] text-right">C. Total</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">P. Unit.</TableHead>
               <TableHead className="text-xs min-w-[90px] text-right">P. Total</TableHead>
+              <TableHead className="text-xs min-w-[150px]">Observaciones</TableHead>
               <TableHead className="w-[70px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -603,6 +604,16 @@ export function RemitosSimpleGrid({
                   </div>
                 </TableCell>
                 <TableCell className="p-1">
+                  <Input
+                    value={row.observaciones}
+                    onChange={(e) =>
+                      updateRow(row._localId, "observaciones", e.target.value)
+                    }
+                    className="h-7 text-xs"
+                    placeholder="Obs..."
+                  />
+                </TableCell>
+                <TableCell className="p-1">
                   <div className="flex items-center gap-0.5">
                     <Button
                       type="button"
@@ -629,7 +640,7 @@ export function RemitosSimpleGrid({
             {rows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={16}
+                  colSpan={17}
                   className="text-center text-muted-foreground text-xs py-8"
                 >
                   Sin remitos. Hacé clic en "Agregar fila" para comenzar.
