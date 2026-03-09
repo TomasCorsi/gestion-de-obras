@@ -160,12 +160,12 @@ export function RemitoQuickFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto bg-card border-border">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-foreground">Nuev1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:Remito</DialogTitle>
-      1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:</DialogHeader>
+          <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
+        </DialogHeader>
 
-        <d1 sm:grid-cols-2 md:grid-cols-3 gap-2 md: className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
           {/* Row 1 */}
           <div className="space-y-1">
             <Label className="text-xs">Fecha</Label>
@@ -268,7 +268,7 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Precio Total</Label>
-            <Input type="number" value={form.precio_total} readOnly className="h-8 text-sm1 sm:col-span-2 md:col-span- bg-muted" />
+            <Input type="number" value={form.precio_total} readOnly className="h-8 text-sm bg-muted" />
           </div>
           <div />
 
