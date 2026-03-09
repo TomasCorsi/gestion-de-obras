@@ -343,6 +343,49 @@ export function RemitosSimpleGrid({
       const created: RemitoForm[] = [];
       const updated: { id: string; data: Partial<RemitoForm> }[] = [];
 
+      // Collect all remito_local values to detect duplicates within the batch
+      const seenLocals = new Map<string, number>(); // value → count
+      // Existing DB remito_local values (excluding rows being edited)
+      const existingLocals = new Set(
+        remitos.map(r => r.remito_local?.trim().toLowerCase()).filter(Boolean)
+      );
+
+      for (const row of rows) {
+        const localVal = row.remito_local?.trim().toLowerCase();
+        if (localVal) {
+          seenLocals.set(localVal, (seenLocals.get(localVal) || 0) + 1);
+        }
+      }
+
+      // Check for duplicates
+      const duplicates: string[] = [];
+      for (const row of rows) {
+        const localVal = row.remito_local?.trim().toLowerCase();
+        if (!localVal) continue;
+
+        if (row._isNew) {
+          // New row: check against DB and batch duplicates
+          if (existingLocals.has(localVal) || (seenLocals.get(localVal) || 0) > 1) {
+            duplicates.push(row.remito_local);
+          }
+        } else if (row._isModified && row.id) {
+          // Edited row: check if the new value conflicts with other rows
+          const otherDbHasIt = remitos.some(
+            r => r.id !== row.id && r.remito_local?.trim().toLowerCase() === localVal
+          );
+          if (otherDbHasIt || (seenLocals.get(localVal) || 0) > 1) {
+            duplicates.push(row.remito_local);
+          }
+        }
+      }
+
+      if (duplicates.length > 0) {
+        const unique = [...new Set(duplicates)];
+        toast.error(`Remito Local duplicado: ${unique.join(", ")}`);
+        setIsSaving(false);
+        return;
+      }
+
       for (const row of rows) {
         const formData: RemitoForm = {
           numero: row.remito_local || generateNumero(),
