@@ -10,6 +10,7 @@ import {
   DollarSign,
   Upload,
   Package,
+  Plus,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
