@@ -63,6 +63,20 @@ export function RemitoQuickFormDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
+  function isObraExterna(numero: string | null): boolean {
+    if (!numero) return false;
+    const num = parseInt(numero, 10);
+    return !isNaN(num) && num >= 300;
+  }
+
+  function getClienteForObra(obraNombre: string): string {
+    const obra = obras.find(o => o.nombre === obraNombre);
+    if (obra && isObraExterna(obra.numero)) {
+      return obra.cliente?.nombre || "";
+    }
+    return "";
+  }
+
   function getInitialForm() {
     return {
       fecha: today(),
@@ -75,6 +89,7 @@ export function RemitoQuickFormDialog({
       maquinaria_id: "",
       patente_tercero: "",
       cliente: "",
+      cliente_destino: "",
       cantidad_viajes: 1,
       cantidad: 0,
       cantidad_uni: 0,
