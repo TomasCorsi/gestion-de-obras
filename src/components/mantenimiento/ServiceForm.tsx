@@ -23,8 +23,11 @@ import {
   ESTADO_CONFIG,
   emptyChecklistCambio,
   emptyChecklistChequeo,
+  isChecked,
+  getLitros,
   type ChecklistCambio,
   type ChecklistChequeo,
+  type ChecklistValue,
 } from "./mantenimientoConstants";
 
 interface ServiceFormProps {
@@ -183,15 +186,40 @@ export function ServiceForm({ onClose, editData }: ServiceFormProps) {
           <h3 className="font-semibold text-foreground">Checklist de Cambio</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-blue-500/5 border border-blue-500/20 rounded-lg">
-          {CHECKLIST_CAMBIO_ITEMS.map(item => (
-            <label key={item.key} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox
-                checked={checkCambio[item.key] || false}
-                onCheckedChange={(v) => setCheckCambio(prev => ({ ...prev, [item.key]: !!v }))}
-              />
-              <span>{item.label}</span>
-            </label>
-          ))}
+          {CHECKLIST_CAMBIO_ITEMS.map(item => {
+            const val = checkCambio[item.key];
+            const checked = isChecked(val);
+            return (
+              <div key={item.key} className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-sm flex-1 min-w-0">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(v) => {
+                      if (!!v && item.hasLitros) {
+                        setCheckCambio(prev => ({ ...prev, [item.key]: { ok: true, litros: undefined } }));
+                      } else {
+                        setCheckCambio(prev => ({ ...prev, [item.key]: !!v }));
+                      }
+                    }}
+                  />
+                  <span>{item.label}</span>
+                </label>
+                {checked && item.hasLitros && (
+                  <Input
+                    type="number"
+                    placeholder="Lts"
+                    value={getLitros(val) ?? ""}
+                    onChange={e => {
+                      const litros = e.target.value ? parseFloat(e.target.value) : undefined;
+                      setCheckCambio(prev => ({ ...prev, [item.key]: { ok: true, litros } }));
+                    }}
+                    className="h-7 w-20 text-xs"
+                    inputMode="decimal"
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -202,15 +230,40 @@ export function ServiceForm({ onClose, editData }: ServiceFormProps) {
           <h3 className="font-semibold text-foreground">Checklist de Chequeo</h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-green-500/5 border border-green-500/20 rounded-lg">
-          {CHECKLIST_CHEQUEO_ITEMS.map(item => (
-            <label key={item.key} className="flex items-center gap-2 cursor-pointer text-sm">
-              <Checkbox
-                checked={checkChequeo[item.key] || false}
-                onCheckedChange={(v) => setCheckChequeo(prev => ({ ...prev, [item.key]: !!v }))}
-              />
-              <span>{item.label}</span>
-            </label>
-          ))}
+          {CHECKLIST_CHEQUEO_ITEMS.map(item => {
+            const val = checkChequeo[item.key];
+            const checked = isChecked(val);
+            return (
+              <div key={item.key} className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-sm flex-1 min-w-0">
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={(v) => {
+                      if (!!v && item.hasLitros) {
+                        setCheckChequeo(prev => ({ ...prev, [item.key]: { ok: true, litros: undefined } }));
+                      } else {
+                        setCheckChequeo(prev => ({ ...prev, [item.key]: !!v }));
+                      }
+                    }}
+                  />
+                  <span>{item.label}</span>
+                </label>
+                {checked && item.hasLitros && (
+                  <Input
+                    type="number"
+                    placeholder="Lts"
+                    value={getLitros(val) ?? ""}
+                    onChange={e => {
+                      const litros = e.target.value ? parseFloat(e.target.value) : undefined;
+                      setCheckChequeo(prev => ({ ...prev, [item.key]: { ok: true, litros } }));
+                    }}
+                    className="h-7 w-20 text-xs"
+                    inputMode="decimal"
+                  />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
