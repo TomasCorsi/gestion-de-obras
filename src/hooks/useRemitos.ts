@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -93,22 +93,29 @@ const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
 export function useRemitos() {
   const queryClient = useQueryClient();
 
-  // Realtime subscription: auto-refresh when remitos change in DB
+  // Realtime subscription with debounce to avoid duplicates during batch saves
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedInvalidate = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+    }, 500);
+  }, [queryClient]);
+
   useEffect(() => {
     const channel = supabase
       .channel('remitos-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'remitos' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['remitos'] });
-        }
+        () => debouncedInvalidate()
       )
       .subscribe();
     return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, debouncedInvalidate]);
 
   const { 
     data: remitos = [], 
