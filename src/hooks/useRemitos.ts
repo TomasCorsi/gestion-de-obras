@@ -81,7 +81,8 @@ const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
       viaje:viajes(origen, destino),
       maquinaria:maquinarias(codigo, patente)
     `)
-    .order("fecha", { ascending: false });
+    .order("fecha", { ascending: false })
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
   return data || [];
