@@ -161,6 +161,13 @@ export default function Remitos() {
           />
         </div>
         <Button
+          onClick={() => setFormOpen(true)}
+          className="gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo
+        </Button>
+        <Button
           variant="outline"
           onClick={() => setImportOpen(true)}
           className="gap-2"
