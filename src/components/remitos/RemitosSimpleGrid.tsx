@@ -585,6 +585,21 @@ export function RemitosSimpleGrid({
                   </div>
                 </TableCell>
                 <TableCell className="p-1">
+                  <Select
+                    value={row.unidad}
+                    onValueChange={(v) => updateRow(row._localId, "unidad", v)}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Ud." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDAD_OPTIONS.map((u) => (
+                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="p-1">
                   <Input
                     type="number"
                     value={row.precio_unitario ?? ""}
