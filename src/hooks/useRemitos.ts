@@ -57,6 +57,7 @@ export interface RemitoForm {
   observaciones?: string;
   proveedor?: string;
   cliente?: string;
+  cliente_destino?: string;
   remito_tercero?: string;
   remito_local?: string;
   desde?: string;

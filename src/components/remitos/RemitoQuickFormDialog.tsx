@@ -214,8 +214,14 @@ export function RemitoQuickFormDialog({
             <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => set("hasta", v)} placeholder="Obra destino..." />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Cliente</Label>
-            <Combobox options={clienteOptions} value={form.cliente} onValueChange={(v) => set("cliente", v)} placeholder="Cliente..." />
+            <Label className="text-xs">Cli. Origen</Label>
+            <Combobox options={clienteOptions} value={form.cliente} onValueChange={(v) => set("cliente", v)} placeholder="Cli. Origen..." />
+          </div>
+
+          {/* Row 2b */}
+          <div className="space-y-1">
+            <Label className="text-xs">Cli. Destino</Label>
+            <Combobox options={clienteOptions} value={form.cliente_destino} onValueChange={(v) => set("cliente_destino", v)} placeholder="Cli. Destino..." />
           </div>
 
           {/* Row 3 */}
