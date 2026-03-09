@@ -255,12 +255,6 @@ export function RemitosSimpleGrid({
       }));
   }, [maquinarias]);
 
-  const clienteOptions: ComboboxOption[] = useMemo(() => {
-    return clientes.filter((c) => c.activo).map((c) => ({
-      value: c.nombre,
-      label: c.nombre,
-    }));
-  }, [clientes]);
 
   const getClienteForObra = useCallback((obraNombre: string): string => {
     const obra = obras.find(o => o.nombre === obraNombre);
