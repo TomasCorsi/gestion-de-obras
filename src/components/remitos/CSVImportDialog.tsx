@@ -488,6 +488,7 @@ function parseCSV(
         observaciones: observaciones || undefined,
         proveedor: proveedor || undefined,
         cliente: cliente || undefined,
+        cliente_destino: cliente_destino || undefined,
       },
       patenteInput: patenteValue,
       matchMethod: patenteValue ? matchMethod : 'no_encontrada',
