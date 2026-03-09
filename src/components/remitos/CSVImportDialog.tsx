@@ -299,8 +299,8 @@ function parseCSV(
     patente_tercero: ['patente_tercero', 'patente tercero', 'pat_tercero', 'pat tercero', 'tercero'],
     precio_calc_mode: ['calc. precio', 'calc_precio', 'precio_calc_mode', 'calc', 'modo calculo'],
     proveedor: ['proveedor', 'provider', 'supplier'],
-    cliente: ['cliente', 'client', 'customer'],
-    observaciones: ['observaciones', 'descripcion', 'descripción', 'notas', 'obs'],
+    cliente: ['cliente', 'client', 'customer', 'cliente origen', 'cli origen', 'cli. origen'],
+    cliente_destino: ['cliente_destino', 'cliente destino', 'cli destino', 'cli. destino'],
   };
 
   // Find column indices
