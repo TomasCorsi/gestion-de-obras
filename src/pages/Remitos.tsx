@@ -37,6 +37,7 @@ export default function Remitos() {
     obraId: undefined,
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
