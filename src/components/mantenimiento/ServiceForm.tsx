@@ -23,8 +23,11 @@ import {
   ESTADO_CONFIG,
   emptyChecklistCambio,
   emptyChecklistChequeo,
+  isChecked,
+  getLitros,
   type ChecklistCambio,
   type ChecklistChequeo,
+  type ChecklistValue,
 } from "./mantenimientoConstants";
 
 interface ServiceFormProps {

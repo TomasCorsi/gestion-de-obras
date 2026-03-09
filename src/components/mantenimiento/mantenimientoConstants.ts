@@ -1,5 +1,5 @@
 export const CHECKLIST_CAMBIO_ITEMS = [
-  { key: "aceite_motor", label: "Aceite de motor" },
+  { key: "aceite_motor", label: "Aceite de motor", hasLitros: true },
   { key: "filtro_aceite_motor", label: "Filtro de aceite de motor" },
   { key: "filtro_combustible", label: "Filtro de combustible" },
   { key: "filtro_aire_secundario", label: "Filtro de aire secundario" },
@@ -8,14 +8,14 @@ export const CHECKLIST_CAMBIO_ITEMS = [
 ] as const;
 
 export const CHECKLIST_CHEQUEO_ITEMS = [
-  { key: "nivel_aceite_hidraulico", label: "Nivel de aceite hidráulico" },
-  { key: "nivel_liquido_frenos", label: "Nivel de líquido de frenos" },
-  { key: "nivel_agua_refrigerante", label: "Nivel de agua refrigerante" },
+  { key: "nivel_aceite_hidraulico", label: "Nivel de aceite hidráulico", hasLitros: true },
+  { key: "nivel_liquido_frenos", label: "Nivel de líquido de frenos", hasLitros: true },
+  { key: "nivel_agua_refrigerante", label: "Nivel de agua refrigerante", hasLitros: true },
   { key: "tension_correa", label: "Tensión de correa" },
   { key: "funcionamiento_relojes", label: "Funcionamiento de relojes" },
   { key: "engrase_diario", label: "Engrase diario" },
-  { key: "aceite_diferencial", label: "Aceite diferencial trasero y delantero" },
-  { key: "aceite_reductores", label: "Aceite de reductores" },
+  { key: "aceite_diferencial", label: "Aceite diferencial trasero y delantero", hasLitros: true },
+  { key: "aceite_reductores", label: "Aceite de reductores", hasLitros: true },
   { key: "eje_bomba_agua", label: "Eje de bomba de agua" },
   { key: "cilindro_hidraulico", label: "Cilindro hidráulico" },
   { key: "soldaduras_equipo", label: "Soldaduras del equipo" },
@@ -29,8 +29,23 @@ export const CHECKLIST_CHEQUEO_ITEMS = [
   { key: "chequeos_radiadores", label: "Chequeos de radiadores" },
 ] as const;
 
-export type ChecklistCambio = Record<string, boolean>;
-export type ChecklistChequeo = Record<string, boolean>;
+// A checklist value can be boolean (legacy) or an object with litros
+export type ChecklistValue = boolean | { ok: boolean; litros?: number };
+export type ChecklistCambio = Record<string, ChecklistValue>;
+export type ChecklistChequeo = Record<string, ChecklistValue>;
+
+/** Returns whether the item is checked (handles both legacy boolean and new object format) */
+export function isChecked(val: ChecklistValue | undefined): boolean {
+  if (val == null) return false;
+  if (typeof val === "boolean") return val;
+  return val.ok;
+}
+
+/** Returns the litros value if present */
+export function getLitros(val: ChecklistValue | undefined): number | undefined {
+  if (val == null || typeof val === "boolean") return undefined;
+  return val.litros;
+}
 
 export function emptyChecklistCambio(): ChecklistCambio {
   return Object.fromEntries(CHECKLIST_CAMBIO_ITEMS.map(i => [i.key, false]));

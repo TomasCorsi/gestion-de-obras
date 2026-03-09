@@ -13,8 +13,11 @@ import {
   CHECKLIST_CHEQUEO_ITEMS,
   emptyChecklistCambio,
   emptyChecklistChequeo,
+  isChecked,
+  getLitros,
   type ChecklistCambio,
   type ChecklistChequeo,
+  type ChecklistValue,
 } from "@/components/mantenimiento/mantenimientoConstants";
 import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 

@@ -9,6 +9,8 @@ import {
   ESTADO_CONFIG,
   TIPO_CONFIG,
   formatCurrency,
+  isChecked,
+  getLitros,
   type ChecklistCambio,
   type ChecklistChequeo,
 } from "./mantenimientoConstants";
@@ -19,29 +21,36 @@ interface MantenimientoDetailProps {
 
 function ChecklistSection({ title, items, data, colorClass }: {
   title: string;
-  items: readonly { key: string; label: string }[];
-  data: Record<string, boolean> | null;
+  items: readonly { key: string; label: string; hasLitros?: boolean }[];
+  data: Record<string, any> | null;
   colorClass: string;
 }) {
   if (!data) return null;
-  const checked = items.filter(i => data[i.key]);
-  const unchecked = items.filter(i => !data[i.key]);
+  const checked = items.filter(i => isChecked(data[i.key]));
 
   return (
     <DetailSection title={`${title} (${checked.length}/${items.length})`}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-        {items.map(item => (
-          <div key={item.key} className="flex items-center gap-2 text-sm">
-            {data[item.key] ? (
-              <Check className={cn("w-4 h-4 shrink-0", colorClass)} />
-            ) : (
-              <X className="w-4 h-4 shrink-0 text-muted-foreground/40" />
-            )}
-            <span className={data[item.key] ? "text-foreground" : "text-muted-foreground/60"}>
-              {item.label}
-            </span>
-          </div>
-        ))}
+        {items.map(item => {
+          const val = data[item.key];
+          const ok = isChecked(val);
+          const litros = getLitros(val);
+          return (
+            <div key={item.key} className="flex items-center gap-2 text-sm">
+              {ok ? (
+                <Check className={cn("w-4 h-4 shrink-0", colorClass)} />
+              ) : (
+                <X className="w-4 h-4 shrink-0 text-muted-foreground/40" />
+              )}
+              <span className={ok ? "text-foreground" : "text-muted-foreground/60"}>
+                {item.label}
+                {ok && litros != null && litros > 0 && (
+                  <span className="ml-1 text-muted-foreground font-medium">— {litros} lts</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
       </div>
     </DetailSection>
   );
