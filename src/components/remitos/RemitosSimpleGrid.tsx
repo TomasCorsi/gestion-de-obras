@@ -222,11 +222,11 @@ export function RemitosSimpleGrid({
   }, [maquinarias]);
 
   const clienteOptions: ComboboxOption[] = useMemo(() => {
-    return obras.map((o) => ({
-      value: o.nombre,
-      label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+    return clientes.filter((c) => c.activo).map((c) => ({
+      value: c.nombre,
+      label: c.nombre,
     }));
-  }, [obras]);
+  }, [clientes]);
 
   const updateRow = useCallback(
     (localId: string, field: keyof LocalRow, value: string | number | null) => {
