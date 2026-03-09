@@ -1,26 +1,20 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# No modificar el numero de remito en la importacion
 
 ## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+Al importar CSV, el campo `numero` se genera como `remito_local + "-" + indice` (ej: `71742-22`), agregando un sufijo innecesario.
 
-## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+## Solucion
+En `src/components/remitos/CSVImportDialog.tsx` linea 458, cambiar para que `numero` use directamente el valor de `remito_local` sin agregar nada. Si no hay `remito_local`, generar un ID interno unico.
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+```
+// Antes:
+numero = remito_local ? `${remito_local}-${i}` : `IMP-${Date.now()}-${i}`;
 
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
-
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
+// Despues:
+numero = remito_local || `IMP-${Date.now()}-${i}`;
 ```
 
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+Un solo cambio, una sola linea.
 
