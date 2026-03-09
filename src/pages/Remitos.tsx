@@ -10,6 +10,7 @@ import {
   DollarSign,
   Upload,
   Package,
+  Plus,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
@@ -19,6 +20,7 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
+import { RemitoQuickFormDialog } from "@/components/remitos/RemitoQuickFormDialog";
 import { toast } from "sonner";
 
 export default function Remitos() {
@@ -35,6 +37,7 @@ export default function Remitos() {
     obraId: undefined,
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
@@ -158,6 +161,13 @@ export default function Remitos() {
           />
         </div>
         <Button
+          onClick={() => setFormOpen(true)}
+          className="gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo
+        </Button>
+        <Button
           variant="outline"
           onClick={() => setImportOpen(true)}
           className="gap-2"
@@ -231,6 +241,23 @@ export default function Remitos() {
         patentesMap={patentesMap}
         obrasMap={obrasMap}
         clientesMap={clientesMap}
+      />
+
+      {/* Quick Form Dialog */}
+      <RemitoQuickFormDialog
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        obras={obras}
+        maquinarias={maquinarias}
+        clientes={clientes}
+        generateNumero={generateNumero}
+        onSubmit={async (remito) => {
+          const results = await batchSave({ created: [remito], updated: [], deleted: [] });
+          if (results.errors > 0) {
+            throw new Error("Error al guardar el remito");
+          }
+          toast.success("Remito creado exitosamente");
+        }}
       />
     </MainLayout>
   );

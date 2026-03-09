@@ -1,27 +1,26 @@
 
 
-# Agregar botón con formulario rápido para cargar remitos
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Cambios
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-### 1. Crear componente `src/components/remitos/RemitoQuickFormDialog.tsx`
-Dialog con formulario compacto que incluye todos los campos del remito en un layout de 2-3 columnas para carga ágil:
-- Fecha, Remito Tercero, Remito Local
-- Desde, Hasta (combobox con obras)
-- Tipo Material (select), Tipo Transporte (select/combobox)
-- Maquinaria (combobox) o Patente Tercero
-- Cliente (combobox)
-- Cantidad Viajes, Cantidad, Unidad, Precio Unitario, Precio Total
-- Proveedor, Observaciones
-- Cálculo automático de precio total según modo (viajes × unitario o cantidad × unitario)
-- Al guardar, llama a `createRemito` y cierra el dialog
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 2. Modificar `src/pages/Remitos.tsx`
-- Agregar estado `formOpen` para controlar el dialog
-- Agregar botón "Nuevo Remito" con ícono `Plus` junto al botón Importar
-- Renderizar `RemitoQuickFormDialog` pasando obras, maquinarias, clientes, y la función `createRemito`
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-### Archivos
-- **Crear**: `src/components/remitos/RemitoQuickFormDialog.tsx`
-- **Editar**: `src/pages/Remitos.tsx`
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
+
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
