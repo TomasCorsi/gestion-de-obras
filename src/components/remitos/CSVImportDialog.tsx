@@ -301,6 +301,7 @@ function parseCSV(
     proveedor: ['proveedor', 'provider', 'supplier'],
     cliente: ['cliente', 'client', 'customer', 'cliente origen', 'cli origen', 'cli. origen'],
     cliente_destino: ['cliente_destino', 'cliente destino', 'cli destino', 'cli. destino'],
+    observaciones: ['observaciones', 'descripcion', 'descripción', 'notas', 'obs'],
   };
 
   // Find column indices
