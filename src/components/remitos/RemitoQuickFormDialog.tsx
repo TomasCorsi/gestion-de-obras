@@ -139,9 +139,6 @@ export function RemitoQuickFormDialog({
     label: m.codigo || m.patente || m.id.slice(0, 8),
   }));
 
-  const clienteOptions: ComboboxOption[] = clientes
-    .filter((c) => c.activo)
-    .map((c) => ({ value: c.nombre, label: c.nombre }));
 
   const handleSubmit = async () => {
     if (!form.fecha) return;
