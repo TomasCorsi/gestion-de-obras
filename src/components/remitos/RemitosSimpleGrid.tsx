@@ -238,12 +238,30 @@ export function RemitosSimpleGrid({
     }));
   }, [clientes]);
 
+  const getClienteForObra = useCallback((obraNombre: string): string => {
+    const obra = obras.find(o => o.nombre === obraNombre);
+    if (obra && isObraExterna(obra.numero)) {
+      return obra.cliente?.nombre || "";
+    }
+    return "";
+  }, [obras]);
+
   const updateRow = useCallback(
     (localId: string, field: keyof LocalRow, value: string | number | null) => {
       setRows((prev) =>
         prev.map((row) => {
           if (row._localId !== localId) return row;
           const updated = { ...row, [field]: value, _isModified: true };
+
+          // Auto-fill cliente when "desde" changes
+          if (field === "desde") {
+            updated.cliente = getClienteForObra(value as string);
+          }
+          // Auto-fill cliente_destino when "hasta" changes
+          if (field === "hasta") {
+            updated.cliente_destino = getClienteForObra(value as string);
+          }
+
           // Auto-calculate precio_total
           const viajes = updated.cantidad_viajes || 1;
           const cantUni = updated.cantidad_uni ?? 0;
@@ -254,7 +272,7 @@ export function RemitosSimpleGrid({
         })
       );
     },
-    []
+    [getClienteForObra]
   );
 
   const addRow = useCallback(() => {
