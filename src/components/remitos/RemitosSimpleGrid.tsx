@@ -195,7 +195,7 @@ export function RemitosSimpleGrid({
       // Detect bulk import: many new rows arrived at once → full reset
       if (newDbCount - prevDbCount >= bulkThreshold) {
         toast.info(`${newDbCount - prevDbCount} remitos nuevos cargados`);
-        return remitos.map(remitoToLocal);
+        return remitos.map(toLocal);
       }
 
       // Identify rows the user is actively editing
