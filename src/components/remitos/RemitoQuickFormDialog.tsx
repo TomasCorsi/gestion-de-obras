@@ -164,6 +164,7 @@ export function RemitoQuickFormDialog({
         maquinaria_id: form.maquinaria_id || undefined,
         patente_tercero: form.patente_tercero || undefined,
         cliente: form.cliente || undefined,
+        cliente_destino: form.cliente_destino || undefined,
         cantidad_viajes: form.cantidad_viajes,
         cantidad_uni: form.cantidad_uni || null,
         precio_unitario: form.precio_unitario || null,
