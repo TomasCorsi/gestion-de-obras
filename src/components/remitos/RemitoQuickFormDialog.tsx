@@ -160,12 +160,12 @@ export function RemitoQuickFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-3 gap-3">
+        <d1 sm:grid-cols-2 md:grid-cols-3 gap-2 md: className="grid grid-cols-3 gap-3">
           {/* Row 1 */}
           <div className="space-y-1">
             <Label className="text-xs">Fecha</Label>
