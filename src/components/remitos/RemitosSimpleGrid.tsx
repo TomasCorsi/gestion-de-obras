@@ -217,7 +217,7 @@ export function RemitosSimpleGrid({
       );
       const fromDB = remitos
         .filter((r) => !editingDbIds.has(r.id))
-        .map(remitoToLocal);
+        .map(toLocal);
 
       const merged = [...fromDB, ...userEditing];
 
