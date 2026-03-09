@@ -131,6 +131,7 @@ function createEmptyRow(numero: string): LocalRow {
     maquinaria_id: "",
     patente_tercero: "",
     cliente: "",
+    cliente_destino: "",
     cantidad_viajes: 0,
     cantidad_uni: null,
     cantidad: 0,
