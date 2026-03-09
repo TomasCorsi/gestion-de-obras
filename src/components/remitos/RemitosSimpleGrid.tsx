@@ -592,28 +592,14 @@ export function RemitosSimpleGrid({
                   />
                 </TableCell>
                 <TableCell className="p-1">
-                  <Combobox
-                    options={clienteOptions}
-                    value={row.cliente}
-                    onValueChange={(v) =>
-                      updateRow(row._localId, "cliente", v)
-                    }
-                    placeholder="Cli. Origen..."
-                    searchPlaceholder="Buscar cliente..."
-                    className="h-7 text-xs"
-                  />
+                  <div className="h-7 flex items-center text-xs text-muted-foreground px-2 bg-muted/30 rounded-md truncate">
+                    {row.cliente || "—"}
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
-                  <Combobox
-                    options={clienteOptions}
-                    value={row.cliente_destino}
-                    onValueChange={(v) =>
-                      updateRow(row._localId, "cliente_destino", v)
-                    }
-                    placeholder="Cli. Destino..."
-                    searchPlaceholder="Buscar cliente..."
-                    className="h-7 text-xs"
-                  />
+                  <div className="h-7 flex items-center text-xs text-muted-foreground px-2 bg-muted/30 rounded-md truncate">
+                    {row.cliente_destino || "—"}
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
                   <Input
