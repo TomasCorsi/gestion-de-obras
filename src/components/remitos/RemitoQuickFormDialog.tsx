@@ -160,10 +160,10 @@ export function RemitoQuickFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto bg-card border-border">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto max-h-[90vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
-        </DialogHeader>
+      1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:</DialogHeader>
 
         <d1 sm:grid-cols-2 md:grid-cols-3 gap-2 md: className="grid grid-cols-3 gap-3">
           {/* Row 1 */}
@@ -272,7 +272,7 @@ export function RemitoQuickFormDialog({
           </div>
           <div />
 
-          {/* Row 7 - Observaciones full width */}
+          {/* Row 1 sm:col-span-2 md:col-span-7 - Observaciones full width */}
           <div className="col-span-3 space-y-1">
             <Label className="text-xs">Observaciones</Label>
             <Textarea value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} className="text-sm h-16 resize-none" placeholder="Observaciones..." />
