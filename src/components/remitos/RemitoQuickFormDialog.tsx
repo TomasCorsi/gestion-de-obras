@@ -207,9 +207,8 @@ export function RemitoQuickFormDialog({
             <Combobox
               options={TIPO_TRANSPORTE_OPTIONS.map((t) => ({ value: t, label: t }))}
               value={form.tipo_transporte}
-              onChange={(v) => set("tipo_transporte", v)}
+              onValueChange={(v) => set("tipo_transporte", v)}
               placeholder="Transporte..."
-              allowCustom
             />
           </div>
           <div className="space-y-1">
