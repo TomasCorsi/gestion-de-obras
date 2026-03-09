@@ -272,14 +272,14 @@ export function RemitoQuickFormDialog({
           </div>
           <div />
 
-          {/* Row 1 sm:col-span-2 md:col-span-7 - Observaciones full width */}
-          <div className="col-span-3 space-y-1">
+          {/* Row 7 - Observaciones full width */}
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1">
             <Label className="text-xs">Observaciones</Label>
-            <Textarea value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} className="text-sm h-16 resiz className="sticky bottom-0 bg-card pt-2"e-none" placeholder="Observaciones..." />
+            <Textarea value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} className="text-sm h-16 resize-none" placeholder="Observaciones..." />
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="sticky bottom-0 bg-card pt-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
