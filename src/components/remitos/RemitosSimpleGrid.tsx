@@ -423,7 +423,8 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[120px]">Transporte</TableHead>
               <TableHead className="text-xs min-w-[160px]">Vehículo</TableHead>
               <TableHead className="text-xs min-w-[100px]">Pat. Tercero</TableHead>
-              <TableHead className="text-xs min-w-[140px]">Cliente</TableHead>
+              <TableHead className="text-xs min-w-[140px]">Cli. Origen</TableHead>
+              <TableHead className="text-xs min-w-[140px]">Cli. Destino</TableHead>
               <TableHead className="text-xs min-w-[65px] text-right">Viajes</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Uni.</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Total</TableHead>
