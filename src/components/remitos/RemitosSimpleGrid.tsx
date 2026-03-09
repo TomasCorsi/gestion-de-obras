@@ -249,7 +249,7 @@ export function RemitosSimpleGrid({
 
   const addRow = useCallback(() => {
     const numero = generateNumero();
-    setRows((prev) => [...prev, createEmptyRow(numero)]);
+    setRows((prev) => [createEmptyRow(numero), ...prev]);
   }, [generateNumero]);
 
   const duplicateRow = useCallback(
