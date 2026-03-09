@@ -604,6 +604,16 @@ export function RemitosSimpleGrid({
                   </div>
                 </TableCell>
                 <TableCell className="p-1">
+                  <Input
+                    value={row.observaciones}
+                    onChange={(e) =>
+                      updateRow(row._localId, "observaciones", e.target.value)
+                    }
+                    className="h-7 text-xs"
+                    placeholder="Obs..."
+                  />
+                </TableCell>
+                <TableCell className="p-1">
                   <div className="flex items-center gap-0.5">
                     <Button
                       type="button"
