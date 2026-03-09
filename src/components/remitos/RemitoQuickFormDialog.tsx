@@ -139,9 +139,6 @@ export function RemitoQuickFormDialog({
     label: m.codigo || m.patente || m.id.slice(0, 8),
   }));
 
-  const clienteOptions: ComboboxOption[] = clientes
-    .filter((c) => c.activo)
-    .map((c) => ({ value: c.nombre, label: c.nombre }));
 
   const handleSubmit = async () => {
     if (!form.fecha) return;
@@ -215,13 +212,13 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1">
             <Label className="text-xs">Cli. Origen</Label>
-            <Combobox options={clienteOptions} value={form.cliente} onValueChange={(v) => set("cliente", v)} placeholder="Cli. Origen..." />
+            <Input value={form.cliente} readOnly className="h-8 text-sm bg-muted" placeholder="Auto" />
           </div>
 
           {/* Row 2b */}
           <div className="space-y-1">
             <Label className="text-xs">Cli. Destino</Label>
-            <Combobox options={clienteOptions} value={form.cliente_destino} onValueChange={(v) => set("cliente_destino", v)} placeholder="Cli. Destino..." />
+            <Input value={form.cliente_destino} readOnly className="h-8 text-sm bg-muted" placeholder="Auto" />
           </div>
 
           {/* Row 3 */}

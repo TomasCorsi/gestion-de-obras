@@ -88,7 +88,30 @@ interface RemitosSimpleGridProps {
 let localIdCounter = 0;
 const nextLocalId = () => `local-${++localIdCounter}-${Date.now()}`;
 
-function remitoToLocal(r: RemitoWithRelations): LocalRow {
+function remitoToLocal(r: RemitoWithRelations, obras?: ObraWithRelations[]): LocalRow {
+  // Auto-calculate clientes from desde/hasta for existing remitos
+  let clienteOrigen = r.cliente || "";
+  let clienteDestino = (r as any).cliente_destino || "";
+
+  if (obras) {
+    if (r.desde) {
+      const obraDesde = obras.find(o => o.nombre === r.desde);
+      if (obraDesde && isObraExterna(obraDesde.numero)) {
+        clienteOrigen = obraDesde.cliente?.nombre || clienteOrigen;
+      } else {
+        clienteOrigen = "";
+      }
+    }
+    if (r.hasta) {
+      const obraHasta = obras.find(o => o.nombre === r.hasta);
+      if (obraHasta && isObraExterna(obraHasta.numero)) {
+        clienteDestino = obraHasta.cliente?.nombre || clienteDestino;
+      } else {
+        clienteDestino = "";
+      }
+    }
+  }
+
   return {
     _localId: r.id,
     _isNew: false,
@@ -103,8 +126,8 @@ function remitoToLocal(r: RemitoWithRelations): LocalRow {
     tipo_transporte: r.tipo_transporte || "",
     maquinaria_id: r.maquinaria_id || "",
     patente_tercero: r.patente_tercero || "",
-    cliente: r.cliente || "",
-    cliente_destino: (r as any).cliente_destino || "",
+    cliente: clienteOrigen,
+    cliente_destino: clienteDestino,
     cantidad_viajes: r.cantidad_viajes || 1,
     cantidad_uni: r.cantidad_uni ?? null,
     cantidad: r.cantidad,
@@ -151,8 +174,9 @@ export function RemitosSimpleGrid({
   onSave,
   generateNumero,
 }: RemitosSimpleGridProps) {
+  const toLocal = useCallback((r: RemitoWithRelations) => remitoToLocal(r, obras), [obras]);
   const [rows, setRows] = useState<LocalRow[]>(() =>
-    remitos.map(remitoToLocal)
+    remitos.map((r) => remitoToLocal(r, obras))
   );
   const [isSaving, setIsSaving] = useState(false);
   const deletedIds = useRef<Set<string>>(new Set());
@@ -171,7 +195,7 @@ export function RemitosSimpleGrid({
       // Detect bulk import: many new rows arrived at once → full reset
       if (newDbCount - prevDbCount >= bulkThreshold) {
         toast.info(`${newDbCount - prevDbCount} remitos nuevos cargados`);
-        return remitos.map(remitoToLocal);
+        return remitos.map(toLocal);
       }
 
       // Identify rows the user is actively editing
@@ -181,7 +205,7 @@ export function RemitosSimpleGrid({
 
       // If no edits, just replace everything
       if (modifiedLocalIds.size === 0) {
-        return remitos.map(remitoToLocal);
+        return remitos.map(toLocal);
       }
 
       // Keep user-edited/new rows untouched
@@ -193,7 +217,7 @@ export function RemitosSimpleGrid({
       );
       const fromDB = remitos
         .filter((r) => !editingDbIds.has(r.id))
-        .map(remitoToLocal);
+        .map(toLocal);
 
       const merged = [...fromDB, ...userEditing];
 
@@ -207,7 +231,7 @@ export function RemitosSimpleGrid({
 
       return merged;
     });
-  }, [remitos]);
+  }, [remitos, toLocal]);
 
   const obrasOptions: ComboboxOption[] = useMemo(() => {
     return obras.map((o) => ({
@@ -231,12 +255,6 @@ export function RemitosSimpleGrid({
       }));
   }, [maquinarias]);
 
-  const clienteOptions: ComboboxOption[] = useMemo(() => {
-    return clientes.filter((c) => c.activo).map((c) => ({
-      value: c.nombre,
-      label: c.nombre,
-    }));
-  }, [clientes]);
 
   const getClienteForObra = useCallback((obraNombre: string): string => {
     const obra = obras.find(o => o.nombre === obraNombre);
@@ -568,28 +586,14 @@ export function RemitosSimpleGrid({
                   />
                 </TableCell>
                 <TableCell className="p-1">
-                  <Combobox
-                    options={clienteOptions}
-                    value={row.cliente}
-                    onValueChange={(v) =>
-                      updateRow(row._localId, "cliente", v)
-                    }
-                    placeholder="Cli. Origen..."
-                    searchPlaceholder="Buscar cliente..."
-                    className="h-7 text-xs"
-                  />
+                  <div className="h-7 flex items-center text-xs text-muted-foreground px-2 bg-muted/30 rounded-md truncate">
+                    {row.cliente || "—"}
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
-                  <Combobox
-                    options={clienteOptions}
-                    value={row.cliente_destino}
-                    onValueChange={(v) =>
-                      updateRow(row._localId, "cliente_destino", v)
-                    }
-                    placeholder="Cli. Destino..."
-                    searchPlaceholder="Buscar cliente..."
-                    className="h-7 text-xs"
-                  />
+                  <div className="h-7 flex items-center text-xs text-muted-foreground px-2 bg-muted/30 rounded-md truncate">
+                    {row.cliente_destino || "—"}
+                  </div>
                 </TableCell>
                 <TableCell className="p-1">
                   <Input
