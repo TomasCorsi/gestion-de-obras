@@ -398,6 +398,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[65px] text-right">Viajes</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Uni.</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Total</TableHead>
+              <TableHead className="text-xs min-w-[70px]">Unidad</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">P. Unit.</TableHead>
               <TableHead className="text-xs min-w-[90px] text-right">P. Total</TableHead>
               <TableHead className="text-xs min-w-[150px]">Observaciones</TableHead>
@@ -584,6 +585,21 @@ export function RemitosSimpleGrid({
                   </div>
                 </TableCell>
                 <TableCell className="p-1">
+                  <Select
+                    value={row.unidad}
+                    onValueChange={(v) => updateRow(row._localId, "unidad", v)}
+                  >
+                    <SelectTrigger className="h-7 text-xs">
+                      <SelectValue placeholder="Ud." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {UNIDAD_OPTIONS.map((u) => (
+                        <SelectItem key={u} value={u}>{u}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell className="p-1">
                   <Input
                     type="number"
                     value={row.precio_unitario ?? ""}
@@ -640,7 +656,7 @@ export function RemitosSimpleGrid({
             {rows.length === 0 && (
               <TableRow>
                 <TableCell
-                  colSpan={17}
+                  colSpan={18}
                   className="text-center text-muted-foreground text-xs py-8"
                 >
                   Sin remitos. Hacé clic en "Agregar fila" para comenzar.
