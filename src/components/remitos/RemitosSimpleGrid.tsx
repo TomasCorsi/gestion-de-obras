@@ -205,7 +205,7 @@ export function RemitosSimpleGrid({
 
       // If no edits, just replace everything
       if (modifiedLocalIds.size === 0) {
-        return remitos.map(remitoToLocal);
+        return remitos.map(toLocal);
       }
 
       // Keep user-edited/new rows untouched
