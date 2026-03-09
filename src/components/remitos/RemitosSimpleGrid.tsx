@@ -267,7 +267,7 @@ export function RemitosSimpleGrid({
           remito_local: generateNumero(),
         };
         const next = [...prev];
-        next.splice(idx + 1, 0, dup);
+        next.splice(idx, 0, dup);
         return next;
       });
     },
