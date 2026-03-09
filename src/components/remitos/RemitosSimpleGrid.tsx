@@ -174,8 +174,9 @@ export function RemitosSimpleGrid({
   onSave,
   generateNumero,
 }: RemitosSimpleGridProps) {
+  const toLocal = useCallback((r: RemitoWithRelations) => remitoToLocal(r, obras), [obras]);
   const [rows, setRows] = useState<LocalRow[]>(() =>
-    remitos.map(remitoToLocal)
+    remitos.map((r) => remitoToLocal(r, obras))
   );
   const [isSaving, setIsSaving] = useState(false);
   const deletedIds = useRef<Set<string>>(new Set());
