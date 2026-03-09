@@ -109,14 +109,22 @@ export function RemitoQuickFormDialog({
   const set = (field: string, value: any) =>
     setForm((prev) => {
       const next = { ...prev, [field]: value };
+
+      // Auto-fill cliente when "desde" changes
+      if (field === "desde") {
+        next.cliente = getClienteForObra(value as string);
+      }
+      // Auto-fill cliente_destino when "hasta" changes
+      if (field === "hasta") {
+        next.cliente_destino = getClienteForObra(value as string);
+      }
+
       // Auto-calc precio_total
-      if (["cantidad_viajes", "cantidad", "precio_unitario", "precio_calc_mode"].includes(field) || field === field) {
-        const mode = next.precio_calc_mode;
-        if (mode === "viajes") {
-          next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
-        } else {
-          next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
-        }
+      const mode = next.precio_calc_mode;
+      if (mode === "viajes") {
+        next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
+      } else {
+        next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
       }
       return next;
     });
