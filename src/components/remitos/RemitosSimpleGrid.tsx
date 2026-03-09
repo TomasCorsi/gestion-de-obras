@@ -104,6 +104,7 @@ function remitoToLocal(r: RemitoWithRelations): LocalRow {
     maquinaria_id: r.maquinaria_id || "",
     patente_tercero: r.patente_tercero || "",
     cliente: r.cliente || "",
+    cliente_destino: (r as any).cliente_destino || "",
     cantidad_viajes: r.cantidad_viajes || 1,
     cantidad_uni: r.cantidad_uni ?? null,
     cantidad: r.cantidad,
