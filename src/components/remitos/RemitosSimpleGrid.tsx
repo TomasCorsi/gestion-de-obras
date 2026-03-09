@@ -398,6 +398,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[65px] text-right">Viajes</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Uni.</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">C. Total</TableHead>
+              <TableHead className="text-xs min-w-[70px]">Unidad</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">P. Unit.</TableHead>
               <TableHead className="text-xs min-w-[90px] text-right">P. Total</TableHead>
               <TableHead className="text-xs min-w-[150px]">Observaciones</TableHead>
