@@ -455,7 +455,7 @@ function parseCSV(
     const observaciones = getValue('observaciones');
 
     // Generate numero for legacy field
-    const numero = remito_local ? `${remito_local}-${i}` : `IMP-${Date.now()}-${i}`;
+    const numero = remito_local || `IMP-${Date.now()}-${i}`;
 
     // Skip empty rows
     if (!remito_tercero && !remito_local && !desde && !hasta && cantidad === 0) {
