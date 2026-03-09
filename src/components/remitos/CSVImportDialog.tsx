@@ -441,6 +441,15 @@ function parseCSV(
       warnings.push({ field: 'cliente', value: clienteRaw, row: i + 1 });
     }
     
+    // Match cliente_destino
+    const clienteDestinoRaw = getValue('cliente_destino');
+    let clienteDestinoMatch = matchFromMap(clienteDestinoRaw, clientesMap);
+    if (!clienteDestinoMatch.found && clienteDestinoRaw) {
+      const obraMatch = matchFromMap(clienteDestinoRaw, obrasMap);
+      if (obraMatch.found) clienteDestinoMatch = obraMatch;
+    }
+    const cliente_destino = clienteDestinoMatch.matched;
+
     const proveedor = getValue('proveedor');
     const patente_tercero = getValue('patente_tercero');
     const observaciones = getValue('observaciones');
