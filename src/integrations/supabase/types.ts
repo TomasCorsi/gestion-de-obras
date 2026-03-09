@@ -1675,6 +1675,7 @@ export type Database = {
           cantidad_uni: number | null
           cantidad_viajes: number | null
           cliente: string | null
+          cliente_destino: string | null
           created_at: string
           desde: string | null
           evidencia_url: string | null
@@ -1707,6 +1708,7 @@ export type Database = {
           cantidad_uni?: number | null
           cantidad_viajes?: number | null
           cliente?: string | null
+          cliente_destino?: string | null
           created_at?: string
           desde?: string | null
           evidencia_url?: string | null
@@ -1739,6 +1741,7 @@ export type Database = {
           cantidad_uni?: number | null
           cantidad_viajes?: number | null
           cliente?: string | null
+          cliente_destino?: string | null
           created_at?: string
           desde?: string | null
           evidencia_url?: string | null
