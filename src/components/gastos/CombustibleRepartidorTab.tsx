@@ -227,6 +227,20 @@ export function CombustibleRepartidorTab() {
 
   const mesLabel = mes ? meses.find((m) => m.value === mes)?.label ?? "" : "";
 
+  // Build unique operator options from all cargas
+  const operadorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    cargas.forEach((c) => {
+      if (c.operador_id && c.operador) {
+        const label = formatOperador(c.operador);
+        if (label !== "-") map.set(c.operador_id, label);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ value: id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cargas]);
+
   const filtered = useMemo(() => {
     let result = [...cargas];
 
@@ -237,6 +251,10 @@ export function CombustibleRepartidorTab() {
       const desde = format(startOfMonth(monthDate), "yyyy-MM-dd");
       const hasta = format(endOfMonth(monthDate), "yyyy-MM-dd");
       result = result.filter((c) => c.fecha >= desde && c.fecha <= hasta);
+    }
+
+    if (operadorFiltro && operadorFiltro !== "all") {
+      result = result.filter((c) => c.operador_id === operadorFiltro);
     }
 
     if (searchTerm) {
@@ -252,7 +270,7 @@ export function CombustibleRepartidorTab() {
     }
 
     return result;
-  }, [cargas, mes, year, searchTerm, fechaFiltro]);
+  }, [cargas, mes, year, searchTerm, fechaFiltro, operadorFiltro]);
 
   // Calculate cost per row using monthly prices
   const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
