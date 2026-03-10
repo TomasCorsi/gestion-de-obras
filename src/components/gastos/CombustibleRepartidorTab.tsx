@@ -207,6 +207,7 @@ export function CombustibleRepartidorTab() {
   const [mes, setMes] = useState<string | undefined>(undefined);
   const [year, setYear] = useState(currentYear);
   const [fechaFiltro, setFechaFiltro] = useState<string>("");
+  const [operadorFiltro, setOperadorFiltro] = useState<string>("all");
 
   // Edit / Delete state
   const [editingCarga, setEditingCarga] = useState<CargaRepartidorFull | null>(null);
@@ -226,6 +227,20 @@ export function CombustibleRepartidorTab() {
 
   const mesLabel = mes ? meses.find((m) => m.value === mes)?.label ?? "" : "";
 
+  // Build unique operator options from all cargas
+  const operadorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    cargas.forEach((c) => {
+      if (c.operador_id && c.operador) {
+        const label = formatOperador(c.operador);
+        if (label !== "-") map.set(c.operador_id, label);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ value: id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cargas]);
+
   const filtered = useMemo(() => {
     let result = [...cargas];
 
@@ -236,6 +251,10 @@ export function CombustibleRepartidorTab() {
       const desde = format(startOfMonth(monthDate), "yyyy-MM-dd");
       const hasta = format(endOfMonth(monthDate), "yyyy-MM-dd");
       result = result.filter((c) => c.fecha >= desde && c.fecha <= hasta);
+    }
+
+    if (operadorFiltro && operadorFiltro !== "all") {
+      result = result.filter((c) => c.operador_id === operadorFiltro);
     }
 
     if (searchTerm) {
@@ -251,7 +270,7 @@ export function CombustibleRepartidorTab() {
     }
 
     return result;
-  }, [cargas, mes, year, searchTerm, fechaFiltro]);
+  }, [cargas, mes, year, searchTerm, fechaFiltro, operadorFiltro]);
 
   // Calculate cost per row using monthly prices
   const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
@@ -379,6 +398,17 @@ export function CombustibleRepartidorTab() {
               <SelectItem value="all">Todos</SelectItem>
               {meses.map((m) => (
                 <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={operadorFiltro} onValueChange={setOperadorFiltro}>
+            <SelectTrigger className="w-44 bg-card border-border">
+              <SelectValue placeholder="Todos los operadores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los operadores</SelectItem>
+              {operadorOptions.map((op) => (
+                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
