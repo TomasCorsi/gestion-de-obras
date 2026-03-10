@@ -207,6 +207,7 @@ export function CombustibleRepartidorTab() {
   const [mes, setMes] = useState<string | undefined>(undefined);
   const [year, setYear] = useState(currentYear);
   const [fechaFiltro, setFechaFiltro] = useState<string>("");
+  const [operadorFiltro, setOperadorFiltro] = useState<string>("all");
 
   // Edit / Delete state
   const [editingCarga, setEditingCarga] = useState<CargaRepartidorFull | null>(null);
