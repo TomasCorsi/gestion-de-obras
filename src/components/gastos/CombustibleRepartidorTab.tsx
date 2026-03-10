@@ -401,6 +401,17 @@ export function CombustibleRepartidorTab() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={operadorFiltro} onValueChange={setOperadorFiltro}>
+            <SelectTrigger className="w-44 bg-card border-border">
+              <SelectValue placeholder="Todos los operadores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los operadores</SelectItem>
+              {operadorOptions.map((op) => (
+                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button variant="outline" onClick={handleExport} className="border-border">
             <Download className="w-4 h-4 mr-2" />
             Excel
