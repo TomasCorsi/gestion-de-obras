@@ -1,29 +1,26 @@
 
 
-# Fix: cantidad_uni vacio + formulario desordenado
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Problema 1: cantidad_uni vacia
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-El formulario tiene un campo "Cantidad" que mapea a `form.cantidad`, pero nunca setea `form.cantidad_uni`. En el grid, la columna "Cant. Uni." lee `cantidad_uni`, que queda en `null` porque el formulario no lo envia.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-La grilla usa la logica: `cantidad = cantidad_uni × viajes`. El formulario deberia seguir la misma logica.
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-**Solucion**: Reemplazar el campo "Cantidad" por "Cant. Unitaria" (`cantidad_uni`), y auto-calcular `cantidad = cantidad_uni × cantidad_viajes`. Asi queda consistente con la grilla.
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-## Problema 2: formulario desordenado / textos pisados
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-El grid de 3 columnas con `gap-2` y labels `text-xs` causa solapamiento en pantallas chicas. Los Combobox y Select tienen alturas inconsistentes.
-
-**Solucion**: 
-- Aumentar gap a `gap-3 md:gap-4`
-- Agregar `truncate` a los labels que se pisan
-- Reorganizar campos en secciones logicas con separadores visuales (titulos de seccion)
-- Asegurar alturas consistentes en todos los inputs/selects/combobox
-
-## Archivos a modificar
-- `src/components/remitos/RemitoQuickFormDialog.tsx`
-  - Reemplazar campo "Cantidad" por "Cant. Unitaria" mapeado a `cantidad_uni`
-  - Auto-calcular `cantidad = cantidad_uni × cantidad_viajes` en el `set()` handler
-  - En `handleSubmit`, enviar `cantidad_uni` correctamente y calcular `cantidad`
-  - Reorganizar layout con secciones, mejor spacing, y truncate en labels
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
