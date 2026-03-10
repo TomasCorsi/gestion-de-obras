@@ -120,12 +120,16 @@ export function useMantenimientos() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, mant }: { id: string; mant: Partial<MantenimientoForm> }) => {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("mantenimientos")
         .update(mant as any)
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error("No se pudo actualizar el registro. Verificá permisos.");
+      return data;
     },
     onSuccess: () => {
       toast.success("Mantenimiento actualizado correctamente");
@@ -133,9 +137,9 @@ export function useMantenimientos() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['observaciones_maquina'] });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Error updating mantenimiento:", error);
-      toast.error("Error al actualizar mantenimiento");
+      toast.error(error.message || "Error al actualizar mantenimiento");
     },
   });
 
