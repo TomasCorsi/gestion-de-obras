@@ -51,6 +51,15 @@ interface RemitoQuickFormDialogProps {
 
 const today = () => new Date().toISOString().split("T")[0];
 
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="col-span-1 sm:col-span-2 md:col-span-3 pt-2 pb-1">
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{children}</h4>
+      <div className="border-b border-border mt-1" />
+    </div>
+  );
+}
+
 export function RemitoQuickFormDialog({
   open,
   onOpenChange,
@@ -91,8 +100,8 @@ export function RemitoQuickFormDialog({
       cliente: "",
       cliente_destino: "",
       cantidad_viajes: 1,
-      cantidad: 0,
       cantidad_uni: 0,
+      cantidad: 0,
       unidad: "TN",
       precio_unitario: 0,
       precio_total: 0,
@@ -119,6 +128,11 @@ export function RemitoQuickFormDialog({
         next.cliente_destino = getClienteForObra(value as string);
       }
 
+      // Auto-calc cantidad = cantidad_uni × cantidad_viajes
+      if (field === "cantidad_uni" || field === "cantidad_viajes") {
+        next.cantidad = (next.cantidad_uni || 0) * (next.cantidad_viajes || 0);
+      }
+
       // Auto-calc precio_total
       const mode = next.precio_calc_mode;
       if (mode === "viajes") {
@@ -139,16 +153,16 @@ export function RemitoQuickFormDialog({
     label: m.codigo || m.patente || m.id.slice(0, 8),
   }));
 
-
   const handleSubmit = async () => {
     if (!form.fecha) return;
     setSaving(true);
     try {
+      const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
       const remito: RemitoForm = {
         numero: generateNumero(),
         fecha: form.fecha,
         material: form.tipo_material || "-",
-        cantidad: form.cantidad,
+        cantidad,
         unidad: form.unidad,
         recibido_por: "-",
         firmado: false,
@@ -186,46 +200,44 @@ export function RemitoQuickFormDialog({
           <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-          {/* Row 1 */}
-          <div className="space-y-1">
-            <Label className="text-xs">Fecha</Label>
-            <Input type="date" value={form.fecha} onChange={(e) => set("fecha", e.target.value)} className="h-8 text-sm" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+          {/* === DATOS GENERALES === */}
+          <SectionTitle>Datos Generales</SectionTitle>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Fecha</Label>
+            <Input type="date" value={form.fecha} onChange={(e) => set("fecha", e.target.value)} className="h-9 text-sm" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Remito Tercero</Label>
-            <Input value={form.remito_tercero} onChange={(e) => set("remito_tercero", e.target.value)} className="h-8 text-sm" placeholder="Nro..." />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Remito Tercero</Label>
+            <Input value={form.remito_tercero} onChange={(e) => set("remito_tercero", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Remito Local</Label>
-            <Input value={form.remito_local} onChange={(e) => set("remito_local", e.target.value)} className="h-8 text-sm" placeholder="Nro..." />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Remito Local</Label>
+            <Input value={form.remito_local} onChange={(e) => set("remito_local", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
           </div>
 
-          {/* Row 2 */}
-          <div className="space-y-1">
-            <Label className="text-xs">Desde</Label>
+          {/* === LOGÍSTICA === */}
+          <SectionTitle>Logística</SectionTitle>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Desde (Obra)</Label>
             <Combobox options={obraOptions} value={form.desde} onValueChange={(v) => set("desde", v)} placeholder="Obra origen..." />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Hasta</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Hasta (Obra)</Label>
             <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => set("hasta", v)} placeholder="Obra destino..." />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Cli. Origen</Label>
-            <Input value={form.cliente} readOnly className="h-8 text-sm bg-muted" placeholder="Auto" />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Cliente Origen</Label>
+            <Input value={form.cliente} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
           </div>
-
-          {/* Row 2b */}
-          <div className="space-y-1">
-            <Label className="text-xs">Cli. Destino</Label>
-            <Input value={form.cliente_destino} readOnly className="h-8 text-sm bg-muted" placeholder="Auto" />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Cliente Destino</Label>
+            <Input value={form.cliente_destino} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
           </div>
-
-          {/* Row 3 */}
-          <div className="space-y-1">
-            <Label className="text-xs">Tipo Material</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Tipo Material</Label>
             <Select value={form.tipo_material} onValueChange={(v) => set("tipo_material", v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
               <SelectContent>
                 {TIPO_MATERIAL_OPTIONS.map((t) => (
                   <SelectItem key={t} value={t}>{t}</SelectItem>
@@ -233,8 +245,8 @@ export function RemitoQuickFormDialog({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Tipo Transporte</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Tipo Transporte</Label>
             <Combobox
               options={TIPO_TRANSPORTE_OPTIONS.map((t) => ({ value: t, label: t }))}
               value={form.tipo_transporte}
@@ -242,24 +254,36 @@ export function RemitoQuickFormDialog({
               placeholder="Transporte..."
             />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Maquinaria</Label>
+
+          {/* === VEHÍCULO === */}
+          <SectionTitle>Vehículo</SectionTitle>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Maquinaria</Label>
             <Combobox options={maquinariaOptions} value={form.maquinaria_id} onValueChange={(v) => set("maquinaria_id", v)} placeholder="Maquinaria..." />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Patente Tercero</Label>
+            <Input value={form.patente_tercero} onChange={(e) => set("patente_tercero", e.target.value)} className="h-9 text-sm" placeholder="Patente..." />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Proveedor</Label>
+            <Input value={form.proveedor} onChange={(e) => set("proveedor", e.target.value)} className="h-9 text-sm" placeholder="Proveedor..." />
+          </div>
 
-          {/* Row 4 */}
-          <div className="space-y-1">
-            <Label className="text-xs">Patente Tercero</Label>
-            <Input value={form.patente_tercero} onChange={(e) => set("patente_tercero", e.target.value)} className="h-8 text-sm" placeholder="Patente..." />
+          {/* === CANTIDADES Y PRECIOS === */}
+          <SectionTitle>Cantidades y Precios</SectionTitle>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Cant. Viajes</Label>
+            <Input type="number" value={form.cantidad_viajes} onChange={(e) => set("cantidad_viajes", Number(e.target.value))} className="h-9 text-sm" min={0} />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Proveedor</Label>
-            <Input value={form.proveedor} onChange={(e) => set("proveedor", e.target.value)} className="h-8 text-sm" placeholder="Proveedor..." />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Cant. Unitaria</Label>
+            <Input type="number" value={form.cantidad_uni} onChange={(e) => set("cantidad_uni", Number(e.target.value))} className="h-9 text-sm" min={0} step="0.01" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Unidad</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Unidad</Label>
             <Select value={form.unidad} onValueChange={(v) => set("unidad", v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {UNIDAD_OPTIONS.map((u) => (
                   <SelectItem key={u} value={u}>{u}</SelectItem>
@@ -267,41 +291,33 @@ export function RemitoQuickFormDialog({
               </SelectContent>
             </Select>
           </div>
-
-          {/* Row 5 - Precios */}
-          <div className="space-y-1">
-            <Label className="text-xs">Cant. Viajes</Label>
-            <Input type="number" value={form.cantidad_viajes} onChange={(e) => set("cantidad_viajes", Number(e.target.value))} className="h-8 text-sm" min={0} />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Cantidad Total</Label>
+            <Input type="number" value={form.cantidad} readOnly className="h-9 text-sm bg-muted" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Cantidad</Label>
-            <Input type="number" value={form.cantidad} onChange={(e) => set("cantidad", Number(e.target.value))} className="h-8 text-sm" min={0} step="0.01" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Modo Cálculo</Label>
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Modo Cálculo</Label>
             <Select value={form.precio_calc_mode} onValueChange={(v) => set("precio_calc_mode", v)}>
-              <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="viajes">Viajes × Precio</SelectItem>
                 <SelectItem value="cantidad">Cantidad × Precio</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {/* Row 6 */}
-          <div className="space-y-1">
-            <Label className="text-xs">Precio Unitario</Label>
-            <Input type="number" value={form.precio_unitario} onChange={(e) => set("precio_unitario", Number(e.target.value))} className="h-8 text-sm" min={0} step="0.01" />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Precio Unitario</Label>
+            <Input type="number" value={form.precio_unitario} onChange={(e) => set("precio_unitario", Number(e.target.value))} className="h-9 text-sm" min={0} step="0.01" />
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs">Precio Total</Label>
-            <Input type="number" value={form.precio_total} readOnly className="h-8 text-sm bg-muted" />
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Precio Total</Label>
+            <Input type="number" value={form.precio_total} readOnly className="h-9 text-sm bg-muted" />
           </div>
           <div />
 
-          {/* Row 7 - Observaciones full width */}
-          <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1">
-            <Label className="text-xs">Observaciones</Label>
+          {/* === OBSERVACIONES === */}
+          <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
+            <Label className="text-xs truncate block">Observaciones</Label>
             <Textarea value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} className="text-sm h-16 resize-none" placeholder="Observaciones..." />
           </div>
         </div>
