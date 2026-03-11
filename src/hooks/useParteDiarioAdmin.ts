@@ -26,7 +26,8 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
           maquinarias:maquinaria_id (id, codigo, tipo, patente)
         `)
         .order('fecha', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(0, 4999);
 
       // Apply filters
       if (filters.empleadoId) {
