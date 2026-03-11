@@ -128,6 +128,7 @@ export const ParteDiarioFormView = ({
         ausencias: parte.ausencias || [],
         tareas: parte.tareas || '',
         observaciones_inconvenientes: parte.observaciones_inconvenientes || '',
+        km_camion: parte.km_camion?.toString() || '',
       });
     }
   }, [parte]);
