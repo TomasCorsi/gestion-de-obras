@@ -322,7 +322,6 @@ export function ServiceForm({ onClose, editData }: ServiceFormProps) {
           </div>
         );
       })()}
-      </div>
 
       {/* Costos */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
