@@ -1,26 +1,35 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Protección contra cierre accidental de formularios
 
 ## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+Cuando un usuario está completando un formulario y hace clic fuera del diálogo (en el overlay) o presiona Escape, el formulario se cierra sin aviso y pierde los datos.
 
 ## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+### 1. Crear componente `UnsavedChangesAlert`
+Un AlertDialog reutilizable que pregunta "¿Descartar cambios?" con opciones "Continuar editando" / "Descartar".
 
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+### 2. Modificar `FormDialog` (componente compartido)
+Agregar prop `isDirty?: boolean`. Cuando `isDirty=true`:
+- Bloquear cierre por clic en overlay (`onInteractOutside={e => e.preventDefault()}`)
+- Bloquear cierre por Escape (`onEscapeKeyDown={e => e.preventDefault()}`)
+- El botón X y "Cancelar" muestran el alert de confirmación antes de cerrar
 
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
-```
+Cuando `isDirty=false` o no se pasa, comportamiento normal (sin breaking changes).
 
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+### 3. Actualizar `DialogContent` (componente UI)
+Pasar `onInteractOutside` y `onEscapeKeyDown` como props al `DialogPrimitive.Content` de Radix (ya los soporta nativamente, solo hay que exponerlos).
+
+### 4. Actualizar los formularios principales
+Pasar `isDirty` a `FormDialog` en las páginas que lo usan (~10 páginas): Personal, Maquinarias, Combustible, Cotizaciones, Obras, Clientes, Viajes, Presentismo, Vacaciones, Stock.
+
+Para diálogos custom que no usan `FormDialog` (ej: `CargaCombustibleRepartidorDialog`, `RemitoQuickFormDialog`, `MecanicoMantenimientoForm`), agregar la misma lógica directamente con `onInteractOutside` y `onEscapeKeyDown`.
+
+### Archivos a modificar
+- `src/components/ui/dialog.tsx` -- exponer props de Radix
+- `src/components/shared/FormDialog.tsx` -- lógica de dirty + alert
+- `src/components/shared/UnsavedChangesAlert.tsx` -- nuevo componente
+- ~10 páginas/componentes de formulario -- pasar `isDirty`
+- Diálogos custom principales -- agregar protección directa
 
