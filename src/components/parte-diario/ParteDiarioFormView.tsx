@@ -512,6 +512,27 @@ export const ParteDiarioFormView = ({
           </Card>
         )}
 
+        {/* KM Camión (solo choferes) */}
+        {isChofer && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">📏</span>
+                <Label htmlFor="km_camion" className="text-sm text-muted-foreground">KM Camión <span className="text-destructive">*</span></Label>
+              </div>
+              <Input
+                id="km_camion"
+                type="number"
+                inputMode="decimal"
+                placeholder="0"
+                value={formData.km_camion}
+                onChange={(e) => handleChange('km_camion', e.target.value)}
+                className="h-14 text-lg"
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Estado Máquina */}
         {showEstadoMaquina && (
           <Card>

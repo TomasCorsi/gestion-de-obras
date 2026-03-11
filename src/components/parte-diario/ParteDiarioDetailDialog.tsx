@@ -155,6 +155,17 @@ export const ParteDiarioDetailDialog = ({
             {parte.cantidad_movimiento_interno > 0 && (
               <DetailRow label="Movimiento Interno" value={parte.cantidad_movimiento_interno} />
             )}
+            {(parte as any).km_camion > 0 && (
+              <DetailRow 
+                label="KM Camión" 
+                value={
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3" />
+                    {(parte as any).km_camion} km
+                  </span>
+                } 
+              />
+            )}
           </DetailSection>
         )}
 

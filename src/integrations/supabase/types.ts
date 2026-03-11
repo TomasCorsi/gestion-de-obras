@@ -1330,6 +1330,7 @@ export type Database = {
           horometro_fin: number | null
           horometro_inicio: number | null
           id: string
+          km_camion: number | null
           maquinaria_id: string | null
           novedades: string | null
           obra_id: string | null
@@ -1358,6 +1359,7 @@ export type Database = {
           horometro_fin?: number | null
           horometro_inicio?: number | null
           id?: string
+          km_camion?: number | null
           maquinaria_id?: string | null
           novedades?: string | null
           obra_id?: string | null
@@ -1386,6 +1388,7 @@ export type Database = {
           horometro_fin?: number | null
           horometro_inicio?: number | null
           id?: string
+          km_camion?: number | null
           maquinaria_id?: string | null
           novedades?: string | null
           obra_id?: string | null
