@@ -161,8 +161,10 @@ export function ParteDiarioEditDialog({
   if (!parte) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+  return (
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0" {...dirtyProps}>
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>
             Editar Parte Diario - {getEmpleadoNombre()}
