@@ -601,7 +601,7 @@ export default function Maquinarias() {
                 label="Operador" 
                 value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
               />
-              <DetailRow label="Horas Acumuladas" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
+              <DetailRow label="Horómetro Actual" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
             </DetailSection>
           </div>
         )}
