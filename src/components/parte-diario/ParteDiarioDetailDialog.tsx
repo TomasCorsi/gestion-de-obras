@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Clock, Fuel, CheckCircle, XCircle, Users, Wrench, AlertTriangle, ClipboardList } from "lucide-react";
+import { Calendar, Clock, Fuel, CheckCircle, XCircle, Users, Wrench, AlertTriangle, ClipboardList, Gauge } from "lucide-react";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { Badge } from "@/components/ui/badge";
@@ -154,6 +154,17 @@ export const ParteDiarioDetailDialog = ({
             )}
             {parte.cantidad_movimiento_interno > 0 && (
               <DetailRow label="Movimiento Interno" value={parte.cantidad_movimiento_interno} />
+            )}
+            {parte.km_camion > 0 && (
+              <DetailRow 
+                label="KM Camión" 
+                value={
+                  <span className="flex items-center gap-1">
+                    <Gauge className="w-3 h-3" />
+                    {parte.km_camion} km
+                  </span>
+                } 
+              />
             )}
           </DetailSection>
         )}

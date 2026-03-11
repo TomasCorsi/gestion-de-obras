@@ -1,32 +1,26 @@
 
 
-# Agregar campo "KM Camión" al parte diario de choferes
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Cambios necesarios
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-### 1. Base de datos
-Agregar columna `km_camion` (numeric, nullable, default 0) a la tabla `partes_diarios`.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-```sql
-ALTER TABLE public.partes_diarios ADD COLUMN km_camion numeric DEFAULT 0;
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-### 2. Hook `useParteDiario.ts`
-- Agregar `km_camion` a la interfaz `ParteDiario` y `ParteDiarioInsert`.
-
-### 3. Formulario `ParteDiarioFormView.tsx`
-- Agregar `km_camion` al `defaultFormData` y al `useEffect` que carga datos existentes.
-- Agregar campo de input numérico visible solo para choferes (`isChofer`), ubicado después de la sección de Viajes.
-- En `buildParteData()`, incluir `km_camion` solo para choferes.
-- En `validateForComplete()`, validar que `km_camion` tenga valor > 0 para choferes (obligatorio al completar).
-
-### 4. Detalle y Admin
-- Mostrar el campo en `ParteDiarioDetailDialog` y en la vista admin si el parte es de un chofer.
-
-### Archivos a modificar
-- `src/hooks/useParteDiario.ts` -- interfaces
-- `src/components/parte-diario/ParteDiarioFormView.tsx` -- campo + validación
-- `src/components/parte-diario/ParteDiarioDetailDialog.tsx` -- mostrar en detalle
-- `src/components/parte-diario/ParteDiarioCardView.tsx` -- mostrar en cards admin (si aplica)
-- Migración SQL para agregar la columna
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 

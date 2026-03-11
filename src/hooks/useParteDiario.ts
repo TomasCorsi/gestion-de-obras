@@ -17,6 +17,7 @@ export interface ParteDiario {
   horometro_inicio: number;
   horometro_fin: number;
   cantidad_viajes: number;
+  km_camion: number;
   cantidad_movimiento_interno: number;
   combustible: number;
   estado_maquina: 'OK' | 'OBSERVACION' | null;
@@ -63,6 +64,7 @@ export interface ParteDiarioInsert {
   horometro_inicio?: number;
   horometro_fin?: number;
   cantidad_viajes?: number;
+  km_camion?: number;
   cantidad_movimiento_interno?: number;
   combustible?: number;
   estado_maquina?: 'OK' | 'OBSERVACION' | null;

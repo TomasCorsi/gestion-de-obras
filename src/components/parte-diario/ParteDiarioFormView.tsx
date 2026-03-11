@@ -88,6 +88,7 @@ export const ParteDiarioFormView = ({
     ausencias: [] as string[],
     tareas: '',
     observaciones_inconvenientes: '',
+    km_camion: '',
   }), []);
 
   const [formData, setFormData] = useState(defaultFormData);
@@ -127,6 +128,7 @@ export const ParteDiarioFormView = ({
         ausencias: parte.ausencias || [],
         tareas: parte.tareas || '',
         observaciones_inconvenientes: parte.observaciones_inconvenientes || '',
+        km_camion: parte.km_camion?.toString() || '',
       });
     }
   }, [parte]);
@@ -252,6 +254,7 @@ export const ParteDiarioFormView = ({
       ausencias: isCapataz && formData.ausencias.length > 0 ? formData.ausencias : null,
       tareas: isMecanicoAyudante ? formData.tareas || null : null,
       observaciones_inconvenientes: formData.observaciones_inconvenientes || null,
+      km_camion: isChofer ? parseFloat(formData.km_camion) || 0 : 0,
     };
   };
 
@@ -268,6 +271,10 @@ export const ParteDiarioFormView = ({
         toast.error('El horómetro fin debe ser mayor al inicio');
         return false;
       }
+    }
+    if (isChofer && !(parseFloat(formData.km_camion) > 0)) {
+      toast.error('Debés completar los KM del camión');
+      return false;
     }
     return true;
   };
@@ -501,6 +508,27 @@ export const ParteDiarioFormView = ({
                   />
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* KM Camión (solo choferes) */}
+        {isChofer && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg">📏</span>
+                <Label htmlFor="km_camion" className="text-sm text-muted-foreground">KM Camión <span className="text-destructive">*</span></Label>
+              </div>
+              <Input
+                id="km_camion"
+                type="number"
+                inputMode="decimal"
+                placeholder="0"
+                value={formData.km_camion}
+                onChange={(e) => handleChange('km_camion', e.target.value)}
+                className="h-14 text-lg"
+              />
             </CardContent>
           </Card>
         )}
