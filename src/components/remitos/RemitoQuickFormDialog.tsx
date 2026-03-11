@@ -334,7 +334,7 @@ export function RemitoQuickFormDialog({
         </div>
 
         <DialogFooter className="sticky bottom-0 bg-card pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
             Guardar
@@ -342,5 +342,8 @@ export function RemitoQuickFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }
