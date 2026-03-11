@@ -272,6 +272,10 @@ export const ParteDiarioFormView = ({
         return false;
       }
     }
+    if (isChofer && !(parseFloat(formData.km_camion) > 0)) {
+      toast.error('Debés completar los KM del camión');
+      return false;
+    }
     return true;
   };
 
