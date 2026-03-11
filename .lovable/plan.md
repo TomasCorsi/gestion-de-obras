@@ -1,26 +1,26 @@
 
 
-# Fix: Partes diarios query hitting 1000-row limit
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Problem
-The `useParteDiarioAdmin` hook queries `partes_diarios` without specifying a row limit. The database defaults to returning a maximum of 1,000 rows. With 1,347 total records ordered by `fecha DESC`, older entries (like those from 02/02) are silently truncated.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-This affects both the admin list view and Excel exports.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-## Solution
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-Modify `useParteDiarioAdmin` to paginate or increase the limit. Two approaches:
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-### Approach: Server-side pagination with range
-Use Supabase `.range()` to fetch all matching records in batches, or set an explicit higher limit when no date filters are applied.
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-**File: `src/hooks/useParteDiarioAdmin.ts`**
-- When date filters (`fechaDesde`/`fechaHasta`) are set, the result set is naturally smaller -- no issue.
-- When no date filters are set, use `.range(0, 4999)` to fetch up to 5,000 rows (covers foreseeable growth).
-- Alternatively, add mandatory default date range (e.g., last 90 days) to the quick filters so the query always returns a bounded set.
-
-### Changes
-1. Add `.range(0, 4999)` to the query in `useParteDiarioAdmin.ts` to raise the effective limit to 5,000 rows.
-
-This is a single-line change that immediately fixes the export and visibility issue.
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
