@@ -64,7 +64,10 @@ export const MecanicoMantenimientoForm = ({
   const [tipo, setTipo] = useState<TipoMantenimiento>(editData?.tipo as TipoMantenimiento || (obsPreload ? "correctivo" : "preventivo"));
   const [estado, setEstado] = useState<EstadoMantenimiento>(editData?.estado as EstadoMantenimiento || "pendiente");
   const [descripcion, setDescripcion] = useState(editData?.descripcion === "Pendiente de completar" ? "" : (editData?.descripcion || ""));
-  const [informeTecnico, setInformeTecnico] = useState(editData?.informe_tecnico || "");
+  const [informeTecnico, setInformeTecnico] = useState(
+    editData?.informe_tecnico || 
+    (editData?.tipo === "preventivo" && editData?.descripcion && editData?.descripcion !== "Pendiente de completar" ? editData.descripcion : "")
+  );
   const [repuestos, setRepuestos] = useState(editData?.repuestos || "");
   const [tecnico, setTecnico] = useState(editData?.tecnico || nombreMecanico || "");
   const [horasMaquina, setHorasMaquina] = useState(editData?.horas_maquina ? String(editData.horas_maquina) : "");
