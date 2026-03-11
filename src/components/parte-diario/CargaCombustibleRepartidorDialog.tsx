@@ -8,6 +8,8 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 
 interface PersonalItem {
   id: string;
