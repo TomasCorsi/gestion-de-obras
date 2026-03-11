@@ -1,26 +1,56 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Fix: Mecánicos no pueden modificar estado de mantenimientos
 
-## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+## Problema identificado
 
-## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+Hay **dos problemas relacionados** con la misma causa raíz:
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+1. Los mecánicos crean mantenimientos en estado "Pendiente" y cuando intentan cambiar el estado, **el cambio no se guarda** en la base de datos
+2. La app muestra "En Proceso" (estado local del formulario) pero la vista admin muestra "Pendiente" (valor real en la DB que nunca se actualizó)
 
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+## Causa raíz
 
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
+La función `is_personal_mecanico()` en la base de datos solo verifica `rol = 'mecanico'`:
+
+```sql
+-- Actual
+WHERE user_id = _user_id AND rol = 'mecanico'
 ```
 
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+Pero varios mecánicos tienen `personal.rol = 'ayudante'` y `user_roles.role = 'maquinista'` (default). Para estos usuarios:
+
+- `is_personal_mecanico()` retorna **false** (no son 'mecanico')  
+- `has_role(uid, 'ayudante')` retorna **false** (su user_role es 'maquinista')
+- Solo pasan la policy de SELECT para maquinistas, pero **no pueden INSERT/UPDATE/DELETE**
+
+El frontend ya trata a los ayudantes como mecánicos (`useEmpleadoProfile` tiene `isMecanico`), pero la DB no.
+
+## Solución
+
+### Migración SQL (único cambio necesario)
+
+Modificar la función `is_personal_mecanico` para incluir ayudantes:
+
+```sql
+CREATE OR REPLACE FUNCTION public.is_personal_mecanico(_user_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.personal
+    WHERE user_id = _user_id
+      AND rol IN ('mecanico', 'ayudante')
+  )
+$$;
+```
+
+Esto corrige automáticamente **todas** las policies RLS que usan `is_personal_mecanico()`:
+- SELECT, INSERT, UPDATE, DELETE en `mantenimientos`
+- SELECT, UPDATE en `observaciones_maquina_estado`
+
+No requiere cambios de código frontend ni nuevas policies.
 
