@@ -422,6 +422,7 @@ export default function Stock() {
 
         {/* Item Form Dialog */}
         <FormDialog
+          isDirty
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           title={selectedItem ? "Editar Item" : "Nuevo Item"}
