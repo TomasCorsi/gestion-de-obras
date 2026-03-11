@@ -88,6 +88,7 @@ export const ParteDiarioFormView = ({
     ausencias: [] as string[],
     tareas: '',
     observaciones_inconvenientes: '',
+    km_camion: '',
   }), []);
 
   const [formData, setFormData] = useState(defaultFormData);
