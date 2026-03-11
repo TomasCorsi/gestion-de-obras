@@ -1,26 +1,29 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Backfill horas/km desde partes diarios existentes
 
-## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+## Objetivo
+Ejecutar un UPDATE masivo para sincronizar `maquinarias.horas_acumuladas` y `maquinarias.km_acumulados` con los últimos valores de `horometro_fin` y `km_camion` de los partes diarios completados.
 
-## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+## Migración SQL
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
-
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
-
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
+```sql
+UPDATE maquinarias m SET
+  horas_acumuladas = COALESCE(latest.max_horometro, m.horas_acumuladas),
+  km_acumulados = COALESCE(latest.max_km, m.km_acumulados)
+FROM (
+  SELECT maquinaria_id,
+    MAX(horometro_fin) as max_horometro,
+    MAX(km_camion) as max_km
+  FROM partes_diarios
+  WHERE estado = 'completado' AND maquinaria_id IS NOT NULL
+  GROUP BY maquinaria_id
+) latest
+WHERE m.id = latest.maquinaria_id;
 ```
 
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+Esto actualiza todas las maquinarias que tienen partes completados con el mayor `horometro_fin` y `km_camion` registrado. Es una operación única de backfill; los futuros partes se sincronizarán automáticamente vía el trigger existente.
+
+### Archivo
+- Nueva migración SQL (backfill data)
 
