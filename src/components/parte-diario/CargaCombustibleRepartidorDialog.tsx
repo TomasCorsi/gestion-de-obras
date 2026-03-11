@@ -111,6 +111,15 @@ export function CargaCombustibleRepartidorDialog({
     }
   }, [open, carga, fechaParte]);
 
+  const isDirty = useMemo(() => {
+    const hasContent = formData.litros !== '' || formData.operador_id !== '' || 
+      formData.maquinaria_id !== '' || formData.observaciones !== '';
+    return hasContent;
+  }, [formData]);
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
+
   // Combobox options
   const operadorOptions: ComboboxOption[] = useMemo(() => {
     return personal.map(p => ({
