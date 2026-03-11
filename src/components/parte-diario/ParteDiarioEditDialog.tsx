@@ -81,7 +81,10 @@ export function ParteDiarioEditDialog({
   const { obras = [] } = useObras();
   const { maquinarias = [] } = useMaquinarias();
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { isDirty } } = useForm<FormData>();
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
 
   const rol = parte?.personal?.rol || "";
   const isMaquinista = rol === "maquinista";
