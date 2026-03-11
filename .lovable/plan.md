@@ -1,35 +1,26 @@
 
 
-# Actualizar horas/km con último horómetro de fin
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Problema actual
-El trigger actual **acumula deltas** (suma diferencias entre horómetro inicio y fin). El usuario necesita que `horas_acumuladas` refleje directamente el **último valor de `horometro_fin`** cargado en los partes diarios, y `km_acumulados` el último `km_camion`.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambio
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 1. Migración SQL - Reemplazar lógica del trigger
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-Modificar `sync_horas_km_from_parte()` para que cuando un parte se complete:
-- `maquinarias.horas_acumuladas = NEW.horometro_fin` (último horómetro)
-- `maquinarias.km_acumulados = NEW.km_camion` (último km)
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-Solo actualiza si el nuevo valor es mayor al actual (para no retroceder con partes viejos).
-
-```sql
--- En la sección de actualización de maquinarias:
-UPDATE maquinarias SET
-  horas_acumuladas = GREATEST(horas_acumuladas, COALESCE(NEW.horometro_fin, 0)),
-  km_acumulados = GREATEST(km_acumulados, COALESCE(NEW.km_camion, 0))
-WHERE id = NEW.maquinaria_id;
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-La parte de `horas_maquina` (registro por obra/día) se mantiene igual ya que eso sí necesita el cálculo de horas trabajadas.
-
-### 2. Frontend
-- En `Maquinarias.tsx`, el label "Horas Acumuladas" se puede renombrar a "Horómetro Actual" para mayor claridad.
-- Hacer el campo read-only en el formulario (ya que se actualiza automáticamente).
-
-### Archivos a modificar
-- **Migración SQL**: actualizar función del trigger
-- `src/pages/Maquinarias.tsx`: renombrar label, hacer campo readonly
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 

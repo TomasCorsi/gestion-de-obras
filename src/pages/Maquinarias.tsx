@@ -547,13 +547,14 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horas_acumuladas">Horas Acumuladas</Label>
+              <Label htmlFor="horas_acumuladas">Horómetro Actual</Label>
               <Input
                 id="horas_acumuladas"
                 type="number"
                 value={formData.horas_acumuladas}
-                onChange={(e) => setFormData({ ...formData, horas_acumuladas: parseFloat(e.target.value) || 0 })}
-                className="bg-muted border-border"
+                readOnly
+                disabled
+                className="bg-muted border-border opacity-60"
               />
             </div>
           </div>
@@ -600,7 +601,7 @@ export default function Maquinarias() {
                 label="Operador" 
                 value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
               />
-              <DetailRow label="Horas Acumuladas" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
+              <DetailRow label="Horómetro Actual" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
             </DetailSection>
           </div>
         )}
