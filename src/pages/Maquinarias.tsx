@@ -547,7 +547,7 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horas_acumuladas">Horómetro Actual</Label>
+              <Label htmlFor="horas_acumuladas">{formData.tipo === "auto" || formData.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"}</Label>
               <Input
                 id="horas_acumuladas"
                 type="number"
