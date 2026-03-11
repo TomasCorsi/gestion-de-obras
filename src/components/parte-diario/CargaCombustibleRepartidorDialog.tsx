@@ -174,7 +174,6 @@ export function CargaCombustibleRepartidorDialog({
   };
 
   return (
-  return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" {...dirtyProps}>
