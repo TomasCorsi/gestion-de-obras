@@ -168,8 +168,8 @@ export const MecanicoMantenimientoForm = ({
   };
 
   const handleFinalizar = async () => {
-    const mainText = isService ? informeTecnico.trim() : descripcion.trim();
-    if (!maquinariaId || !mainText || !tecnico.trim()) return;
+    if (!maquinariaId || !tecnico.trim()) return;
+    if (!isService && !descripcion.trim()) return;
     const finalEstado = estado === "pendiente" ? "en_proceso" : estado;
     const data = buildPayload(finalEstado);
     setIsSaving(true);
