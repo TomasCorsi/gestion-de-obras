@@ -20,6 +20,8 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { RemitoForm } from "@/hooks/useRemitos";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
