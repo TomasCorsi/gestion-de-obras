@@ -117,6 +117,14 @@ export function RemitoQuickFormDialog({
     if (open) setForm(getInitialForm());
   }, [open]);
 
+  const isDirty = useMemo(() => {
+    const initial = getInitialForm();
+    return JSON.stringify(form) !== JSON.stringify(initial);
+  }, [form]);
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
+
   const set = (field: string, value: any) =>
     setForm((prev) => {
       const next = { ...prev, [field]: value };
