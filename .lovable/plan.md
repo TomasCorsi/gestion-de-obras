@@ -1,31 +1,34 @@
 
 
-# Re-sincronizar horas y km de maquinarias desde partes corregidos
+# Corregir horómetro de máquina 306
 
 ## Problema
-El trigger `sync_horas_km_from_parte` usa `GREATEST()`, por lo que aunque se corrija un parte diario, el valor erróneo alto queda fijado en `maquinarias`. Necesitamos forzar la sincronización directa.
+El parte `d631cc03` del 09/02/2026 (ALAN EZEQUIEL MEDINA) tiene `horometro_fin = 8541` cuando debería ser `5841`. La secuencia lo confirma: el inicio es 5833 y el siguiente parte arranca en ~5846.
 
-## Migración SQL (data fix)
+## Migración SQL
 
-Una única migración que sobreescribe directamente los valores:
+Dos operaciones en una migración:
 
+1. **Corregir el parte erróneo** (8541 → 5841):
 ```sql
-UPDATE maquinarias m SET
-  horas_acumuladas = COALESCE(latest.max_horometro, 0),
-  km_acumulados = COALESCE(latest.max_km, 0)
-FROM (
-  SELECT maquinaria_id,
-    MAX(horometro_fin) as max_horometro,
-    MAX(km_camion) as max_km
-  FROM partes_diarios
-  WHERE estado = 'completado' AND maquinaria_id IS NOT NULL
-  GROUP BY maquinaria_id
-) latest
-WHERE m.id = latest.maquinaria_id;
+UPDATE partes_diarios 
+SET horometro_fin = 5841 
+WHERE id = 'd631cc03-3c5a-461c-9744-2287836e15fe';
 ```
 
-A diferencia del backfill anterior, este **no** usa `GREATEST` -- sobreescribe directamente con el `MAX` actual de los partes, que ya tienen los datos corregidos.
+2. **Re-sincronizar la máquina 306** con el MAX real de sus partes completados (bypasseando el GREATEST del trigger):
+```sql
+UPDATE maquinarias SET
+  horas_acumuladas = COALESCE((
+    SELECT MAX(horometro_fin) FROM partes_diarios 
+    WHERE maquinaria_id = 'd1c5fbb8-3b18-4ab5-9f40-ae698139e839' 
+      AND estado = 'completado'
+  ), 0)
+WHERE id = 'd1c5fbb8-3b18-4ab5-9f40-ae698139e839';
+```
+
+Resultado esperado: `horas_acumuladas` pasará de 8541 a **5907** (el MAX real actual después de la corrección).
 
 ## Archivo
-- Nueva migración SQL (una sola sentencia UPDATE)
+- Nueva migración SQL
 
