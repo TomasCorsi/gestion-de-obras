@@ -322,7 +322,7 @@ export function CargaCombustibleRepartidorDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving || !formData.litros}>
@@ -332,5 +332,8 @@ export function CargaCombustibleRepartidorDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }
