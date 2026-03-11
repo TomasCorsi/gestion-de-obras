@@ -187,7 +187,7 @@ export const MecanicoMantenimientoForm = ({
   };
 
   const isValidParcial = !!maquinariaId;
-  const isValidFull = maquinariaId && tecnico.trim() && (isService ? informeTecnico.trim() : descripcion.trim());
+  const isValidFull = maquinariaId && tecnico.trim() && (isService ? true : descripcion.trim());
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
