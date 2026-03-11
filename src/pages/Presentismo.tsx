@@ -361,6 +361,7 @@ export default function Presentismo() {
 
         {/* Form Dialog */}
         <FormDialog
+          isDirty
           open={isFormOpen}
           onOpenChange={setIsFormOpen}
           title={selectedRegistro ? "Editar Registro" : "Nuevo Registro de Asistencia"}

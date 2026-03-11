@@ -1109,6 +1109,7 @@ export default function Gastos() {
 
       {/* ===== OTROS GASTOS DIALOGS ===== */}
       <FormDialog
+        isDirty
         open={formOpenOtros}
         onOpenChange={setFormOpenOtros}
         title={isEditingOtros ? "Editar Gasto" : "Nuevo Gasto"}

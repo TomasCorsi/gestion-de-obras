@@ -427,6 +427,7 @@ export default function MantenimientoPage() {
           ? (formType === "service" ? "Editar Service" : "Editar Reparación")
           : (formType === "service" ? "Nuevo Service" : "Nueva Reparación")}
         size="xl"
+        isDirty
       >
         {formType === "service" ? (
           <ServiceForm

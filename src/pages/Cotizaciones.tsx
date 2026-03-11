@@ -412,6 +412,7 @@ export default function Cotizaciones() {
 
       {/* Form Dialog */}
       <FormDialog
+        isDirty
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Cotización" : "Nueva Cotización"}

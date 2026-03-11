@@ -335,6 +335,7 @@ export default function Clientes() {
         title={isEditing ? "Editar Cliente" : "Nuevo Cliente"}
         description={isEditing ? "Modifica los datos del cliente" : "Ingresa los datos del nuevo cliente"}
         size="lg"
+        isDirty
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

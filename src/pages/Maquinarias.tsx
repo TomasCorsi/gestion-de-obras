@@ -425,6 +425,7 @@ export default function Maquinarias() {
       </Tabs>
 
       <FormDialog
+        isDirty
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Maquinaria" : "Nueva Maquinaria"}

@@ -405,6 +405,7 @@ export function VacacionesTab() {
 
       {/* Form Dialog */}
       <FormDialog
+        isDirty
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Vacaciones" : "Nueva Solicitud de Vacaciones"}

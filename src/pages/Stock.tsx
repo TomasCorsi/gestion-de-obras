@@ -511,6 +511,7 @@ export default function Stock() {
 
         {/* Movimiento Form Dialog */}
         <FormDialog
+          isDirty
           open={isMovFormOpen}
           onOpenChange={setIsMovFormOpen}
           title="Registrar Movimiento"

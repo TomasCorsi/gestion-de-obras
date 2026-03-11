@@ -366,6 +366,7 @@ export default function Viajes() {
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Viaje" : "Nuevo Viaje"}
         size="lg"
+        isDirty
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
