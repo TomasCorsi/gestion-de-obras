@@ -1,6 +1,6 @@
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Calendar, Clock, Fuel, CheckCircle, XCircle, Users, Wrench, AlertTriangle, ClipboardList } from "lucide-react";
+import { Calendar, Clock, Fuel, CheckCircle, XCircle, Users, Wrench, AlertTriangle, ClipboardList, Gauge } from "lucide-react";
 import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { Badge } from "@/components/ui/badge";
