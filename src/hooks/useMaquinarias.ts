@@ -37,6 +37,7 @@ export interface MaquinariaDB {
   patente: string | null;
   estado: EstadoMaquinaria;
   horas_acumuladas: number;
+  km_acumulados: number;
   operador_asignado_id: string | null;
   obra_id: string | null;
   created_at: string;

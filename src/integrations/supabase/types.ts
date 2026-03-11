@@ -979,6 +979,7 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas: number
           id: string
+          km_acumulados: number | null
           marca: string | null
           nombre: string | null
           obra_id: string | null
@@ -994,6 +995,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas?: number
           id?: string
+          km_acumulados?: number | null
           marca?: string | null
           nombre?: string | null
           obra_id?: string | null
@@ -1009,6 +1011,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_maquinaria"]
           horas_acumuladas?: number
           id?: string
+          km_acumulados?: number | null
           marca?: string | null
           nombre?: string | null
           obra_id?: string | null
