@@ -104,7 +104,7 @@ export function RemitoQuickFormDialog({
       cantidad_viajes: 1,
       cantidad_uni: 0,
       cantidad: 0,
-      unidad: "TN",
+      unidad: "M3",
       precio_unitario: 0,
       precio_total: 0,
       precio_calc_mode: "viajes",
