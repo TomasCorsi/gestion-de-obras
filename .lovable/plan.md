@@ -1,41 +1,26 @@
 
 
-# Campos condicionales según tipo de maquinaria en formularios de mantenimiento
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Cambio
-En `ServiceForm` y `ReparacionForm`, mostrar condicionalmente los campos numéricos según el tipo de maquinaria seleccionada:
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-- **Auto / Camioneta**: mostrar "Kilómetros actual" y "Próximo service (KM)". Ocultar horas y próximo HR.
-- **Resto de maquinarias**: mostrar "Horas máquina" y "Próximo service (HR)". Ocultar km y próximo KM.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-## Implementación
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-En ambos formularios:
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-1. Derivar el tipo de la maquinaria seleccionada:
 ```typescript
-const selectedMaq = maquinarias.find(m => m.id === maquinariaId);
-const isVehiculo = selectedMaq?.tipo === "auto" || selectedMaq?.tipo === "camioneta";
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-2. Reemplazar la grilla de 4 campos numéricos por 2 campos condicionales:
-```typescript
-{isVehiculo ? (
-  <>
-    <Field label="Kilómetros actual" value={kilometros} />
-    <Field label="Próximo service (KM)" value={proximoKm} />
-  </>
-) : (
-  <>
-    <Field label="Horas máquina" value={horasMaquina} />
-    <Field label="Próximo service (HR)" value={proximoHr} />
-  </>
-)}
-```
-
-3. Cambiar la grilla de `grid-cols-2 md:grid-cols-4` a `grid-cols-2` ya que solo se muestran 2 campos.
-
-## Archivos
-- `src/components/mantenimiento/ServiceForm.tsx`
-- `src/components/mantenimiento/ReparacionForm.tsx`
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
