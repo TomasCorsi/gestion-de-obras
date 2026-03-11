@@ -290,24 +290,38 @@ export function ServiceForm({ onClose, editData }: ServiceFormProps) {
         />
       </div>
 
-      {/* Numeric fields */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="space-y-2">
-          <Label>Horas máquina</Label>
-          <Input type="number" value={horasMaquina} onChange={e => setHorasMaquina(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
-        </div>
-        <div className="space-y-2">
-          <Label>Kilómetros</Label>
-          <Input type="number" value={kilometros} onChange={e => setKilometros(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
-        </div>
-        <div className="space-y-2">
-          <Label>Próximo service (KM)</Label>
-          <Input type="number" value={proximoKm} onChange={e => setProximoKm(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
-        </div>
-        <div className="space-y-2">
-          <Label>Próximo service (HR)</Label>
-          <Input type="number" value={proximoHr} onChange={e => setProximoHr(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
-        </div>
+      {/* Numeric fields - conditional based on machinery type */}
+      {(() => {
+        const selectedMaq = maquinarias.find(m => m.id === maquinariaId);
+        const isVehiculo = selectedMaq?.tipo === "auto" || selectedMaq?.tipo === "camioneta";
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {isVehiculo ? (
+              <>
+                <div className="space-y-2">
+                  <Label>Kilómetros actual</Label>
+                  <Input type="number" value={kilometros} onChange={e => setKilometros(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Próximo service (KM)</Label>
+                  <Input type="number" value={proximoKm} onChange={e => setProximoKm(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>Horas máquina</Label>
+                  <Input type="number" value={horasMaquina} onChange={e => setHorasMaquina(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Próximo service (HR)</Label>
+                  <Input type="number" value={proximoHr} onChange={e => setProximoHr(e.target.value)} className="bg-muted border-border" inputMode="decimal" />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
       </div>
 
       {/* Costos */}
