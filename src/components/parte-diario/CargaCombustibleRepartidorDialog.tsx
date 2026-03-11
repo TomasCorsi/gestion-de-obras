@@ -174,8 +174,10 @@ export function CargaCombustibleRepartidorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+  return (
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" {...dirtyProps}>
         <DialogHeader>
           <DialogTitle>
             {carga ? 'Editar Entrega' : 'Nueva Entrega'}
