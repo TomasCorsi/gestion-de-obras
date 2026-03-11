@@ -917,6 +917,7 @@ export default function Gastos() {
 
       {/* ===== COMBUSTIBLE DIALOGS ===== */}
       <FormDialog
+        isDirty
         open={formOpenComb}
         onOpenChange={setFormOpenComb}
         title={isEditingComb ? "Editar Carga" : "Registrar Carga de Combustible"}
