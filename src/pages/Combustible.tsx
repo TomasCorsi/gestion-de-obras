@@ -502,6 +502,7 @@ export default function Combustible() {
 
       {/* Form Dialog */}
       <FormDialog
+        isDirty
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Carga" : "Registrar Carga de Combustible"}

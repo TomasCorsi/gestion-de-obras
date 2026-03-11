@@ -308,6 +308,7 @@ export default function Obras() {
 
       {/* Form Dialog */}
       <FormDialog
+        isDirty
         open={formOpen}
         onOpenChange={setFormOpen}
         title={isEditing ? "Editar Obra" : "Nueva Obra"}

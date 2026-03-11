@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,8 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { RemitoForm } from "@/hooks/useRemitos";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
@@ -115,6 +117,14 @@ export function RemitoQuickFormDialog({
     if (open) setForm(getInitialForm());
   }, [open]);
 
+  const isDirty = useMemo(() => {
+    const initial = getInitialForm();
+    return JSON.stringify(form) !== JSON.stringify(initial);
+  }, [form]);
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
+
   const set = (field: string, value: any) =>
     setForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -194,8 +204,9 @@ export function RemitoQuickFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border" {...dirtyProps}>
         <DialogHeader>
           <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
         </DialogHeader>
@@ -323,7 +334,7 @@ export function RemitoQuickFormDialog({
         </div>
 
         <DialogFooter className="sticky bottom-0 bg-card pt-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button variant="outline" onClick={handleClose}>Cancelar</Button>
           <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
             Guardar
@@ -331,5 +342,8 @@ export function RemitoQuickFormDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }

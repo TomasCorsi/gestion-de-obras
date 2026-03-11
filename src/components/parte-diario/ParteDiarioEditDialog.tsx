@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 import { useForm } from "react-hook-form";
 import { format } from "date-fns";
 import { Loader2, Save } from "lucide-react";
@@ -79,7 +81,10 @@ export function ParteDiarioEditDialog({
   const { obras = [] } = useObras();
   const { maquinarias = [] } = useMaquinarias();
 
-  const { register, handleSubmit, reset, setValue, watch } = useForm<FormData>();
+  const { register, handleSubmit, reset, setValue, watch, formState: { isDirty } } = useForm<FormData>();
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
 
   const rol = parte?.personal?.rol || "";
   const isMaquinista = rol === "maquinista";
@@ -156,8 +161,9 @@ export function ParteDiarioEditDialog({
   if (!parte) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0" {...dirtyProps}>
         <DialogHeader className="p-6 pb-0">
           <DialogTitle>
             Editar Parte Diario - {getEmpleadoNombre()}
@@ -404,7 +410,7 @@ export function ParteDiarioEditDialog({
         </ScrollArea>
 
         <DialogFooter className="p-6 pt-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
           <Button type="submit" form="edit-parte-form" disabled={isSaving}>
@@ -423,5 +429,8 @@ export function ParteDiarioEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }

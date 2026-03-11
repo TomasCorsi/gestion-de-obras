@@ -8,6 +8,8 @@ import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
+import { useDirtyDialog } from "@/hooks/useDirtyDialog";
+import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 
 interface PersonalItem {
   id: string;
@@ -109,6 +111,15 @@ export function CargaCombustibleRepartidorDialog({
     }
   }, [open, carga, fechaParte]);
 
+  const isDirty = useMemo(() => {
+    const hasContent = formData.litros !== '' || formData.operador_id !== '' || 
+      formData.maquinaria_id !== '' || formData.observaciones !== '';
+    return hasContent;
+  }, [formData]);
+
+  const { showAlert, setShowAlert, handleClose, handleDiscard, handleOpenChange, dirtyProps } =
+    useDirtyDialog(onOpenChange, isDirty);
+
   // Combobox options
   const operadorOptions: ComboboxOption[] = useMemo(() => {
     return personal.map(p => ({
@@ -163,8 +174,9 @@ export function CargaCombustibleRepartidorDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto" {...dirtyProps}>
         <DialogHeader>
           <DialogTitle>
             {carga ? 'Editar Entrega' : 'Nueva Entrega'}
@@ -309,7 +321,7 @@ export function CargaCombustibleRepartidorDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
           <Button onClick={handleSubmit} disabled={isSaving || !formData.litros}>
@@ -319,5 +331,8 @@ export function CargaCombustibleRepartidorDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }
