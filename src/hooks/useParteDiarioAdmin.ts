@@ -57,6 +57,8 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
         const batch = (data ?? []) as unknown as ParteDiario[];
         allPartes = [...allPartes, ...batch];
 
+        console.log(`[ParteDiarioAdmin] Batch from=${from}, got=${batch.length}, total=${allPartes.length}`);
+
         if (batch.length < batchSize) {
           break;
         }
