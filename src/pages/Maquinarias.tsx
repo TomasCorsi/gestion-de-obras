@@ -400,7 +400,9 @@ export default function Maquinarias() {
                         )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Clock className="w-4 h-4" />
-                          {maq.horas_acumuladas.toLocaleString()} horas
+                          {maq.tipo === "auto" || maq.tipo === "camioneta"
+                            ? `${(maq.km_acumulados ?? 0).toLocaleString()} km`
+                            : `${maq.horas_acumuladas.toLocaleString()} horas`}
                         </div>
                       </div>
 
@@ -547,7 +549,7 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horas_acumuladas">Horómetro Actual</Label>
+              <Label htmlFor="horas_acumuladas">{formData.tipo === "auto" || formData.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"}</Label>
               <Input
                 id="horas_acumuladas"
                 type="number"
@@ -601,7 +603,12 @@ export default function Maquinarias() {
                 label="Operador" 
                 value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
               />
-              <DetailRow label="Horómetro Actual" value={`${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} />
+              <DetailRow 
+                label={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"} 
+                value={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta"
+                  ? `${(selectedMaquinaria.km_acumulados ?? 0).toLocaleString()} km`
+                  : `${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} 
+              />
             </DetailSection>
           </div>
         )}
