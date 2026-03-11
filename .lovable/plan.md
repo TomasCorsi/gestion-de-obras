@@ -1,29 +1,26 @@
 
 
-# Backfill horas/km desde partes diarios existentes
+# Fix: Borrar "Próximo service KM/HR" no se guarda
 
-## Objetivo
-Ejecutar un UPDATE masivo para sincronizar `maquinarias.horas_acumuladas` y `maquinarias.km_acumulados` con los últimos valores de `horometro_fin` y `km_camion` de los partes diarios completados.
+## Problema
+En los formularios (`ServiceForm`, `ReparacionForm`, `MecanicoMantenimientoForm`), cuando se borra el valor de `proximo_service_km` o `proximo_service_hr`, el código hace:
 
-## Migración SQL
-
-```sql
-UPDATE maquinarias m SET
-  horas_acumuladas = COALESCE(latest.max_horometro, m.horas_acumuladas),
-  km_acumulados = COALESCE(latest.max_km, m.km_acumulados)
-FROM (
-  SELECT maquinaria_id,
-    MAX(horometro_fin) as max_horometro,
-    MAX(km_camion) as max_km
-  FROM partes_diarios
-  WHERE estado = 'completado' AND maquinaria_id IS NOT NULL
-  GROUP BY maquinaria_id
-) latest
-WHERE m.id = latest.maquinaria_id;
+```typescript
+proximo_service_km: parseFloat(proximoKm) || undefined,
 ```
 
-Esto actualiza todas las maquinarias que tienen partes completados con el mayor `horometro_fin` y `km_camion` registrado. Es una operación única de backfill; los futuros partes se sincronizarán automáticamente vía el trigger existente.
+`undefined` hace que la propiedad se omita del objeto enviado a la base de datos, por lo que el valor anterior nunca se sobreescribe con `null`.
 
-### Archivo
-- Nueva migración SQL (backfill data)
+## Solución
+Cambiar `undefined` por `null` en los tres formularios para estos campos:
+
+```typescript
+proximo_service_km: proximoKm ? parseFloat(proximoKm) : null,
+proximo_service_hr: proximoHr ? parseFloat(proximoHr) : null,
+```
+
+Mismo cambio en:
+- `src/components/mantenimiento/ServiceForm.tsx`
+- `src/components/mantenimiento/ReparacionForm.tsx`
+- `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
 
