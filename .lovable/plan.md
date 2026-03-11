@@ -1,43 +1,26 @@
 
 
-# Corrección masiva de horas acumuladas en maquinarias
+# Fix: Partes diarios query hitting 1000-row limit
 
-## Acciones
+## Problem
+The `useParteDiarioAdmin` hook queries `partes_diarios` without specifying a row limit. The database defaults to returning a maximum of 1,000 rows. With 1,347 total records ordered by `fecha DESC`, older entries (like those from 02/02) are silently truncated.
 
-### 1. Corregir partes erróneos (INSERT tool - data updates)
+This affects both the admin list view and Excel exports.
 
-**Máquina 302** - parte `ddc9838f`: horometro 55738→55805 debería ser 5738→5805
-```sql
-UPDATE partes_diarios 
-SET horometro_inicio = 5738, horometro_fin = 5805 
-WHERE id = 'ddc9838f';
-```
+## Solution
 
-**Máquina 503** - parte `a2507f7d`: horometro 14742→14746 debería ser ~3242→3246 (el último valor correcto es ~3370)
-```sql
-UPDATE partes_diarios 
-SET horometro_inicio = 3242, horometro_fin = 3246 
-WHERE id = 'a2507f7d';
-```
+Modify `useParteDiarioAdmin` to paginate or increase the limit. Two approaches:
 
-### 2. Re-sincronizar TODAS las máquinas (INSERT tool - bulk update)
+### Approach: Server-side pagination with range
+Use Supabase `.range()` to fetch all matching records in batches, or set an explicit higher limit when no date filters are applied.
 
-Sobrescribir `horas_acumuladas` y `km_acumulados` con el MAX real de partes completados, bypaseando el `GREATEST` del trigger:
+**File: `src/hooks/useParteDiarioAdmin.ts`**
+- When date filters (`fechaDesde`/`fechaHasta`) are set, the result set is naturally smaller -- no issue.
+- When no date filters are set, use `.range(0, 4999)` to fetch up to 5,000 rows (covers foreseeable growth).
+- Alternatively, add mandatory default date range (e.g., last 90 days) to the quick filters so the query always returns a bounded set.
 
-```sql
-UPDATE maquinarias m SET
-  horas_acumuladas = COALESCE(sub.max_h, 0),
-  km_acumulados = COALESCE(sub.max_km, 0)
-FROM (
-  SELECT maquinaria_id,
-    MAX(horometro_fin) as max_h,
-    MAX(km_camion) as max_km
-  FROM partes_diarios
-  WHERE estado = 'completado' AND maquinaria_id IS NOT NULL
-  GROUP BY maquinaria_id
-) sub
-WHERE m.id = sub.maquinaria_id;
-```
+### Changes
+1. Add `.range(0, 4999)` to the query in `useParteDiarioAdmin.ts` to raise the effective limit to 5,000 rows.
 
-Esto corrige todas las máquinas de una sola vez, incluyendo 302, 401, 503 y cualquier otra que tenga valores inflados.
+This is a single-line change that immediately fixes the export and visibility issue.
 
