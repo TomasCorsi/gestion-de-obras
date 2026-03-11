@@ -254,6 +254,7 @@ export const ParteDiarioFormView = ({
       ausencias: isCapataz && formData.ausencias.length > 0 ? formData.ausencias : null,
       tareas: isMecanicoAyudante ? formData.tareas || null : null,
       observaciones_inconvenientes: formData.observaciones_inconvenientes || null,
+      km_camion: isChofer ? parseFloat(formData.km_camion) || 0 : 0,
     };
   };
 
