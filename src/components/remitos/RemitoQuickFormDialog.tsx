@@ -204,8 +204,9 @@ export function RemitoQuickFormDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border">
+    <>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border" {...dirtyProps}>
         <DialogHeader>
           <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
         </DialogHeader>
