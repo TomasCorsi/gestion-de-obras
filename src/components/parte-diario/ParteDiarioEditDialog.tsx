@@ -411,7 +411,7 @@ export function ParteDiarioEditDialog({
         </ScrollArea>
 
         <DialogFooter className="p-6 pt-0">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSaving}>
+          <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
           <Button type="submit" form="edit-parte-form" disabled={isSaving}>
@@ -430,5 +430,8 @@ export function ParteDiarioEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <UnsavedChangesAlert open={showAlert} onOpenChange={setShowAlert} onDiscard={handleDiscard} />
+    </>
   );
 }
