@@ -132,7 +132,7 @@ export function ServiceForm({ onClose, editData }: ServiceFormProps) {
     onClose();
   };
 
-  const isValid = maquinariaId && tecnicoId;
+  const isValid = maquinariaId && (tecnicoId || (isEditing && tecnicoNombre));
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">

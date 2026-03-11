@@ -117,7 +117,7 @@ export function ReparacionForm({ onClose, editData, prefill }: ReparacionFormPro
     onClose();
   };
 
-  const isValid = maquinariaId && tecnicoId && descripcion.trim();
+  const isValid = maquinariaId && (tecnicoId || (isEditing && tecnicoNombre)) && descripcion.trim();
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
