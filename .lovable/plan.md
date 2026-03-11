@@ -1,26 +1,26 @@
 
 
-# Fix: Borrar "Próximo service KM/HR" no se guarda
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
 ## Problema
-En los formularios (`ServiceForm`, `ReparacionForm`, `MecanicoMantenimientoForm`), cuando se borra el valor de `proximo_service_km` o `proximo_service_hr`, el código hace:
-
-```typescript
-proximo_service_km: parseFloat(proximoKm) || undefined,
-```
-
-`undefined` hace que la propiedad se omita del objeto enviado a la base de datos, por lo que el valor anterior nunca se sobreescribe con `null`.
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
 ## Solución
-Cambiar `undefined` por `null` en los tres formularios para estos campos:
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
 ```typescript
-proximo_service_km: proximoKm ? parseFloat(proximoKm) : null,
-proximo_service_hr: proximoHr ? parseFloat(proximoHr) : null,
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-Mismo cambio en:
-- `src/components/mantenimiento/ServiceForm.tsx`
-- `src/components/mantenimiento/ReparacionForm.tsx`
-- `src/components/parte-diario/MecanicoMantenimientoForm.tsx`
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
