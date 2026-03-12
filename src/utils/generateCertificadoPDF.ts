@@ -1,8 +1,9 @@
 import jsPDF from "jspdf";
+import { format, parseISO } from "date-fns";
 import autoTable from "jspdf-autotable";
 import logoCalamina from "@/assets/logo-calamina-sur.png";
 import firmaPresidente from "@/assets/firma-presidente.png";
-import type { Certificado, CertificadoItem, AcumuladoConcepto } from "@/hooks/useCertificados";
+import type { Certificado, CertificadoItem, AcumuladoConcepto, CertificadoPago } from "@/hooks/useCertificados";
 
 // ─── Corporate Constants ────────────────────────────────────────
 const CORP_RED: [number, number, number] = [180, 0, 0];
@@ -79,6 +80,7 @@ interface CertificadoPDFData {
   cantidadTotalMap?: Record<string, number>;
   acumulados?: AcumuladoConcepto[];
   etapaOrdenMap?: Record<string, number>;
+  pagos?: CertificadoPago[];
 }
 
 // ─── Header ─────────────────────────────────────────────────────
@@ -747,6 +749,7 @@ export async function generateCertificadoPDF({
   cantidadTotalMap = {},
   acumulados = [],
   etapaOrdenMap,
+  pagos = [],
 }: CertificadoPDFData): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -761,6 +764,22 @@ export async function generateCertificadoPDF({
     yPos = generateMixtoPDF(doc, yPos, margin, pageWidth, certificado, items, etapaMap, cantidadTotalMap, acumulados, etapaOrdenMap, categoriaMap);
   } else {
     yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap, false, etapaMap);
+  }
+
+  // Pagos y Saldo
+  if (pagos.length > 0) {
+    const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+    const saldo = certificado.total - totalPagado;
+
+    const pagoLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
+    pagos.forEach((p) => {
+      const fechaLabel = format(parseISO(p.fecha), "dd/MM/yyyy");
+      const desc = p.descripcion ? ` (${p.descripcion})` : "";
+      pagoLines.push({ label: `Pago ${fechaLabel}${desc}:`, value: `- ${formatCurrency(p.monto)}` });
+    });
+    pagoLines.push({ label: "SALDO PENDIENTE:", value: formatCurrency(saldo), bold: true, separator: true });
+
+    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, pagoLines);
   }
 
   // Observaciones
