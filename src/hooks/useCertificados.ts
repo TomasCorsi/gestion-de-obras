@@ -59,6 +59,7 @@ export interface Certificado {
   observaciones: string | null;
   tipo: TipoCertificado;
   anticipo_porcentaje: number;
+  incluir_iva: boolean;
   created_at: string;
   updated_at: string;
 }
