@@ -148,12 +148,13 @@ function buildGroupedTableData(gastos: GastoDetalle[]): {
     const headerIdx = body.length;
     categoryRowIndices.push(headerIdx);
     categoryColors.set(headerIdx, cat);
-    body.push([cat.label, "", "", ""]);
+    body.push([cat.label, "", "", "", ""]);
 
     // Data rows
     for (const g of items) {
       body.push([
         g.fecha ? format(new Date(g.fecha), "dd/MM/yy") : "-",
+        g.tipo,
         g.descripcion,
         g.obra,
         formatCurrency(g.costo),
@@ -165,7 +166,7 @@ function buildGroupedTableData(gastos: GastoDetalle[]): {
     const subtotalIdx = body.length;
     subtotalRowIndices.push(subtotalIdx);
     categoryColors.set(subtotalIdx, cat);
-    body.push(["", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
+    body.push(["", "", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
   }
 
   return { body, categoryRowIndices, subtotalRowIndices, categoryColors };
