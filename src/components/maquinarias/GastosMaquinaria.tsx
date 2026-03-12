@@ -343,6 +343,7 @@ export function GastosMaquinaria() {
     }));
 
     const remitosParaPDF = datosFiltrados.remitos.map((r) => ({
+      fecha: r.fecha,
       numero: r.numero || "-",
       tipo_material: r.tipo_material || "-",
       viajes: r.cantidad_viajes || 0,

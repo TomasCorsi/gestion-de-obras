@@ -425,7 +425,7 @@ export async function generateGastosMaquinariaPDF(
 
     autoTable(doc, {
       startY: yPos,
-      head: [["Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
+      head: [["Fecha", "Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
       body: remitosBody,
       theme: "grid",
       headStyles: {
@@ -441,12 +441,13 @@ export async function generateGastosMaquinariaPDF(
         cellPadding: 1.5,
       },
       columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 16, halign: "center" },
-        3: { cellWidth: 22, halign: "right" },
-        4: { cellWidth: 18, halign: "center" },
-        5: { cellWidth: 25, halign: "right" },
+        0: { cellWidth: 18, halign: "center" },
+        1: { cellWidth: 22 },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 14, halign: "center" },
+        4: { cellWidth: 20, halign: "right" },
+        5: { cellWidth: 16, halign: "center" },
+        6: { cellWidth: 25, halign: "right" },
       },
       margin: { left: margin, right: margin },
       didParseCell: (data) => {
