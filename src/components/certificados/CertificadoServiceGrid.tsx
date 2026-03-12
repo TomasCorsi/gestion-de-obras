@@ -161,6 +161,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
         etapa: groupName,
         cantidad_total: 0,
         seccion,
+        observaciones: "",
       };
       onItemsChange([...items, newItem]);
     },
