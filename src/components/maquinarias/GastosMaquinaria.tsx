@@ -68,9 +68,19 @@ const chartConfig = {
 
 export function GastosMaquinaria() {
   const { maquinarias } = useMaquinarias();
-  const { cargas } = useCombustible();
+  const { cargas: cargasRepartidor } = useCargasRepartidorAll();
+  const now = new Date();
+  const { preciosPorMesProducto } = usePreciosTodos(now.getFullYear());
   const { remitos } = useRemitos();
   const { mantenimientos } = useMantenimientos();
+
+  // Helper: get cost for a repartidor carga
+  const getCostoCarga = (carga: { fecha: string; litros: number; tipo_producto: string | null }) => {
+    const mes = parseInt(carga.fecha.split("-")[1], 10);
+    const producto = carga.tipo_producto || "combustible";
+    const precio = preciosPorMesProducto[`${mes}-${producto}`];
+    return precio ? carga.litros * precio : 0;
+  };
 
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
