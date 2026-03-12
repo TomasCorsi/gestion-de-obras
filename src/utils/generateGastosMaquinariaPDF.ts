@@ -45,6 +45,7 @@ export interface GastoDetalle {
 }
 
 export interface RemitoDetalle {
+  fecha: string;
   numero: string;
   tipo_material: string;
   viajes: number;
@@ -147,12 +148,13 @@ function buildGroupedTableData(gastos: GastoDetalle[]): {
     const headerIdx = body.length;
     categoryRowIndices.push(headerIdx);
     categoryColors.set(headerIdx, cat);
-    body.push([cat.label, "", "", ""]);
+    body.push([cat.label, "", "", "", ""]);
 
     // Data rows
     for (const g of items) {
       body.push([
         g.fecha ? format(new Date(g.fecha), "dd/MM/yy") : "-",
+        g.tipo,
         g.descripcion,
         g.obra,
         formatCurrency(g.costo),
@@ -164,7 +166,7 @@ function buildGroupedTableData(gastos: GastoDetalle[]): {
     const subtotalIdx = body.length;
     subtotalRowIndices.push(subtotalIdx);
     categoryColors.set(subtotalIdx, cat);
-    body.push(["", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
+    body.push(["", "", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
   }
 
   return { body, categoryRowIndices, subtotalRowIndices, categoryColors };
@@ -342,7 +344,7 @@ export async function generateGastosMaquinariaPDF(
   } else {
     autoTable(doc, {
       startY: yPos,
-      head: [["Fecha", "Descripción", "Obra", "Costo"]],
+      head: [["Fecha", "Tipo", "Cantidad", "Obra", "Costo"]],
       body,
       theme: "grid",
       headStyles: {
@@ -360,9 +362,10 @@ export async function generateGastosMaquinariaPDF(
       },
       columnStyles: {
         0: { cellWidth: 18, halign: "center" },
-        1: { cellWidth: "auto", overflow: "linebreak" },
-        2: { cellWidth: 30, overflow: "linebreak" },
-        3: { cellWidth: 25, halign: "right" },
+        1: { cellWidth: 30, overflow: "linebreak" },
+        2: { cellWidth: "auto", overflow: "linebreak" },
+        3: { cellWidth: 30, overflow: "linebreak" },
+        4: { cellWidth: 25, halign: "right" },
       },
       margin: { left: margin, right: margin },
       tableWidth: "auto",
@@ -379,7 +382,7 @@ export async function generateGastosMaquinariaPDF(
             data.cell.styles.fontStyle = "bold";
             data.cell.styles.fontSize = 7;
             if (data.column.index === 0) {
-              data.cell.colSpan = 4;
+              data.cell.colSpan = 5;
             }
           }
         }
@@ -390,7 +393,7 @@ export async function generateGastosMaquinariaPDF(
           data.cell.styles.fillColor = [240, 240, 240];
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fontSize = 6;
-          if (cat && data.column.index === 1) {
+          if (cat && data.column.index === 2) {
             data.cell.colSpan = 2;
           }
         }
@@ -408,6 +411,7 @@ export async function generateGastosMaquinariaPDF(
     yPos += 3;
 
     const remitosBody = remitosDetalle.map((r) => [
+      r.fecha ? format(new Date(r.fecha), "dd/MM/yy") : "-",
       r.numero,
       r.tipo_material,
       r.viajes.toString(),
@@ -417,11 +421,11 @@ export async function generateGastosMaquinariaPDF(
     ]);
 
     const subtotalRemitos = remitosDetalle.reduce((sum, r) => sum + r.costo, 0);
-    remitosBody.push(["", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
+    remitosBody.push(["", "", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
 
     autoTable(doc, {
       startY: yPos,
-      head: [["Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
+      head: [["Fecha", "Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
       body: remitosBody,
       theme: "grid",
       headStyles: {
@@ -437,12 +441,13 @@ export async function generateGastosMaquinariaPDF(
         cellPadding: 1.5,
       },
       columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 16, halign: "center" },
-        3: { cellWidth: 22, halign: "right" },
-        4: { cellWidth: 18, halign: "center" },
-        5: { cellWidth: 25, halign: "right" },
+        0: { cellWidth: 18, halign: "center" },
+        1: { cellWidth: 22 },
+        2: { cellWidth: "auto" },
+        3: { cellWidth: 14, halign: "center" },
+        4: { cellWidth: 20, halign: "right" },
+        5: { cellWidth: 16, halign: "center" },
+        6: { cellWidth: 25, halign: "right" },
       },
       margin: { left: margin, right: margin },
       didParseCell: (data) => {
