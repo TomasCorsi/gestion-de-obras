@@ -44,6 +44,15 @@ export interface GastoDetalle {
   costo: number;
 }
 
+export interface RemitoDetalle {
+  numero: string;
+  tipo_material: string;
+  viajes: number;
+  cantidad_total: number;
+  unidad: string;
+  costo: number;
+}
+
 interface ImageData {
   base64: string;
   width: number;
@@ -114,13 +123,6 @@ const CATEGORIES: CategoryConfig[] = [
     textColor: [60, 20, 80],
     matchTypes: ["mantenimiento"],
   },
-  {
-    key: "remito",
-    label: "REMITOS / VIAJES",
-    headerColor: [100, 160, 230],
-    textColor: [20, 50, 100],
-    matchTypes: ["remito"],
-  },
 ];
 
 function buildGroupedTableData(gastos: GastoDetalle[]): {
@@ -172,6 +174,7 @@ export async function generateGastosMaquinariaPDF(
   maquinaria: MaquinariaData,
   totales: TotalesData,
   gastos: GastoDetalle[],
+  remitosDetalle: RemitoDetalle[] = [],
   fechaDesde?: Date,
   fechaHasta?: Date
 ): Promise<void> {
@@ -390,6 +393,63 @@ export async function generateGastosMaquinariaPDF(
           if (cat && data.column.index === 1) {
             data.cell.colSpan = 2;
           }
+        }
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // ============== REMITOS TABLE ==============
+  if (remitosDetalle.length > 0) {
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.text("REMITOS / VIAJES", margin, yPos);
+    yPos += 3;
+
+    const remitosBody = remitosDetalle.map((r) => [
+      r.numero,
+      r.tipo_material,
+      r.viajes.toString(),
+      r.cantidad_total.toLocaleString(),
+      r.unidad,
+      formatCurrency(r.costo),
+    ]);
+
+    const subtotalRemitos = remitosDetalle.reduce((sum, r) => sum + r.costo, 0);
+    remitosBody.push(["", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
+      body: remitosBody,
+      theme: "grid",
+      headStyles: {
+        fillColor: [100, 160, 230],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 6.5,
+        halign: "center",
+        cellPadding: 1.5,
+      },
+      bodyStyles: {
+        fontSize: 5.5,
+        cellPadding: 1.5,
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 16, halign: "center" },
+        3: { cellWidth: 22, halign: "right" },
+        4: { cellWidth: 18, halign: "center" },
+        5: { cellWidth: 25, halign: "right" },
+      },
+      margin: { left: margin, right: margin },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.row.index === remitosBody.length - 1) {
+          data.cell.styles.fillColor = [240, 240, 240];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontSize = 6;
         }
       },
     });

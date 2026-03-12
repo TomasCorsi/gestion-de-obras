@@ -342,6 +342,15 @@ export function GastosMaquinaria() {
       costo: g.costo,
     }));
 
+    const remitosParaPDF = datosFiltrados.remitos.map((r) => ({
+      numero: r.numero || "-",
+      tipo_material: r.tipo_material || "-",
+      viajes: r.cantidad_viajes || 0,
+      cantidad_total: r.cantidad || 0,
+      unidad: r.unidad || "-",
+      costo: r.precio_total || 0,
+    }));
+
     try {
       await generateGastosMaquinariaPDF(
         {
@@ -356,6 +365,7 @@ export function GastosMaquinaria() {
         },
         totales,
         gastosParaPDF,
+        remitosParaPDF,
         fechaDesde,
         fechaHasta
       );
