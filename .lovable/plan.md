@@ -1,26 +1,17 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Agregar pagos al PDF del certificado
 
-## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+## Cambios
 
-## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+### 1. `src/utils/generateCertificadoPDF.ts`
+- Agregar `pagos?: CertificadoPago[]` al interface `CertificadoPDFData`
+- En las 3 funciones de generación (`generateServicioPDF`, `generateObraPDF`, `generateMixtoPDF`), después de la línea de TOTAL, agregar líneas de pagos y saldo:
+  - Si hay pagos, agregar cada pago como línea: `Pago dd/mm/yyyy: - $X`
+  - Agregar línea bold: `SALDO PENDIENTE: $X`
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
-
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
-
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
-```
-
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+### 2. `src/pages/Certificados.tsx`
+- En `handleDownloadPDF`, pasar los pagos del certificado al generador:
+  - Obtener pagos con `fetchPagos(cert.id)`
+  - Pasarlos como prop `pagos` a `generateCertificadoPDF`
 
