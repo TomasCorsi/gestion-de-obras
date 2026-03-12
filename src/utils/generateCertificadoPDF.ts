@@ -79,6 +79,7 @@ interface CertificadoPDFData {
   cantidadTotalMap?: Record<string, number>;
   acumulados?: AcumuladoConcepto[];
   etapaOrdenMap?: Record<string, number>;
+  pagos?: CertificadoPago[];
 }
 
 // ─── Header ─────────────────────────────────────────────────────
