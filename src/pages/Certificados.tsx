@@ -1813,6 +1813,62 @@ export default function Certificados() {
                         <strong>Observaciones:</strong> {viewCert.observaciones}
                       </p>
                     )}
+
+                    {/* ---- PAGOS SECTION ---- */}
+                    <div className="border-t pt-4 mt-4 space-y-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" /> Pagos
+                      </h4>
+                      {viewPagos.length > 0 ? (
+                        <div className="space-y-2">
+                          {viewPagos.map((pago) => (
+                            <div key={pago.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2 text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground">{format(new Date(pago.fecha), "dd/MM/yyyy")}</span>
+                                <span className="font-semibold">{formatCurrency(pago.monto)}</span>
+                                {pago.descripcion && <span className="text-muted-foreground">— {pago.descripcion}</span>}
+                              </div>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeletePago(pago.id)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sin pagos registrados.</p>
+                      )}
+
+                      {/* Saldo */}
+                      {(() => {
+                        const totalPagadoCert = viewPagos.reduce((s, p) => s + p.monto, 0);
+                        const saldoCert = viewCert.total - totalPagadoCert;
+                        return (
+                          <div className="flex justify-between text-sm font-medium border-t pt-2">
+                            <span>Pagado: {formatCurrency(totalPagadoCert)}</span>
+                            <span>Saldo pendiente: <strong>{formatCurrency(saldoCert)}</strong></span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Inline form */}
+                      <div className="flex gap-2 items-end flex-wrap">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fecha</Label>
+                          <Input type="date" value={newPago.fecha} onChange={(e) => setNewPago((p) => ({ ...p, fecha: e.target.value }))} className="h-8 text-xs w-36" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Monto</Label>
+                          <Input type="number" min={0} step={0.01} placeholder="0" value={newPago.monto} onChange={(e) => setNewPago((p) => ({ ...p, monto: e.target.value }))} className="h-8 text-xs w-28" />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-[120px]">
+                          <Label className="text-xs">Descripción</Label>
+                          <Input placeholder="Transferencia, cheque..." value={newPago.descripcion} onChange={(e) => setNewPago((p) => ({ ...p, descripcion: e.target.value }))} className="h-8 text-xs" />
+                        </div>
+                        <Button size="sm" onClick={handleAddPago} disabled={!newPago.monto || Number(newPago.monto) <= 0} className="h-8">
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Registrar
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
