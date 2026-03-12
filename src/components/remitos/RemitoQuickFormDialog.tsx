@@ -41,6 +41,30 @@ const TIPO_TRANSPORTE_OPTIONS = [
 
 const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U"];
 
+export interface RemitoEditData {
+  id: string;
+  fecha: string;
+  remito_tercero: string;
+  remito_local: string;
+  desde: string;
+  hasta: string;
+  tipo_material: string;
+  tipo_transporte: string;
+  maquinaria_id: string;
+  patente_tercero: string;
+  cliente: string;
+  cliente_destino: string;
+  cantidad_viajes: number;
+  cantidad_uni: number | null;
+  cantidad: number;
+  unidad: string;
+  precio_unitario: number | null;
+  precio_total: number;
+  precio_calc_mode: string;
+  proveedor: string;
+  observaciones: string;
+}
+
 interface RemitoQuickFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,7 +72,8 @@ interface RemitoQuickFormDialogProps {
   maquinarias: MaquinariaWithRelations[];
   clientes: ClienteDB[];
   generateNumero: () => string;
-  onSubmit: (remito: RemitoForm) => Promise<void>;
+  onSubmit: (remito: RemitoForm & { id?: string }) => Promise<void>;
+  editingRemito?: RemitoEditData | null;
 }
 
 const today = () => new Date().toISOString().split("T")[0];
