@@ -344,7 +344,7 @@ export async function generateGastosMaquinariaPDF(
   } else {
     autoTable(doc, {
       startY: yPos,
-      head: [["Fecha", "Descripción", "Obra", "Costo"]],
+      head: [["Fecha", "Tipo", "Cantidad", "Obra", "Costo"]],
       body,
       theme: "grid",
       headStyles: {
