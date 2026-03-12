@@ -35,6 +35,15 @@ export interface ConceptoForm {
   tipo?: 'obra' | 'servicio';
 }
 
+export interface CertificadoPago {
+  id: string;
+  certificado_id: string;
+  fecha: string;
+  monto: number;
+  descripcion: string | null;
+  created_at: string;
+}
+
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
 
 export interface Certificado {
@@ -490,6 +499,70 @@ export function useCertificados(obraId?: string) {
     queryClient.invalidateQueries({ queryKey: ["certificado_conceptos", obraId] });
   };
 
+  // ---- Pagos per obra (all certificados) ----
+  const { data: allPagos = [], isLoading: loadingPagos } = useQuery({
+    queryKey: ["certificado_pagos", obraId],
+    queryFn: async () => {
+      if (!obraId) return [];
+      const certIds = certificados.map((c) => c.id);
+      if (certIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("certificado_pagos")
+        .select("*")
+        .in("certificado_id", certIds)
+        .order("fecha", { ascending: false });
+      if (error) throw error;
+      return data as CertificadoPago[];
+    },
+    enabled: !!obraId && certificados.length > 0,
+  });
+
+  const fetchPagos = async (certificadoId: string): Promise<CertificadoPago[]> => {
+    const { data, error } = await supabase
+      .from("certificado_pagos")
+      .select("*")
+      .eq("certificado_id", certificadoId)
+      .order("fecha", { ascending: true });
+    if (error) throw error;
+    return data as CertificadoPago[];
+  };
+
+  const createPago = useMutation({
+    mutationFn: async (pago: { certificado_id: string; fecha: string; monto: number; descripcion?: string }) => {
+      const { data, error } = await supabase
+        .from("certificado_pagos")
+        .insert([pago])
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Pago registrado");
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+    },
+    onError: () => toast.error("Error al registrar pago"),
+  });
+
+  const deletePago = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("certificado_pagos")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Pago eliminado");
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+    },
+    onError: () => toast.error("Error al eliminar pago"),
+  });
+
+  // Helper: total pagado por certificado
+  const getPagadoByCert = (certId: string) =>
+    allPagos.filter((p) => p.certificado_id === certId).reduce((s, p) => s + p.monto, 0);
+
   return {
     conceptos,
     loadingConceptos,
@@ -504,5 +577,11 @@ export function useCertificados(obraId?: string) {
     updateCertificadoEstado: updateCertificadoEstado.mutateAsync,
     deleteCertificado: deleteCertificado.mutateAsync,
     reorderEtapas,
+    allPagos,
+    loadingPagos,
+    fetchPagos,
+    createPago: createPago.mutateAsync,
+    deletePago: deletePago.mutateAsync,
+    getPagadoByCert,
   };
 }

@@ -422,6 +422,41 @@ export type Database = {
           },
         ]
       }
+      certificado_pagos: {
+        Row: {
+          certificado_id: string
+          created_at: string
+          descripcion: string | null
+          fecha: string
+          id: string
+          monto: number
+        }
+        Insert: {
+          certificado_id: string
+          created_at?: string
+          descripcion?: string | null
+          fecha?: string
+          id?: string
+          monto?: number
+        }
+        Update: {
+          certificado_id?: string
+          created_at?: string
+          descripcion?: string | null
+          fecha?: string
+          id?: string
+          monto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "certificado_pagos_certificado_id_fkey"
+            columns: ["certificado_id"]
+            isOneToOne: false
+            referencedRelation: "certificados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       certificados: {
         Row: {
           anticipo_porcentaje: number

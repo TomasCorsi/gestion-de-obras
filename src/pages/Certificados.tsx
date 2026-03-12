@@ -9,6 +9,7 @@ import {
   CATEGORIAS_CERTIFICADO,
   type CertificadoItemForm,
   type CertificadoItem,
+  type CertificadoPago,
   type Certificado,
   type EstadoCertificado,
   type TipoCertificado,
@@ -163,6 +164,11 @@ export default function Certificados() {
     updateCertificadoEstado,
     deleteCertificado,
     reorderEtapas,
+    allPagos,
+    fetchPagos,
+    createPago,
+    deletePago,
+    getPagadoByCert,
   } = useCertificados(selectedObraId);
 
   // Build etapaOrdenMap from conceptos' orden field (min orden per etapa)
@@ -177,12 +183,11 @@ export default function Certificados() {
   // ---- KPIs ----
   const totalCertificados = certificados.length;
   const montoTotal = certificados.reduce((s, c) => s + c.total, 0);
+  const totalPagado = allPagos.reduce((s, p) => s + p.monto, 0);
   const montoPendiente = certificados
-    .filter((c) => c.estado === "emitido")
-    .reduce((s, c) => s + c.total, 0);
-  const montoCobrado = certificados
-    .filter((c) => c.estado === "cobrado")
-    .reduce((s, c) => s + c.total, 0);
+    .filter((c) => c.estado !== "cobrado")
+    .reduce((s, c) => s + (c.total - getPagadoByCert(c.id)), 0);
+  const montoCobrado = totalPagado;
 
   // ---- Add concepto dialog ----
   const [addConceptoOpen, setAddConceptoOpen] = useState(false);
@@ -573,6 +578,8 @@ export default function Certificados() {
   // ---- Ver certificado ----
   const [viewCertId, setViewCertId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<CertificadoItem[]>([]);
+  const [viewPagos, setViewPagos] = useState<CertificadoPago[]>([]);
+  const [newPago, setNewPago] = useState({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
   const [loadingItems, setLoadingItems] = useState(false);
   const [viewAcumulados, setViewAcumulados] = useState<AcumuladoConcepto[]>([]);
   const viewCert = certificados.find((c) => c.id === viewCertId);
@@ -580,8 +587,10 @@ export default function Certificados() {
   const openViewCert = async (id: string) => {
     setViewCertId(id);
     setLoadingItems(true);
-    const items = await fetchItems(id);
+    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
     setViewItems(items);
+    setViewPagos(pagos);
 
     const cert = certificados.find((c) => c.id === id);
     if ((cert?.tipo === "obra" || cert?.tipo === "mixto") && selectedObraId) {
@@ -591,6 +600,27 @@ export default function Certificados() {
       setViewAcumulados([]);
     }
     setLoadingItems(false);
+  };
+
+  const handleAddPago = async () => {
+    if (!viewCertId || !newPago.monto) return;
+    await createPago({
+      certificado_id: viewCertId,
+      fecha: newPago.fecha,
+      monto: Number(newPago.monto),
+      descripcion: newPago.descripcion || undefined,
+    });
+    const pagos = await fetchPagos(viewCertId);
+    setViewPagos(pagos);
+    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+  };
+
+  const handleDeletePago = async (pagoId: string) => {
+    await deletePago(pagoId);
+    if (viewCertId) {
+      const pagos = await fetchPagos(viewCertId);
+      setViewPagos(pagos);
+    }
   };
 
   // Build categoriaMap for PDF
@@ -782,6 +812,7 @@ export default function Certificados() {
                         <CertificadoCard
                           key={cert.id}
                           cert={cert}
+                          pagado={getPagadoByCert(cert.id)}
                           onView={() => openViewCert(cert.id)}
                           onEdit={() => openEditCertificado(cert)}
                           onEmitir={() =>
@@ -1782,6 +1813,62 @@ export default function Certificados() {
                         <strong>Observaciones:</strong> {viewCert.observaciones}
                       </p>
                     )}
+
+                    {/* ---- PAGOS SECTION ---- */}
+                    <div className="border-t pt-4 mt-4 space-y-3">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <DollarSign className="w-4 h-4" /> Pagos
+                      </h4>
+                      {viewPagos.length > 0 ? (
+                        <div className="space-y-2">
+                          {viewPagos.map((pago) => (
+                            <div key={pago.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2 text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className="text-muted-foreground">{format(new Date(pago.fecha), "dd/MM/yyyy")}</span>
+                                <span className="font-semibold">{formatCurrency(pago.monto)}</span>
+                                {pago.descripcion && <span className="text-muted-foreground">— {pago.descripcion}</span>}
+                              </div>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeletePago(pago.id)}>
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sin pagos registrados.</p>
+                      )}
+
+                      {/* Saldo */}
+                      {(() => {
+                        const totalPagadoCert = viewPagos.reduce((s, p) => s + p.monto, 0);
+                        const saldoCert = viewCert.total - totalPagadoCert;
+                        return (
+                          <div className="flex justify-between text-sm font-medium border-t pt-2">
+                            <span>Pagado: {formatCurrency(totalPagadoCert)}</span>
+                            <span>Saldo pendiente: <strong>{formatCurrency(saldoCert)}</strong></span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Inline form */}
+                      <div className="flex gap-2 items-end flex-wrap">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Fecha</Label>
+                          <Input type="date" value={newPago.fecha} onChange={(e) => setNewPago((p) => ({ ...p, fecha: e.target.value }))} className="h-8 text-xs w-36" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Monto</Label>
+                          <Input type="number" min={0} step={0.01} placeholder="0" value={newPago.monto} onChange={(e) => setNewPago((p) => ({ ...p, monto: e.target.value }))} className="h-8 text-xs w-28" />
+                        </div>
+                        <div className="space-y-1 flex-1 min-w-[120px]">
+                          <Label className="text-xs">Descripción</Label>
+                          <Input placeholder="Transferencia, cheque..." value={newPago.descripcion} onChange={(e) => setNewPago((p) => ({ ...p, descripcion: e.target.value }))} className="h-8 text-xs" />
+                        </div>
+                        <Button size="sm" onClick={handleAddPago} disabled={!newPago.monto || Number(newPago.monto) <= 0} className="h-8">
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Registrar
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1797,6 +1884,7 @@ export default function Certificados() {
 
 function CertificadoCard({
   cert,
+  pagado = 0,
   onView,
   onEdit,
   onEmitir,
@@ -1805,6 +1893,7 @@ function CertificadoCard({
   onDownloadPDF,
 }: {
   cert: Certificado;
+  pagado?: number;
   onView: () => void;
   onEdit: () => void;
   onEmitir: () => void;
@@ -1812,6 +1901,7 @@ function CertificadoCard({
   onDelete: () => void;
   onDownloadPDF: () => void;
 }) {
+  const saldo = cert.total - pagado;
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-5">
@@ -1832,7 +1922,7 @@ function CertificadoCard({
           </Badge>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-4 text-sm">
+        <div className="grid grid-cols-3 gap-2 mb-2 text-sm">
           <div>
             <p className="text-muted-foreground text-xs">Subtotal</p>
             <p className="font-medium">{formatCurrency(cert.subtotal)}</p>
@@ -1846,6 +1936,19 @@ function CertificadoCard({
             <p className="font-bold text-foreground">{formatCurrency(cert.total)}</p>
           </div>
         </div>
+        {pagado > 0 && (
+          <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Pagado</p>
+              <p className="font-medium text-green-600 dark:text-green-400">{formatCurrency(pagado)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Saldo</p>
+              <p className="font-bold">{formatCurrency(saldo)}</p>
+            </div>
+          </div>
+        )}
+        {pagado === 0 && <div className="mb-4" />}
 
         {cert.fecha_emision && (
           <p className="text-xs text-muted-foreground mb-3">
