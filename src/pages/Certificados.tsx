@@ -1305,16 +1305,22 @@ export default function Certificados() {
               </div>
               {/* Totals - always visible outside scroll */}
               <div className="border-t pt-3 space-y-1 px-1">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="incluir-iva" className="text-sm cursor-pointer">Incluir IVA (21%)</Label>
+                  <Switch id="incluir-iva" checked={incluirIva} onCheckedChange={setIncluirIva} />
+                </div>
                 {tipoCert === "servicio" ? (
                   <>
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
                       <span className="font-semibold">{formatCurrency(draftSubtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>IVA 21%</span>
-                      <span>{formatCurrency(draftIva)}</span>
-                    </div>
+                    {incluirIva && (
+                      <div className="flex justify-between text-sm">
+                        <span>IVA 21%</span>
+                        <span>{formatCurrency(draftIva)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold">
                       <span>TOTAL</span>
                       <span>{formatCurrency(draftTotal)}</span>
