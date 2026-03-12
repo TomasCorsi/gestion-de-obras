@@ -1,26 +1,26 @@
 
 
-# Fix: subcategorías nuevas se borran al escribir
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
 ## Problema
-El `useEffect` en línea 49-63 sincroniza subcategorías con los items. Tiene una línea (60) que **elimina subcategorías sin items**. Cuando se agrega una subcategoría nueva (vacía, sin conceptos), cualquier re-render que dispare este effect la elimina inmediatamente, incluyendo cuando el usuario intenta renombrarla.
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
 ## Solución
-Modificar el `useEffect` para que **solo agregue** subcategorías nuevas que aparezcan en los items, pero **nunca elimine** subcategorías existentes. La eliminación ya se maneja explícitamente con el botón de borrar (`deleteSubCategoria`).
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### Cambio en `src/components/certificados/CertificadoServiceGrid.tsx`
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-Línea 60: cambiar la lógica de `kept` para preservar todas las subcategorías existentes en vez de filtrar solo las que tienen items:
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
 ```typescript
-// Antes (línea 60):
-const kept = prev.filter((s) => etapas.has(s.nombre));
-
-// Después:
-const kept = prev;
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-Esto permite que subcategorías vacías (recién creadas) sobrevivan hasta que el usuario las elimine manualmente o les agregue conceptos.
-
-**Archivo a modificar:** `src/components/certificados/CertificadoServiceGrid.tsx` (1 línea)
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
