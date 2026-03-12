@@ -59,6 +59,7 @@ export interface Certificado {
   observaciones: string | null;
   tipo: TipoCertificado;
   anticipo_porcentaje: number;
+  incluir_iva: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -217,6 +218,7 @@ export function useCertificados(obraId?: string) {
         ...d,
         tipo: d.tipo || "servicio",
         anticipo_porcentaje: d.anticipo_porcentaje || 0,
+        incluir_iva: d.incluir_iva !== false,
       })) as Certificado[];
     },
     enabled: !!obraId,
@@ -295,12 +297,14 @@ export function useCertificados(obraId?: string) {
       observaciones,
       tipo = "servicio",
       anticipo_porcentaje = 0,
+      incluir_iva = true,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
       observaciones?: string;
       tipo?: TipoCertificado;
       anticipo_porcentaje?: number;
+      incluir_iva?: boolean;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
@@ -309,7 +313,7 @@ export function useCertificados(obraId?: string) {
       const numero = `CERT-${String(count + 1).padStart(3, "0")}`;
 
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
-      const iva = Math.round(subtotal * 0.21 * 100) / 100;
+      const iva = incluir_iva ? Math.round(subtotal * 0.21 * 100) / 100 : 0;
       const total = subtotal + iva;
 
       const { data: cert, error } = await supabase
@@ -324,6 +328,7 @@ export function useCertificados(obraId?: string) {
           observaciones: observaciones || null,
           tipo,
           anticipo_porcentaje,
+          incluir_iva,
         }])
         .select()
         .single();
@@ -397,6 +402,7 @@ export function useCertificados(obraId?: string) {
       tipo,
       anticipo_porcentaje,
       numero,
+      incluir_iva,
     }: {
       id: string;
       periodo: string;
@@ -405,15 +411,18 @@ export function useCertificados(obraId?: string) {
       tipo?: TipoCertificado;
       anticipo_porcentaje?: number;
       numero?: string;
+      incluir_iva?: boolean;
     }) => {
+      const shouldIncludeIva = incluir_iva !== false;
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
-      const iva = Math.round(subtotal * 0.21 * 100) / 100;
+      const iva = shouldIncludeIva ? Math.round(subtotal * 0.21 * 100) / 100 : 0;
       const total = subtotal + iva;
 
       const updateData: Record<string, unknown> = { periodo, subtotal, iva, total, observaciones: observaciones || null };
       if (tipo !== undefined) updateData.tipo = tipo;
       if (anticipo_porcentaje !== undefined) updateData.anticipo_porcentaje = anticipo_porcentaje;
       if (numero !== undefined && numero.trim() !== "") updateData.numero = numero.trim();
+      if (incluir_iva !== undefined) updateData.incluir_iva = incluir_iva;
 
       // Update certificado header
       const { error } = await supabase

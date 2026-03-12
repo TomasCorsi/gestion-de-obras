@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Tooltip,
   TooltipContent,
@@ -248,6 +249,7 @@ export default function Certificados() {
   // For "Agregar concepto" dialogs — null = not open, "obra" | "servicio" = which section
   const [addExtraConceptoSection, setAddExtraConceptoSection] = useState<string | null>(null);
   const [numeroCert, setNumeroCert] = useState("");
+  const [incluirIva, setIncluirIva] = useState(true);
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
   // State for adding extra concepts to an existing certificate during edit
   const [addExtraConceptoOpen, setAddExtraConceptoOpen] = useState(false);
@@ -331,6 +333,7 @@ export default function Certificados() {
     setTipoCert(initialTipo);
     setAnticipoPorcentaje(0);
     setNumeroCert("");
+    setIncluirIva(true);
     setCrearOpen(true);
   };
 
@@ -363,6 +366,7 @@ export default function Certificados() {
     setTipoCert(cert.tipo);
     setAnticipoPorcentaje(cert.anticipo_porcentaje);
     setNumeroCert(cert.numero);
+    setIncluirIva(cert.incluir_iva !== false);
     setCrearOpen(true);
   };
 
@@ -394,6 +398,7 @@ export default function Certificados() {
     setTipoCert(ultimo.tipo);
     setAnticipoPorcentaje(ultimo.anticipo_porcentaje);
     setNumeroCert("");
+    setIncluirIva(ultimo.incluir_iva !== false);
     setCrearOpen(true);
   };
 
@@ -527,7 +532,7 @@ export default function Certificados() {
   };
 
   const draftSubtotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
-  const draftIva = Math.round(draftSubtotal * 0.21 * 100) / 100;
+  const draftIva = incluirIva ? Math.round(draftSubtotal * 0.21 * 100) / 100 : 0;
   const draftTotal = draftSubtotal + draftIva;
 
   // For tipo obra: compute avance total and anticipo
@@ -561,6 +566,7 @@ export default function Certificados() {
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
         numero: numeroCert,
+        incluir_iva: incluirIva,
       });
     } else {
       await createCertificado({
@@ -569,6 +575,7 @@ export default function Certificados() {
         observaciones,
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
+        incluir_iva: incluirIva,
       });
     }
     setCrearOpen(false);
@@ -1298,16 +1305,22 @@ export default function Certificados() {
               </div>
               {/* Totals - always visible outside scroll */}
               <div className="border-t pt-3 space-y-1 px-1">
+                <div className="flex items-center justify-between mb-2">
+                  <Label htmlFor="incluir-iva" className="text-sm cursor-pointer">Incluir IVA (21%)</Label>
+                  <Switch id="incluir-iva" checked={incluirIva} onCheckedChange={setIncluirIva} />
+                </div>
                 {tipoCert === "servicio" ? (
                   <>
                     <div className="flex justify-between text-sm">
                       <span>Subtotal</span>
                       <span className="font-semibold">{formatCurrency(draftSubtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span>IVA 21%</span>
-                      <span>{formatCurrency(draftIva)}</span>
-                    </div>
+                    {incluirIva && (
+                      <div className="flex justify-between text-sm">
+                        <span>IVA 21%</span>
+                        <span>{formatCurrency(draftIva)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold">
                       <span>TOTAL</span>
                       <span>{formatCurrency(draftTotal)}</span>
@@ -1333,10 +1346,12 @@ export default function Certificados() {
                         <span className="text-muted-foreground">- {formatCurrency(anticipoMonto)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span>IVA 21%</span>
-                      <span>{formatCurrency(draftIva)}</span>
-                    </div>
+                    {incluirIva && (
+                      <div className="flex justify-between text-sm">
+                        <span>IVA 21%</span>
+                        <span>{formatCurrency(draftIva)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold">
                       <span>TOTAL A PAGAR</span>
                       <span>{formatCurrency(draftTotal)}</span>
@@ -1349,7 +1364,7 @@ export default function Certificados() {
                       const obraSubtotal = draftMixtoObra.reduce((s, i) => s + i.subtotal, 0);
                       const servicioSubtotal = draftMixtoServicio.reduce((s, i) => s + i.subtotal, 0);
                       const totalSub = obraSubtotal + servicioSubtotal;
-                      const totalIva = Math.round(totalSub * 0.21 * 100) / 100;
+                      const totalIva = incluirIva ? Math.round(totalSub * 0.21 * 100) / 100 : 0;
                       const anticipoMixto = Math.round(obraSubtotal * (anticipoPorcentaje / 100));
                       const totalFinal = totalSub - anticipoMixto + totalIva;
                       return (
@@ -1368,10 +1383,12 @@ export default function Certificados() {
                             <span>Subtotal Servicio</span>
                             <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>IVA 21%</span>
-                            <span>{formatCurrency(totalIva)}</span>
-                          </div>
+                          {incluirIva && (
+                            <div className="flex justify-between text-sm">
+                              <span>IVA 21%</span>
+                              <span>{formatCurrency(totalIva)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-lg font-bold">
                             <span>TOTAL</span>
                             <span>{formatCurrency(totalFinal)}</span>
@@ -1554,10 +1571,12 @@ export default function Certificados() {
                             <span>Subtotal</span>
                             <span className="font-semibold">{formatCurrency(viewCert.subtotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>IVA 21%</span>
-                            <span>{formatCurrency(viewCert.iva)}</span>
-                          </div>
+                          {viewCert.incluir_iva !== false && (
+                            <div className="flex justify-between text-sm">
+                              <span>IVA 21%</span>
+                              <span>{formatCurrency(viewCert.iva)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-lg font-bold">
                             <span>TOTAL</span>
                             <span>{formatCurrency(viewCert.total)}</span>
@@ -1640,10 +1659,12 @@ export default function Certificados() {
                             <span>Subtotal</span>
                             <span className="font-semibold">{formatCurrency(viewCert.subtotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>IVA 21%</span>
-                            <span>{formatCurrency(viewCert.iva)}</span>
-                          </div>
+                          {viewCert.incluir_iva !== false && (
+                            <div className="flex justify-between text-sm">
+                              <span>IVA 21%</span>
+                              <span>{formatCurrency(viewCert.iva)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-lg font-bold">
                             <span>TOTAL</span>
                             <span>{formatCurrency(viewCert.total)}</span>
@@ -1798,10 +1819,12 @@ export default function Certificados() {
                                   <span>Subtotal Servicio</span>
                                   <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                  <span>IVA 21%</span>
-                                  <span>{formatCurrency(viewCert.iva)}</span>
-                                </div>
+                                {viewCert.incluir_iva !== false && (
+                                  <div className="flex justify-between text-sm">
+                                    <span>IVA 21%</span>
+                                    <span>{formatCurrency(viewCert.iva)}</span>
+                                  </div>
+                                )}
                                 <div className="flex justify-between text-lg font-bold">
                                   <span>TOTAL</span>
                                   <span>{formatCurrency(viewCert.total)}</span>

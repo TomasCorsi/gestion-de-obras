@@ -464,6 +464,7 @@ export type Database = {
           estado: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision: string | null
           id: string
+          incluir_iva: boolean
           iva: number
           numero: string
           obra_id: string
@@ -480,6 +481,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision?: string | null
           id?: string
+          incluir_iva?: boolean
           iva?: number
           numero: string
           obra_id: string
@@ -496,6 +498,7 @@ export type Database = {
           estado?: Database["public"]["Enums"]["estado_certificado"]
           fecha_emision?: string | null
           id?: string
+          incluir_iva?: boolean
           iva?: number
           numero?: string
           obra_id?: string

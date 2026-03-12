@@ -1,32 +1,26 @@
 
 
-# Opción para incluir/excluir IVA en certificados y PDF
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Enfoque
-Agregar un campo `incluir_iva` (boolean, default `true`) al certificado. Cuando esté desactivado, IVA = 0 y total = subtotal. Se refleja tanto en la UI del formulario como en el PDF.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambios
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 1. Migración de base de datos
-Agregar columna `incluir_iva` a la tabla `certificados`:
-```sql
-ALTER TABLE certificados ADD COLUMN incluir_iva boolean NOT NULL DEFAULT true;
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-### 2. `src/hooks/useCertificados.ts`
-- Agregar `incluir_iva: boolean` al interface `Certificado`
-- En `createCertificado` y `updateCertificado`: recibir parámetro `incluir_iva`, calcular IVA condicionalmente (`incluir_iva ? subtotal * 0.21 : 0`)
-
-### 3. `src/pages/Certificados.tsx`
-- Nuevo estado `incluirIva` (default `true`) para el formulario de crear/editar
-- Switch/checkbox "Incluir IVA (21%)" en la sección de totales del formulario
-- Cuando `incluirIva = false`: mostrar IVA como $0 o no mostrarlo
-- Pasar `incluir_iva` a `createCertificado` / `updateCertificado`
-- Al abrir edición, cargar el valor guardado
-- En la vista de detalle, ocultar línea de IVA si `incluir_iva = false`
-
-### 4. `src/utils/generateCertificadoPDF.ts`
-- Agregar `incluir_iva?: boolean` a `CertificadoPDFData`
-- En las 3 funciones de generación: solo agregar línea "IVA (21%)" si `incluir_iva !== false`
-- TOTAL = subtotal (sin IVA) cuando `incluir_iva = false`
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
