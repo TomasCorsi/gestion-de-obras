@@ -411,6 +411,7 @@ export async function generateGastosMaquinariaPDF(
     yPos += 3;
 
     const remitosBody = remitosDetalle.map((r) => [
+      r.fecha ? format(new Date(r.fecha), "dd/MM/yy") : "-",
       r.numero,
       r.tipo_material,
       r.viajes.toString(),
@@ -420,7 +421,7 @@ export async function generateGastosMaquinariaPDF(
     ]);
 
     const subtotalRemitos = remitosDetalle.reduce((sum, r) => sum + r.costo, 0);
-    remitosBody.push(["", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
+    remitosBody.push(["", "", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
 
     autoTable(doc, {
       startY: yPos,
