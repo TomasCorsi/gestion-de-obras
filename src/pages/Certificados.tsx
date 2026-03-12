@@ -183,12 +183,11 @@ export default function Certificados() {
   // ---- KPIs ----
   const totalCertificados = certificados.length;
   const montoTotal = certificados.reduce((s, c) => s + c.total, 0);
+  const totalPagado = allPagos.reduce((s, p) => s + p.monto, 0);
   const montoPendiente = certificados
-    .filter((c) => c.estado === "emitido")
-    .reduce((s, c) => s + c.total, 0);
-  const montoCobrado = certificados
-    .filter((c) => c.estado === "cobrado")
-    .reduce((s, c) => s + c.total, 0);
+    .filter((c) => c.estado !== "cobrado")
+    .reduce((s, c) => s + (c.total - getPagadoByCert(c.id)), 0);
+  const montoCobrado = totalPagado;
 
   // ---- Add concepto dialog ----
   const [addConceptoOpen, setAddConceptoOpen] = useState(false);
