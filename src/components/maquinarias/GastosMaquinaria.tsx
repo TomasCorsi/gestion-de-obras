@@ -274,6 +274,7 @@ export function GastosMaquinaria() {
   const limpiarFiltros = () => {
     setFechaDesde(undefined);
     setFechaHasta(undefined);
+    setMesActivo("todos");
   };
 
   const exportarExcel = () => {
