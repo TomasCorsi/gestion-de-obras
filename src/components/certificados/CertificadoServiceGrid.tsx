@@ -31,13 +31,17 @@ interface CertificadoServiceGridProps {
 export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItemsChange }: CertificadoServiceGridProps) {
   const [customInputIndices, setCustomInputIndices] = useState<Set<number>>(new Set());
 
-  // Derive subcategories from items' etapa field
+  // Derive subcategories from items' etapa field, preserving first-seen order
   const [subCategorias, setSubCategorias] = useState<SubCategoria[]>(() => {
-    const nombres = new Set<string>();
+    const seen = new Set<string>();
+    const ordered: SubCategoria[] = [];
     items.forEach((item) => {
-      if (item.etapa) nombres.add(item.etapa);
+      if (item.etapa && !seen.has(item.etapa)) {
+        seen.add(item.etapa);
+        ordered.push({ nombre: item.etapa, open: true });
+      }
     });
-    return Array.from(nombres).map((n) => ({ nombre: n, open: true }));
+    return ordered;
   });
 
   // Sync subcategories when items change externally (e.g. loading saved cert)

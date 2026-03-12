@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CertificadoServiceGrid } from "@/components/certificados/CertificadoServiceGrid";
 import { useObras } from "@/hooks/useObras";
@@ -329,6 +329,8 @@ export default function Certificados() {
     setCrearOpen(true);
   };
 
+  const skipTipoEffectRef = useRef(false);
+
   const openEditCertificado = async (cert: Certificado) => {
     const items = await fetchItems(cert.id);
 
@@ -351,6 +353,7 @@ export default function Certificados() {
     setPeriodo(cert.periodo);
     setObservaciones(cert.observaciones || "");
     setEditingCertId(cert.id);
+    skipTipoEffectRef.current = true;
     setTipoCert(cert.tipo);
     setAnticipoPorcentaje(cert.anticipo_porcentaje);
     setNumeroCert(cert.numero);
@@ -414,6 +417,10 @@ export default function Certificados() {
   // Rebuild draft when tipoCert changes
   useEffect(() => {
     if (!crearOpen) return;
+    if (skipTipoEffectRef.current) {
+      skipTipoEffectRef.current = false;
+      return;
+    }
     if (editingCertId) {
       // Editing: rebuild from all concepts
       setItemsDraft(buildDraftForTipo(tipoCert));
