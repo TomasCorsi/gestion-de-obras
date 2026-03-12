@@ -379,6 +379,7 @@ export default function Certificados() {
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
       seccion: item.seccion || (ultimo.tipo === "mixto" ? "servicio" : null),
+      observaciones: (item as any).observaciones || "",
     }));
 
     setItemsDraft(draft);
