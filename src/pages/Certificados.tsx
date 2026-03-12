@@ -566,6 +566,7 @@ export default function Certificados() {
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
         numero: numeroCert,
+        incluir_iva: incluirIva,
       });
     } else {
       await createCertificado({
@@ -574,6 +575,7 @@ export default function Certificados() {
         observaciones,
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
+        incluir_iva: incluirIva,
       });
     }
     setCrearOpen(false);
