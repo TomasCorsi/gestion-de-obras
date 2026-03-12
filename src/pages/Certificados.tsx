@@ -1364,7 +1364,7 @@ export default function Certificados() {
                       const obraSubtotal = draftMixtoObra.reduce((s, i) => s + i.subtotal, 0);
                       const servicioSubtotal = draftMixtoServicio.reduce((s, i) => s + i.subtotal, 0);
                       const totalSub = obraSubtotal + servicioSubtotal;
-                      const totalIva = Math.round(totalSub * 0.21 * 100) / 100;
+                      const totalIva = incluirIva ? Math.round(totalSub * 0.21 * 100) / 100 : 0;
                       const anticipoMixto = Math.round(obraSubtotal * (anticipoPorcentaje / 100));
                       const totalFinal = totalSub - anticipoMixto + totalIva;
                       return (
