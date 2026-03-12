@@ -9,6 +9,7 @@ import {
   CATEGORIAS_CERTIFICADO,
   type CertificadoItemForm,
   type CertificadoItem,
+  type CertificadoPago,
   type Certificado,
   type EstadoCertificado,
   type TipoCertificado,
