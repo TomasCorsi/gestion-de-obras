@@ -362,9 +362,10 @@ export async function generateGastosMaquinariaPDF(
       },
       columnStyles: {
         0: { cellWidth: 18, halign: "center" },
-        1: { cellWidth: "auto", overflow: "linebreak" },
-        2: { cellWidth: 30, overflow: "linebreak" },
-        3: { cellWidth: 25, halign: "right" },
+        1: { cellWidth: 30, overflow: "linebreak" },
+        2: { cellWidth: "auto", overflow: "linebreak" },
+        3: { cellWidth: 30, overflow: "linebreak" },
+        4: { cellWidth: 25, halign: "right" },
       },
       margin: { left: margin, right: margin },
       tableWidth: "auto",
