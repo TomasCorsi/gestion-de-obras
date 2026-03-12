@@ -748,6 +748,7 @@ export async function generateCertificadoPDF({
   cantidadTotalMap = {},
   acumulados = [],
   etapaOrdenMap,
+  pagos = [],
 }: CertificadoPDFData): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
