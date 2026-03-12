@@ -1841,7 +1841,7 @@ function CertificadoCard({
           </Badge>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-4 text-sm">
+        <div className="grid grid-cols-3 gap-2 mb-2 text-sm">
           <div>
             <p className="text-muted-foreground text-xs">Subtotal</p>
             <p className="font-medium">{formatCurrency(cert.subtotal)}</p>
@@ -1855,6 +1855,19 @@ function CertificadoCard({
             <p className="font-bold text-foreground">{formatCurrency(cert.total)}</p>
           </div>
         </div>
+        {pagado > 0 && (
+          <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
+            <div>
+              <p className="text-muted-foreground text-xs">Pagado</p>
+              <p className="font-medium text-green-600 dark:text-green-400">{formatCurrency(pagado)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-xs">Saldo</p>
+              <p className="font-bold">{formatCurrency(saldo)}</p>
+            </div>
+          </div>
+        )}
+        {pagado === 0 && <div className="mb-4" />}
 
         {cert.fecha_emision && (
           <p className="text-xs text-muted-foreground mb-3">
