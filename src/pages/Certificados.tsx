@@ -1346,10 +1346,12 @@ export default function Certificados() {
                         <span className="text-muted-foreground">- {formatCurrency(anticipoMonto)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-sm">
-                      <span>IVA 21%</span>
-                      <span>{formatCurrency(draftIva)}</span>
-                    </div>
+                    {incluirIva && (
+                      <div className="flex justify-between text-sm">
+                        <span>IVA 21%</span>
+                        <span>{formatCurrency(draftIva)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-lg font-bold">
                       <span>TOTAL A PAGAR</span>
                       <span>{formatCurrency(draftTotal)}</span>
