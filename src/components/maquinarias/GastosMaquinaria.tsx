@@ -403,32 +403,46 @@ export function GastosMaquinaria() {
             </DropdownMenu>
           )}
         </div>
-        <div className="flex gap-2">
+        {/* Filtro por mes */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={mesActivo === "todos" ? "default" : "outline"}
+            size="sm"
+            onClick={() => seleccionarMes("todos")}
+          >
+            Todo
+          </Button>
+          {mesesDisponibles.slice(0, 6).map((mes) => (
+            <Button
+              key={mes.value}
+              variant={mesActivo === mes.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => seleccionarMes(mes.value)}
+              className="capitalize"
+            >
+              {mes.label}
+            </Button>
+          ))}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="border-border">
-                <Calendar className="w-4 h-4 mr-2" />
-                {fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Desde"}
+              <Button variant={mesActivo === "custom" ? "default" : "outline"} size="sm">
+                <Calendar className="w-4 h-4 mr-1" />
+                {mesActivo === "custom" && fechaDesde && fechaHasta
+                  ? `${format(fechaDesde, "dd/MM")} - ${format(fechaHasta, "dd/MM")}`
+                  : "Rango"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent mode="single" selected={fechaDesde} onSelect={setFechaDesde} locale={es} className="pointer-events-auto" />
+            <PopoverContent className="w-auto p-3 space-y-3" align="start">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Desde</p>
+                <CalendarComponent mode="single" selected={fechaDesde} onSelect={(d) => { setFechaDesde(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Hasta</p>
+                <CalendarComponent mode="single" selected={fechaHasta} onSelect={(d) => { setFechaHasta(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
+              </div>
             </PopoverContent>
           </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="border-border">
-                <Calendar className="w-4 h-4 mr-2" />
-                {fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Hasta"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent mode="single" selected={fechaHasta} onSelect={setFechaHasta} locale={es} className="pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-          {(fechaDesde || fechaHasta) && (
-            <Button variant="ghost" onClick={limpiarFiltros}>Limpiar</Button>
-          )}
         </div>
       </div>
 
