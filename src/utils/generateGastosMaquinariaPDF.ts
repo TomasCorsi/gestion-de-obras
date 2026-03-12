@@ -174,6 +174,7 @@ export async function generateGastosMaquinariaPDF(
   maquinaria: MaquinariaData,
   totales: TotalesData,
   gastos: GastoDetalle[],
+  remitosDetalle: RemitoDetalle[] = [],
   fechaDesde?: Date,
   fechaHasta?: Date
 ): Promise<void> {
