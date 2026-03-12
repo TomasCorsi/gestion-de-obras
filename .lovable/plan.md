@@ -1,16 +1,26 @@
 
 
-# Plan: Corregir número de remito en gastos de maquinaria
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
 ## Problema
-El campo `numero` contiene el ID auto-generado ("REM-2026-0083"), pero el número correcto ingresado manualmente está en `remito_local` (ej: "75450", "73876").
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Cambio
-En `src/components/maquinarias/GastosMaquinaria.tsx`, usar `remito_local` como fuente principal del número de remito, con fallback a `numero`:
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-- **Línea 259** (descripción en tabla UI): cambiar `r.numero` → `r.remito_local || r.numero`
-- **Línea 347** (datos para PDF): cambiar `r.numero` → `r.remito_local || r.numero`
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-### Archivo a modificar
-- `src/components/maquinarias/GastosMaquinaria.tsx` (2 líneas)
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
+
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
