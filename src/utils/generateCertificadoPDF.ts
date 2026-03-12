@@ -132,7 +132,8 @@ function renderCertInfo(
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...WHITE);
-  doc.text(`CERTIFICADO DE OBRA  Nº ${certificado.numero}`, pageWidth / 2, yPos + 6.5, { align: "center" });
+  const certNum = certificado.numero.replace("CERT-", "");
+  doc.text(`CERTIFICADO - (${obraNombre}) - N° ${certNum}`, pageWidth / 2, yPos + 6.5, { align: "center" });
   doc.setTextColor(0, 0, 0);
   yPos += titleHeight + 4;
 
