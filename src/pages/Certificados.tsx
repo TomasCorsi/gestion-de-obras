@@ -366,6 +366,7 @@ export default function Certificados() {
     setTipoCert(cert.tipo);
     setAnticipoPorcentaje(cert.anticipo_porcentaje);
     setNumeroCert(cert.numero);
+    setIncluirIva(cert.incluir_iva !== false);
     setCrearOpen(true);
   };
 
