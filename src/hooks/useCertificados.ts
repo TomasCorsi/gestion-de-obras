@@ -331,6 +331,7 @@ export function useCertificados(obraId?: string) {
           subtotal: i.subtotal,
           etapa: i.etapa || null,
           seccion: i.seccion || null,
+          observaciones: i.observaciones || null,
         }));
 
       if (itemsToInsert.length > 0) {
