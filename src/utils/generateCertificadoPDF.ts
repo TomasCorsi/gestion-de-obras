@@ -450,7 +450,7 @@ function generateServicioPDF(
   const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal"]],
+    head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal", "Obs."]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 7, halign: "center", cellPadding: 2 },
@@ -461,6 +461,7 @@ function generateServicioPDF(
       2: { cellWidth: 22, halign: "right" },
       3: { cellWidth: 28, halign: "right" },
       4: { cellWidth: 28, halign: "right" },
+      5: { cellWidth: 30 },
     },
     margin: { left: margin, right: margin },
     willDrawCell: (data: any) => {
