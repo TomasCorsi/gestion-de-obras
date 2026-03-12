@@ -1,26 +1,22 @@
 
 
-# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
+# Plan: Columnas específicas para Remitos en el PDF de Gastos
 
 ## Problema
-Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
+Actualmente las tres categorías (Combustible, Mantenimientos, Remitos) comparten las mismas 4 columnas: Fecha, Descripción, Obra, Costo. El usuario necesita que la sección de Remitos muestre columnas específicas: **Nro Remito, Tipo, Viajes, C. Total, Unidad, Costo**.
 
 ## Solución
-Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
+Generar la sección de Remitos como una **tabla separada** con sus propias columnas, en lugar de compartir la tabla genérica.
 
-### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+### Cambios
 
-Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+**1. `src/components/maquinarias/GastosMaquinaria.tsx`**
+- Pasar los remitos filtrados como un array separado al generador PDF, con los campos necesarios: `numero`, `tipo_material`, `cantidad_viajes`, `cantidad` (total), `unidad`, `precio_total`.
 
-```typescript
-const obrasOptions = useMemo(() => {
-  const options = obras.map((o) => ({
-    value: o.nombre,
-    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
-  }));
-  return [{ value: "", label: "Seleccionar..." }, ...options];
-}, [obras]);
-```
-
-El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
+**2. `src/utils/generateGastosMaquinariaPDF.ts`**
+- Agregar una nueva interface `RemitoDetalle` con los campos: numero, tipo_material, viajes, cantidad_total, unidad, costo.
+- Modificar `buildGroupedTableData` para excluir remitos (solo combustible y mantenimientos).
+- Después de la tabla agrupada de combustible/mantenimiento, renderizar una **segunda autoTable** exclusiva para remitos con columnas: `[Nro Remito, Tipo Material, Viajes, C. Total, Unidad, Costo]`.
+- Incluir subtotal de remitos al final de esa tabla.
+- Actualizar la firma de `generateGastosMaquinariaPDF` para recibir el nuevo parámetro `remitosDetalle`.
 
