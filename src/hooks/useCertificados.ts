@@ -74,6 +74,7 @@ export interface CertificadoItem {
   subtotal: number;
   etapa: string | null;
   seccion: string | null;
+  observaciones: string | null;
   created_at: string;
 }
 

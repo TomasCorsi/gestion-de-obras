@@ -398,7 +398,7 @@ function generateServicioPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: catName.toUpperCase(),
-      colSpan: 5,
+      colSpan: 6,
       styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
     }]);
 
@@ -421,7 +421,7 @@ function generateServicioPDF(
         headerRowIndices.add(tableData.length);
         tableData.push([{
           content: "  " + etapaName.toUpperCase(),
-          colSpan: 5,
+          colSpan: 6,
           styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
         }]);
       }
@@ -433,6 +433,7 @@ function generateServicioPDF(
           item.cantidad.toLocaleString("es-AR"),
           formatCurrency(item.precio_unitario),
           formatCurrency(item.subtotal),
+          item.observaciones || "",
         ]);
       });
     });
@@ -442,13 +443,14 @@ function generateServicioPDF(
       { content: "", colSpan: 3 },
       { content: `Subtotal ${catName}:`, styles: { fontStyle: "bold", halign: "right", fontSize: 7 } },
       { content: formatCurrency(catSubtotal), styles: { fontStyle: "bold", fontSize: 7 } },
+      { content: "" },
     ]);
   });
 
   const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal"]],
+    head: [["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal", "Obs."]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 7, halign: "center", cellPadding: 2 },
@@ -459,6 +461,7 @@ function generateServicioPDF(
       2: { cellWidth: 22, halign: "right" },
       3: { cellWidth: 28, halign: "right" },
       4: { cellWidth: 28, halign: "right" },
+      5: { cellWidth: 30 },
     },
     margin: { left: margin, right: margin },
     willDrawCell: (data: any) => {
@@ -547,7 +550,7 @@ function generateObraPDF(
       headerRowIndices.add(tableData.length);
       tableData.push([{
         content: currentCategory.toUpperCase(),
-        colSpan: 11,
+        colSpan: 12,
         styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
       }]);
       lastCategory = currentCategory;
@@ -557,7 +560,7 @@ function generateObraPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: "  " + etapaName.toUpperCase(),
-      colSpan: 11,
+      colSpan: 12,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
 
@@ -595,6 +598,7 @@ function generateObraPDF(
         formatCurrency(avAnterior),
         formatCurrency(avActual),
         formatCurrency(avAcumulado),
+        item.observaciones || "",
       ]);
     });
 
@@ -604,29 +608,31 @@ function generateObraPDF(
       { content: formatCurrency(etapaAvAnterior), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvActual), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAcumulado), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
+      { content: "", styles: { fillColor: [245, 245, 245] } },
     ]);
   });
 
   const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum."]],
+    head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { cellWidth: 20, halign: "left" },
-      2: { cellWidth: 16, halign: "right" },
-      3: { cellWidth: 14, halign: "right" },
-      4: { cellWidth: 18, halign: "right" },
-      5: { cellWidth: 12, halign: "right" },
-      6: { cellWidth: 12, halign: "right" },
-      7: { cellWidth: 12, halign: "right" },
-      8: { cellWidth: 18, halign: "right" },
-      9: { cellWidth: 18, halign: "right" },
-      10: { cellWidth: 18, halign: "right" },
+      1: { cellWidth: 18, halign: "left" },
+      2: { cellWidth: 15, halign: "right" },
+      3: { cellWidth: 13, halign: "right" },
+      4: { cellWidth: 17, halign: "right" },
+      5: { cellWidth: 11, halign: "right" },
+      6: { cellWidth: 11, halign: "right" },
+      7: { cellWidth: 11, halign: "right" },
+      8: { cellWidth: 17, halign: "right" },
+      9: { cellWidth: 17, halign: "right" },
+      10: { cellWidth: 17, halign: "right" },
+      11: { cellWidth: 20 },
     },
     margin: { left: margin, right: margin },
     willDrawCell: (data: any) => {
