@@ -1803,6 +1803,7 @@ export default function Certificados() {
 
 function CertificadoCard({
   cert,
+  pagado = 0,
   onView,
   onEdit,
   onEmitir,
@@ -1811,6 +1812,7 @@ function CertificadoCard({
   onDownloadPDF,
 }: {
   cert: Certificado;
+  pagado?: number;
   onView: () => void;
   onEdit: () => void;
   onEmitir: () => void;
@@ -1818,6 +1820,7 @@ function CertificadoCard({
   onDelete: () => void;
   onDownloadPDF: () => void;
 }) {
+  const saldo = cert.total - pagado;
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardContent className="p-5">
