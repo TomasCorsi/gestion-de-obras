@@ -371,6 +371,7 @@ export type Database = {
           descripcion: string
           etapa: string | null
           id: string
+          observaciones: string | null
           precio_unitario: number
           seccion: string | null
           subtotal: number
@@ -384,6 +385,7 @@ export type Database = {
           descripcion: string
           etapa?: string | null
           id?: string
+          observaciones?: string | null
           precio_unitario?: number
           seccion?: string | null
           subtotal?: number
@@ -397,6 +399,7 @@ export type Database = {
           descripcion?: string
           etapa?: string | null
           id?: string
+          observaciones?: string | null
           precio_unitario?: number
           seccion?: string | null
           subtotal?: number

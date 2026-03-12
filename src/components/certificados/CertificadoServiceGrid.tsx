@@ -161,6 +161,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
         etapa: groupName,
         cantidad_total: 0,
         seccion,
+        observaciones: "",
       };
       onItemsChange([...items, newItem]);
     },
@@ -304,6 +305,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                         <TableHead className="min-w-[80px] text-xs">Cantidad</TableHead>
                         <TableHead className="min-w-[90px] text-xs">P. Unit.</TableHead>
                         <TableHead className="min-w-[90px] text-xs text-right">Subtotal</TableHead>
+                        <TableHead className="min-w-[120px] text-xs">Observaciones</TableHead>
                         <TableHead className="w-[40px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -349,6 +351,14 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                             {formatCurrency(item.subtotal)}
                           </TableCell>
                           <TableCell className="p-1">
+                            <Input
+                              value={item.observaciones || ""}
+                              onChange={(e) => updateField(idx, "observaciones", e.target.value)}
+                              className="h-7 text-xs"
+                              placeholder="Obs..."
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
                             <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteRow(idx)}>
                               <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                             </Button>
@@ -357,7 +367,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                       ))}
                       {groupItems.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-3">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-3">
                             Sin conceptos. Agregá uno para comenzar.
                           </TableCell>
                         </TableRow>

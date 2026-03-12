@@ -1,21 +1,26 @@
 
 
-# Plan: Agregar columna "Observaciones" a ítems de certificado
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Cambios necesarios
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-### 1. Migración de base de datos
-Agregar columna `observaciones` (tipo `text`, nullable) a la tabla `certificado_items`.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-### 2. `src/hooks/useCertificados.ts`
-- Agregar `observaciones?: string` a la interfaz `CertificadoItemForm`
-- Incluir el campo en las operaciones de insert (crear y actualizar certificado)
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-### 3. `src/components/certificados/CertificadoServiceGrid.tsx`
-- Agregar columna "Observaciones" en el `TableHeader` después de "Subtotal"
-- Agregar un `Input` de texto en cada fila para editar observaciones
-- Inicializar el campo en `addConceptoToGroup` con valor vacío
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-### 4. `src/pages/Certificados.tsx`
-- Incluir `observaciones: ""` en los items del draft cuando se construyen nuevos ítems
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
+
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
