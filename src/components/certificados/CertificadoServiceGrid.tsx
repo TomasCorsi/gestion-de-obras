@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Trash2, Plus, ChevronDown, Copy } from "lucide-react";
+import { Trash2, Plus, ChevronDown, Copy, GripVertical } from "lucide-react";
 import { type CertificadoItemForm, type CertificadoConcepto } from "@/hooks/useCertificados";
 import { cn } from "@/lib/utils";
 
