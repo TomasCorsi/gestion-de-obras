@@ -382,7 +382,7 @@ export async function generateGastosMaquinariaPDF(
             data.cell.styles.fontStyle = "bold";
             data.cell.styles.fontSize = 7;
             if (data.column.index === 0) {
-              data.cell.colSpan = 4;
+              data.cell.colSpan = 5;
             }
           }
         }
