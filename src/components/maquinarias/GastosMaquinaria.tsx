@@ -77,6 +77,38 @@ export function GastosMaquinaria() {
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
+  const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
+
+  const mesesDisponibles = useMemo(() => {
+    const now = new Date();
+    const meses: { value: string; label: string; desde: Date; hasta: Date }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(now, i);
+      meses.push({
+        value: format(d, "yyyy-MM"),
+        label: format(d, "MMM yyyy", { locale: es }),
+        desde: startOfMonth(d),
+        hasta: endOfMonth(d),
+      });
+    }
+    return meses;
+  }, []);
+
+  const seleccionarMes = (valor: string) => {
+    setMesActivo(valor);
+    if (valor === "todos") {
+      setFechaDesde(undefined);
+      setFechaHasta(undefined);
+    } else if (valor === "custom") {
+      // keep current manual dates
+    } else {
+      const mes = mesesDisponibles.find(m => m.value === valor);
+      if (mes) {
+        setFechaDesde(mes.desde);
+        setFechaHasta(mes.hasta);
+      }
+    }
+  };
 
   const maquinariasFiltradas = useMemo(() => {
     if (tipoFilter === "todos") return maquinarias;
