@@ -30,7 +30,8 @@ interface CertificadoServiceGridProps {
 
 export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItemsChange }: CertificadoServiceGridProps) {
   const [customInputIndices, setCustomInputIndices] = useState<Set<number>>(new Set());
-
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   // Derive subcategories from items' etapa field, preserving first-seen order
   const [subCategorias, setSubCategorias] = useState<SubCategoria[]>(() => {
     const seen = new Set<string>();
