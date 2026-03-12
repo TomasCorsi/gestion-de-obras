@@ -2,7 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logoCalamina from "@/assets/logo-calamina-sur.png";
 import firmaPresidente from "@/assets/firma-presidente.png";
-import type { Certificado, CertificadoItem, AcumuladoConcepto } from "@/hooks/useCertificados";
+import type { Certificado, CertificadoItem, AcumuladoConcepto, CertificadoPago } from "@/hooks/useCertificados";
 
 // ─── Corporate Constants ────────────────────────────────────────
 const CORP_RED: [number, number, number] = [180, 0, 0];
