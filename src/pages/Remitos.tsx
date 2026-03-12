@@ -16,13 +16,14 @@ import {
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
-import { useRemitos, RemitoForm } from "@/hooks/useRemitos";
+import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
-import { RemitoQuickFormDialog } from "@/components/remitos/RemitoQuickFormDialog";
+import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -42,6 +43,8 @@ export default function Remitos() {
   });
   const [importOpen, setImportOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
@@ -105,7 +108,6 @@ export default function Remitos() {
 
     const term = searchTerm.toLowerCase();
     return dateFiltered.filter((r) => {
-      // Existing text search
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
         (r.remito_local?.toLowerCase() || "").includes(term) ||
@@ -117,7 +119,6 @@ export default function Remitos() {
         ((r as any).cliente_destino?.toLowerCase() || "").includes(term)
       ) return true;
 
-      // Search by maquinaria codigo/patente
       if (r.maquinaria_id) {
         const maq = maquinariasById[r.maquinaria_id];
         if (maq) {
@@ -136,23 +137,56 @@ export default function Remitos() {
     return `REM-${year}-${count.toString().padStart(4, "0")}`;
   };
 
-  const handleGridSave = async (changes: {
-    created: RemitoForm[];
-    updated: { id: string; data: Partial<RemitoForm> }[];
-    deleted: string[];
-  }) => {
-    try {
-      const results = await batchSave(changes);
+  const handleEdit = (r: RemitoWithRelations) => {
+    setEditingRemito({
+      id: r.id,
+      fecha: r.fecha,
+      remito_tercero: r.remito_tercero || "",
+      remito_local: r.remito_local || r.numero || "",
+      desde: r.desde || "",
+      hasta: r.hasta || "",
+      tipo_material: r.tipo_material || r.material || "",
+      tipo_transporte: r.tipo_transporte || "",
+      maquinaria_id: r.maquinaria_id || "",
+      patente_tercero: r.patente_tercero || "",
+      cliente: r.cliente || "",
+      cliente_destino: (r as any).cliente_destino || "",
+      cantidad_viajes: r.cantidad_viajes || 1,
+      cantidad_uni: r.cantidad_uni ?? null,
+      cantidad: r.cantidad || 0,
+      unidad: r.unidad || "M3",
+      precio_unitario: r.precio_unitario ?? null,
+      precio_total: r.precio_total || 0,
+      precio_calc_mode: r.precio_calc_mode || "viajes",
+      proveedor: r.proveedor || "",
+      observaciones: r.observaciones || "",
+    });
+    setFormOpen(true);
+  };
 
-      if (results.errors === 0) {
-        toast.success(`Guardados: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
-      } else {
-        toast.warning(`Guardados con ${results.errors} errores: ${results.created} nuevos, ${results.updated} actualizados, ${results.deleted} eliminados`);
-      }
-    } catch (error) {
-      console.error("Error saving grid changes:", error);
-      toast.error("Error al guardar los cambios");
+  const handleDelete = async () => {
+    if (!deleteId) return;
+    try {
+      await batchSave({ created: [], updated: [], deleted: [deleteId] });
+      toast.success("Remito eliminado");
+    } catch {
+      toast.error("Error al eliminar");
     }
+    setDeleteId(null);
+  };
+
+  const handleFormSubmit = async (remito: RemitoForm & { id?: string }) => {
+    const { id, ...data } = remito;
+    if (id) {
+      const results = await batchSave({ created: [], updated: [{ id, data }], deleted: [] });
+      if (results.errors > 0) throw new Error("Error al actualizar");
+      toast.success("Remito actualizado");
+    } else {
+      const results = await batchSave({ created: [data as RemitoForm], updated: [], deleted: [] });
+      if (results.errors > 0) throw new Error("Error al crear");
+      toast.success("Remito creado exitosamente");
+    }
+    setEditingRemito(null);
   };
 
   const exportarExcel = () => {
@@ -193,15 +227,12 @@ export default function Remitos() {
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
-
-    // Auto-width columns
     const colWidths = Object.keys(data[0] || {}).map(key => ({
       wch: Math.max(key.length, ...data.map(row => String((row as any)[key] || "").length).slice(0, 50)) + 2,
     }));
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(workbook, ws, "Remitos");
-
     const fileName = `Remitos_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     toast.success("Excel exportado correctamente");
@@ -247,7 +278,7 @@ export default function Remitos() {
           />
         </div>
         <Button
-          onClick={() => setFormOpen(true)}
+          onClick={() => { setEditingRemito(null); setFormOpen(true); }}
           className="gap-2"
         >
           <Plus className="w-4 h-4" />
@@ -307,15 +338,14 @@ export default function Remitos() {
         </div>
       </div>
 
-      {/* Editable Grid */}
+      {/* Read-only Grid */}
       <div className="card-industrial p-4">
         <RemitosSimpleGrid
           remitos={filteredRemitos}
           maquinarias={maquinarias}
           obras={obras}
-          clientes={clientes}
-          onSave={handleGridSave}
-          generateNumero={generateNumero}
+          onEdit={handleEdit}
+          onDelete={(id) => setDeleteId(id)}
         />
       </div>
 
@@ -339,18 +369,25 @@ export default function Remitos() {
       {/* Quick Form Dialog */}
       <RemitoQuickFormDialog
         open={formOpen}
-        onOpenChange={setFormOpen}
+        onOpenChange={(open) => {
+          setFormOpen(open);
+          if (!open) setEditingRemito(null);
+        }}
         obras={obras}
         maquinarias={maquinarias}
         clientes={clientes}
         generateNumero={generateNumero}
-        onSubmit={async (remito) => {
-          const results = await batchSave({ created: [remito], updated: [], deleted: [] });
-          if (results.errors > 0) {
-            throw new Error("Error al guardar el remito");
-          }
-          toast.success("Remito creado exitosamente");
-        }}
+        onSubmit={handleFormSubmit}
+        editingRemito={editingRemito}
+      />
+
+      {/* Delete Confirm Dialog */}
+      <DeleteConfirmDialog
+        open={!!deleteId}
+        onOpenChange={(open) => { if (!open) setDeleteId(null); }}
+        onConfirm={handleDelete}
+        title="¿Eliminar remito?"
+        description="Esta acción no se puede deshacer. Se eliminará permanentemente este remito."
       />
     </MainLayout>
   );

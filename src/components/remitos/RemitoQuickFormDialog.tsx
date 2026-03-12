@@ -41,6 +41,30 @@ const TIPO_TRANSPORTE_OPTIONS = [
 
 const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U"];
 
+export interface RemitoEditData {
+  id: string;
+  fecha: string;
+  remito_tercero: string;
+  remito_local: string;
+  desde: string;
+  hasta: string;
+  tipo_material: string;
+  tipo_transporte: string;
+  maquinaria_id: string;
+  patente_tercero: string;
+  cliente: string;
+  cliente_destino: string;
+  cantidad_viajes: number;
+  cantidad_uni: number | null;
+  cantidad: number;
+  unidad: string;
+  precio_unitario: number | null;
+  precio_total: number;
+  precio_calc_mode: string;
+  proveedor: string;
+  observaciones: string;
+}
+
 interface RemitoQuickFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -48,7 +72,8 @@ interface RemitoQuickFormDialogProps {
   maquinarias: MaquinariaWithRelations[];
   clientes: ClienteDB[];
   generateNumero: () => string;
-  onSubmit: (remito: RemitoForm) => Promise<void>;
+  onSubmit: (remito: RemitoForm & { id?: string }) => Promise<void>;
+  editingRemito?: RemitoEditData | null;
 }
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -70,6 +95,7 @@ export function RemitoQuickFormDialog({
   clientes,
   generateNumero,
   onSubmit,
+  editingRemito,
 }: RemitoQuickFormDialogProps) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
@@ -114,8 +140,35 @@ export function RemitoQuickFormDialog({
   }
 
   useEffect(() => {
-    if (open) setForm(getInitialForm());
-  }, [open]);
+    if (open) {
+      if (editingRemito) {
+        setForm({
+          fecha: editingRemito.fecha,
+          remito_tercero: editingRemito.remito_tercero || "",
+          remito_local: editingRemito.remito_local || "",
+          desde: editingRemito.desde || "",
+          hasta: editingRemito.hasta || "",
+          tipo_material: editingRemito.tipo_material || "",
+          tipo_transporte: editingRemito.tipo_transporte || "",
+          maquinaria_id: editingRemito.maquinaria_id || "",
+          patente_tercero: editingRemito.patente_tercero || "",
+          cliente: editingRemito.cliente || "",
+          cliente_destino: editingRemito.cliente_destino || "",
+          cantidad_viajes: editingRemito.cantidad_viajes || 1,
+          cantidad_uni: editingRemito.cantidad_uni || 0,
+          cantidad: editingRemito.cantidad || 0,
+          unidad: editingRemito.unidad || "M3",
+          precio_unitario: editingRemito.precio_unitario || 0,
+          precio_total: editingRemito.precio_total || 0,
+          precio_calc_mode: editingRemito.precio_calc_mode || "viajes",
+          proveedor: editingRemito.proveedor || "",
+          observaciones: editingRemito.observaciones || "",
+        });
+      } else {
+        setForm(getInitialForm());
+      }
+    }
+  }, [open, editingRemito]);
 
   const isDirty = useMemo(() => {
     const initial = getInitialForm();
@@ -168,8 +221,8 @@ export function RemitoQuickFormDialog({
     setSaving(true);
     try {
       const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
-      const remito: RemitoForm = {
-        numero: generateNumero(),
+      const remito: RemitoForm & { id?: string } = {
+        numero: editingRemito ? editingRemito.remito_local || generateNumero() : generateNumero(),
         fecha: form.fecha,
         material: form.tipo_material || "-",
         cantidad,
@@ -194,6 +247,9 @@ export function RemitoQuickFormDialog({
         proveedor: form.proveedor || undefined,
         observaciones: form.observaciones || undefined,
       };
+      if (editingRemito) {
+        remito.id = editingRemito.id;
+      }
       await onSubmit(remito);
       onOpenChange(false);
     } catch {
@@ -208,7 +264,7 @@ export function RemitoQuickFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border" {...dirtyProps}>
         <DialogHeader>
-          <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
+          <DialogTitle className="text-foreground">{editingRemito ? "Editar Remito" : "Nuevo Remito"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
