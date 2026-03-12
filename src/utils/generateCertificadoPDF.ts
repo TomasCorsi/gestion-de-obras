@@ -443,6 +443,7 @@ function generateServicioPDF(
       { content: "", colSpan: 3 },
       { content: `Subtotal ${catName}:`, styles: { fontStyle: "bold", halign: "right", fontSize: 7 } },
       { content: formatCurrency(catSubtotal), styles: { fontStyle: "bold", fontSize: 7 } },
+      { content: "" },
     ]);
   });
 
