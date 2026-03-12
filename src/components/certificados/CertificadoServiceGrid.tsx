@@ -258,9 +258,25 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
 
         return (
           <Collapsible key={groupIdx} open={subCat.open} onOpenChange={() => toggleSubCategoria(subCat.nombre)}>
-            <div className="border rounded-md">
+            <div
+              className={cn(
+                "border rounded-md transition-all",
+                dragOverIdx === groupIdx && draggedIdx !== groupIdx && "border-primary border-2"
+              )}
+              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(groupIdx); }}
+              onDrop={(e) => { e.preventDefault(); if (draggedIdx !== null) handleDrop(draggedIdx, groupIdx); setDraggedIdx(null); setDragOverIdx(null); }}
+            >
               <CollapsibleTrigger asChild>
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 cursor-pointer hover:bg-muted/80 transition-colors">
+                  <div
+                    draggable
+                    onDragStart={(e) => { e.stopPropagation(); setDraggedIdx(groupIdx); }}
+                    onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="cursor-grab active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
                   <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", subCat.open && "rotate-0", !subCat.open && "-rotate-90")} />
                   <span className="text-xs font-semibold text-muted-foreground">{groupIdx + 1}.</span>
                   <Input
