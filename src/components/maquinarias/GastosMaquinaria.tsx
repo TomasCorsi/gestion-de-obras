@@ -187,7 +187,7 @@ export function GastosMaquinaria() {
   }, [selectedMaquinariaId, mantenimientos]);
 
   const totales = useMemo(() => {
-    const totalCombustible = datosFiltrados.combustible.reduce((acc, c) => acc + (c.costo_total || 0), 0);
+    const totalCombustible = datosFiltrados.combustible.reduce((acc, c) => acc + getCostoCarga(c), 0);
     const totalLitros = datosFiltrados.combustible.reduce((acc, c) => acc + (c.litros || 0), 0);
     const totalRemitos = datosFiltrados.remitos.length;
     const totalViajes = datosFiltrados.remitos.reduce((acc, r) => acc + (r.cantidad_viajes || 0), 0);
