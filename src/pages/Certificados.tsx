@@ -578,6 +578,8 @@ export default function Certificados() {
   // ---- Ver certificado ----
   const [viewCertId, setViewCertId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<CertificadoItem[]>([]);
+  const [viewPagos, setViewPagos] = useState<CertificadoPago[]>([]);
+  const [newPago, setNewPago] = useState({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
   const [loadingItems, setLoadingItems] = useState(false);
   const [viewAcumulados, setViewAcumulados] = useState<AcumuladoConcepto[]>([]);
   const viewCert = certificados.find((c) => c.id === viewCertId);
