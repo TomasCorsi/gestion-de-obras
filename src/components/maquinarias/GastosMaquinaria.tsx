@@ -336,6 +336,7 @@ export function GastosMaquinaria() {
     const gastosParaPDF = gastosUnificados.map((g) => ({
       fecha: g.fecha,
       tipo: tipoGastoConfig[g.tipo].label,
+      tipoRaw: g.tipo,
       descripcion: g.descripcion,
       obra: g.obra || "-",
       costo: g.costo,

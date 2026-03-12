@@ -38,6 +38,7 @@ export interface TotalesData {
 export interface GastoDetalle {
   fecha: string;
   tipo: string;
+  tipoRaw: string;
   descripcion: string;
   obra: string;
   costo: number;
@@ -89,6 +90,84 @@ const estadoLabels: Record<string, string> = {
   en_uso: "En Uso",
 };
 
+// Category grouping config
+interface CategoryConfig {
+  key: string;
+  label: string;
+  headerColor: [number, number, number];
+  textColor: [number, number, number];
+  matchTypes: string[];
+}
+
+const CATEGORIES: CategoryConfig[] = [
+  {
+    key: "combustible",
+    label: "COMBUSTIBLE / INSUMOS",
+    headerColor: [245, 190, 70],
+    textColor: [100, 60, 0],
+    matchTypes: ["combustible"],
+  },
+  {
+    key: "mantenimiento",
+    label: "MANTENIMIENTOS",
+    headerColor: [180, 130, 220],
+    textColor: [60, 20, 80],
+    matchTypes: ["mantenimiento"],
+  },
+  {
+    key: "remito",
+    label: "REMITOS / VIAJES",
+    headerColor: [100, 160, 230],
+    textColor: [20, 50, 100],
+    matchTypes: ["remito"],
+  },
+];
+
+function buildGroupedTableData(gastos: GastoDetalle[]): {
+  body: string[][];
+  categoryRowIndices: number[];
+  subtotalRowIndices: number[];
+  categoryColors: Map<number, CategoryConfig>;
+} {
+  const body: string[][] = [];
+  const categoryRowIndices: number[] = [];
+  const subtotalRowIndices: number[] = [];
+  const categoryColors = new Map<number, CategoryConfig>();
+
+  for (const cat of CATEGORIES) {
+    const items = gastos
+      .filter((g) => cat.matchTypes.includes(g.tipoRaw))
+      .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+
+    if (items.length === 0) continue;
+
+    // Category header row
+    const headerIdx = body.length;
+    categoryRowIndices.push(headerIdx);
+    categoryColors.set(headerIdx, cat);
+    body.push([cat.label, "", "", ""]);
+
+    // Data rows
+    for (const g of items) {
+      body.push([
+        g.fecha ? format(new Date(g.fecha), "dd/MM/yy") : "-",
+        g.descripcion,
+        g.obra,
+        formatCurrency(g.costo),
+      ]);
+    }
+
+    // Subtotal row
+    const subtotal = items.reduce((sum, g) => sum + g.costo, 0);
+    const subtotalIdx = body.length;
+    subtotalRowIndices.push(subtotalIdx);
+    categoryColors.set(subtotalIdx, cat);
+    body.push(["", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
+  }
+
+  return { body, categoryRowIndices, subtotalRowIndices, categoryColors };
+}
+
 export async function generateGastosMaquinariaPDF(
   maquinaria: MaquinariaData,
   totales: TotalesData,
@@ -117,7 +196,6 @@ export async function generateGastosMaquinariaPDF(
     doc.addImage(logoData.base64, "PNG", margin, yPos, logoWidth, logoHeight);
   }
 
-  // Company info (right side)
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 3, { align: "right" });
@@ -131,7 +209,6 @@ export async function generateGastosMaquinariaPDF(
 
   yPos += 24;
 
-  // Divider line
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
   doc.line(margin, yPos, pageWidth - margin, yPos);
@@ -230,7 +307,7 @@ export async function generateGastosMaquinariaPDF(
   yPos += 4;
 
   doc.text(`Remitos/Viajes:`, col1X, yPos);
-  doc.text(`$${totales.costoRemitos.toLocaleString()}  (${totales.totalRemitos} remitos - ${totales.totalViajes} viajes)`, col1X + 30, yPos);
+  doc.text(`${formatCurrency(totales.costoRemitos)}  (${totales.totalRemitos} remitos - ${totales.totalViajes} viajes)`, col1X + 30, yPos);
   yPos += 4;
 
   doc.text(`Mantenimiento:`, col1X, yPos);
@@ -247,49 +324,78 @@ export async function generateGastosMaquinariaPDF(
   doc.text(formatCurrency(totales.gastoTotal), col1X + 35, yPos + 3);
   yPos += 8;
 
-  // ============== DETAIL TABLE ==============
+  // ============== GROUPED DETAIL TABLE ==============
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text("DETALLE DE GASTOS", margin, yPos);
   yPos += 3;
 
-  const tableData = gastos.map((g) => [
-    g.fecha ? format(new Date(g.fecha), "dd/MM/yy") : "-",
-    g.tipo,
-    g.descripcion.length > 45 ? g.descripcion.substring(0, 42) + "..." : g.descripcion,
-    g.obra.length > 15 ? g.obra.substring(0, 12) + "..." : g.obra,
-    formatCurrency(g.costo),
-  ]);
+  const { body, categoryRowIndices, subtotalRowIndices, categoryColors } = buildGroupedTableData(gastos);
 
-  autoTable(doc, {
-    startY: yPos,
-    head: [["Fecha", "Tipo", "Descripción", "Obra", "Costo"]],
-    body: tableData,
-    theme: "grid",
-    headStyles: {
-      fillColor: [60, 60, 60],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 6,
-      halign: "center",
-      cellPadding: 1,
-    },
-    bodyStyles: {
-      fontSize: 5.5,
-      cellPadding: 1,
-    },
-    columnStyles: {
-      0: { cellWidth: 18, halign: "center" },
-      1: { cellWidth: 22, halign: "center" },
-      2: { cellWidth: "auto" },
-      3: { cellWidth: 25 },
-      4: { cellWidth: 25, halign: "right" },
-    },
-    margin: { left: margin, right: margin },
-    tableWidth: "auto",
-  });
+  if (body.length === 0) {
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "italic");
+    doc.text("No hay gastos registrados en el período seleccionado.", margin, yPos + 4);
+  } else {
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Fecha", "Descripción", "Obra", "Costo"]],
+      body,
+      theme: "grid",
+      headStyles: {
+        fillColor: [60, 60, 60],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 6.5,
+        halign: "center",
+        cellPadding: 1.5,
+      },
+      bodyStyles: {
+        fontSize: 5.5,
+        cellPadding: 1.5,
+        overflow: "linebreak",
+      },
+      columnStyles: {
+        0: { cellWidth: 18, halign: "center" },
+        1: { cellWidth: "auto", overflow: "linebreak" },
+        2: { cellWidth: 30, overflow: "linebreak" },
+        3: { cellWidth: 25, halign: "right" },
+      },
+      margin: { left: margin, right: margin },
+      tableWidth: "auto",
+      didParseCell: (data) => {
+        if (data.section !== "body") return;
+        const rowIdx = data.row.index;
 
-  yPos = (doc as any).lastAutoTable.finalY + 6;
+        // Category header rows
+        if (categoryRowIndices.includes(rowIdx)) {
+          const cat = categoryColors.get(rowIdx);
+          if (cat) {
+            data.cell.styles.fillColor = cat.headerColor;
+            data.cell.styles.textColor = cat.textColor;
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fontSize = 7;
+            if (data.column.index === 0) {
+              data.cell.colSpan = 4;
+            }
+          }
+        }
+
+        // Subtotal rows
+        if (subtotalRowIndices.includes(rowIdx)) {
+          const cat = categoryColors.get(rowIdx);
+          data.cell.styles.fillColor = [240, 240, 240];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontSize = 6;
+          if (cat && data.column.index === 1) {
+            data.cell.colSpan = 2;
+          }
+        }
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 6;
+  }
 
   // ============== FOOTER ==============
   const signatureX = pageWidth / 2;
