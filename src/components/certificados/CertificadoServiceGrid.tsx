@@ -305,6 +305,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                         <TableHead className="min-w-[80px] text-xs">Cantidad</TableHead>
                         <TableHead className="min-w-[90px] text-xs">P. Unit.</TableHead>
                         <TableHead className="min-w-[90px] text-xs text-right">Subtotal</TableHead>
+                        <TableHead className="min-w-[120px] text-xs">Observaciones</TableHead>
                         <TableHead className="w-[40px]"></TableHead>
                       </TableRow>
                     </TableHeader>
