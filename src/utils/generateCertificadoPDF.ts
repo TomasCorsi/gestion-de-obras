@@ -598,6 +598,7 @@ function generateObraPDF(
         formatCurrency(avAnterior),
         formatCurrency(avActual),
         formatCurrency(avAcumulado),
+        item.observaciones || "",
       ]);
     });
 
