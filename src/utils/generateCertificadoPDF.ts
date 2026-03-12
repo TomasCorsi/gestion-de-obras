@@ -398,7 +398,7 @@ function generateServicioPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: catName.toUpperCase(),
-      colSpan: 5,
+      colSpan: 6,
       styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
     }]);
 
