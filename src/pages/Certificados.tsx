@@ -1659,10 +1659,12 @@ export default function Certificados() {
                             <span>Subtotal</span>
                             <span className="font-semibold">{formatCurrency(viewCert.subtotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>IVA 21%</span>
-                            <span>{formatCurrency(viewCert.iva)}</span>
-                          </div>
+                          {viewCert.incluir_iva !== false && (
+                            <div className="flex justify-between text-sm">
+                              <span>IVA 21%</span>
+                              <span>{formatCurrency(viewCert.iva)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-lg font-bold">
                             <span>TOTAL</span>
                             <span>{formatCurrency(viewCert.total)}</span>
