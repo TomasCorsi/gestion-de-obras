@@ -27,9 +27,9 @@ export interface MaquinariaData {
 export interface TotalesData {
   totalCombustible: number;
   totalLitros: number;
+  totalRemitos: number;
   totalViajes: number;
-  totalKm: number;
-  totalVolumen: number;
+  costoRemitos: number;
   totalMantenimientos: number;
   costoMantenimientos: number;
   gastoTotal: number;
