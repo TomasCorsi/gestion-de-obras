@@ -433,6 +433,7 @@ function generateServicioPDF(
           item.cantidad.toLocaleString("es-AR"),
           formatCurrency(item.precio_unitario),
           formatCurrency(item.subtotal),
+          item.observaciones || "",
         ]);
       });
     });
