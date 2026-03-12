@@ -532,7 +532,7 @@ export default function Certificados() {
   };
 
   const draftSubtotal = itemsDraft.reduce((s, i) => s + i.subtotal, 0);
-  const draftIva = Math.round(draftSubtotal * 0.21 * 100) / 100;
+  const draftIva = incluirIva ? Math.round(draftSubtotal * 0.21 * 100) / 100 : 0;
   const draftTotal = draftSubtotal + draftIva;
 
   // For tipo obra: compute avance total and anticipo
