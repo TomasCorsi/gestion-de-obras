@@ -1383,10 +1383,12 @@ export default function Certificados() {
                             <span>Subtotal Servicio</span>
                             <span className="font-medium">{formatCurrency(servicioSubtotal)}</span>
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span>IVA 21%</span>
-                            <span>{formatCurrency(totalIva)}</span>
-                          </div>
+                          {incluirIva && (
+                            <div className="flex justify-between text-sm">
+                              <span>IVA 21%</span>
+                              <span>{formatCurrency(totalIva)}</span>
+                            </div>
+                          )}
                           <div className="flex justify-between text-lg font-bold">
                             <span>TOTAL</span>
                             <span>{formatCurrency(totalFinal)}</span>
