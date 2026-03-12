@@ -218,6 +218,7 @@ export function useCertificados(obraId?: string) {
         ...d,
         tipo: d.tipo || "servicio",
         anticipo_porcentaje: d.anticipo_porcentaje || 0,
+        incluir_iva: d.incluir_iva !== false,
       })) as Certificado[];
     },
     enabled: !!obraId,
