@@ -587,8 +587,10 @@ export default function Certificados() {
   const openViewCert = async (id: string) => {
     setViewCertId(id);
     setLoadingItems(true);
-    const items = await fetchItems(id);
+    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
     setViewItems(items);
+    setViewPagos(pagos);
 
     const cert = certificados.find((c) => c.id === id);
     if ((cert?.tipo === "obra" || cert?.tipo === "mixto") && selectedObraId) {
@@ -598,6 +600,27 @@ export default function Certificados() {
       setViewAcumulados([]);
     }
     setLoadingItems(false);
+  };
+
+  const handleAddPago = async () => {
+    if (!viewCertId || !newPago.monto) return;
+    await createPago({
+      certificado_id: viewCertId,
+      fecha: newPago.fecha,
+      monto: Number(newPago.monto),
+      descripcion: newPago.descripcion || undefined,
+    });
+    const pagos = await fetchPagos(viewCertId);
+    setViewPagos(pagos);
+    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+  };
+
+  const handleDeletePago = async (pagoId: string) => {
+    await deletePago(pagoId);
+    if (viewCertId) {
+      const pagos = await fetchPagos(viewCertId);
+      setViewPagos(pagos);
+    }
   };
 
   // Build categoriaMap for PDF
