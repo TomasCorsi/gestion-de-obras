@@ -238,12 +238,14 @@ export function GastosMaquinaria() {
     const gastos: GastoUnificado[] = [];
 
     datosFiltrados.combustible.forEach((c) => {
+      const costo = getCostoCarga(c);
+      const producto = c.tipo_producto || "combustible";
       gastos.push({
         id: c.id,
         fecha: c.fecha || "",
         tipo: "combustible",
-        descripcion: `${c.litros?.toLocaleString() || 0} L @ $${c.precio_litro?.toLocaleString() || 0}/L`,
-        costo: c.costo_total || 0,
+        descripcion: `${c.litros?.toLocaleString() || 0} L - ${producto}`,
+        costo,
         obra: c.obra?.nombre,
       });
     });
