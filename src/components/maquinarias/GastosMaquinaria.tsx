@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -77,6 +77,38 @@ export function GastosMaquinaria() {
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
+  const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
+
+  const mesesDisponibles = useMemo(() => {
+    const now = new Date();
+    const meses: { value: string; label: string; desde: Date; hasta: Date }[] = [];
+    for (let i = 0; i < 12; i++) {
+      const d = subMonths(now, i);
+      meses.push({
+        value: format(d, "yyyy-MM"),
+        label: format(d, "MMM yyyy", { locale: es }),
+        desde: startOfMonth(d),
+        hasta: endOfMonth(d),
+      });
+    }
+    return meses;
+  }, []);
+
+  const seleccionarMes = (valor: string) => {
+    setMesActivo(valor);
+    if (valor === "todos") {
+      setFechaDesde(undefined);
+      setFechaHasta(undefined);
+    } else if (valor === "custom") {
+      // keep current manual dates
+    } else {
+      const mes = mesesDisponibles.find(m => m.value === valor);
+      if (mes) {
+        setFechaDesde(mes.desde);
+        setFechaHasta(mes.hasta);
+      }
+    }
+  };
 
   const maquinariasFiltradas = useMemo(() => {
     if (tipoFilter === "todos") return maquinarias;
@@ -242,6 +274,7 @@ export function GastosMaquinaria() {
   const limpiarFiltros = () => {
     setFechaDesde(undefined);
     setFechaHasta(undefined);
+    setMesActivo("todos");
   };
 
   const exportarExcel = () => {
@@ -371,32 +404,46 @@ export function GastosMaquinaria() {
             </DropdownMenu>
           )}
         </div>
-        <div className="flex gap-2">
+        {/* Filtro por mes */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant={mesActivo === "todos" ? "default" : "outline"}
+            size="sm"
+            onClick={() => seleccionarMes("todos")}
+          >
+            Todo
+          </Button>
+          {mesesDisponibles.slice(0, 6).map((mes) => (
+            <Button
+              key={mes.value}
+              variant={mesActivo === mes.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => seleccionarMes(mes.value)}
+              className="capitalize"
+            >
+              {mes.label}
+            </Button>
+          ))}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="border-border">
-                <Calendar className="w-4 h-4 mr-2" />
-                {fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Desde"}
+              <Button variant={mesActivo === "custom" ? "default" : "outline"} size="sm">
+                <Calendar className="w-4 h-4 mr-1" />
+                {mesActivo === "custom" && fechaDesde && fechaHasta
+                  ? `${format(fechaDesde, "dd/MM")} - ${format(fechaHasta, "dd/MM")}`
+                  : "Rango"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent mode="single" selected={fechaDesde} onSelect={setFechaDesde} locale={es} className="pointer-events-auto" />
+            <PopoverContent className="w-auto p-3 space-y-3" align="start">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Desde</p>
+                <CalendarComponent mode="single" selected={fechaDesde} onSelect={(d) => { setFechaDesde(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-medium">Hasta</p>
+                <CalendarComponent mode="single" selected={fechaHasta} onSelect={(d) => { setFechaHasta(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
+              </div>
             </PopoverContent>
           </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="border-border">
-                <Calendar className="w-4 h-4 mr-2" />
-                {fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Hasta"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent mode="single" selected={fechaHasta} onSelect={setFechaHasta} locale={es} className="pointer-events-auto" />
-            </PopoverContent>
-          </Popover>
-          {(fechaDesde || fechaHasta) && (
-            <Button variant="ghost" onClick={limpiarFiltros}>Limpiar</Button>
-          )}
         </div>
       </div>
 
