@@ -787,6 +787,7 @@ export default function Certificados() {
                         <CertificadoCard
                           key={cert.id}
                           cert={cert}
+                          pagado={getPagadoByCert(cert.id)}
                           onView={() => openViewCert(cert.id)}
                           onEdit={() => openEditCertificado(cert)}
                           onEmitir={() =>
