@@ -494,7 +494,9 @@ function generateServicioPDF(
     });
 
     totalsLines.push({ label: "Subtotal General:", value: formatCurrency(certificado.subtotal), bold: true });
-    totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+    if (certificado.incluir_iva !== false) {
+      totalsLines.push({ label: "IVA (21%):", value: formatCurrency(certificado.iva) });
+    }
     totalsLines.push({ label: "TOTAL:", value: formatCurrency(certificado.total), bold: true, separator: true });
 
     yPos = renderTotalsBox(doc, margin, pageWidth, yPos, totalsLines);
