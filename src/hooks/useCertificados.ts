@@ -79,6 +79,7 @@ export interface CertificadoItemForm {
   etapa: string | null;
   cantidad_total: number;
   seccion?: string | null;
+  observaciones?: string;
 }
 
 // ---- Categories ----
