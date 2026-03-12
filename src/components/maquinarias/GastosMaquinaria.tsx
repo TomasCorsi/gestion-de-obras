@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -15,8 +15,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { useMaquinarias, TipoMaquinaria } from "@/hooks/useMaquinarias";
@@ -405,45 +403,26 @@ export function GastosMaquinaria() {
           )}
         </div>
         {/* Filtro por mes */}
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={mesActivo === "todos" ? "default" : "outline"}
-            size="sm"
-            onClick={() => seleccionarMes("todos")}
-          >
-            Todo
-          </Button>
-          {mesesDisponibles.slice(0, 6).map((mes) => (
-            <Button
-              key={mes.value}
-              variant={mesActivo === mes.value ? "default" : "outline"}
-              size="sm"
-              onClick={() => seleccionarMes(mes.value)}
-              className="capitalize"
-            >
-              {mes.label}
+        <div className="flex items-center gap-2">
+          <Select value={mesActivo} onValueChange={seleccionarMes}>
+            <SelectTrigger className="w-[200px] bg-background">
+              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Período" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="todos">Todo el período</SelectItem>
+              {mesesDisponibles.map((mes) => (
+                <SelectItem key={mes.value} value={mes.value} className="capitalize">
+                  {mes.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {mesActivo !== "todos" && (
+            <Button variant="ghost" size="sm" onClick={limpiarFiltros} className="text-muted-foreground">
+              Limpiar
             </Button>
-          ))}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant={mesActivo === "custom" ? "default" : "outline"} size="sm">
-                <Calendar className="w-4 h-4 mr-1" />
-                {mesActivo === "custom" && fechaDesde && fechaHasta
-                  ? `${format(fechaDesde, "dd/MM")} - ${format(fechaHasta, "dd/MM")}`
-                  : "Rango"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-3 space-y-3" align="start">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">Desde</p>
-                <CalendarComponent mode="single" selected={fechaDesde} onSelect={(d) => { setFechaDesde(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
-              </div>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-medium">Hasta</p>
-                <CalendarComponent mode="single" selected={fechaHasta} onSelect={(d) => { setFechaHasta(d); setMesActivo("custom"); }} locale={es} className="pointer-events-auto" />
-              </div>
-            </PopoverContent>
-          </Popover>
+          )}
         </div>
       </div>
 
