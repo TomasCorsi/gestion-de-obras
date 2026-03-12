@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Trash2, Plus, ChevronDown, Copy } from "lucide-react";
+import { Trash2, Plus, ChevronDown, Copy, GripVertical } from "lucide-react";
 import { type CertificadoItemForm, type CertificadoConcepto } from "@/hooks/useCertificados";
 import { cn } from "@/lib/utils";
 
@@ -30,7 +30,8 @@ interface CertificadoServiceGridProps {
 
 export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItemsChange }: CertificadoServiceGridProps) {
   const [customInputIndices, setCustomInputIndices] = useState<Set<number>>(new Set());
-
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   // Derive subcategories from items' etapa field, preserving first-seen order
   const [subCategorias, setSubCategorias] = useState<SubCategoria[]>(() => {
     const seen = new Set<string>();
@@ -212,6 +213,39 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
     );
   }, []);
 
+  const handleDrop = useCallback(
+    (fromIdx: number, toIdx: number) => {
+      if (fromIdx === toIdx) return;
+      setSubCategorias((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        // Rebuild items array to match new subcategory order
+        const reordered: CertificadoItemForm[] = [];
+        const ungrouped: CertificadoItemForm[] = [];
+        const grouped = new Map<string, CertificadoItemForm[]>();
+        items.forEach((item) => {
+          const key = item.etapa || "";
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(item);
+        });
+        next.forEach((s) => {
+          const g = grouped.get(s.nombre);
+          if (g) reordered.push(...g);
+        });
+        // Add any items not in a subcategory
+        items.forEach((item) => {
+          if (!item.etapa || !next.some((s) => s.nombre === item.etapa)) {
+            ungrouped.push(item);
+          }
+        });
+        onItemsChange([...reordered, ...ungrouped]);
+        return next;
+      });
+    },
+    [items, onItemsChange]
+  );
+
   const totalGeneral = items.reduce((s, i) => s + i.subtotal, 0);
 
   return (
@@ -224,9 +258,25 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
 
         return (
           <Collapsible key={groupIdx} open={subCat.open} onOpenChange={() => toggleSubCategoria(subCat.nombre)}>
-            <div className="border rounded-md">
+            <div
+              className={cn(
+                "border rounded-md transition-all",
+                dragOverIdx === groupIdx && draggedIdx !== groupIdx && "border-primary border-2"
+              )}
+              onDragOver={(e) => { e.preventDefault(); setDragOverIdx(groupIdx); }}
+              onDrop={(e) => { e.preventDefault(); if (draggedIdx !== null) handleDrop(draggedIdx, groupIdx); setDraggedIdx(null); setDragOverIdx(null); }}
+            >
               <CollapsibleTrigger asChild>
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 cursor-pointer hover:bg-muted/80 transition-colors">
+                  <div
+                    draggable
+                    onDragStart={(e) => { e.stopPropagation(); setDraggedIdx(groupIdx); }}
+                    onDragEnd={() => { setDraggedIdx(null); setDragOverIdx(null); }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="cursor-grab active:cursor-grabbing"
+                  >
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                  </div>
                   <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", subCat.open && "rotate-0", !subCat.open && "-rotate-90")} />
                   <span className="text-xs font-semibold text-muted-foreground">{groupIdx + 1}.</span>
                   <Input

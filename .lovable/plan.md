@@ -1,28 +1,26 @@
 
 
-# Plan: Drag-and-drop reordering for subcategories
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## What
-Add drag handles to each subcategory row so they can be reordered by dragging up/down. No external library needed — use native HTML drag-and-drop API which is lightweight and sufficient for reordering a flat list.
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Changes in `src/components/certificados/CertificadoServiceGrid.tsx`
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-1. **Add a `GripVertical` icon** (from lucide-react) as a drag handle on each subcategory header, before the chevron.
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-2. **Add drag state** — track `draggedIndex` and `dragOverIndex` via `useState`.
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-3. **Add drag event handlers** on each subcategory wrapper div:
-   - `onDragStart` — set `draggedIndex`
-   - `onDragOver` — set `dragOverIndex`, prevent default
-   - `onDrop` — reorder `subCategorias` array by moving `draggedIndex` to `dragOverIndex` position, then also reorder the underlying `items` to match the new subcategory order (so save preserves order)
-   - `onDragEnd` — clear drag state
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-4. **Visual feedback** — add a top/bottom border highlight on the `dragOverIndex` element to indicate drop position.
-
-5. **Reorder items on drop** — when subcategories are reordered, rebuild the items array grouped by the new subcategory order so the DB save preserves the visual sequence.
-
-## Technical details
-- Native drag-and-drop avoids adding dependencies
-- The drag handle (`GripVertical`) gets `draggable` and the drag events; clicking other parts of the header (input, buttons) won't trigger drag
-- Items array is rebuilt on reorder: iterate new subcategory order, collect items for each group, concatenate
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 
