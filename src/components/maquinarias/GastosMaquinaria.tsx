@@ -214,7 +214,7 @@ export function GastosMaquinaria() {
       if (!c.fecha) return;
       const mes = format(parseISO(c.fecha), "yyyy-MM");
       const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
-      actual.combustible += c.costo_total || 0;
+      actual.combustible += getCostoCarga(c);
       mesesMap.set(mes, actual);
     });
 
