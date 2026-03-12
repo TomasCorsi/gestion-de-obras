@@ -123,13 +123,6 @@ const CATEGORIES: CategoryConfig[] = [
     textColor: [60, 20, 80],
     matchTypes: ["mantenimiento"],
   },
-  {
-    key: "remito",
-    label: "REMITOS / VIAJES",
-    headerColor: [100, 160, 230],
-    textColor: [20, 50, 100],
-    matchTypes: ["remito"],
-  },
 ];
 
 function buildGroupedTableData(gastos: GastoDetalle[]): {
