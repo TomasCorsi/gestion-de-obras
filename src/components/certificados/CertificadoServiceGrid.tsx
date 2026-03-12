@@ -57,7 +57,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
         .filter((n) => !existingNames.has(n))
         .map((n) => ({ nombre: n, open: true }));
       // Remove subcats that have no items anymore
-      const kept = prev.filter((s) => etapas.has(s.nombre));
+      const kept = prev;
       return [...kept, ...newOnes];
     });
   }, [items]);
