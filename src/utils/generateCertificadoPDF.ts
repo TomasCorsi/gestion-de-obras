@@ -765,6 +765,22 @@ export async function generateCertificadoPDF({
     yPos = generateServicioPDF(doc, yPos, margin, pageWidth, certificado, items, categoriaMap, false, etapaMap);
   }
 
+  // Pagos y Saldo
+  if (pagos.length > 0) {
+    const totalPagado = pagos.reduce((s, p) => s + p.monto, 0);
+    const saldo = certificado.total - totalPagado;
+
+    const pagoLines: { label: string; value: string; bold?: boolean; separator?: boolean }[] = [];
+    pagos.forEach((p) => {
+      const fechaLabel = format(parseISO(p.fecha), "dd/MM/yyyy");
+      const desc = p.descripcion ? ` (${p.descripcion})` : "";
+      pagoLines.push({ label: `Pago ${fechaLabel}${desc}:`, value: `- ${formatCurrency(p.monto)}` });
+    });
+    pagoLines.push({ label: "SALDO PENDIENTE:", value: formatCurrency(saldo), bold: true, separator: true });
+
+    yPos = renderTotalsBox(doc, margin, pageWidth, yPos, pagoLines);
+  }
+
   // Observaciones
   if (certificado.observaciones) {
     doc.setFontSize(7);

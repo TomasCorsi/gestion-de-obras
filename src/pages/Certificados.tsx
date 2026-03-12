@@ -672,6 +672,9 @@ export default function Certificados() {
       }
     }
 
+    // Fetch pagos for this certificate
+    const certPagos = await fetchPagos(targetCert.id);
+
     await generateCertificadoPDF({
       certificado: targetCert,
       items: targetItems,
@@ -688,6 +691,7 @@ export default function Certificados() {
       cantidadTotalMap,
       acumulados: pdfAcumulados,
       etapaOrdenMap,
+      pagos: certPagos,
     });
   };
 
