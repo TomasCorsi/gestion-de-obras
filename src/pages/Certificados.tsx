@@ -417,6 +417,10 @@ export default function Certificados() {
   // Rebuild draft when tipoCert changes
   useEffect(() => {
     if (!crearOpen) return;
+    if (skipTipoEffectRef.current) {
+      skipTipoEffectRef.current = false;
+      return;
+    }
     if (editingCertId) {
       // Editing: rebuild from all concepts
       setItemsDraft(buildDraftForTipo(tipoCert));
