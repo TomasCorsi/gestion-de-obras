@@ -205,7 +205,7 @@ export function GastosMaquinaria() {
       costoMantenimientos,
       gastoTotal: totalCombustible + costoMantenimientos + costoRemitos,
     };
-  }, [datosFiltrados]);
+  }, [datosFiltrados, preciosPorMesProducto]);
 
   const datosGraficoMensual = useMemo(() => {
     const mesesMap = new Map<string, { combustible: number; mantenimiento: number }>();
