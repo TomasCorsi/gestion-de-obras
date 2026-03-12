@@ -297,12 +297,14 @@ export function useCertificados(obraId?: string) {
       observaciones,
       tipo = "servicio",
       anticipo_porcentaje = 0,
+      incluir_iva = true,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
       observaciones?: string;
       tipo?: TipoCertificado;
       anticipo_porcentaje?: number;
+      incluir_iva?: boolean;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
@@ -311,7 +313,7 @@ export function useCertificados(obraId?: string) {
       const numero = `CERT-${String(count + 1).padStart(3, "0")}`;
 
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
-      const iva = Math.round(subtotal * 0.21 * 100) / 100;
+      const iva = incluir_iva ? Math.round(subtotal * 0.21 * 100) / 100 : 0;
       const total = subtotal + iva;
 
       const { data: cert, error } = await supabase
@@ -326,6 +328,7 @@ export function useCertificados(obraId?: string) {
           observaciones: observaciones || null,
           tipo,
           anticipo_porcentaje,
+          incluir_iva,
         }])
         .select()
         .single();
