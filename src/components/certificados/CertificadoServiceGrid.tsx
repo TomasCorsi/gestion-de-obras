@@ -351,6 +351,14 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                             {formatCurrency(item.subtotal)}
                           </TableCell>
                           <TableCell className="p-1">
+                            <Input
+                              value={item.observaciones || ""}
+                              onChange={(e) => updateField(idx, "observaciones", e.target.value)}
+                              className="h-7 text-xs"
+                              placeholder="Obs..."
+                            />
+                          </TableCell>
+                          <TableCell className="p-1">
                             <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteRow(idx)}>
                               <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
                             </Button>
