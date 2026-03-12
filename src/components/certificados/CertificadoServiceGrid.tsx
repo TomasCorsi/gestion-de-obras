@@ -367,7 +367,7 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
                       ))}
                       {groupItems.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center text-muted-foreground text-xs py-3">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground text-xs py-3">
                             Sin conceptos. Agregá uno para comenzar.
                           </TableCell>
                         </TableRow>
