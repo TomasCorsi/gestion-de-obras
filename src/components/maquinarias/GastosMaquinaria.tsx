@@ -274,7 +274,7 @@ export function GastosMaquinaria() {
     });
 
     return gastos.sort((a, b) => (b.fecha ? parseISO(b.fecha).getTime() : 0) - (a.fecha ? parseISO(a.fecha).getTime() : 0));
-  }, [datosFiltrados]);
+  }, [datosFiltrados, preciosPorMesProducto]);
 
   const tipoGastoConfig = {
     combustible: { label: "Combustible", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
