@@ -264,7 +264,7 @@ export function RemitoQuickFormDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border" {...dirtyProps}>
         <DialogHeader>
-          <DialogTitle className="text-foreground">Nuevo Remito</DialogTitle>
+          <DialogTitle className="text-foreground">{editingRemito ? "Editar Remito" : "Nuevo Remito"}</DialogTitle>
         </DialogHeader>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
