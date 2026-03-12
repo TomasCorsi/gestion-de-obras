@@ -229,8 +229,8 @@ export async function generateGastosMaquinariaPDF(
   doc.text(`${formatCurrency(totales.totalCombustible)}  (${totales.totalLitros.toLocaleString()} L)`, col1X + 30, yPos);
   yPos += 4;
 
-  doc.text(`Viajes:`, col1X, yPos);
-  doc.text(`${totales.totalViajes} viajes  (${totales.totalKm.toLocaleString()} km - ${totales.totalVolumen.toLocaleString()} m³)`, col1X + 30, yPos);
+  doc.text(`Remitos/Viajes:`, col1X, yPos);
+  doc.text(`$${totales.costoRemitos.toLocaleString()}  (${totales.totalRemitos} remitos - ${totales.totalViajes} viajes)`, col1X + 30, yPos);
   yPos += 4;
 
   doc.text(`Mantenimiento:`, col1X, yPos);
