@@ -329,6 +329,8 @@ export default function Certificados() {
     setCrearOpen(true);
   };
 
+  const skipTipoEffectRef = useRef(false);
+
   const openEditCertificado = async (cert: Certificado) => {
     const items = await fetchItems(cert.id);
 
@@ -351,6 +353,7 @@ export default function Certificados() {
     setPeriodo(cert.periodo);
     setObservaciones(cert.observaciones || "");
     setEditingCertId(cert.id);
+    skipTipoEffectRef.current = true;
     setTipoCert(cert.tipo);
     setAnticipoPorcentaje(cert.anticipo_porcentaje);
     setNumeroCert(cert.numero);
