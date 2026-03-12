@@ -560,7 +560,7 @@ function generateObraPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: "  " + etapaName.toUpperCase(),
-      colSpan: 11,
+      colSpan: 12,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
 
