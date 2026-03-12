@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
