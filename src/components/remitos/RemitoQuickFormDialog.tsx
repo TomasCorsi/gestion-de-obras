@@ -221,8 +221,8 @@ export function RemitoQuickFormDialog({
     setSaving(true);
     try {
       const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
-      const remito: RemitoForm = {
-        numero: generateNumero(),
+      const remito: RemitoForm & { id?: string } = {
+        numero: editingRemito ? editingRemito.remito_local || generateNumero() : generateNumero(),
         fecha: form.fecha,
         material: form.tipo_material || "-",
         cantidad,
@@ -247,6 +247,9 @@ export function RemitoQuickFormDialog({
         proveedor: form.proveedor || undefined,
         observaciones: form.observaciones || undefined,
       };
+      if (editingRemito) {
+        remito.id = editingRemito.id;
+      }
       await onSubmit(remito);
       onOpenChange(false);
     } catch {
