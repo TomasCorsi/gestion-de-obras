@@ -249,6 +249,7 @@ export default function Certificados() {
   // For "Agregar concepto" dialogs — null = not open, "obra" | "servicio" = which section
   const [addExtraConceptoSection, setAddExtraConceptoSection] = useState<string | null>(null);
   const [numeroCert, setNumeroCert] = useState("");
+  const [incluirIva, setIncluirIva] = useState(true);
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
   // State for adding extra concepts to an existing certificate during edit
   const [addExtraConceptoOpen, setAddExtraConceptoOpen] = useState(false);
