@@ -1,24 +1,26 @@
 
 
-# Plan: Usar remito_local como numero principal
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
 ## Problema
-Al crear un remito nuevo, el campo `numero` se guarda con un valor auto-generado ("REM-2026-0090") en vez del número manual ingresado en `remito_local`. Esto causa inconsistencia entre lo que el usuario carga y lo que se guarda en la base de datos.
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
 ## Solución
-En `src/components/remitos/RemitoQuickFormDialog.tsx`, línea 225, cambiar la lógica para que `numero` use el valor de `remito_local` cuando esté disponible, y solo caiga al auto-generado como fallback.
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-**Cambio:**
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
+
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
+
 ```typescript
-// Antes
-numero: editingRemito ? editingRemito.remito_local || generateNumero() : generateNumero(),
-
-// Después
-numero: form.remito_local || generateNumero(),
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
 ```
 
-Esto aplica tanto para creación como edición: si el usuario ingresó un número de remito local, ese se usa como `numero` principal.
-
-### Archivo a modificar
-- `src/components/remitos/RemitoQuickFormDialog.tsx` (1 línea)
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 

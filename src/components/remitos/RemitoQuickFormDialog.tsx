@@ -222,7 +222,7 @@ export function RemitoQuickFormDialog({
     try {
       const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
       const remito: RemitoForm & { id?: string } = {
-        numero: editingRemito ? editingRemito.remito_local || generateNumero() : generateNumero(),
+        numero: form.remito_local || generateNumero(),
         fecha: form.fecha,
         material: form.tipo_material || "-",
         cantidad,
