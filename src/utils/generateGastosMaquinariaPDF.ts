@@ -45,6 +45,7 @@ export interface GastoDetalle {
 }
 
 export interface RemitoDetalle {
+  fecha: string;
   numero: string;
   tipo_material: string;
   viajes: number;
