@@ -156,8 +156,8 @@ export function GastosMaquinaria() {
     };
 
     return {
-      combustible: cargas.filter(
-        (c) => c.maquinaria_id === selectedMaquinariaId && (!c.fecha || filtrarPorFecha(c.fecha))
+      combustible: cargasRepartidor.filter(
+        (c) => c.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(c.fecha)
       ),
       remitos: remitos.filter(
         (r) => r.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(r.fecha)
@@ -166,7 +166,7 @@ export function GastosMaquinaria() {
         (m) => m.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(m.fecha)
       ),
     };
-  }, [selectedMaquinariaId, cargas, remitos, mantenimientos, fechaDesde, fechaHasta]);
+  }, [selectedMaquinariaId, cargasRepartidor, remitos, mantenimientos, fechaDesde, fechaHasta]);
 
   // Próximo mantenimiento: del último mantenimiento completado con datos de próximo service
   const proximoMantenimiento = useMemo(() => {
