@@ -398,6 +398,7 @@ export default function Certificados() {
     setTipoCert(ultimo.tipo);
     setAnticipoPorcentaje(ultimo.anticipo_porcentaje);
     setNumeroCert("");
+    setIncluirIva(ultimo.incluir_iva !== false);
     setCrearOpen(true);
   };
 
