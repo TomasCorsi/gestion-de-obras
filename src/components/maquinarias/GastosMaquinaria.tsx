@@ -1,39 +1,27 @@
 import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Combobox } from "@/components/ui/combobox";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { useMaquinarias, TipoMaquinaria } from "@/hooks/useMaquinarias";
 import { useCombustible } from "@/hooks/useCombustible";
-import { useViajes } from "@/hooks/useViajes";
+import { useRemitos } from "@/hooks/useRemitos";
 import { useMantenimientos } from "@/hooks/useMantenimientos";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -43,7 +31,7 @@ import { generateGastosMaquinariaPDF } from "@/utils/generateGastosMaquinariaPDF
 interface GastoUnificado {
   id: string;
   fecha: string;
-  tipo: "combustible" | "viaje" | "mantenimiento";
+  tipo: "combustible" | "remito" | "mantenimiento";
   descripcion: string;
   costo: number;
   obra?: string;
@@ -75,20 +63,14 @@ const tiposConfig: Record<TipoMaquinaria, string> = {
 };
 
 const chartConfig = {
-  combustible: {
-    label: "Combustible",
-    color: "hsl(38, 92%, 50%)", // amber
-  },
-  mantenimiento: {
-    label: "Mantenimiento",
-    color: "hsl(270, 70%, 60%)", // purple
-  },
+  combustible: { label: "Combustible", color: "hsl(38, 92%, 50%)" },
+  mantenimiento: { label: "Mantenimiento", color: "hsl(270, 70%, 60%)" },
 };
 
 export function GastosMaquinaria() {
   const { maquinarias } = useMaquinarias();
   const { cargas } = useCombustible();
-  const { viajes } = useViajes();
+  const { remitos } = useRemitos();
   const { mantenimientos } = useMantenimientos();
 
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
@@ -96,13 +78,11 @@ export function GastosMaquinaria() {
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
 
-  // Filtrar maquinarias por tipo
   const maquinariasFiltradas = useMemo(() => {
     if (tipoFilter === "todos") return maquinarias;
     return maquinarias.filter((m) => m.tipo === tipoFilter);
   }, [maquinarias, tipoFilter]);
 
-  // Opciones para el combobox de maquinarias (búsqueda por código, tipo, patente)
   const maquinariaOptions = useMemo(() => {
     return maquinariasFiltradas
       .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || "", undefined, { numeric: true }))
@@ -110,31 +90,21 @@ export function GastosMaquinaria() {
         const codigo = m.codigo || "S/C";
         const tipo = tiposConfig[m.tipo] || m.tipo;
         const patente = m.patente || "";
-        // Label visible: código - tipo - patente (si tiene)
-        const label = patente 
-          ? `${codigo} - ${tipo} - ${patente}`
-          : `${codigo} - ${tipo}`;
-        // searchValue incluye todos los campos para búsqueda
+        const label = patente ? `${codigo} - ${tipo} - ${patente}` : `${codigo} - ${tipo}`;
         const searchValue = `${codigo} ${tipo} ${patente} ${m.nombre || ""} ${m.marca || ""}`.toLowerCase();
-        return {
-          value: m.id,
-          label,
-          searchValue,
-        };
+        return { value: m.id, label, searchValue };
       });
   }, [maquinariasFiltradas]);
 
-  // Reset maquinaria selection when type filter changes and current selection is not in filtered list
   useMemo(() => {
     if (selectedMaquinariaId && !maquinariasFiltradas.find(m => m.id === selectedMaquinariaId)) {
       setSelectedMaquinariaId("");
     }
   }, [maquinariasFiltradas, selectedMaquinariaId]);
 
-  // Filtrar datos por maquinaria y fechas
   const datosFiltrados = useMemo(() => {
     if (!selectedMaquinariaId) {
-      return { combustible: [], viajes: [], mantenimientos: [] };
+      return { combustible: [], remitos: [], mantenimientos: [] };
     }
 
     const filtrarPorFecha = (fecha: string) => {
@@ -148,53 +118,54 @@ export function GastosMaquinaria() {
       combustible: cargas.filter(
         (c) => c.maquinaria_id === selectedMaquinariaId && (!c.fecha || filtrarPorFecha(c.fecha))
       ),
-      viajes: viajes.filter(
-        (v) => v.camion_id === selectedMaquinariaId && filtrarPorFecha(v.fecha)
+      remitos: remitos.filter(
+        (r) => r.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(r.fecha)
       ),
       mantenimientos: mantenimientos.filter(
         (m) => m.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(m.fecha)
       ),
     };
-  }, [selectedMaquinariaId, cargas, viajes, mantenimientos, fechaDesde, fechaHasta]);
+  }, [selectedMaquinariaId, cargas, remitos, mantenimientos, fechaDesde, fechaHasta]);
 
-  // Cálculos de totales
+  // Próximo mantenimiento: del último mantenimiento completado con datos de próximo service
+  const proximoMantenimiento = useMemo(() => {
+    if (!selectedMaquinariaId) return null;
+    const completados = mantenimientos
+      .filter(m => m.maquinaria_id === selectedMaquinariaId && m.estado === "completado")
+      .sort((a, b) => parseISO(b.fecha).getTime() - parseISO(a.fecha).getTime());
+
+    const conProximo = completados.find(
+      m => m.proximo_mantenimiento || m.proximo_service_hr || m.proximo_service_km
+    );
+    if (!conProximo) return null;
+    return {
+      fecha: conProximo.proximo_mantenimiento,
+      horas: conProximo.proximo_service_hr,
+      km: conProximo.proximo_service_km,
+    };
+  }, [selectedMaquinariaId, mantenimientos]);
+
   const totales = useMemo(() => {
-    const totalCombustible = datosFiltrados.combustible.reduce(
-      (acc, c) => acc + (c.costo_total || 0),
-      0
-    );
-    const totalLitros = datosFiltrados.combustible.reduce(
-      (acc, c) => acc + (c.litros || 0),
-      0
-    );
-    const totalViajes = datosFiltrados.viajes.length;
-    const totalKm = datosFiltrados.viajes.reduce(
-      (acc, v) => acc + (v.km_recorridos || 0),
-      0
-    );
-    const totalVolumen = datosFiltrados.viajes.reduce(
-      (acc, v) => acc + (v.volumen || 0),
-      0
-    );
+    const totalCombustible = datosFiltrados.combustible.reduce((acc, c) => acc + (c.costo_total || 0), 0);
+    const totalLitros = datosFiltrados.combustible.reduce((acc, c) => acc + (c.litros || 0), 0);
+    const totalRemitos = datosFiltrados.remitos.length;
+    const totalViajes = datosFiltrados.remitos.reduce((acc, r) => acc + (r.cantidad_viajes || 0), 0);
+    const costoRemitos = datosFiltrados.remitos.reduce((acc, r) => acc + (r.precio_total || 0), 0);
     const totalMantenimientos = datosFiltrados.mantenimientos.length;
-    const costoMantenimientos = datosFiltrados.mantenimientos.reduce(
-      (acc, m) => acc + (m.costo_total || 0),
-      0
-    );
+    const costoMantenimientos = datosFiltrados.mantenimientos.reduce((acc, m) => acc + (m.costo_total || 0), 0);
 
     return {
       totalCombustible,
       totalLitros,
+      totalRemitos,
       totalViajes,
-      totalKm,
-      totalVolumen,
+      costoRemitos,
       totalMantenimientos,
       costoMantenimientos,
-      gastoTotal: totalCombustible + costoMantenimientos,
+      gastoTotal: totalCombustible + costoMantenimientos + costoRemitos,
     };
   }, [datosFiltrados]);
 
-  // Datos para el gráfico mensual
   const datosGraficoMensual = useMemo(() => {
     const mesesMap = new Map<string, { combustible: number; mantenimiento: number }>();
 
@@ -222,7 +193,6 @@ export function GastosMaquinaria() {
       }));
   }, [datosFiltrados]);
 
-  // Unificar gastos en una tabla
   const gastosUnificados = useMemo(() => {
     const gastos: GastoUnificado[] = [];
 
@@ -237,14 +207,15 @@ export function GastosMaquinaria() {
       });
     });
 
-    datosFiltrados.viajes.forEach((v) => {
+    datosFiltrados.remitos.forEach((r) => {
+      const ruta = [r.desde, r.hasta].filter(Boolean).join(" → ");
       gastos.push({
-        id: v.id,
-        fecha: v.fecha,
-        tipo: "viaje",
-        descripcion: `${v.origen} → ${v.destino} (${v.material})`,
-        costo: 0,
-        obra: v.obra?.nombre,
+        id: r.id,
+        fecha: r.fecha,
+        tipo: "remito",
+        descripcion: `Remito #${r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""} - ${r.cantidad_viajes || 1} viaje(s)`,
+        costo: r.precio_total || 0,
+        obra: r.obra?.nombre,
       });
     });
 
@@ -264,7 +235,7 @@ export function GastosMaquinaria() {
 
   const tipoGastoConfig = {
     combustible: { label: "Combustible", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" },
-    viaje: { label: "Viaje", className: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
+    remito: { label: "Remito", className: "bg-blue-500/20 text-blue-400 border-blue-500/30" },
     mantenimiento: { label: "Mantenimiento", className: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
   };
 
@@ -275,27 +246,20 @@ export function GastosMaquinaria() {
 
   const exportarExcel = () => {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
-    if (!maquinaria) {
-      toast.error("Selecciona una maquinaria primero");
-      return;
-    }
+    if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
 
     const workbook = XLSX.utils.book_new();
 
-    // Hoja resumen
     const resumenData = [
       ["Gastos por Maquinaria"],
       [""],
       ["Maquinaria:", maquinaria?.nombre || ""],
       ["Código:", maquinaria?.codigo || ""],
       ["Tipo:", tiposConfig[maquinaria.tipo] || maquinaria.tipo],
-      [
-        "Período:",
-        `${fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio"} - ${fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual"}`,
-      ],
+      ["Período:", `${fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio"} - ${fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual"}`],
       [""],
       ["Combustible", `$${totales.totalCombustible.toLocaleString()}`, `${totales.totalLitros.toLocaleString()} L`],
-      ["Viajes", `${totales.totalViajes}`, `${totales.totalKm.toLocaleString()} km`],
+      ["Remitos/Viajes", `$${totales.costoRemitos.toLocaleString()}`, `${totales.totalRemitos} remitos / ${totales.totalViajes} viajes`],
       ["Mantenimientos", `$${totales.costoMantenimientos.toLocaleString()}`, `${totales.totalMantenimientos} servicios`],
       [""],
       ["GASTO TOTAL", `$${totales.gastoTotal.toLocaleString()}`],
@@ -303,7 +267,6 @@ export function GastosMaquinaria() {
     const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
     XLSX.utils.book_append_sheet(workbook, wsResumen, "Resumen");
 
-    // Hoja detalle
     const detalleData = [
       ["Fecha", "Tipo", "Descripción", "Obra", "Costo"],
       ...gastosUnificados.map((g) => [
@@ -324,10 +287,7 @@ export function GastosMaquinaria() {
 
   const exportarPDF = async () => {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
-    if (!maquinaria) {
-      toast.error("Selecciona una maquinaria primero");
-      return;
-    }
+    if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
 
     const gastosParaPDF = gastosUnificados.map((g) => ({
       fecha: g.fecha,
@@ -374,9 +334,7 @@ export function GastosMaquinaria() {
               <SelectContent className="bg-background z-50">
                 <SelectItem value="todos">Todos los tipos</SelectItem>
                 {Object.entries(tiposConfig).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -422,13 +380,7 @@ export function GastosMaquinaria() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={fechaDesde}
-                onSelect={setFechaDesde}
-                locale={es}
-                className="pointer-events-auto"
-              />
+              <CalendarComponent mode="single" selected={fechaDesde} onSelect={setFechaDesde} locale={es} className="pointer-events-auto" />
             </PopoverContent>
           </Popover>
           <Popover>
@@ -439,19 +391,11 @@ export function GastosMaquinaria() {
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={fechaHasta}
-                onSelect={setFechaHasta}
-                locale={es}
-                className="pointer-events-auto"
-              />
+              <CalendarComponent mode="single" selected={fechaHasta} onSelect={setFechaHasta} locale={es} className="pointer-events-auto" />
             </PopoverContent>
           </Popover>
           {(fechaDesde || fechaHasta) && (
-            <Button variant="ghost" onClick={limpiarFiltros}>
-              Limpiar
-            </Button>
+            <Button variant="ghost" onClick={limpiarFiltros}>Limpiar</Button>
           )}
         </div>
       </div>
@@ -485,15 +429,15 @@ export function GastosMaquinaria() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
                   <Truck className="w-4 h-4 text-blue-400" />
-                  Viajes
+                  Remitos / Viajes
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  {totales.totalViajes} viajes
+                  ${totales.costoRemitos.toLocaleString()}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {totales.totalKm.toLocaleString()} km • {totales.totalVolumen.toLocaleString()} m³
+                  {totales.totalRemitos} remitos • {totales.totalViajes} viajes
                 </p>
               </CardContent>
             </Card>
@@ -516,6 +460,33 @@ export function GastosMaquinaria() {
             </Card>
           </div>
 
+          {/* Próximo mantenimiento */}
+          {proximoMantenimiento && (
+            <Card className="card-industrial border-amber-500/30 bg-amber-500/5">
+              <CardContent className="py-4">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                  <span className="font-medium text-foreground">Próximo Mantenimiento:</span>
+                  {proximoMantenimiento.fecha && (
+                    <Badge variant="outline" className="border-amber-500/30 text-amber-400">
+                      {format(parseISO(proximoMantenimiento.fecha), "dd/MM/yyyy")}
+                    </Badge>
+                  )}
+                  {proximoMantenimiento.horas && (
+                    <span className="text-sm text-muted-foreground">
+                      a las {proximoMantenimiento.horas.toLocaleString()} hr
+                    </span>
+                  )}
+                  {proximoMantenimiento.km && (
+                    <span className="text-sm text-muted-foreground">
+                      / {proximoMantenimiento.km.toLocaleString()} km
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Gráfico de evolución mensual */}
           {datosGraficoMensual.length > 0 && (
             <Card className="card-industrial">
@@ -526,40 +497,12 @@ export function GastosMaquinaria() {
                 <ChartContainer config={chartConfig} className="h-[300px] w-full">
                   <BarChart data={datosGraficoMensual}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis 
-                      dataKey="mes" 
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      tickLine={{ stroke: 'hsl(var(--border))' }}
-                    />
-                    <YAxis 
-                      tick={{ fill: 'hsl(var(--muted-foreground))' }}
-                      tickLine={{ stroke: 'hsl(var(--border))' }}
-                      tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                    />
-                    <ChartTooltip 
-                      content={
-                        <ChartTooltipContent 
-                          formatter={(value, name) => (
-                            <span>${Number(value).toLocaleString()}</span>
-                          )}
-                        />
-                      } 
-                    />
+                    <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={{ stroke: 'hsl(var(--border))' }} />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={{ stroke: 'hsl(var(--border))' }} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <ChartTooltip content={<ChartTooltipContent formatter={(value) => <span>${Number(value).toLocaleString()}</span>} />} />
                     <Legend />
-                    <Bar 
-                      dataKey="combustible" 
-                      name="Combustible" 
-                      stackId="a" 
-                      fill="hsl(38, 92%, 50%)" 
-                      radius={[0, 0, 0, 0]}
-                    />
-                    <Bar 
-                      dataKey="mantenimiento" 
-                      name="Mantenimiento" 
-                      stackId="a" 
-                      fill="hsl(270, 70%, 60%)" 
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar dataKey="combustible" name="Combustible" stackId="a" fill="hsl(38, 92%, 50%)" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="mantenimiento" name="Mantenimiento" stackId="a" fill="hsl(270, 70%, 60%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartContainer>
               </CardContent>
@@ -572,7 +515,7 @@ export function GastosMaquinaria() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5 text-primary" />
-                  <span className="text-muted-foreground">Gasto Total (Combustible + Mantenimiento)</span>
+                  <span className="text-muted-foreground">Gasto Total (Combustible + Mantenimiento + Remitos)</span>
                 </div>
                 <span className="text-2xl font-bold text-primary">
                   ${totales.gastoTotal.toLocaleString()}
@@ -614,9 +557,7 @@ export function GastosMaquinaria() {
                           </Badge>
                         </TableCell>
                         <TableCell className="max-w-xs truncate">{gasto.descripcion}</TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {gasto.obra || "-"}
-                        </TableCell>
+                        <TableCell className="text-muted-foreground">{gasto.obra || "-"}</TableCell>
                         <TableCell className="text-right font-mono">
                           {gasto.costo > 0 ? `$${gasto.costo.toLocaleString()}` : "-"}
                         </TableCell>
