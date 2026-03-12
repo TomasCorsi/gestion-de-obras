@@ -550,7 +550,7 @@ function generateObraPDF(
       headerRowIndices.add(tableData.length);
       tableData.push([{
         content: currentCategory.toUpperCase(),
-        colSpan: 11,
+        colSpan: 12,
         styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
       }]);
       lastCategory = currentCategory;
