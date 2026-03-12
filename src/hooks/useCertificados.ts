@@ -35,6 +35,15 @@ export interface ConceptoForm {
   tipo?: 'obra' | 'servicio';
 }
 
+export interface CertificadoPago {
+  id: string;
+  certificado_id: string;
+  fecha: string;
+  monto: number;
+  descripcion: string | null;
+  created_at: string;
+}
+
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
 
 export interface Certificado {
