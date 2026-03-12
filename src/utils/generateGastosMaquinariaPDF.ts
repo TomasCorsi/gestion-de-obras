@@ -44,6 +44,15 @@ export interface GastoDetalle {
   costo: number;
 }
 
+export interface RemitoDetalle {
+  numero: string;
+  tipo_material: string;
+  viajes: number;
+  cantidad_total: number;
+  unidad: string;
+  costo: number;
+}
+
 interface ImageData {
   base64: string;
   width: number;
