@@ -213,6 +213,39 @@ export function CertificadoServiceGrid({ items, seccion, conceptos = [], onItems
     );
   }, []);
 
+  const handleDrop = useCallback(
+    (fromIdx: number, toIdx: number) => {
+      if (fromIdx === toIdx) return;
+      setSubCategorias((prev) => {
+        const next = [...prev];
+        const [moved] = next.splice(fromIdx, 1);
+        next.splice(toIdx, 0, moved);
+        // Rebuild items array to match new subcategory order
+        const reordered: CertificadoItemForm[] = [];
+        const ungrouped: CertificadoItemForm[] = [];
+        const grouped = new Map<string, CertificadoItemForm[]>();
+        items.forEach((item) => {
+          const key = item.etapa || "";
+          if (!grouped.has(key)) grouped.set(key, []);
+          grouped.get(key)!.push(item);
+        });
+        next.forEach((s) => {
+          const g = grouped.get(s.nombre);
+          if (g) reordered.push(...g);
+        });
+        // Add any items not in a subcategory
+        items.forEach((item) => {
+          if (!item.etapa || !next.some((s) => s.nombre === item.etapa)) {
+            ungrouped.push(item);
+          }
+        });
+        onItemsChange([...reordered, ...ungrouped]);
+        return next;
+      });
+    },
+    [items, onItemsChange]
+  );
+
   const totalGeneral = items.reduce((s, i) => s + i.subtotal, 0);
 
   return (
