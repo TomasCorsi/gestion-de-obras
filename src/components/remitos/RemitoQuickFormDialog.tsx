@@ -95,6 +95,7 @@ export function RemitoQuickFormDialog({
   clientes,
   generateNumero,
   onSubmit,
+  editingRemito,
 }: RemitoQuickFormDialogProps) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
