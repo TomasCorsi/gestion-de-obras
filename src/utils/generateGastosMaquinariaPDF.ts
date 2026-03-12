@@ -393,7 +393,7 @@ export async function generateGastosMaquinariaPDF(
           data.cell.styles.fillColor = [240, 240, 240];
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fontSize = 6;
-          if (cat && data.column.index === 1) {
+          if (cat && data.column.index === 2) {
             data.cell.colSpan = 2;
           }
         }
