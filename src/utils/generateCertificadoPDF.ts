@@ -421,7 +421,7 @@ function generateServicioPDF(
         headerRowIndices.add(tableData.length);
         tableData.push([{
           content: "  " + etapaName.toUpperCase(),
-          colSpan: 5,
+          colSpan: 6,
           styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
         }]);
       }
