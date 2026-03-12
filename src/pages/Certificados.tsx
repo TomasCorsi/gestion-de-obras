@@ -164,6 +164,11 @@ export default function Certificados() {
     updateCertificadoEstado,
     deleteCertificado,
     reorderEtapas,
+    allPagos,
+    fetchPagos,
+    createPago,
+    deletePago,
+    getPagadoByCert,
   } = useCertificados(selectedObraId);
 
   // Build etapaOrdenMap from conceptos' orden field (min orden per etapa)
