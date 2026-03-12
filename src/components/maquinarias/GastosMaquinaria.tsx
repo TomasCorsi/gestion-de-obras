@@ -232,7 +232,7 @@ export function GastosMaquinaria() {
         combustible: data.combustible,
         mantenimiento: data.mantenimiento,
       }));
-  }, [datosFiltrados]);
+  }, [datosFiltrados, preciosPorMesProducto]);
 
   const gastosUnificados = useMemo(() => {
     const gastos: GastoUnificado[] = [];
