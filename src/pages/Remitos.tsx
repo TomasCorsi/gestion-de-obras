@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { format, parseISO } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +12,7 @@ import {
   Upload,
   Package,
   Plus,
+  Download,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
@@ -22,6 +24,7 @@ import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog } from "@/components/remitos/RemitoQuickFormDialog";
 import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export default function Remitos() {
   const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
@@ -35,6 +38,7 @@ export default function Remitos() {
     fechaHasta: undefined,
     mes: undefined,
     obraId: undefined,
+    maquinariaId: undefined,
   });
   const [importOpen, setImportOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -84,23 +88,47 @@ export default function Remitos() {
     return map;
   }, [clientes, obras]);
 
+  // Maquinarias lookup for search
+  const maquinariasById = useMemo(() => {
+    const map: Record<string, { codigo: string | null; patente: string | null }> = {};
+    maquinarias.forEach(m => { map[m.id] = { codigo: m.codigo, patente: m.patente }; });
+    return map;
+  }, [maquinarias]);
+
   const filteredRemitos = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       filters
     );
 
-    return dateFiltered.filter((r) =>
-      (r.remito_tercero?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.remito_local?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      r.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.tipo_material?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.tipo_transporte?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.proveedor?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (r.cliente?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      ((r as any).cliente_destino?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-    );
-  }, [remitos, filters, searchTerm]);
+    if (!searchTerm) return dateFiltered;
+
+    const term = searchTerm.toLowerCase();
+    return dateFiltered.filter((r) => {
+      // Existing text search
+      if (
+        (r.remito_tercero?.toLowerCase() || "").includes(term) ||
+        (r.remito_local?.toLowerCase() || "").includes(term) ||
+        r.numero.toLowerCase().includes(term) ||
+        (r.tipo_material?.toLowerCase() || "").includes(term) ||
+        (r.tipo_transporte?.toLowerCase() || "").includes(term) ||
+        (r.proveedor?.toLowerCase() || "").includes(term) ||
+        (r.cliente?.toLowerCase() || "").includes(term) ||
+        ((r as any).cliente_destino?.toLowerCase() || "").includes(term)
+      ) return true;
+
+      // Search by maquinaria codigo/patente
+      if (r.maquinaria_id) {
+        const maq = maquinariasById[r.maquinaria_id];
+        if (maq) {
+          if (maq.codigo?.toLowerCase().includes(term)) return true;
+          if (maq.patente?.toLowerCase().includes(term)) return true;
+        }
+      }
+
+      return false;
+    });
+  }, [remitos, filters, searchTerm, maquinariasById]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -127,6 +155,58 @@ export default function Remitos() {
     }
   };
 
+  const exportarExcel = () => {
+    if (filteredRemitos.length === 0) {
+      toast.error("No hay remitos para exportar");
+      return;
+    }
+
+    const workbook = XLSX.utils.book_new();
+
+    const getMaquinariaLabel = (maqId: string | null) => {
+      if (!maqId) return "-";
+      const m = maquinarias.find(m => m.id === maqId);
+      return m ? [m.codigo, m.patente].filter(Boolean).join(" - ") : "-";
+    };
+
+    const data = filteredRemitos.map(r => ({
+      "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
+      "Remito Tercero": r.remito_tercero || "",
+      "Remito Local": r.remito_local || "",
+      "Proveedor": r.proveedor || "",
+      "Desde": r.desde || "",
+      "Hasta": r.hasta || "",
+      "Cliente": r.cliente || "",
+      "Cliente Destino": r.cliente_destino || "",
+      "Tipo Material": r.tipo_material || "",
+      "Material": r.material || "",
+      "Cant. Viajes": r.cantidad_viajes || 1,
+      "Cant. Unitaria": r.cantidad_uni || "",
+      "Unidad": r.unidad || "",
+      "Cantidad Total": r.cantidad || 0,
+      "Precio Unitario": r.precio_unitario || "",
+      "Precio Total": r.precio_total || 0,
+      "Tipo Transporte": r.tipo_transporte || "",
+      "Maquinaria": getMaquinariaLabel(r.maquinaria_id),
+      "Patente Tercero": r.patente_tercero || "",
+      "Observaciones": r.observaciones || "",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Auto-width columns
+    const colWidths = Object.keys(data[0] || {}).map(key => ({
+      wch: Math.max(key.length, ...data.map(row => String((row as any)[key] || "").length).slice(0, 50)) + 2,
+    }));
+    ws["!cols"] = colWidths;
+
+    XLSX.utils.book_append_sheet(workbook, ws, "Remitos");
+
+    const fileName = `Remitos_${format(new Date(), "yyyyMMdd")}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+    toast.success("Excel exportado correctamente");
+  };
+
   // Stats calculations
   const totalRemitos = remitos.length;
   const totalViajes = remitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
@@ -147,7 +227,12 @@ export default function Remitos() {
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
       {/* Filter Bar */}
       <div className="mb-4">
-        <FilterBar obras={obras} onFilterChange={setFilters} />
+        <FilterBar
+          obras={obras}
+          maquinarias={maquinarias}
+          showMaquinariaFilter
+          onFilterChange={setFilters}
+        />
       </div>
 
       {/* Actions Bar */}
@@ -155,7 +240,7 @@ export default function Remitos() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por remito, tipo o transporte..."
+            placeholder="Buscar por remito, tipo, transporte, código o patente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
@@ -167,6 +252,14 @@ export default function Remitos() {
         >
           <Plus className="w-4 h-4" />
           Nuevo
+        </Button>
+        <Button
+          variant="outline"
+          onClick={exportarExcel}
+          className="gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Exportar
         </Button>
         <Button
           variant="outline"
@@ -235,7 +328,6 @@ export default function Remitos() {
           if (results.errors > 0) {
             throw new Error(`${results.errors} errores durante la importación`);
           }
-          // Force explicit refetch after bulk import to ensure grid updates
           setTimeout(() => fetchRemitos(), 500);
         }}
         maquinariasMap={maquinariasMap}
