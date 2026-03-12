@@ -140,8 +140,35 @@ export function RemitoQuickFormDialog({
   }
 
   useEffect(() => {
-    if (open) setForm(getInitialForm());
-  }, [open]);
+    if (open) {
+      if (editingRemito) {
+        setForm({
+          fecha: editingRemito.fecha,
+          remito_tercero: editingRemito.remito_tercero || "",
+          remito_local: editingRemito.remito_local || "",
+          desde: editingRemito.desde || "",
+          hasta: editingRemito.hasta || "",
+          tipo_material: editingRemito.tipo_material || "",
+          tipo_transporte: editingRemito.tipo_transporte || "",
+          maquinaria_id: editingRemito.maquinaria_id || "",
+          patente_tercero: editingRemito.patente_tercero || "",
+          cliente: editingRemito.cliente || "",
+          cliente_destino: editingRemito.cliente_destino || "",
+          cantidad_viajes: editingRemito.cantidad_viajes || 1,
+          cantidad_uni: editingRemito.cantidad_uni || 0,
+          cantidad: editingRemito.cantidad || 0,
+          unidad: editingRemito.unidad || "M3",
+          precio_unitario: editingRemito.precio_unitario || 0,
+          precio_total: editingRemito.precio_total || 0,
+          precio_calc_mode: editingRemito.precio_calc_mode || "viajes",
+          proveedor: editingRemito.proveedor || "",
+          observaciones: editingRemito.observaciones || "",
+        });
+      } else {
+        setForm(getInitialForm());
+      }
+    }
+  }, [open, editingRemito]);
 
   const isDirty = useMemo(() => {
     const initial = getInitialForm();
