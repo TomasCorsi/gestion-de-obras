@@ -256,7 +256,7 @@ export function GastosMaquinaria() {
         id: r.id,
         fecha: r.fecha,
         tipo: "remito",
-        descripcion: `Remito #${r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""} - ${r.cantidad_viajes || 1} viaje(s)`,
+        descripcion: `Remito #${r.remito_local || r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""} - ${r.cantidad_viajes || 1} viaje(s)`,
         costo: r.precio_total || 0,
         obra: r.obra?.nombre,
       });
