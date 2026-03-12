@@ -333,6 +333,7 @@ export default function Certificados() {
     setTipoCert(initialTipo);
     setAnticipoPorcentaje(0);
     setNumeroCert("");
+    setIncluirIva(true);
     setCrearOpen(true);
   };
 
