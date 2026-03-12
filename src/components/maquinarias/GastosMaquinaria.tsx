@@ -18,7 +18,8 @@ import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from "recharts";
 import { useMaquinarias, TipoMaquinaria } from "@/hooks/useMaquinarias";
-import { useCombustible } from "@/hooks/useCombustible";
+import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
+import { usePreciosTodos } from "@/hooks/usePreciosMes";
 import { useRemitos } from "@/hooks/useRemitos";
 import { useMantenimientos } from "@/hooks/useMantenimientos";
 import { cn } from "@/lib/utils";
@@ -67,9 +68,19 @@ const chartConfig = {
 
 export function GastosMaquinaria() {
   const { maquinarias } = useMaquinarias();
-  const { cargas } = useCombustible();
+  const { cargas: cargasRepartidor } = useCargasRepartidorAll();
+  const now = new Date();
+  const { preciosPorMesProducto } = usePreciosTodos(now.getFullYear());
   const { remitos } = useRemitos();
   const { mantenimientos } = useMantenimientos();
+
+  // Helper: get cost for a repartidor carga
+  const getCostoCarga = (carga: { fecha: string; litros: number; tipo_producto: string | null }) => {
+    const mes = parseInt(carga.fecha.split("-")[1], 10);
+    const producto = carga.tipo_producto || "combustible";
+    const precio = preciosPorMesProducto[`${mes}-${producto}`];
+    return precio ? carga.litros * precio : 0;
+  };
 
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
   const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
@@ -145,8 +156,8 @@ export function GastosMaquinaria() {
     };
 
     return {
-      combustible: cargas.filter(
-        (c) => c.maquinaria_id === selectedMaquinariaId && (!c.fecha || filtrarPorFecha(c.fecha))
+      combustible: cargasRepartidor.filter(
+        (c) => c.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(c.fecha)
       ),
       remitos: remitos.filter(
         (r) => r.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(r.fecha)
@@ -155,7 +166,7 @@ export function GastosMaquinaria() {
         (m) => m.maquinaria_id === selectedMaquinariaId && filtrarPorFecha(m.fecha)
       ),
     };
-  }, [selectedMaquinariaId, cargas, remitos, mantenimientos, fechaDesde, fechaHasta]);
+  }, [selectedMaquinariaId, cargasRepartidor, remitos, mantenimientos, fechaDesde, fechaHasta]);
 
   // Próximo mantenimiento: del último mantenimiento completado con datos de próximo service
   const proximoMantenimiento = useMemo(() => {
@@ -176,7 +187,7 @@ export function GastosMaquinaria() {
   }, [selectedMaquinariaId, mantenimientos]);
 
   const totales = useMemo(() => {
-    const totalCombustible = datosFiltrados.combustible.reduce((acc, c) => acc + (c.costo_total || 0), 0);
+    const totalCombustible = datosFiltrados.combustible.reduce((acc, c) => acc + getCostoCarga(c), 0);
     const totalLitros = datosFiltrados.combustible.reduce((acc, c) => acc + (c.litros || 0), 0);
     const totalRemitos = datosFiltrados.remitos.length;
     const totalViajes = datosFiltrados.remitos.reduce((acc, r) => acc + (r.cantidad_viajes || 0), 0);
@@ -203,7 +214,7 @@ export function GastosMaquinaria() {
       if (!c.fecha) return;
       const mes = format(parseISO(c.fecha), "yyyy-MM");
       const actual = mesesMap.get(mes) || { combustible: 0, mantenimiento: 0 };
-      actual.combustible += c.costo_total || 0;
+      actual.combustible += getCostoCarga(c);
       mesesMap.set(mes, actual);
     });
 
@@ -227,12 +238,14 @@ export function GastosMaquinaria() {
     const gastos: GastoUnificado[] = [];
 
     datosFiltrados.combustible.forEach((c) => {
+      const costo = getCostoCarga(c);
+      const producto = c.tipo_producto || "combustible";
       gastos.push({
         id: c.id,
         fecha: c.fecha || "",
         tipo: "combustible",
-        descripcion: `${c.litros?.toLocaleString() || 0} L @ $${c.precio_litro?.toLocaleString() || 0}/L`,
-        costo: c.costo_total || 0,
+        descripcion: `${c.litros?.toLocaleString() || 0} L - ${producto}`,
+        costo,
         obra: c.obra?.nombre,
       });
     });
