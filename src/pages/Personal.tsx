@@ -110,12 +110,23 @@ export default function Personal() {
   });
 
   const today = new Date().toISOString().split("T")[0];
+  const in20Days = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 20);
+    return d.toISOString().split("T")[0];
+  }, []);
 
   const empleadosLicenciaVencida = useMemo(() => {
     return personal.filter(
       (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia < today
     );
   }, [personal, today]);
+
+  const empleadosLicenciaPorVencer = useMemo(() => {
+    return personal.filter(
+      (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia >= today && p.vencimiento_licencia <= in20Days
+    );
+  }, [personal, today, in20Days]);
 
   const filteredPersonal = personal.filter((p) => {
     const fullName = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
