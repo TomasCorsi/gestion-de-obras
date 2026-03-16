@@ -116,8 +116,15 @@ export default function Cotizaciones() {
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
-    const count = cotizaciones.length + 1;
-    return `${year}-${count.toString().padStart(3, "0")}`;
+    let maxNum = 21; // Start from 022 minimum
+    cotizaciones.forEach((c) => {
+      const match = c.numero?.match(/^\d{4}-(\d+)$/);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+    return `${year}-${(maxNum + 1).toString().padStart(3, "0")}`;
   };
 
   const handleNew = () => {
