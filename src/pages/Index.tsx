@@ -16,6 +16,7 @@ import {
   BarChart3, 
   Settings,
   ContactRound,
+  MessageCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
