@@ -42,6 +42,7 @@ const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Combustible = lazy(() => import("./pages/Combustible"));
 const Presentismo = lazy(() => import("./pages/Presentismo"));
+const Mensajes = lazy(() => import("./pages/Mensajes"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -149,6 +150,11 @@ const App = () => (
               <Route path="/reportes" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Reportes />
+                </ProtectedRoute>
+              } />
+              <Route path="/mensajes" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                  <Mensajes />
                 </ProtectedRoute>
               } />
               <Route path="/configuracion" element={
