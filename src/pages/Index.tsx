@@ -16,6 +16,7 @@ import {
   BarChart3, 
   Settings,
   ContactRound,
+  MessageCircle,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -161,6 +162,15 @@ const apps: AppItem[] = [
     iconColor: "text-violet-500",
     bgColor: "bg-violet-500/15",
     description: "Informes y análisis",
+    roles: ['admin', 'capataz']
+  },
+  { 
+    icon: MessageCircle, 
+    label: "Mensajes", 
+    path: "/mensajes", 
+    iconColor: "text-teal-600",
+    bgColor: "bg-teal-600/15",
+    description: "Avisos por WhatsApp",
     roles: ['admin', 'capataz']
   },
   { 
