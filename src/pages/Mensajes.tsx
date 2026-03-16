@@ -196,7 +196,7 @@ export default function Mensajes() {
   }, [personal, hoy, in20Days, plantillaPorVencer]);
 
   return (
-    <MainLayout>
+    <MainLayout title="Mensajes">
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Mensajes</h1>
