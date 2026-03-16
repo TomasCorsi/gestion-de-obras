@@ -42,6 +42,7 @@ const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Combustible = lazy(() => import("./pages/Combustible"));
 const Presentismo = lazy(() => import("./pages/Presentismo"));
+const Mensajes = lazy(() => import("./pages/Mensajes"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
