@@ -165,6 +165,15 @@ const apps: AppItem[] = [
     roles: ['admin', 'capataz']
   },
   { 
+    icon: MessageCircle, 
+    label: "Mensajes", 
+    path: "/mensajes", 
+    iconColor: "text-teal-600",
+    bgColor: "bg-teal-600/15",
+    description: "Avisos por WhatsApp",
+    roles: ['admin', 'capataz']
+  },
+  { 
     icon: Settings, 
     label: "Configuración", 
     path: "/configuracion", 
