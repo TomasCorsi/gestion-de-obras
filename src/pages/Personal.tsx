@@ -59,8 +59,10 @@ import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
 import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
+import { useMemo } from "react";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
