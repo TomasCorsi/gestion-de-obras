@@ -381,9 +381,22 @@ export default function Personal() {
                       </TableCell>
                       <TableCell>
                         {persona.licencia ? (
-                          <span className="flex items-center gap-1 text-muted-foreground">
+                          <span className={cn(
+                            "flex items-center gap-1",
+                            persona.vencimiento_licencia && persona.vencimiento_licencia < today
+                              ? "text-destructive font-medium"
+                              : "text-muted-foreground"
+                          )}>
+                            {persona.vencimiento_licencia && persona.vencimiento_licencia < today && (
+                              <AlertTriangle className="w-3 h-3" />
+                            )}
                             <CreditCard className="w-3 h-3" />
                             {persona.licencia}
+                            {persona.vencimiento_licencia && (
+                              <span className="text-xs ml-1">
+                                (vto: {formatDate(persona.vencimiento_licencia)})
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
