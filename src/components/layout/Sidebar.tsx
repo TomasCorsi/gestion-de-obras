@@ -52,6 +52,7 @@ const menuItems: MenuItem[] = [
   { icon: Package, label: "Stock", path: "/stock", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: ClipboardList, label: "Parte Diario", path: "/parte-diario", roles: ['admin', 'capataz', 'maquinista'] },
   { icon: BarChart3, label: "Reportes", path: "/reportes", roles: ['admin', 'capataz'] },
+  { icon: MessageCircle, label: "Mensajes", path: "/mensajes", roles: ['admin', 'capataz'] },
   { icon: Settings, label: "Configuración", path: "/configuracion", roles: ['admin'] },
 ];
 

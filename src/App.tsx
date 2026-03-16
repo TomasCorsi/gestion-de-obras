@@ -152,7 +152,16 @@ const App = () => (
                   <Reportes />
                 </ProtectedRoute>
               } />
+              <Route path="/mensajes" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz']}>
+                  <Mensajes />
+                </ProtectedRoute>
+              } />
               <Route path="/configuracion" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <Configuracion />
+                </ProtectedRoute>
+              } />
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Configuracion />
                 </ProtectedRoute>
