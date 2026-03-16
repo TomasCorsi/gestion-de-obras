@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
+  MessageCircle,
   LayoutDashboard,
   Building2,
   FileText,
@@ -72,6 +73,12 @@ const appCategories: AppCategory[] = [
       { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin'] },
       { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin'] },
       { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin'] },
+    ],
+  },
+  {
+    name: "Comunicación",
+    apps: [
+      { icon: MessageCircle, label: "Mensajes", path: "/mensajes", color: "bg-teal-500", roles: ['admin'] },
     ],
   },
   {
