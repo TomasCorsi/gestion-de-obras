@@ -76,6 +76,12 @@ const appCategories: AppCategory[] = [
     ],
   },
   {
+    name: "Comunicación",
+    apps: [
+      { icon: MessageCircle, label: "Mensajes", path: "/mensajes", color: "bg-teal-500", roles: ['admin'] },
+    ],
+  },
+  {
     name: "Administración",
     apps: [
       { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin'] },
