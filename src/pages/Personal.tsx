@@ -43,6 +43,7 @@ import {
   ShieldCheck,
   Building,
   Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,8 +59,10 @@ import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
 import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
+import { useMemo } from "react";
 
 const rolesConfig: Record<RolPersonal, { label: string; color: string }> = {
   capataz: { label: "Capataz", color: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30" },
@@ -105,6 +108,14 @@ export default function Personal() {
     banco: "",
     numero_cuenta: "",
   });
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const empleadosLicenciaVencida = useMemo(() => {
+    return personal.filter(
+      (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia < today
+    );
+  }, [personal, today]);
 
   const filteredPersonal = personal.filter((p) => {
     const fullName = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
@@ -294,6 +305,21 @@ export default function Personal() {
             })}
           </div>
 
+          {/* Expired License Alert */}
+          {empleadosLicenciaVencida.length > 0 && (
+            <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Registros vencidos</AlertTitle>
+              <AlertDescription>
+                {empleadosLicenciaVencida.length === 1
+                  ? `${empleadosLicenciaVencida[0].nombre || ""} ${empleadosLicenciaVencida[0].apellido || ""} tiene la licencia vencida (${formatDate(empleadosLicenciaVencida[0].vencimiento_licencia)}).`
+                  : `${empleadosLicenciaVencida.length} empleados tienen la licencia vencida: ${empleadosLicenciaVencida
+                      .map((p) => `${p.nombre || ""} ${p.apellido || ""} (${formatDate(p.vencimiento_licencia)})`)
+                      .join(", ")}.`}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Table */}
           <div className="card-industrial overflow-hidden">
             <Table>
@@ -355,9 +381,22 @@ export default function Personal() {
                       </TableCell>
                       <TableCell>
                         {persona.licencia ? (
-                          <span className="flex items-center gap-1 text-muted-foreground">
+                          <span className={cn(
+                            "flex items-center gap-1",
+                            persona.vencimiento_licencia && persona.vencimiento_licencia < today
+                              ? "text-destructive font-medium"
+                              : "text-muted-foreground"
+                          )}>
+                            {persona.vencimiento_licencia && persona.vencimiento_licencia < today && (
+                              <AlertTriangle className="w-3 h-3" />
+                            )}
                             <CreditCard className="w-3 h-3" />
                             {persona.licencia}
+                            {persona.vencimiento_licencia && (
+                              <span className="text-xs ml-1">
+                                (vto: {formatDate(persona.vencimiento_licencia)})
+                              </span>
+                            )}
                           </span>
                         ) : (
                           <span className="text-muted-foreground">-</span>
