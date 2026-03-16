@@ -43,6 +43,7 @@ import {
   ShieldCheck,
   Building,
   Wallet,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
