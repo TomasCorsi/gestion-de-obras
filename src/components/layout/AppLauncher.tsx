@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
+  MessageCircle,
   LayoutDashboard,
   Building2,
   FileText,
