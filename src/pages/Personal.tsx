@@ -305,6 +305,21 @@ export default function Personal() {
             })}
           </div>
 
+          {/* Expired License Alert */}
+          {empleadosLicenciaVencida.length > 0 && (
+            <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Registros vencidos</AlertTitle>
+              <AlertDescription>
+                {empleadosLicenciaVencida.length === 1
+                  ? `${empleadosLicenciaVencida[0].nombre || ""} ${empleadosLicenciaVencida[0].apellido || ""} tiene la licencia vencida (${formatDate(empleadosLicenciaVencida[0].vencimiento_licencia)}).`
+                  : `${empleadosLicenciaVencida.length} empleados tienen la licencia vencida: ${empleadosLicenciaVencida
+                      .map((p) => `${p.nombre || ""} ${p.apellido || ""} (${formatDate(p.vencimiento_licencia)})`)
+                      .join(", ")}.`}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Table */}
           <div className="card-industrial overflow-hidden">
             <Table>
