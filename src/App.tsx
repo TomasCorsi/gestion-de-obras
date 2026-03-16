@@ -162,10 +162,6 @@ const App = () => (
                   <Configuracion />
                 </ProtectedRoute>
               } />
-                <ProtectedRoute requiredRoles={['admin']}>
-                  <Configuracion />
-                </ProtectedRoute>
-              } />
 
               {/* Parte Diario - accessible to all authenticated roles */}
               <Route path="/parte-diario" element={
