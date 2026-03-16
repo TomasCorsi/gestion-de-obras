@@ -331,6 +331,20 @@ export default function Personal() {
             </Alert>
           )}
 
+          {empleadosLicenciaPorVencer.length > 0 && (
+            <Alert className="border-chart-4/50 bg-chart-4/10 [&>svg]:text-chart-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle className="text-chart-4">Próximos a vencer (20 días)</AlertTitle>
+              <AlertDescription>
+                {empleadosLicenciaPorVencer.length === 1
+                  ? `${empleadosLicenciaPorVencer[0].nombre || ""} ${empleadosLicenciaPorVencer[0].apellido || ""} tiene la licencia próxima a vencer (${formatDate(empleadosLicenciaPorVencer[0].vencimiento_licencia)}).`
+                  : `${empleadosLicenciaPorVencer.length} empleados tienen la licencia próxima a vencer: ${empleadosLicenciaPorVencer
+                      .map((p) => `${p.nombre || ""} ${p.apellido || ""} (${formatDate(p.vencimiento_licencia)})`)
+                      .join(", ")}.`}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Table */}
           <div className="card-industrial overflow-hidden">
             <Table>
