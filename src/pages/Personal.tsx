@@ -109,6 +109,14 @@ export default function Personal() {
     numero_cuenta: "",
   });
 
+  const today = new Date().toISOString().split("T")[0];
+
+  const empleadosLicenciaVencida = useMemo(() => {
+    return personal.filter(
+      (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia < today
+    );
+  }, [personal, today]);
+
   const filteredPersonal = personal.filter((p) => {
     const fullName = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
     const matchesSearch =
