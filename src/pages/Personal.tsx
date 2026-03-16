@@ -110,12 +110,23 @@ export default function Personal() {
   });
 
   const today = new Date().toISOString().split("T")[0];
+  const in20Days = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 20);
+    return d.toISOString().split("T")[0];
+  }, []);
 
   const empleadosLicenciaVencida = useMemo(() => {
     return personal.filter(
       (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia < today
     );
   }, [personal, today]);
+
+  const empleadosLicenciaPorVencer = useMemo(() => {
+    return personal.filter(
+      (p) => p.activo && p.vencimiento_licencia && p.vencimiento_licencia >= today && p.vencimiento_licencia <= in20Days
+    );
+  }, [personal, today, in20Days]);
 
   const filteredPersonal = personal.filter((p) => {
     const fullName = `${p.nombre || ""} ${p.apellido || ""}`.toLowerCase();
@@ -320,6 +331,20 @@ export default function Personal() {
             </Alert>
           )}
 
+          {empleadosLicenciaPorVencer.length > 0 && (
+            <Alert className="border-chart-4/50 bg-chart-4/10 [&>svg]:text-chart-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle className="text-chart-4">Próximos a vencer (20 días)</AlertTitle>
+              <AlertDescription>
+                {empleadosLicenciaPorVencer.length === 1
+                  ? `${empleadosLicenciaPorVencer[0].nombre || ""} ${empleadosLicenciaPorVencer[0].apellido || ""} tiene la licencia próxima a vencer (${formatDate(empleadosLicenciaPorVencer[0].vencimiento_licencia)}).`
+                  : `${empleadosLicenciaPorVencer.length} empleados tienen la licencia próxima a vencer: ${empleadosLicenciaPorVencer
+                      .map((p) => `${p.nombre || ""} ${p.apellido || ""} (${formatDate(p.vencimiento_licencia)})`)
+                      .join(", ")}.`}
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Table */}
           <div className="card-industrial overflow-hidden">
             <Table>
@@ -381,23 +406,29 @@ export default function Personal() {
                       </TableCell>
                       <TableCell>
                         {persona.licencia ? (
-                          <span className={cn(
-                            "flex items-center gap-1",
-                            persona.vencimiento_licencia && persona.vencimiento_licencia < today
-                              ? "text-destructive font-medium"
-                              : "text-muted-foreground"
-                          )}>
-                            {persona.vencimiento_licencia && persona.vencimiento_licencia < today && (
-                              <AlertTriangle className="w-3 h-3" />
-                            )}
-                            <CreditCard className="w-3 h-3" />
-                            {persona.licencia}
-                            {persona.vencimiento_licencia && (
-                              <span className="text-xs ml-1">
-                                (vto: {formatDate(persona.vencimiento_licencia)})
+                          (() => {
+                            const isExpired = persona.vencimiento_licencia && persona.vencimiento_licencia < today;
+                            const isExpiringSoon = persona.vencimiento_licencia && !isExpired && persona.vencimiento_licencia <= in20Days;
+                            return (
+                              <span className={cn(
+                                "flex items-center gap-1",
+                                isExpired ? "text-destructive font-medium" :
+                                isExpiringSoon ? "text-chart-4 font-medium" :
+                                "text-muted-foreground"
+                              )}>
+                                {(isExpired || isExpiringSoon) && (
+                                  <AlertTriangle className="w-3 h-3" />
+                                )}
+                                <CreditCard className="w-3 h-3" />
+                                {persona.licencia}
+                                {persona.vencimiento_licencia && (
+                                  <span className="text-xs ml-1">
+                                    (vto: {formatDate(persona.vencimiento_licencia)})
+                                  </span>
+                                )}
                               </span>
-                            )}
-                          </span>
+                            );
+                          })()
                         ) : (
                           <span className="text-muted-foreground">-</span>
                         )}
