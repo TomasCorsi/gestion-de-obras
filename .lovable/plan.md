@@ -1,45 +1,26 @@
 
 
-# Rendimiento por Obra en Partes Diarios
+# Agregar búsqueda por número de obra en "Desde" y "Hasta" de Remitos
 
-## Objetivo
-Agregar una nueva pestaña "Por Obra" en la vista admin de Partes Diarios que muestre el rendimiento operativo de cada obra, con filtros por período (día, semana, mes, rango personalizado).
+## Problema
+Las opciones de obras en los campos "Desde" y "Hasta" solo muestran el nombre de la obra. No se puede buscar por número de obra.
 
-## Ubicación
-Nueva pestaña en `ParteDiarioAdminView.tsx` (junto a Listado, Rendimiento, Faltantes). La grilla de tabs pasa de 3 a 4 columnas.
+## Solución
+Modificar `obrasOptions` en `RemitosDataGrid.tsx` para incluir el número de obra en el label, permitiendo que el autocompletado de `GridSelectCell` lo encuentre al buscar.
 
-## Datos a mostrar por obra
-Agrupando los `partes_diarios` por `obra_id`:
-- **Partes completados / borradores**
-- **Horas máquina totales** (horometro_fin - horometro_inicio)
-- **Viajes totales** (cantidad_viajes)
-- **Movimiento interno** (cantidad_movimiento_interno)
-- **Combustible total** (combustible)
-- **Empleados únicos** que trabajaron en esa obra
-- **Tareas reportadas** (lista de tareas únicas)
+### Cambio en `src/components/remitos/RemitosDataGrid.tsx` (líneas 150-156)
 
-## Filtros de período
-Selector con opciones: Hoy, Esta semana, Este mes, Mes anterior, Rango personalizado (date pickers). Al cambiar el período se re-filtran los partes.
+Actualizar la construcción de `obrasOptions` para incluir el número de obra en el label cuando exista:
 
-## Vista
-1. **KPIs globales** del período: total partes, total horas máquina, total viajes, total combustible
-2. **Tabla de obras** con columnas: Obra, Partes, Empleados, Hs Máquina, Viajes, Mov. Interno, Combustible
-3. **Expandir obra** (click en fila) → detalle con tabla de empleados que trabajaron en esa obra y sus métricas individuales
+```typescript
+const obrasOptions = useMemo(() => {
+  const options = obras.map((o) => ({
+    value: o.nombre,
+    label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre,
+  }));
+  return [{ value: "", label: "Seleccionar..." }, ...options];
+}, [obras]);
+```
 
-## Archivos a crear/modificar
-
-### Nuevo: `src/hooks/useRendimientoObras.ts`
-Hook que recibe fechaDesde/fechaHasta, consulta `partes_diarios` con joins a personal/obras/maquinarias, y agrupa por obra calculando los totales.
-
-### Nuevo: `src/components/parte-diario/ParteDiarioRendimientoObras.tsx`
-Componente con:
-- Selector de período (presets + rango custom)
-- KPIs del período
-- Tabla de obras con métricas agregadas
-- Fila expandible con detalle por empleado
-
-### Modificar: `src/components/parte-diario/ParteDiarioAdminView.tsx`
-- Agregar 4ta pestaña "Por Obra" con ícono `Building2`
-- TabsList grid-cols-3 → grid-cols-4
-- Importar y renderizar `ParteDiarioRendimientoObras`
+El `value` sigue siendo `o.nombre` (lo que se guarda en la DB), pero el `label` muestra el número para facilitar la búsqueda. Cuando el usuario tipea un número de obra, el filtro del `GridSelectCell` lo encontrará en el label.
 

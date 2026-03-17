@@ -18,7 +18,8 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Download,
-  UserX
+  UserX,
+  Building2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +61,7 @@ import { ParteDiarioKPIs } from "./ParteDiarioKPIs";
 import { ParteDiarioQuickFilters } from "./ParteDiarioQuickFilters";
 import { ParteDiarioCardView } from "./ParteDiarioCardView";
 import { EmpleadosSinParteTab } from "./EmpleadosSinParteTab";
+import { ParteDiarioRendimientoObras } from "./ParteDiarioRendimientoObras";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ParteDiarioEditDialog } from "./ParteDiarioEditDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
@@ -255,7 +257,7 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="grid w-full max-w-2xl grid-cols-4">
             <TabsTrigger value="listado" className="gap-2">
               <List className="h-4 w-4" />
               Listado
@@ -263,6 +265,10 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
             <TabsTrigger value="rendimiento" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Rendimiento
+            </TabsTrigger>
+            <TabsTrigger value="por_obra" className="gap-2">
+              <Building2 className="h-4 w-4" />
+              Por Obra
             </TabsTrigger>
             <TabsTrigger value="faltantes" className="gap-2">
               <UserX className="h-4 w-4" />
@@ -535,6 +541,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
           {/* Rendimiento Tab */}
           <TabsContent value="rendimiento" className="mt-4">
             <ParteDiarioRendimientoTab personal={personal} />
+          </TabsContent>
+
+          {/* Por Obra Tab */}
+          <TabsContent value="por_obra" className="mt-4">
+            <ParteDiarioRendimientoObras />
           </TabsContent>
 
           {/* Faltantes Tab */}
