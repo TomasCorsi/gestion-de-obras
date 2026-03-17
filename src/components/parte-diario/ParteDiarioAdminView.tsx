@@ -543,6 +543,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
             <ParteDiarioRendimientoTab personal={personal} />
           </TabsContent>
 
+          {/* Por Obra Tab */}
+          <TabsContent value="por_obra" className="mt-4">
+            <ParteDiarioRendimientoObras />
+          </TabsContent>
+
           {/* Faltantes Tab */}
           <TabsContent value="faltantes" className="mt-4">
             <EmpleadosSinParteTab />
