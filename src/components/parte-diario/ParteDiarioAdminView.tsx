@@ -61,6 +61,7 @@ import { ParteDiarioKPIs } from "./ParteDiarioKPIs";
 import { ParteDiarioQuickFilters } from "./ParteDiarioQuickFilters";
 import { ParteDiarioCardView } from "./ParteDiarioCardView";
 import { EmpleadosSinParteTab } from "./EmpleadosSinParteTab";
+import { ParteDiarioRendimientoObras } from "./ParteDiarioRendimientoObras";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ParteDiarioEditDialog } from "./ParteDiarioEditDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
