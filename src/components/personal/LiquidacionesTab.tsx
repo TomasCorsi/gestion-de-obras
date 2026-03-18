@@ -287,8 +287,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
       if (empleado) {
         // Verificar que la modalidad coincida (excepto para vacaciones que acepta cualquiera)
         const empleadoModalidad = empleado.modalidad_pago || "mensual";
-        const skipModalidadCheck = modalidad === "vacaciones";
-        if (!skipModalidadCheck && empleadoModalidad !== modalidad) {
+        const skipModalidadCheck = modalidadesSeleccionadas.includes("vacaciones");
+        if (!skipModalidadCheck && !modalidadesSeleccionadas.includes(empleadoModalidad as ModalidadPago)) {
           status = "modalidad_incorrecta";
         } else if (empleado.numero_cuenta) {
           status = "listo";
