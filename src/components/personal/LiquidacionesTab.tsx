@@ -356,7 +356,9 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     }
 
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
-    const modalidadLabel = modalidades.find(m => m.value === modalidad)?.label || modalidad;
+    const modalidadLabel = modalidadesSeleccionadas
+      .map(m => modalidades.find(mo => mo.value === m)?.label || m)
+      .join("-");
     const today = new Date().toISOString().split("T")[0];
     
     // Prepare data for Excel - account number without prefix, importe rounded
