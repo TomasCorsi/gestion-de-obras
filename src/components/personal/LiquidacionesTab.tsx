@@ -30,6 +30,7 @@ import { PersonalDB } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type BancoDestino = "galicia" | "santander";
 type ModalidadPago = "mensual" | "quincenal" | "vacaciones";
@@ -117,7 +118,7 @@ function findColumnIndex(headers: string[], possibleNames: string[]): number {
 
 export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
   const [banco, setBanco] = useState<BancoDestino | "">("");
-  const [modalidad, setModalidad] = useState<ModalidadPago | "">("");
+  const [modalidadesSeleccionadas, setModalidadesSeleccionadas] = useState<ModalidadPago[]>([]);
   const [rows, setRows] = useState<LiquidacionRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -182,8 +183,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
         if (empleado) {
           // Verificar que la modalidad coincida (excepto para vacaciones que acepta cualquiera)
           const empleadoModalidad = empleado.modalidad_pago || "mensual";
-          const skipModalidadCheck = modalidad === "vacaciones";
-          if (!skipModalidadCheck && empleadoModalidad !== modalidad) {
+          const skipModalidadCheck = modalidadesSeleccionadas.includes("vacaciones");
+          if (!skipModalidadCheck && !modalidadesSeleccionadas.includes(empleadoModalidad as ModalidadPago)) {
             status = "modalidad_incorrecta";
           } else if (empleado.numero_cuenta) {
             status = "listo";
@@ -218,8 +219,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!banco || !modalidad) {
-      toast.error("Selecciona banco y modalidad antes de cargar el archivo");
+    if (!banco || modalidadesSeleccionadas.length === 0) {
+      toast.error("Selecciona banco y al menos una modalidad antes de cargar el archivo");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
@@ -286,8 +287,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
       if (empleado) {
         // Verificar que la modalidad coincida (excepto para vacaciones que acepta cualquiera)
         const empleadoModalidad = empleado.modalidad_pago || "mensual";
-        const skipModalidadCheck = modalidad === "vacaciones";
-        if (!skipModalidadCheck && empleadoModalidad !== modalidad) {
+        const skipModalidadCheck = modalidadesSeleccionadas.includes("vacaciones");
+        if (!skipModalidadCheck && !modalidadesSeleccionadas.includes(empleadoModalidad as ModalidadPago)) {
           status = "modalidad_incorrecta";
         } else if (empleado.numero_cuenta) {
           status = "listo";
@@ -319,8 +320,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const file = e.dataTransfer.files[0];
     if (!file) return;
 
-    if (!banco || !modalidad) {
-      toast.error("Selecciona banco y modalidad antes de cargar el archivo");
+    if (!banco || modalidadesSeleccionadas.length === 0) {
+      toast.error("Selecciona banco y al menos una modalidad antes de cargar el archivo");
       return;
     }
 
@@ -355,7 +356,9 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     }
 
     const bancoLabel = bancos.find(b => b.value === banco)?.label || banco;
-    const modalidadLabel = modalidades.find(m => m.value === modalidad)?.label || modalidad;
+    const modalidadLabel = modalidadesSeleccionadas
+      .map(m => modalidades.find(mo => mo.value === m)?.label || m)
+      .join("-");
     const today = new Date().toISOString().split("T")[0];
     
     // Prepare data for Excel - account number without prefix, importe rounded
@@ -457,18 +460,24 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
               <FileText className="w-4 h-4" />
               Modalidad de pago
             </Label>
-            <Select value={modalidad} onValueChange={(v) => setModalidad(v as ModalidadPago)}>
-              <SelectTrigger className="bg-muted border-border">
-                <SelectValue placeholder="Seleccionar modalidad..." />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                {modalidades.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              type="multiple"
+              value={modalidadesSeleccionadas}
+              onValueChange={(v) => setModalidadesSeleccionadas(v as ModalidadPago[])}
+              className="justify-start gap-2"
+            >
+              {modalidades.map((m) => (
+                <ToggleGroupItem
+                  key={m.value}
+                  value={m.value}
+                  variant="outline"
+                  size="sm"
+                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                >
+                  {m.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         </div>
 
@@ -476,20 +485,20 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
         <div
           className={cn(
             "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-            banco && modalidad
+            banco && modalidadesSeleccionadas.length > 0
               ? "border-primary/50 bg-primary/5 hover:border-primary cursor-pointer" 
               : "border-border bg-muted/50 cursor-not-allowed opacity-60"
           )}
-          onDrop={banco && modalidad ? handleDrop : undefined}
-          onDragOver={banco && modalidad ? handleDragOver : undefined}
-          onClick={() => banco && modalidad && fileInputRef.current?.click()}
+          onDrop={banco && modalidadesSeleccionadas.length > 0 ? handleDrop : undefined}
+          onDragOver={banco && modalidadesSeleccionadas.length > 0 ? handleDragOver : undefined}
+          onClick={() => banco && modalidadesSeleccionadas.length > 0 && fileInputRef.current?.click()}
         >
-          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco && modalidad ? "text-primary" : "text-muted-foreground")} />
+          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco && modalidadesSeleccionadas.length > 0 ? "text-primary" : "text-muted-foreground")} />
           <p className="text-foreground font-medium">
-            {banco && modalidad ? "Arrastra tu archivo CSV aquí" : "Selecciona banco y modalidad primero"}
+            {banco && modalidadesSeleccionadas.length > 0 ? "Arrastra tu archivo CSV aquí" : "Selecciona banco y modalidad primero"}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {banco && modalidad ? "o haz clic para seleccionar (CSV o Excel)" : ""}
+            {banco && modalidadesSeleccionadas.length > 0 ? "o haz clic para seleccionar (CSV o Excel)" : ""}
           </p>
           {fileName && (
             <Badge variant="outline" className="mt-3">
@@ -502,7 +511,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
             accept=".csv,.txt,.tsv,.xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
-            disabled={!banco || !modalidad}
+            disabled={!banco || modalidadesSeleccionadas.length === 0}
           />
         </div>
       </div>
