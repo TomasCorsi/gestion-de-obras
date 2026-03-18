@@ -219,8 +219,8 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!banco || !modalidad) {
-      toast.error("Selecciona banco y modalidad antes de cargar el archivo");
+    if (!banco || modalidadesSeleccionadas.length === 0) {
+      toast.error("Selecciona banco y al menos una modalidad antes de cargar el archivo");
       if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
