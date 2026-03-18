@@ -485,20 +485,20 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
         <div
           className={cn(
             "border-2 border-dashed rounded-lg p-8 text-center transition-colors",
-            banco && modalidad
+            banco && modalidadesSeleccionadas.length > 0
               ? "border-primary/50 bg-primary/5 hover:border-primary cursor-pointer" 
               : "border-border bg-muted/50 cursor-not-allowed opacity-60"
           )}
-          onDrop={banco && modalidad ? handleDrop : undefined}
-          onDragOver={banco && modalidad ? handleDragOver : undefined}
-          onClick={() => banco && modalidad && fileInputRef.current?.click()}
+          onDrop={banco && modalidadesSeleccionadas.length > 0 ? handleDrop : undefined}
+          onDragOver={banco && modalidadesSeleccionadas.length > 0 ? handleDragOver : undefined}
+          onClick={() => banco && modalidadesSeleccionadas.length > 0 && fileInputRef.current?.click()}
         >
-          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco && modalidad ? "text-primary" : "text-muted-foreground")} />
+          <Upload className={cn("w-10 h-10 mx-auto mb-3", banco && modalidadesSeleccionadas.length > 0 ? "text-primary" : "text-muted-foreground")} />
           <p className="text-foreground font-medium">
-            {banco && modalidad ? "Arrastra tu archivo CSV aquí" : "Selecciona banco y modalidad primero"}
+            {banco && modalidadesSeleccionadas.length > 0 ? "Arrastra tu archivo CSV aquí" : "Selecciona banco y modalidad primero"}
           </p>
           <p className="text-sm text-muted-foreground mt-1">
-            {banco && modalidad ? "o haz clic para seleccionar (CSV o Excel)" : ""}
+            {banco && modalidadesSeleccionadas.length > 0 ? "o haz clic para seleccionar (CSV o Excel)" : ""}
           </p>
           {fileName && (
             <Badge variant="outline" className="mt-3">
