@@ -460,18 +460,24 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
               <FileText className="w-4 h-4" />
               Modalidad de pago
             </Label>
-            <Select value={modalidad} onValueChange={(v) => setModalidad(v as ModalidadPago)}>
-              <SelectTrigger className="bg-muted border-border">
-                <SelectValue placeholder="Seleccionar modalidad..." />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                {modalidades.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <ToggleGroup
+              type="multiple"
+              value={modalidadesSeleccionadas}
+              onValueChange={(v) => setModalidadesSeleccionadas(v as ModalidadPago[])}
+              className="justify-start gap-2"
+            >
+              {modalidades.map((m) => (
+                <ToggleGroupItem
+                  key={m.value}
+                  value={m.value}
+                  variant="outline"
+                  size="sm"
+                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                >
+                  {m.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         </div>
 
