@@ -283,10 +283,17 @@ export const ParteDiarioFormView = ({
     if (savingType !== null || isSaving) return;
     
     setSavingType('draft');
+    const timeout = setTimeout(() => {
+      setSavingType(null);
+      toast.error('La operación tardó demasiado. Intenta nuevamente.');
+    }, 15000);
     try {
       await onSaveDraft(buildParteData());
       clearDraft();
+    } catch {
+      // Error already handled by hook
     } finally {
+      clearTimeout(timeout);
       setSavingType(null);
     }
   };
@@ -296,10 +303,17 @@ export const ParteDiarioFormView = ({
     
     if (!validateForComplete()) return;
     setSavingType('complete');
+    const timeout = setTimeout(() => {
+      setSavingType(null);
+      toast.error('La operación tardó demasiado. Intenta nuevamente.');
+    }, 15000);
     try {
       await onComplete(buildParteData());
       clearDraft();
+    } catch {
+      // Error already handled by hook
     } finally {
+      clearTimeout(timeout);
       setSavingType(null);
     }
   };

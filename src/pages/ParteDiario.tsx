@@ -282,13 +282,21 @@ const ParteDiario = () => {
   };
 
   const handleSaveDraft = async (data: any) => {
-    await saveDraft(data, editingParte?.id);
-    handleBack();
+    try {
+      await saveDraft(data, editingParte?.id);
+      handleBack();
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    }
   };
 
   const handleComplete = async (data: any) => {
-    await completeParte(data, editingParte?.id);
-    handleBack();
+    try {
+      await completeParte(data, editingParte?.id);
+      handleBack();
+    } catch (error) {
+      console.error('Error completing parte:', error);
+    }
   };
 
   const handleGoToAlerts = () => {
