@@ -118,7 +118,7 @@ function findColumnIndex(headers: string[], possibleNames: string[]): number {
 
 export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
   const [banco, setBanco] = useState<BancoDestino | "">("");
-  const [modalidad, setModalidad] = useState<ModalidadPago | "">("");
+  const [modalidadesSeleccionadas, setModalidadesSeleccionadas] = useState<ModalidadPago[]>([]);
   const [rows, setRows] = useState<LiquidacionRow[]>([]);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
