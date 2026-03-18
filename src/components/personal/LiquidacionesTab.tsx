@@ -30,6 +30,7 @@ import { PersonalDB } from "@/hooks/usePersonal";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 type BancoDestino = "galicia" | "santander";
 type ModalidadPago = "mensual" | "quincenal" | "vacaciones";
