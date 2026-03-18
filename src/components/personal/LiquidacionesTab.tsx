@@ -511,7 +511,7 @@ export function LiquidacionesTab({ personal }: LiquidacionesTabProps) {
             accept=".csv,.txt,.tsv,.xlsx,.xls"
             onChange={handleFileSelect}
             className="hidden"
-            disabled={!banco || !modalidad}
+            disabled={!banco || modalidadesSeleccionadas.length === 0}
           />
         </div>
       </div>
