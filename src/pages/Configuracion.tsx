@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
+import { supabase } from "@/integrations/supabase/client";
+import * as XLSX from "xlsx";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { UserManagement } from "@/components/configuracion/UserManagement";
+import { Loader2 } from "lucide-react";
 
 export default function Configuracion() {
   const [settings, setSettings] = useState({
@@ -41,8 +44,39 @@ export default function Configuracion() {
     autenticacion_2fa: false,
   });
 
+  const [exportando, setExportando] = useState(false);
+
   const handleSave = () => {
     toast.success("Configuración guardada correctamente");
+  };
+
+  const handleExportarDatos = async () => {
+    setExportando(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("backup-database");
+
+      if (error) {
+        toast.error("Error al generar el backup: " + error.message);
+        return;
+      }
+
+      const workbook = XLSX.utils.book_new();
+
+      Object.entries(data).forEach(([tableName, rows]) => {
+        const worksheet = XLSX.utils.json_to_sheet(rows as any[]);
+        // Excel sheet names max 31 chars
+        const sheetName = tableName.substring(0, 31);
+        XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+      });
+
+      const fecha = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(workbook, `Backup_CalaminaSur_${fecha}.xlsx`);
+      toast.success("Backup descargado correctamente");
+    } catch (err: any) {
+      toast.error("Error al exportar: " + (err?.message || "Error desconocido"));
+    } finally {
+      setExportando(false);
+    }
   };
 
   return (
@@ -247,9 +281,18 @@ export default function Configuracion() {
             </div>
             <Separator className="bg-border" />
             <div className="pt-2">
-              <Button variant="outline" className="w-full">
-                <Database className="w-4 h-4 mr-2" />
-                Exportar Datos
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleExportarDatos}
+                disabled={exportando}
+              >
+                {exportando ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Database className="w-4 h-4 mr-2" />
+                )}
+                {exportando ? "Generando backup..." : "Exportar Datos (Backup)"}
               </Button>
             </div>
           </CardContent>
