@@ -281,9 +281,18 @@ export default function Configuracion() {
             </div>
             <Separator className="bg-border" />
             <div className="pt-2">
-              <Button variant="outline" className="w-full">
-                <Database className="w-4 h-4 mr-2" />
-                Exportar Datos
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleExportarDatos}
+                disabled={exportando}
+              >
+                {exportando ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Database className="w-4 h-4 mr-2" />
+                )}
+                {exportando ? "Generando backup..." : "Exportar Datos (Backup)"}
               </Button>
             </div>
           </CardContent>
