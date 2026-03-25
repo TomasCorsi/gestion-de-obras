@@ -127,8 +127,7 @@ export default function Remitos() {
 
     if (!searchTerm) return result;
 
-    const term = searchTerm.toLowerCase();
-    return dateFiltered.filter((r) => {
+    return result.filter((r) => {
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
         (r.remito_local?.toLowerCase() || "").includes(term) ||
