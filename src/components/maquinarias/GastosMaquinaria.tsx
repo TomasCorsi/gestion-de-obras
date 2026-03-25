@@ -22,6 +22,8 @@ import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
 import { usePreciosTodos } from "@/hooks/usePreciosMes";
 import { useRemitos } from "@/hooks/useRemitos";
 import { useMantenimientos } from "@/hooks/useMantenimientos";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -87,6 +89,54 @@ export function GastosMaquinaria() {
   const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
+
+  // Query partes_diarios for the selected maquinaria to get operator and KM data
+  const { data: partesDiarios = [] } = useQuery({
+    queryKey: ['partes_diarios_gastos', selectedMaquinariaId],
+    enabled: !!selectedMaquinariaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partes_diarios')
+        .select(`
+          fecha,
+          km_camion,
+          personal:personal_id (nombre, apellido)
+        `)
+        .eq('maquinaria_id', selectedMaquinariaId)
+        .eq('estado', 'completado')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      return data as unknown as Array<{
+        fecha: string;
+        km_camion: number | null;
+        personal: { nombre: string | null; apellido: string | null } | null;
+      }>;
+    },
+  });
+
+  // Build operator lookup by date from partes_diarios
+  const operadorPorFecha = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of partesDiarios) {
+      if (p.personal && !map.has(p.fecha)) {
+        const nombre = [p.personal.nombre, p.personal.apellido].filter(Boolean).join(' ');
+        if (nombre) map.set(p.fecha, nombre);
+      }
+    }
+    return map;
+  }, [partesDiarios]);
+
+  // KM data from partes_diarios filtered by period
+  const kmData = useMemo(() => {
+    const filtered = partesDiarios.filter(p => {
+      const f = parseISO(p.fecha);
+      if (fechaDesde && f < fechaDesde) return false;
+      if (fechaHasta && f > fechaHasta) return false;
+      return true;
+    });
+    const totalKm = filtered.reduce((sum, p) => sum + (p.km_camion || 0), 0);
+    return { totalKm };
+  }, [partesDiarios, fechaDesde, fechaHasta]);
 
   const mesesDisponibles = useMemo(() => {
     const now = new Date();
@@ -333,23 +383,42 @@ export function GastosMaquinaria() {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
     if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
 
-    const gastosParaPDF = gastosUnificados.map((g) => ({
-      fecha: g.fecha,
-      tipo: tipoGastoConfig[g.tipo].label,
-      tipoRaw: g.tipo,
-      descripcion: g.descripcion,
-      obra: g.obra || "-",
-      costo: g.costo,
+    // Build combustible detail with operator
+    const combustibleParaPDF = datosFiltrados.combustible.map((c) => ({
+      fecha: c.fecha,
+      producto: c.tipo_producto || "combustible",
+      litros: c.litros || 0,
+      precioUnitario: (() => {
+        const mes = parseInt(c.fecha.split("-")[1], 10);
+        const producto = c.tipo_producto || "combustible";
+        return preciosPorMesProducto[`${mes}-${producto}`] || 0;
+      })(),
+      costo: getCostoCarga(c),
+      obra: c.obra?.nombre || "-",
+      operador: operadorPorFecha.get(c.fecha) || "-",
     }));
 
+    // Build mantenimiento detail
+    const mantenimientoParaPDF = datosFiltrados.mantenimientos.map((m) => ({
+      fecha: m.fecha,
+      tipo: m.tipo,
+      descripcion: m.descripcion,
+      costoRepuestos: m.costo_repuestos || 0,
+      costoManoObra: m.costo_mano_obra || 0,
+      costo: m.costo_total || 0,
+      tecnico: m.tecnico || "-",
+    }));
+
+    // Build remitos detail with operator
     const remitosParaPDF = datosFiltrados.remitos.map((r) => ({
       fecha: r.fecha,
       numero: r.remito_local || r.numero || "-",
-      tipo_material: r.tipo_material || "-",
+      tipo_material: r.tipo_material || r.material || "-",
       viajes: r.cantidad_viajes || 0,
       cantidad_total: r.cantidad || 0,
       unidad: r.unidad || "-",
       costo: r.precio_total || 0,
+      operador: operadorPorFecha.get(r.fecha) || "-",
     }));
 
     try {
@@ -363,10 +432,13 @@ export function GastosMaquinaria() {
           anio: maquinaria.anio,
           estado: maquinaria.estado,
           horas_acumuladas: maquinaria.horas_acumuladas,
+          km_acumulados: maquinaria.km_acumulados || 0,
         },
         totales,
-        gastosParaPDF,
+        combustibleParaPDF,
+        mantenimientoParaPDF,
         remitosParaPDF,
+        { totalKm: kmData.totalKm },
         fechaDesde,
         fechaHasta
       );
