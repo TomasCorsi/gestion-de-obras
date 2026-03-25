@@ -115,12 +115,17 @@ export default function Remitos() {
   }, [maquinarias]);
 
   const filteredRemitos = useMemo(() => {
-    const dateFiltered = filterByDateAndObra(
+    let result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       filters
     );
 
-    if (!searchTerm) return dateFiltered;
+    // Filter by tipo_material
+    if (tipoFilter && tipoFilter !== "__all__") {
+      result = result.filter(r => r.tipo_material === tipoFilter);
+    }
+
+    if (!searchTerm) return result;
 
     const term = searchTerm.toLowerCase();
     return dateFiltered.filter((r) => {
