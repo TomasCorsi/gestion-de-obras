@@ -251,6 +251,16 @@ export function GastosMaquinaria() {
     };
   }, [selectedMaquinariaId, cargasRepartidor, remitos, mantenimientos, fechaDesde, fechaHasta]);
 
+  // Viajes por tipo de material desde remitos filtrados
+  const viajesPorTipo = useMemo(() => {
+    const map: Record<string, number> = {};
+    datosFiltrados.remitos.forEach(r => {
+      const tipo = r.tipo_material || r.material || "Sin tipo";
+      map[tipo] = (map[tipo] || 0) + (r.cantidad_viajes || 1);
+    });
+    return map;
+  }, [datosFiltrados.remitos]);
+
   // Próximo mantenimiento: del último mantenimiento completado con datos de próximo service
   const proximoMantenimiento = useMemo(() => {
     if (!selectedMaquinariaId) return null;
@@ -430,7 +440,7 @@ export function GastosMaquinaria() {
           km_acumulados: maquinaria.km_acumulados || 0,
         },
         { ...totales, cantCargas: datosFiltrados.combustible.length },
-        rendimientoData,
+        { ...rendimientoData, viajesPorTipo },
         fechaDesde,
         fechaHasta
       );
