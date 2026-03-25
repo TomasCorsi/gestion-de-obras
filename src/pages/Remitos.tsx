@@ -150,7 +150,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById]);
+  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
