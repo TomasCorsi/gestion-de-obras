@@ -65,6 +65,7 @@ export interface CotizacionForm {
   iva: number;
   total: number;
   notas?: string;
+  moneda?: string;
 }
 
 export interface CotizacionCategoriaForm {
