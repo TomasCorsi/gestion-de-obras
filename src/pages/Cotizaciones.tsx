@@ -67,7 +67,16 @@ const estadoConfig: Record<string, { label: string; icon: any; className: string
   vencida: { label: "Vencida", icon: Clock, className: "status-inactive" },
 };
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number, moneda: string = "ARS"): string {
+  if (moneda === "USD") {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "symbol",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
@@ -473,7 +482,8 @@ export default function Cotizaciones() {
               </div>
               <div className="bg-muted/30 rounded-lg p-4">
                 <p className="text-xs text-muted-foreground mb-1">Total</p>
-                <p className="font-bold text-primary text-xl">{formatCurrency(selectedCot.total)}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{selectedCot.moneda || "ARS"}</p>
+                <p className="font-bold text-primary text-xl">{formatCurrency(selectedCot.total, selectedCot.moneda)}</p>
               </div>
             </div>
 
