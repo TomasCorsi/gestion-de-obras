@@ -4,6 +4,13 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Receipt,
   Loader2,
@@ -13,6 +20,7 @@ import {
   Package,
   Plus,
   Download,
+  FileText,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
@@ -24,6 +32,7 @@ import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -45,6 +54,13 @@ export default function Remitos() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [tipoFilter, setTipoFilter] = useState<string>("__all__");
+  const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+
+  // Unique tipo_material values for filter
+  const tiposUnicos = useMemo(() => {
+    return [...new Set(remitos.map(r => r.tipo_material).filter(Boolean) as string[])].sort();
+  }, [remitos]);
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
@@ -99,15 +115,20 @@ export default function Remitos() {
   }, [maquinarias]);
 
   const filteredRemitos = useMemo(() => {
-    const dateFiltered = filterByDateAndObra(
+    let result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       filters
     );
 
-    if (!searchTerm) return dateFiltered;
+    // Filter by tipo_material
+    if (tipoFilter && tipoFilter !== "__all__") {
+      result = result.filter(r => r.tipo_material === tipoFilter);
+    }
+
+    if (!searchTerm) return result;
 
     const term = searchTerm.toLowerCase();
-    return dateFiltered.filter((r) => {
+    return result.filter((r) => {
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
         (r.remito_local?.toLowerCase() || "").includes(term) ||
@@ -129,7 +150,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById]);
+  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -265,6 +286,21 @@ export default function Remitos() {
         />
       </div>
 
+      {/* Tipo Material Filter */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <Select value={tipoFilter} onValueChange={setTipoFilter}>
+          <SelectTrigger className="w-[200px] bg-card">
+            <SelectValue placeholder="Tipo material" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos los tipos</SelectItem>
+            {tiposUnicos.map((tipo) => (
+              <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -298,6 +334,14 @@ export default function Remitos() {
         >
           <Upload className="w-4 h-4" />
           Importar
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => setLiquidacionOpen(true)}
+          className="gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          Liquidar
         </Button>
       </div>
 
@@ -387,6 +431,13 @@ export default function Remitos() {
         onConfirm={handleDelete}
         title="¿Eliminar remito?"
         description="Esta acción no se puede deshacer. Se eliminará permanentemente este remito."
+      />
+
+      {/* Liquidacion Dialog */}
+      <LiquidacionClienteDialog
+        open={liquidacionOpen}
+        onOpenChange={setLiquidacionOpen}
+        remitos={filteredRemitos}
       />
     </MainLayout>
   );
