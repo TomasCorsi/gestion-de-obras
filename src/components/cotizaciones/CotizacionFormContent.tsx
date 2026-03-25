@@ -283,6 +283,21 @@ export function CotizacionFormContent({
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="moneda">Moneda</Label>
+          <Select
+            value={formData.moneda || "ARS"}
+            onValueChange={(value) => setFormData({ ...formData, moneda: value })}
+          >
+            <SelectTrigger className="bg-muted border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border">
+              <SelectItem value="ARS">$ ARS (Pesos)</SelectItem>
+              <SelectItem value="USD">US$ USD (Dólares)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="md:col-span-3 space-y-2">
           <Label htmlFor="descripcion">Descripción</Label>
           <Textarea
