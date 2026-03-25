@@ -162,7 +162,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter]);
+  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter, obras]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
