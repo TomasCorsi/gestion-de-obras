@@ -28,7 +28,16 @@ No incluye gestiones municipales ni pagos de aranceles por luz y agua de obra an
 La energía y Agua de obra deberan ser provistas por el comitente a pie de obra.
 Movimiento de suelo. Excavaciones y fundaciones sujetas a modificación y posterior recotización de acuerdo a estudio de suelo, planimetria y niveles definitivos a proveer por comitente.`;
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number, moneda: string = "ARS"): string {
+  if (moneda === "USD") {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      currencyDisplay: "symbol",
+      maximumFractionDigits: 0,
+    }).format(value);
+  }
+
   return new Intl.NumberFormat("es-AR", {
     style: "currency",
     currency: "ARS",
@@ -79,6 +88,7 @@ export async function generateCotizacionPDF(
   cotizacion: CotizacionWithRelations,
   obraNombre?: string
 ): Promise<void> {
+  const moneda = cotizacion.moneda || "ARS";
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 10;
@@ -212,8 +222,8 @@ export async function generateCotizacionPDF(
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario),
-        formatCurrency(itemTotal),
+        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
     });
@@ -224,7 +234,7 @@ export async function generateCotizacionPDF(
       tableData.push([
         { content: "", colSpan: 6 },
         { content: `Subtotal ${cat.nombre}:`, styles: { fontStyle: "bold", halign: "right" } },
-        { content: formatCurrency(categorySubtotal), styles: { fontStyle: "bold" } },
+        { content: formatCurrency(categorySubtotal, moneda), styles: { fontStyle: "bold" } },
       ]);
       rowIndex++;
     }
@@ -242,8 +252,8 @@ export async function generateCotizacionPDF(
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario),
-        formatCurrency(itemTotal),
+        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
     });
@@ -288,11 +298,11 @@ export async function generateCotizacionPDF(
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("Subtotal:", totalsStartX, yPos);
-  doc.text(formatCurrency(cotizacion.subtotal), pageWidth - margin, yPos, { align: "right" });
+  doc.text(formatCurrency(cotizacion.subtotal, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
   doc.text("IVA (21%):", totalsStartX, yPos);
-  doc.text(formatCurrency(cotizacion.iva), pageWidth - margin, yPos, { align: "right" });
+  doc.text(formatCurrency(cotizacion.iva, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
   doc.setFont("helvetica", "bold");
@@ -300,7 +310,7 @@ export async function generateCotizacionPDF(
   doc.setFillColor(245, 245, 245);
   doc.rect(totalsStartX - 3, yPos - 3, 60, 7, "F");
   doc.text("TOTAL:", totalsStartX, yPos + 1);
-  doc.text(formatCurrency(cotizacion.total), pageWidth - margin, yPos + 1, { align: "right" });
+  doc.text(formatCurrency(cotizacion.total, moneda), pageWidth - margin, yPos + 1, { align: "right" });
   yPos += 8;
 
   // ============== NOTAS ==============
