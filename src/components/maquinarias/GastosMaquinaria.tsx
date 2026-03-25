@@ -100,6 +100,8 @@ export function GastosMaquinaria() {
         .select(`
           fecha,
           km_camion,
+          horometro_inicio,
+          horometro_fin,
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -109,6 +111,8 @@ export function GastosMaquinaria() {
       return data as unknown as Array<{
         fecha: string;
         km_camion: number | null;
+        horometro_inicio: number | null;
+        horometro_fin: number | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
