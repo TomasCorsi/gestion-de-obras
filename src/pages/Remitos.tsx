@@ -335,6 +335,14 @@ export default function Remitos() {
           <Upload className="w-4 h-4" />
           Importar
         </Button>
+        <Button
+          variant="outline"
+          onClick={() => setLiquidacionOpen(true)}
+          className="gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          Liquidar
+        </Button>
       </div>
 
       {/* Stats */}
@@ -423,6 +431,13 @@ export default function Remitos() {
         onConfirm={handleDelete}
         title="¿Eliminar remito?"
         description="Esta acción no se puede deshacer. Se eliminará permanentemente este remito."
+      />
+
+      {/* Liquidacion Dialog */}
+      <LiquidacionClienteDialog
+        open={liquidacionOpen}
+        onOpenChange={setLiquidacionOpen}
+        remitos={filteredRemitos}
       />
     </MainLayout>
   );
