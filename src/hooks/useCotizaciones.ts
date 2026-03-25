@@ -17,6 +17,7 @@ export interface CotizacionDB {
   iva: number;
   total: number;
   notas: string | null;
+  moneda?: string;
   created_at: string;
   updated_at: string;
 }
@@ -65,6 +66,7 @@ export interface CotizacionForm {
   iva: number;
   total: number;
   notas?: string;
+  moneda?: string;
 }
 
 export interface CotizacionCategoriaForm {
@@ -178,6 +180,7 @@ export function useCotizaciones() {
         iva: cot.iva,
         total: cot.total,
         notas: cot.notas || null,
+        moneda: cot.moneda || 'ARS',
       }])
       .select()
       .single();
