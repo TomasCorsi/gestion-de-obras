@@ -386,9 +386,14 @@ export default function Cotizaciones() {
                     <Icon className="w-3 h-3 mr-1" />
                     {config.label}
                   </Badge>
-                  <span className="text-lg font-bold text-foreground">
-                    {formatCurrency(cot.total)}
-                  </span>
+                  <div className="text-right">
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {cot.moneda || "ARS"}
+                    </p>
+                    <span className="text-lg font-bold text-foreground">
+                      {formatCurrency(cot.total, cot.moneda)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
