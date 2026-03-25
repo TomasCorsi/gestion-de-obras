@@ -117,10 +117,20 @@ export default function Remitos() {
   }, [maquinarias]);
 
   const filteredRemitos = useMemo(() => {
+    // Use date filter only (not obra_id from filterByDateAndObra)
     let result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
-      filters
+      { ...filters, obraId: undefined }
     );
+
+    // Filter by obra: match selected obra name against desde/hasta
+    if (filters.obraId) {
+      const obraSeleccionada = obras.find(o => o.id === filters.obraId);
+      if (obraSeleccionada) {
+        const obraNombre = obraSeleccionada.nombre;
+        result = result.filter(r => r.desde === obraNombre || r.hasta === obraNombre);
+      }
+    }
 
     // Filter by tipo_material
     if (tipoFilter && tipoFilter !== "__all__") {
@@ -152,7 +162,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter]);
+  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter, obras]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
