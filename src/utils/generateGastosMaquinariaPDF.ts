@@ -22,6 +22,7 @@ export interface MaquinariaData {
   anio: number | null;
   estado: string;
   horas_acumuladas: number;
+  km_acumulados: number;
 }
 
 export interface TotalesData {
@@ -35,13 +36,24 @@ export interface TotalesData {
   gastoTotal: number;
 }
 
-export interface GastoDetalle {
+export interface CombustibleDetalle {
+  fecha: string;
+  producto: string;
+  litros: number;
+  precioUnitario: number;
+  costo: number;
+  obra: string;
+  operador: string;
+}
+
+export interface MantenimientoDetalle {
   fecha: string;
   tipo: string;
-  tipoRaw: string;
   descripcion: string;
-  obra: string;
+  costoRepuestos: number;
+  costoManoObra: number;
   costo: number;
+  tecnico: string;
 }
 
 export interface RemitoDetalle {
@@ -52,6 +64,11 @@ export interface RemitoDetalle {
   cantidad_total: number;
   unidad: string;
   costo: number;
+  operador: string;
+}
+
+export interface KMData {
+  totalKm: number;
 }
 
 interface ImageData {
@@ -100,83 +117,22 @@ const estadoLabels: Record<string, string> = {
   en_uso: "En Uso",
 };
 
-// Category grouping config
-interface CategoryConfig {
-  key: string;
-  label: string;
-  headerColor: [number, number, number];
-  textColor: [number, number, number];
-  matchTypes: string[];
-}
-
-const CATEGORIES: CategoryConfig[] = [
-  {
-    key: "combustible",
-    label: "COMBUSTIBLE / INSUMOS",
-    headerColor: [245, 190, 70],
-    textColor: [100, 60, 0],
-    matchTypes: ["combustible"],
-  },
-  {
-    key: "mantenimiento",
-    label: "MANTENIMIENTOS",
-    headerColor: [180, 130, 220],
-    textColor: [60, 20, 80],
-    matchTypes: ["mantenimiento"],
-  },
-];
-
-function buildGroupedTableData(gastos: GastoDetalle[]): {
-  body: string[][];
-  categoryRowIndices: number[];
-  subtotalRowIndices: number[];
-  categoryColors: Map<number, CategoryConfig>;
-} {
-  const body: string[][] = [];
-  const categoryRowIndices: number[] = [];
-  const subtotalRowIndices: number[] = [];
-  const categoryColors = new Map<number, CategoryConfig>();
-
-  for (const cat of CATEGORIES) {
-    const items = gastos
-      .filter((g) => cat.matchTypes.includes(g.tipoRaw))
-      .sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
-
-    if (items.length === 0) continue;
-
-    // Category header row
-    const headerIdx = body.length;
-    categoryRowIndices.push(headerIdx);
-    categoryColors.set(headerIdx, cat);
-    body.push([cat.label, "", "", "", ""]);
-
-    // Data rows
-    for (const g of items) {
-      body.push([
-        g.fecha ? format(new Date(g.fecha), "dd/MM/yy") : "-",
-        g.tipo,
-        g.descripcion,
-        g.obra,
-        formatCurrency(g.costo),
-      ]);
-    }
-
-    // Subtotal row
-    const subtotal = items.reduce((sum, g) => sum + g.costo, 0);
-    const subtotalIdx = body.length;
-    subtotalRowIndices.push(subtotalIdx);
-    categoryColors.set(subtotalIdx, cat);
-    body.push(["", "", `Subtotal ${cat.label.charAt(0) + cat.label.slice(1).toLowerCase()}`, "", formatCurrency(subtotal)]);
+function checkPageBreak(doc: jsPDF, yPos: number, needed: number): number {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yPos + needed > pageHeight - 15) {
+    doc.addPage();
+    return 12;
   }
-
-  return { body, categoryRowIndices, subtotalRowIndices, categoryColors };
+  return yPos;
 }
 
 export async function generateGastosMaquinariaPDF(
   maquinaria: MaquinariaData,
   totales: TotalesData,
-  gastos: GastoDetalle[],
-  remitosDetalle: RemitoDetalle[] = [],
+  combustible: CombustibleDetalle[],
+  mantenimientos: MantenimientoDetalle[],
+  remitosDetalle: RemitoDetalle[],
+  kmData: KMData,
   fechaDesde?: Date,
   fechaHasta?: Date
 ): Promise<void> {
@@ -213,7 +169,6 @@ export async function generateGastosMaquinariaPDF(
   doc.text(`Cel: ${EMPRESA_INFO.telefono} | ${EMPRESA_INFO.email}`, pageWidth - margin, yPos + 19, { align: "right" });
 
   yPos += 24;
-
   doc.setDrawColor(180, 180, 180);
   doc.setLineWidth(0.3);
   doc.line(margin, yPos, pageWidth - margin, yPos);
@@ -233,169 +188,217 @@ export async function generateGastosMaquinariaPDF(
 
   // ============== MACHINERY DATA ==============
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 18, "F");
+  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 22, "F");
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
-  doc.text("DATOS DE LA MAQUINARIA", margin + 2, yPos + 2);
+  doc.text("DATOS DEL VEHÍCULO / MAQUINARIA", margin + 2, yPos + 2);
   yPos += 5;
 
-  doc.setFont("helvetica", "normal");
   const col1X = margin + 2;
   const col2X = pageWidth / 2;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Código:", col1X, yPos);
   doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.codigo || "S/C", col1X + 18, yPos);
+  const drawField = (label: string, value: string, x: number, y: number) => {
+    doc.setFont("helvetica", "bold");
+    doc.text(`${label}:`, x, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(value, x + doc.getTextWidth(`${label}: `) + 1, y);
+  };
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Nombre:", col2X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.nombre || "Sin nombre", col2X + 18, yPos);
+  drawField("Código", maquinaria.codigo || "S/C", col1X, yPos);
+  drawField("Nombre", maquinaria.nombre || "Sin nombre", col2X, yPos);
   yPos += 4;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Tipo:", col1X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.tipo, col1X + 18, yPos);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Marca:", col2X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.marca || "-", col2X + 18, yPos);
+  drawField("Tipo", maquinaria.tipo, col1X, yPos);
+  drawField("Marca", maquinaria.marca || "-", col2X, yPos);
   yPos += 4;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Patente:", col1X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.patente || "-", col1X + 18, yPos);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("Año:", col2X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.anio?.toString() || "-", col2X + 18, yPos);
+  drawField("Patente", maquinaria.patente || "-", col1X, yPos);
+  drawField("Año", maquinaria.anio?.toString() || "-", col2X, yPos);
   yPos += 4;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Estado:", col1X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(estadoLabels[maquinaria.estado] || maquinaria.estado, col1X + 18, yPos);
+  drawField("Estado", estadoLabels[maquinaria.estado] || maquinaria.estado, col1X, yPos);
+  drawField("Horas acum.", maquinaria.horas_acumuladas.toLocaleString(), col2X, yPos);
+  yPos += 4;
 
-  doc.setFont("helvetica", "bold");
-  doc.text("Horas acum.:", col2X, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(maquinaria.horas_acumuladas.toLocaleString(), col2X + 25, yPos);
+  drawField("KM acum.", maquinaria.km_acumulados.toLocaleString(), col1X, yPos);
+  drawField("KM período", kmData.totalKm.toLocaleString(), col2X, yPos);
   yPos += 6;
 
   // ============== PERIOD ==============
   const periodoDesde = fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio";
   const periodoHasta = fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual";
-  doc.setFont("helvetica", "bold");
-  doc.text(`Período: `, margin, yPos);
-  doc.setFont("helvetica", "normal");
-  doc.text(`${periodoDesde} - ${periodoHasta}`, margin + 18, yPos);
+  drawField("Período", `${periodoDesde} - ${periodoHasta}`, margin, yPos);
   yPos += 6;
 
-  // ============== EXPENSE SUMMARY ==============
-  doc.setFillColor(230, 230, 230);
-  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 22, "F");
+  // ============== EXPENSE SUMMARY - PROMINENT ==============
+  doc.setFillColor(240, 240, 240);
+  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 28, "F");
 
-  doc.setFontSize(8);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("RESUMEN DE GASTOS", margin + 2, yPos + 2);
-  yPos += 5;
+  yPos += 6;
+
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+
+  // Row 1
+  doc.text("Combustible/Insumos:", col1X, yPos);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${formatCurrency(totales.totalCombustible)}  (${totales.totalLitros.toLocaleString()} L)`, col1X + 38, yPos);
+  yPos += 4;
 
   doc.setFont("helvetica", "normal");
-  doc.text(`Combustible:`, col1X, yPos);
-  doc.text(`${formatCurrency(totales.totalCombustible)}  (${totales.totalLitros.toLocaleString()} L)`, col1X + 30, yPos);
+  doc.text("Remitos/Viajes:", col1X, yPos);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${formatCurrency(totales.costoRemitos)}  (${totales.totalRemitos} remitos - ${totales.totalViajes} viajes)`, col1X + 38, yPos);
   yPos += 4;
 
-  doc.text(`Remitos/Viajes:`, col1X, yPos);
-  doc.text(`${formatCurrency(totales.costoRemitos)}  (${totales.totalRemitos} remitos - ${totales.totalViajes} viajes)`, col1X + 30, yPos);
+  doc.setFont("helvetica", "normal");
+  doc.text("Mantenimiento:", col1X, yPos);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${formatCurrency(totales.costoMantenimientos)}  (${totales.totalMantenimientos} servicios)`, col1X + 38, yPos);
   yPos += 4;
 
-  doc.text(`Mantenimiento:`, col1X, yPos);
-  doc.text(`${formatCurrency(totales.costoMantenimientos)}  (${totales.totalMantenimientos} servicios)`, col1X + 30, yPos);
+  doc.setFont("helvetica", "normal");
+  doc.text("KM recorridos:", col1X, yPos);
+  doc.setFont("helvetica", "bold");
+  doc.text(`${kmData.totalKm.toLocaleString()} km`, col1X + 38, yPos);
   yPos += 5;
 
+  // Total line
   doc.setDrawColor(100, 100, 100);
-  doc.setLineWidth(0.2);
+  doc.setLineWidth(0.3);
   doc.line(margin + 2, yPos - 1, pageWidth - margin - 2, yPos - 1);
 
+  // GASTO TOTAL - prominent
+  doc.setFillColor(180, 0, 0);
+  doc.rect(margin, yPos + 1, pageWidth - margin * 2, 8, "F");
+  doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.text("GASTO TOTAL:", col1X, yPos + 3);
-  doc.text(formatCurrency(totales.gastoTotal), col1X + 35, yPos + 3);
-  yPos += 8;
+  doc.setTextColor(255, 255, 255);
+  doc.text("GASTO TOTAL:", margin + 4, yPos + 6.5);
+  doc.text(formatCurrency(totales.gastoTotal), pageWidth - margin - 4, yPos + 6.5, { align: "right" });
+  doc.setTextColor(0, 0, 0);
+  yPos += 14;
 
-  // ============== GROUPED DETAIL TABLE ==============
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.text("DETALLE DE GASTOS", margin, yPos);
-  yPos += 3;
+  // ============== COMBUSTIBLE TABLE ==============
+  if (combustible.length > 0) {
+    yPos = checkPageBreak(doc, yPos, 20);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 60, 0);
+    doc.text("COMBUSTIBLE / INSUMOS", margin, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 3;
 
-  const { body, categoryRowIndices, subtotalRowIndices, categoryColors } = buildGroupedTableData(gastos);
+    const combustibleBody = combustible
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .map((c) => [
+        c.fecha ? format(new Date(c.fecha), "dd/MM/yy") : "-",
+        c.producto,
+        c.litros.toLocaleString(),
+        formatCurrency(c.precioUnitario),
+        formatCurrency(c.costo),
+        c.operador,
+        c.obra,
+      ]);
 
-  if (body.length === 0) {
-    doc.setFontSize(7);
-    doc.setFont("helvetica", "italic");
-    doc.text("No hay gastos registrados en el período seleccionado.", margin, yPos + 4);
-  } else {
+    const subtotalComb = combustible.reduce((s, c) => s + c.costo, 0);
+    combustibleBody.push(["", "", `${totales.totalLitros.toLocaleString()} L`, "", formatCurrency(subtotalComb), "", "SUBTOTAL"]);
+
     autoTable(doc, {
       startY: yPos,
-      head: [["Fecha", "Tipo", "Cantidad", "Obra", "Costo"]],
-      body,
+      head: [["Fecha", "Producto", "Litros", "$/L", "Costo", "Operador", "Obra"]],
+      body: combustibleBody,
       theme: "grid",
       headStyles: {
-        fillColor: [60, 60, 60],
-        textColor: [255, 255, 255],
+        fillColor: [245, 190, 70],
+        textColor: [60, 30, 0],
         fontStyle: "bold",
-        fontSize: 6.5,
+        fontSize: 6,
         halign: "center",
         cellPadding: 1.5,
       },
-      bodyStyles: {
-        fontSize: 5.5,
-        cellPadding: 1.5,
-        overflow: "linebreak",
-      },
+      bodyStyles: { fontSize: 5.5, cellPadding: 1.5, overflow: "linebreak" },
       columnStyles: {
-        0: { cellWidth: 18, halign: "center" },
-        1: { cellWidth: 30, overflow: "linebreak" },
-        2: { cellWidth: "auto", overflow: "linebreak" },
-        3: { cellWidth: 30, overflow: "linebreak" },
-        4: { cellWidth: 25, halign: "right" },
+        0: { cellWidth: 16, halign: "center" },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 14, halign: "right" },
+        3: { cellWidth: 16, halign: "right" },
+        4: { cellWidth: 22, halign: "right" },
+        5: { cellWidth: "auto", overflow: "linebreak" },
+        6: { cellWidth: 28, overflow: "linebreak" },
       },
       margin: { left: margin, right: margin },
-      tableWidth: "auto",
       didParseCell: (data) => {
-        if (data.section !== "body") return;
-        const rowIdx = data.row.index;
-
-        // Category header rows
-        if (categoryRowIndices.includes(rowIdx)) {
-          const cat = categoryColors.get(rowIdx);
-          if (cat) {
-            data.cell.styles.fillColor = cat.headerColor;
-            data.cell.styles.textColor = cat.textColor;
-            data.cell.styles.fontStyle = "bold";
-            data.cell.styles.fontSize = 7;
-            if (data.column.index === 0) {
-              data.cell.colSpan = 5;
-            }
-          }
-        }
-
-        // Subtotal rows
-        if (subtotalRowIndices.includes(rowIdx)) {
-          const cat = categoryColors.get(rowIdx);
-          data.cell.styles.fillColor = [240, 240, 240];
+        if (data.section === "body" && data.row.index === combustibleBody.length - 1) {
+          data.cell.styles.fillColor = [255, 245, 220];
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fontSize = 6;
-          if (cat && data.column.index === 2) {
-            data.cell.colSpan = 2;
-          }
+        }
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 6;
+  }
+
+  // ============== MANTENIMIENTOS TABLE ==============
+  if (mantenimientos.length > 0) {
+    yPos = checkPageBreak(doc, yPos, 20);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(60, 20, 80);
+    doc.text("MANTENIMIENTOS", margin, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 3;
+
+    const mantBody = mantenimientos
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .map((m) => [
+        m.fecha ? format(new Date(m.fecha), "dd/MM/yy") : "-",
+        m.tipo.charAt(0).toUpperCase() + m.tipo.slice(1),
+        m.descripcion,
+        formatCurrency(m.costoRepuestos),
+        formatCurrency(m.costoManoObra),
+        formatCurrency(m.costo),
+        m.tecnico,
+      ]);
+
+    const subtotalMant = mantenimientos.reduce((s, m) => s + m.costo, 0);
+    mantBody.push(["", "", "", "", "SUBTOTAL", formatCurrency(subtotalMant), ""]);
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [["Fecha", "Tipo", "Descripción", "Repuestos", "M. Obra", "Total", "Técnico"]],
+      body: mantBody,
+      theme: "grid",
+      headStyles: {
+        fillColor: [180, 130, 220],
+        textColor: [40, 10, 60],
+        fontStyle: "bold",
+        fontSize: 6,
+        halign: "center",
+        cellPadding: 1.5,
+      },
+      bodyStyles: { fontSize: 5.5, cellPadding: 1.5, overflow: "linebreak" },
+      columnStyles: {
+        0: { cellWidth: 16, halign: "center" },
+        1: { cellWidth: 20 },
+        2: { cellWidth: "auto", overflow: "linebreak" },
+        3: { cellWidth: 20, halign: "right" },
+        4: { cellWidth: 20, halign: "right" },
+        5: { cellWidth: 22, halign: "right" },
+        6: { cellWidth: 25, overflow: "linebreak" },
+      },
+      margin: { left: margin, right: margin },
+      didParseCell: (data) => {
+        if (data.section === "body" && data.row.index === mantBody.length - 1) {
+          data.cell.styles.fillColor = [240, 230, 250];
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fontSize = 6;
         }
       },
     });
@@ -405,54 +408,58 @@ export async function generateGastosMaquinariaPDF(
 
   // ============== REMITOS TABLE ==============
   if (remitosDetalle.length > 0) {
-    doc.setFontSize(8);
+    yPos = checkPageBreak(doc, yPos, 20);
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 60, 100);
     doc.text("REMITOS / VIAJES", margin, yPos);
+    doc.setTextColor(0, 0, 0);
     yPos += 3;
 
-    const remitosBody = remitosDetalle.map((r) => [
-      r.fecha ? format(new Date(r.fecha), "dd/MM/yy") : "-",
-      r.numero,
-      r.tipo_material,
-      r.viajes.toString(),
-      r.cantidad_total.toLocaleString(),
-      r.unidad,
-      formatCurrency(r.costo),
-    ]);
+    const remitosBody = remitosDetalle
+      .sort((a, b) => a.fecha.localeCompare(b.fecha))
+      .map((r) => [
+        r.fecha ? format(new Date(r.fecha), "dd/MM/yy") : "-",
+        r.numero,
+        r.tipo_material,
+        r.viajes.toString(),
+        r.cantidad_total.toLocaleString(),
+        r.unidad,
+        formatCurrency(r.costo),
+        r.operador,
+      ]);
 
-    const subtotalRemitos = remitosDetalle.reduce((sum, r) => sum + r.costo, 0);
-    remitosBody.push(["", "", "", "", "", "Subtotal", formatCurrency(subtotalRemitos)]);
+    const subtotalRemitos = remitosDetalle.reduce((s, r) => s + r.costo, 0);
+    remitosBody.push(["", "", "", "", "", "SUBTOTAL", formatCurrency(subtotalRemitos), ""]);
 
     autoTable(doc, {
       startY: yPos,
-      head: [["Fecha", "Nro Remito", "Tipo", "Viajes", "C. Total", "Unidad", "Costo"]],
+      head: [["Fecha", "Nro", "Material", "Viajes", "Cant.", "Unidad", "Costo", "Operador"]],
       body: remitosBody,
       theme: "grid",
       headStyles: {
         fillColor: [100, 160, 230],
         textColor: [255, 255, 255],
         fontStyle: "bold",
-        fontSize: 6.5,
+        fontSize: 6,
         halign: "center",
         cellPadding: 1.5,
       },
-      bodyStyles: {
-        fontSize: 5.5,
-        cellPadding: 1.5,
-      },
+      bodyStyles: { fontSize: 5.5, cellPadding: 1.5 },
       columnStyles: {
-        0: { cellWidth: 18, halign: "center" },
-        1: { cellWidth: 22 },
-        2: { cellWidth: "auto" },
-        3: { cellWidth: 14, halign: "center" },
-        4: { cellWidth: 20, halign: "right" },
-        5: { cellWidth: 16, halign: "center" },
-        6: { cellWidth: 25, halign: "right" },
+        0: { cellWidth: 16, halign: "center" },
+        1: { cellWidth: 18 },
+        2: { cellWidth: "auto", overflow: "linebreak" },
+        3: { cellWidth: 12, halign: "center" },
+        4: { cellWidth: 14, halign: "right" },
+        5: { cellWidth: 14, halign: "center" },
+        6: { cellWidth: 22, halign: "right" },
+        7: { cellWidth: 28, overflow: "linebreak" },
       },
       margin: { left: margin, right: margin },
       didParseCell: (data) => {
         if (data.section === "body" && data.row.index === remitosBody.length - 1) {
-          data.cell.styles.fillColor = [240, 240, 240];
+          data.cell.styles.fillColor = [220, 235, 250];
           data.cell.styles.fontStyle = "bold";
           data.cell.styles.fontSize = 6;
         }
@@ -462,7 +469,53 @@ export async function generateGastosMaquinariaPDF(
     yPos = (doc as any).lastAutoTable.finalY + 6;
   }
 
+  // ============== SUMMARY TABLE ==============
+  yPos = checkPageBreak(doc, yPos, 30);
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.text("RESUMEN FINAL", margin, yPos);
+  yPos += 3;
+
+  const resumenBody = [
+    ["Combustible / Insumos", `${totales.totalLitros.toLocaleString()} L`, formatCurrency(totales.totalCombustible)],
+    ["Mantenimientos", `${totales.totalMantenimientos} servicios`, formatCurrency(totales.costoMantenimientos)],
+    ["Remitos / Viajes", `${totales.totalRemitos} remitos - ${totales.totalViajes} viajes`, formatCurrency(totales.costoRemitos)],
+  ];
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [["Categoría", "Detalle", "Total"]],
+    body: resumenBody,
+    theme: "grid",
+    headStyles: {
+      fillColor: [60, 60, 60],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 7,
+      halign: "center",
+      cellPadding: 2,
+    },
+    bodyStyles: { fontSize: 7, cellPadding: 2 },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: "bold" },
+      1: { cellWidth: "auto", halign: "center" },
+      2: { cellWidth: 35, halign: "right", fontStyle: "bold" },
+    },
+    margin: { left: margin, right: margin },
+    foot: [["GASTO TOTAL", `${kmData.totalKm.toLocaleString()} km recorridos`, formatCurrency(totales.gastoTotal)]],
+    footStyles: {
+      fillColor: [180, 0, 0],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 8,
+      cellPadding: 3,
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 8;
+
   // ============== FOOTER ==============
+  yPos = checkPageBreak(doc, yPos, 12);
   const signatureX = pageWidth / 2;
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
