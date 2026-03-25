@@ -152,7 +152,8 @@ export async function generateGastosMaquinariaPDF(
   yPos += 7;
 
   // ============== DATOS DEL EQUIPO (con conductor y KM/Hs período) ==============
-  const equipoBoxHeight = rendimiento.conductores.length > 0 ? 26 : 20;
+  const hasConductores = rendimiento.conductores.length > 0;
+  const equipoBoxHeight = hasConductores ? 34 : 20;
   doc.setFillColor(245, 245, 245);
   doc.rect(margin, yPos - 2, pageWidth - margin * 2, equipoBoxHeight, "F");
 
@@ -188,18 +189,18 @@ export async function generateGastosMaquinariaPDF(
   drawField("KM acum.", maquinaria.km_acumulados.toLocaleString(), col3X, yPos);
   yPos += 4;
 
-  // Conductor(es) y KM/Hs del período
-  if (rendimiento.conductores.length > 0) {
+  if (hasConductores) {
     const conductorTexto = rendimiento.conductores
       .sort((a, b) => b.dias - a.dias)
       .map(c => `${c.nombre} (${c.dias}d)`)
       .join(" | ");
-    drawField("Conductor(es)", conductorTexto, col1X, yPos);
-    
-    const kmPeriodo = `${rendimiento.totalKm.toLocaleString()} km`;
-    const hsPeriodo = `${rendimiento.horasMaquina.toLocaleString()} hs`;
-    drawField("KM período", kmPeriodo, col2X, yPos);
-    drawField("Hs período", hsPeriodo, col3X, yPos);
+    // Conductor on its own full-width row
+    drawField("Conductor(es)", conductorTexto.length > 80 ? conductorTexto.substring(0, 77) + "..." : conductorTexto, col1X, yPos);
+    yPos += 4;
+
+    // KM and Hs on a separate row
+    drawField("KM período", `${rendimiento.totalKm.toLocaleString()} km`, col1X, yPos);
+    drawField("Hs período", `${rendimiento.horasMaquina.toLocaleString()} hs`, col2X, yPos);
     yPos += 4;
   }
 
@@ -230,9 +231,9 @@ export async function generateGastosMaquinariaPDF(
   ];
 
   const categoryColors: [number, number, number][] = [
-    [255, 243, 220],
-    [240, 230, 250],
-    [220, 235, 250],
+    [245, 245, 245],
+    [235, 235, 235],
+    [245, 245, 245],
   ];
 
   autoTable(doc, {
@@ -241,7 +242,7 @@ export async function generateGastosMaquinariaPDF(
     body: resumenBody,
     theme: "grid",
     headStyles: {
-      fillColor: [60, 60, 60],
+      fillColor: [45, 45, 45],
       textColor: [255, 255, 255],
       fontStyle: "bold",
       fontSize: 7,
@@ -309,7 +310,7 @@ export async function generateGastosMaquinariaPDF(
       body: actividadBody,
       theme: "striped",
       headStyles: {
-        fillColor: [40, 80, 140],
+        fillColor: [45, 45, 45],
         textColor: [255, 255, 255],
         fontStyle: "bold",
         fontSize: 7,
@@ -317,15 +318,13 @@ export async function generateGastosMaquinariaPDF(
       },
       bodyStyles: { fontSize: 7.5, cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 70, fontStyle: "bold" },
-        1: { cellWidth: 40, halign: "center" },
+        0: { fontStyle: "bold" },
+        1: { halign: "center" },
       },
       margin: { left: margin, right: margin },
-      tableWidth: 110,
       didParseCell: (data) => {
-        // Highlight total row
         if (data.section === "body" && data.row.index === actividadBody.length - 1) {
-          data.cell.styles.fillColor = [220, 235, 250];
+          data.cell.styles.fillColor = [225, 225, 225];
           data.cell.styles.fontStyle = "bold";
         }
       },
