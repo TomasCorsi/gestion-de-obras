@@ -165,6 +165,7 @@ export default function Cotizaciones() {
       total: cot.total,
       estado: cot.estado,
       notas: cot.notas || "",
+      moneda: cot.moneda || "ARS",
     });
     
     // Map categories
