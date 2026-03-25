@@ -668,48 +668,48 @@ export type Database = {
       cotizaciones: {
         Row: {
           created_at: string
-          descripcion: string
+          descripcion: string | null
           estado: Database["public"]["Enums"]["estado_cotizacion"]
           fecha_creacion: string
-          fecha_vencimiento: string
+          fecha_vencimiento: string | null
           id: string
           iva: number
           notas: string | null
-          numero: string
+          numero: string | null
           obra_id: string | null
-          responsable: string
+          responsable: string | null
           subtotal: number
           total: number
           updated_at: string
         }
         Insert: {
           created_at?: string
-          descripcion: string
+          descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
           fecha_creacion?: string
-          fecha_vencimiento: string
+          fecha_vencimiento?: string | null
           id?: string
           iva?: number
           notas?: string | null
-          numero: string
+          numero?: string | null
           obra_id?: string | null
-          responsable: string
+          responsable?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
         }
         Update: {
           created_at?: string
-          descripcion?: string
+          descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
           fecha_creacion?: string
-          fecha_vencimiento?: string
+          fecha_vencimiento?: string | null
           id?: string
           iva?: number
           notas?: string | null
-          numero?: string
+          numero?: string | null
           obra_id?: string | null
-          responsable?: string
+          responsable?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
