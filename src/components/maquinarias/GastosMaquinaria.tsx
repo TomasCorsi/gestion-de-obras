@@ -90,6 +90,54 @@ export function GastosMaquinaria() {
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
   const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
 
+  // Query partes_diarios for the selected maquinaria to get operator and KM data
+  const { data: partesDiarios = [] } = useQuery({
+    queryKey: ['partes_diarios_gastos', selectedMaquinariaId],
+    enabled: !!selectedMaquinariaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partes_diarios')
+        .select(`
+          fecha,
+          km_camion,
+          personal:personal_id (nombre, apellido)
+        `)
+        .eq('maquinaria_id', selectedMaquinariaId)
+        .eq('estado', 'completado')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      return data as unknown as Array<{
+        fecha: string;
+        km_camion: number | null;
+        personal: { nombre: string | null; apellido: string | null } | null;
+      }>;
+    },
+  });
+
+  // Build operator lookup by date from partes_diarios
+  const operadorPorFecha = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of partesDiarios) {
+      if (p.personal && !map.has(p.fecha)) {
+        const nombre = [p.personal.nombre, p.personal.apellido].filter(Boolean).join(' ');
+        if (nombre) map.set(p.fecha, nombre);
+      }
+    }
+    return map;
+  }, [partesDiarios]);
+
+  // KM data from partes_diarios filtered by period
+  const kmData = useMemo(() => {
+    const filtered = partesDiarios.filter(p => {
+      const f = parseISO(p.fecha);
+      if (fechaDesde && f < fechaDesde) return false;
+      if (fechaHasta && f > fechaHasta) return false;
+      return true;
+    });
+    const totalKm = filtered.reduce((sum, p) => sum + (p.km_camion || 0), 0);
+    return { totalKm };
+  }, [partesDiarios, fechaDesde, fechaHasta]);
+
   const mesesDisponibles = useMemo(() => {
     const now = new Date();
     const meses: { value: string; label: string; desde: Date; hasta: Date }[] = [];
