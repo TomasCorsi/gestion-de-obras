@@ -181,7 +181,7 @@ export function useCotizaciones() {
         total: cot.total,
         notas: cot.notas || null,
         moneda: cot.moneda || 'ARS',
-      }])
+      } as any])
       .select()
       .single();
 
