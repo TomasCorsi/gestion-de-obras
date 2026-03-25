@@ -141,7 +141,7 @@ export function useCotizaciones() {
 
   const fetchCotizaciones = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    const { data, error } = await (supabase
       .from("cotizaciones")
       .select(`
         *,
@@ -149,13 +149,13 @@ export function useCotizaciones() {
         items:cotizacion_items(*),
         categorias:cotizacion_categorias(*)
       `)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false }) as any);
 
     if (error) {
       console.error("Error fetching cotizaciones:", error);
       toast.error("Error al cargar cotizaciones");
     } else {
-      setCotizaciones(data || []);
+      setCotizaciones((data || []) as CotizacionWithRelations[]);
     }
     setLoading(false);
   };
