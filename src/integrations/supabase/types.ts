@@ -674,6 +674,7 @@ export type Database = {
           fecha_vencimiento: string | null
           id: string
           iva: number
+          moneda: string
           notas: string | null
           numero: string | null
           obra_id: string | null
@@ -690,6 +691,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           iva?: number
+          moneda?: string
           notas?: string | null
           numero?: string | null
           obra_id?: string | null
@@ -706,6 +708,7 @@ export type Database = {
           fecha_vencimiento?: string | null
           id?: string
           iva?: number
+          moneda?: string
           notas?: string | null
           numero?: string | null
           obra_id?: string | null
