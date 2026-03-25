@@ -181,7 +181,7 @@ export function useCotizaciones() {
         total: cot.total,
         notas: cot.notas || null,
         moneda: cot.moneda || 'ARS',
-      }])
+      } as any])
       .select()
       .single();
 
@@ -266,7 +266,7 @@ export function useCotizaciones() {
     
     const { error } = await supabase
       .from("cotizaciones")
-      .update(sanitized)
+      .update(sanitized as any)
       .eq("id", id);
 
     if (error) {
