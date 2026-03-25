@@ -168,15 +168,8 @@ export function GastosMaquinaria() {
     const totalViajesPartes = filtered.reduce((sum, p) => sum + (p.cantidad_viajes || 0), 0);
     const totalMovInternos = filtered.reduce((sum, p) => sum + (p.cantidad_movimiento_interno || 0), 0);
 
-    // Viajes por tipo de material desde remitos filtrados
-    const viajesPorTipo: Record<string, number> = {};
-    datosFiltrados.remitos.forEach(r => {
-      const tipo = r.tipo_material || r.material || "Sin tipo";
-      viajesPorTipo[tipo] = (viajesPorTipo[tipo] || 0) + (r.cantidad_viajes || 1);
-    });
-
-    return { totalKm, horasMaquina, conductores, totalViajesPartes, totalMovInternos, viajesPorTipo };
-  }, [partesDiarios, fechaDesde, fechaHasta, datosFiltrados.remitos]);
+    return { totalKm, horasMaquina, conductores, totalViajesPartes, totalMovInternos, viajesPorTipo: {} as Record<string, number> };
+  }, [partesDiarios, fechaDesde, fechaHasta]);
 
   const mesesDisponibles = useMemo(() => {
     const now = new Date();
