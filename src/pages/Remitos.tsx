@@ -286,6 +286,21 @@ export default function Remitos() {
         />
       </div>
 
+      {/* Tipo Material Filter */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <Select value={tipoFilter} onValueChange={setTipoFilter}>
+          <SelectTrigger className="w-[200px] bg-card">
+            <SelectValue placeholder="Tipo material" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">Todos los tipos</SelectItem>
+            {tiposUnicos.map((tipo) => (
+              <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
