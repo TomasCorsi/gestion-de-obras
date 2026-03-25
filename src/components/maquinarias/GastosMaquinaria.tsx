@@ -22,6 +22,8 @@ import { useCargasRepartidorAll } from "@/hooks/useCargasRepartidorAll";
 import { usePreciosTodos } from "@/hooks/usePreciosMes";
 import { useRemitos } from "@/hooks/useRemitos";
 import { useMantenimientos } from "@/hooks/useMantenimientos";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -73,6 +75,30 @@ export function GastosMaquinaria() {
   const { preciosPorMesProducto } = usePreciosTodos(now.getFullYear());
   const { remitos } = useRemitos();
   const { mantenimientos } = useMantenimientos();
+
+  // Query partes_diarios for the selected maquinaria to get operator and KM data
+  const { data: partesDiarios = [] } = useQuery({
+    queryKey: ['partes_diarios_gastos', selectedMaquinariaId],
+    enabled: !!selectedMaquinariaId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('partes_diarios')
+        .select(`
+          fecha,
+          km_camion,
+          personal:personal_id (nombre, apellido)
+        `)
+        .eq('maquinaria_id', selectedMaquinariaId)
+        .eq('estado', 'completado')
+        .order('fecha', { ascending: false });
+      if (error) throw error;
+      return data as unknown as Array<{
+        fecha: string;
+        km_camion: number | null;
+        personal: { nombre: string | null; apellido: string | null } | null;
+      }>;
+    },
+  });
 
   // Helper: get cost for a repartidor carga
   const getCostoCarga = (carga: { fecha: string; litros: number; tipo_producto: string | null }) => {
