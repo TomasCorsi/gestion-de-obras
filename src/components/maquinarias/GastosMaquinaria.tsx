@@ -102,6 +102,8 @@ export function GastosMaquinaria() {
           km_camion,
           horometro_inicio,
           horometro_fin,
+          cantidad_viajes,
+          cantidad_movimiento_interno,
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -113,6 +115,8 @@ export function GastosMaquinaria() {
         km_camion: number | null;
         horometro_inicio: number | null;
         horometro_fin: number | null;
+        cantidad_viajes: number | null;
+        cantidad_movimiento_interno: number | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
@@ -130,7 +134,7 @@ export function GastosMaquinaria() {
     return map;
   }, [partesDiarios]);
 
-  // KM data from partes_diarios filtered by period
+  // KM data, conductores, viajes y movimientos from partes_diarios filtered by period
   const rendimientoData = useMemo(() => {
     const filtered = partesDiarios.filter(p => {
       const f = parseISO(p.fecha);
@@ -160,7 +164,11 @@ export function GastosMaquinaria() {
       dias: fechas.size,
     }));
 
-    return { totalKm, horasMaquina, conductores };
+    // Totales de viajes y movimientos internos desde partes
+    const totalViajesPartes = filtered.reduce((sum, p) => sum + (p.cantidad_viajes || 0), 0);
+    const totalMovInternos = filtered.reduce((sum, p) => sum + (p.cantidad_movimiento_interno || 0), 0);
+
+    return { totalKm, horasMaquina, conductores, totalViajesPartes, totalMovInternos, viajesPorTipo: {} as Record<string, number> };
   }, [partesDiarios, fechaDesde, fechaHasta]);
 
   const mesesDisponibles = useMemo(() => {
@@ -242,6 +250,16 @@ export function GastosMaquinaria() {
       ),
     };
   }, [selectedMaquinariaId, cargasRepartidor, remitos, mantenimientos, fechaDesde, fechaHasta]);
+
+  // Viajes por tipo de material desde remitos filtrados
+  const viajesPorTipo = useMemo(() => {
+    const map: Record<string, number> = {};
+    datosFiltrados.remitos.forEach(r => {
+      const tipo = r.tipo_material || r.material || "Sin tipo";
+      map[tipo] = (map[tipo] || 0) + (r.cantidad_viajes || 1);
+    });
+    return map;
+  }, [datosFiltrados.remitos]);
 
   // Próximo mantenimiento: del último mantenimiento completado con datos de próximo service
   const proximoMantenimiento = useMemo(() => {
@@ -422,7 +440,7 @@ export function GastosMaquinaria() {
           km_acumulados: maquinaria.km_acumulados || 0,
         },
         { ...totales, cantCargas: datosFiltrados.combustible.length },
-        rendimientoData,
+        { ...rendimientoData, viajesPorTipo },
         fechaDesde,
         fechaHasta
       );
