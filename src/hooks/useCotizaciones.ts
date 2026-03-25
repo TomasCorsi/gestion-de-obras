@@ -167,13 +167,13 @@ export function useCotizaciones() {
     const { data: cotData, error: cotError } = await supabase
       .from("cotizaciones")
       .insert([{
-        numero: cot.numero,
+        numero: cot.numero || null,
         obra_id: cot.obra_id || null,
-        descripcion: cot.descripcion,
+        descripcion: cot.descripcion || null,
         estado: cot.estado,
-        fecha_creacion: cot.fecha_creacion,
-        fecha_vencimiento: cot.fecha_vencimiento,
-        responsable: cot.responsable,
+        fecha_creacion: cot.fecha_creacion || null,
+        fecha_vencimiento: cot.fecha_vencimiento || null,
+        responsable: cot.responsable || null,
         subtotal: cot.subtotal,
         iva: cot.iva,
         total: cot.total,
@@ -253,12 +253,17 @@ export function useCotizaciones() {
     items?: CotizacionItemForm[]
   ) => {
     // Update the cotizacion
+    const sanitized: Record<string, any> = { ...cot };
+    if (sanitized.obra_id !== undefined) sanitized.obra_id = sanitized.obra_id || null;
+    if (sanitized.numero !== undefined) sanitized.numero = sanitized.numero || null;
+    if (sanitized.descripcion !== undefined) sanitized.descripcion = sanitized.descripcion || null;
+    if (sanitized.responsable !== undefined) sanitized.responsable = sanitized.responsable || null;
+    if (sanitized.fecha_vencimiento !== undefined) sanitized.fecha_vencimiento = sanitized.fecha_vencimiento || null;
+    if (sanitized.fecha_creacion !== undefined) sanitized.fecha_creacion = sanitized.fecha_creacion || null;
+    
     const { error } = await supabase
       .from("cotizaciones")
-      .update({
-        ...cot,
-        obra_id: cot.obra_id || null,
-      })
+      .update(sanitized)
       .eq("id", id);
 
     if (error) {

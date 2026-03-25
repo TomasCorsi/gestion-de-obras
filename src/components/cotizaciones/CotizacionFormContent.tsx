@@ -213,13 +213,12 @@ export function CotizacionFormContent({
       {/* General Info */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="numero">Número *</Label>
+          <Label htmlFor="numero">Número</Label>
           <Input
             id="numero"
             value={formData.numero}
             onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
             className="bg-muted border-border font-mono"
-            required
           />
         </div>
         <div className="space-y-2">
@@ -240,35 +239,32 @@ export function CotizacionFormContent({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="responsable">Responsable *</Label>
+          <Label htmlFor="responsable">Responsable</Label>
           <Input
             id="responsable"
             value={formData.responsable}
             onChange={(e) => setFormData({ ...formData, responsable: e.target.value })}
             className="bg-muted border-border"
-            required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fecha_creacion">Fecha Creación *</Label>
+          <Label htmlFor="fecha_creacion">Fecha Creación</Label>
           <Input
             id="fecha_creacion"
             type="date"
             value={formData.fecha_creacion}
             onChange={(e) => setFormData({ ...formData, fecha_creacion: e.target.value })}
             className="bg-muted border-border"
-            required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fecha_vencimiento">Fecha Vencimiento *</Label>
+          <Label htmlFor="fecha_vencimiento">Fecha Vencimiento</Label>
           <Input
             id="fecha_vencimiento"
             type="date"
             value={formData.fecha_vencimiento}
             onChange={(e) => setFormData({ ...formData, fecha_vencimiento: e.target.value })}
             className="bg-muted border-border"
-            required
           />
         </div>
         <div className="space-y-2">
@@ -288,14 +284,13 @@ export function CotizacionFormContent({
           </Select>
         </div>
         <div className="md:col-span-3 space-y-2">
-          <Label htmlFor="descripcion">Descripción *</Label>
+          <Label htmlFor="descripcion">Descripción</Label>
           <Textarea
             id="descripcion"
             value={formData.descripcion}
             onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
             className="bg-muted border-border"
             rows={2}
-            required
           />
         </div>
       </div>
