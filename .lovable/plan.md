@@ -1,63 +1,28 @@
 
 
-## Plan: PDF compacto mejorado - sin tabla de rendimientos, con conductor y viajes por tipo
+## Plan: Corregir layout del PDF - conductor, ancho de tabla y colores
 
-### Objetivo
-Simplificar el PDF sacando la tabla de indicadores de rendimiento, moviendo el conductor principal a la sección de datos del equipo, y agregando un desglose de viajes por tipo de material/transporte.
+### Problemas identificados
+1. **Conductor pisa texto**: La fila del conductor usa `drawField` que concatena label+value en texto libre, y si el nombre es largo se superpone con "KM período" en `col2X`
+2. **Tabla actividad no ocupa todo el ancho**: Tiene `tableWidth: 110` hardcodeado (línea 324)
+3. **Colores poco profesionales**: Los pasteles actuales (naranja claro, lila, celeste) son inconsistentes
 
-### Cambios por archivo
+### Cambios en `src/utils/generateGastosMaquinariaPDF.ts`
 
-**1. `src/utils/generateGastosMaquinariaPDF.ts`**
-- **Eliminar** toda la sección "INDICADORES DE RENDIMIENTO" (tabla de 9 filas con costo/km, litros/hora, etc.)
-- **Eliminar** la tabla separada de "CONDUCTORES DEL PERÍODO"
-- **Agregar en "DATOS DEL EQUIPO"**: una 4ta fila con conductor(es) principal(es) y KM del período
-- **Agregar nueva sección "ACTIVIDAD DEL PERÍODO"**: tabla con desglose de viajes por tipo de material (Desmonte, Cascote, Residuos, etc.), cantidad de movimientos internos, total de viajes, y cantidad de cargas de combustible
-- **Mejorar el resumen de gastos**: incluir más detalle en cada fila (ej: "XX cargas" en combustible, viajes totales en remitos)
-- Actualizar la interfaz `RendimientoData` para recibir datos de actividad (viajes por tipo, movimientos internos)
-- Resultado: PDF más limpio, 1 página, fácil de leer
+**1. Fix conductor - separar en su propia fila completa**
+- Mover conductor(es) a una fila dedicada que ocupe todo el ancho (sin compartir con KM/Hs)
+- Poner KM período y Hs período en otra fila separada
+- Aumentar `equipoBoxHeight` para acomodar las 2 filas extra
+- Truncar nombres largos si es necesario
 
-**2. `src/components/maquinarias/GastosMaquinaria.tsx`**
-- Calcular desde `partesDiarios` filtrados: total `cantidad_viajes` y total `cantidad_movimiento_interno`
-- Calcular desde `datosFiltrados.remitos`: agrupación por `tipo_material` con cantidad de viajes por cada tipo
-- Pasar estos datos nuevos al generador de PDF en `rendimientoData`
+**2. Tabla actividad - ancho completo**
+- Eliminar `tableWidth: 110` (línea 324) para que use todo el ancho disponible entre márgenes
+- Ajustar `columnStyles` para que "Concepto" ocupe más espacio y "Cantidad" se alinee bien
 
-### Estructura del PDF resultante
-
-```text
-┌─────────────────────────────────────┐
-│  LOGO          CALAMINA SUR S.A.    │
-├─────────────────────────────────────┤
-│  LIQUIDACIÓN DE MAQUINARIA/VEHÍCULO │
-│  Período: dd/mm/yyyy - dd/mm/yyyy   │
-├─────────────────────────────────────┤
-│  DATOS DEL EQUIPO                   │
-│  Código | Nombre     | Patente      │
-│  Tipo   | Marca      | Año          │
-│  Estado | Horas acum | KM acum      │
-│  Conductor(es): Juan P. (15 días)   │
-│  KM Período: 2.350 km | Hs: 120    │
-├─────────────────────────────────────┤
-│  RESUMEN DE GASTOS                  │
-│  Combustible  | 500 L (12 cargas)   │
-│  Mantenimiento| 3 servicios         │
-│  Remitos      | 8 rem - 45 viajes   │
-│  ██ GASTO TOTAL: $XXX.XXX ██       │
-├─────────────────────────────────────┤
-│  ACTIVIDAD DEL PERÍODO             │
-│  Desmonte        | 25 viajes        │
-│  Cascote         | 12 viajes        │
-│  Residuos        | 8 viajes         │
-│  Mov. Internos   | 15               │
-│  Cargas Comb.    | 12               │
-│  Total Viajes    | 45               │
-├─────────────────────────────────────┤
-│  Firma / Fecha generación           │
-└─────────────────────────────────────┘
-```
-
-### Detalle técnico
-- Viajes por tipo de material: agrupar `datosFiltrados.remitos` por campo `tipo_material`, sumando `cantidad_viajes` de cada uno
-- Movimientos internos: sumar `cantidad_movimiento_interno` de `partesDiarios` filtrados por período
-- Conductor principal: tomar el de más días del array `conductores` existente y mostrarlo inline en datos del equipo
-- Si hay múltiples conductores, listarlos todos en la sección de datos
+**3. Colores más profesionales**
+- Header de tablas: gris oscuro corporativo `[45, 45, 45]` en vez de azul
+- Categorías del resumen: tonos de gris neutro en vez de pasteles coloridos
+- Tabla actividad header: mismo gris oscuro corporativo para consistencia
+- Fila total actividad: gris medio sutil
+- Mantener el rojo `[180, 0, 0]` solo para GASTO TOTAL (brand color)
 
