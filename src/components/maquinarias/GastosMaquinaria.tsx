@@ -408,44 +408,6 @@ export function GastosMaquinaria() {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
     if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
 
-    // Build combustible detail with operator
-    const combustibleParaPDF = datosFiltrados.combustible.map((c) => ({
-      fecha: c.fecha,
-      producto: c.tipo_producto || "combustible",
-      litros: c.litros || 0,
-      precioUnitario: (() => {
-        const mes = parseInt(c.fecha.split("-")[1], 10);
-        const producto = c.tipo_producto || "combustible";
-        return preciosPorMesProducto[`${mes}-${producto}`] || 0;
-      })(),
-      costo: getCostoCarga(c),
-      obra: c.obra?.nombre || "-",
-      operador: operadorPorFecha.get(c.fecha) || "-",
-    }));
-
-    // Build mantenimiento detail
-    const mantenimientoParaPDF = datosFiltrados.mantenimientos.map((m) => ({
-      fecha: m.fecha,
-      tipo: m.tipo,
-      descripcion: m.descripcion,
-      costoRepuestos: m.costo_repuestos || 0,
-      costoManoObra: m.costo_mano_obra || 0,
-      costo: m.costo_total || 0,
-      tecnico: m.tecnico || "-",
-    }));
-
-    // Build remitos detail with operator
-    const remitosParaPDF = datosFiltrados.remitos.map((r) => ({
-      fecha: r.fecha,
-      numero: r.remito_local || r.numero || "-",
-      tipo_material: r.tipo_material || r.material || "-",
-      viajes: r.cantidad_viajes || 0,
-      cantidad_total: r.cantidad || 0,
-      unidad: r.unidad || "-",
-      costo: r.precio_total || 0,
-      operador: operadorPorFecha.get(r.fecha) || "-",
-    }));
-
     try {
       await generateGastosMaquinariaPDF(
         {
@@ -459,11 +421,8 @@ export function GastosMaquinaria() {
           horas_acumuladas: maquinaria.horas_acumuladas,
           km_acumulados: maquinaria.km_acumulados || 0,
         },
-        totales,
-        combustibleParaPDF,
-        mantenimientoParaPDF,
-        remitosParaPDF,
-        { totalKm: kmData.totalKm },
+        { ...totales, cantCargas: datosFiltrados.combustible.length },
+        rendimientoData,
         fechaDesde,
         fechaHasta
       );
