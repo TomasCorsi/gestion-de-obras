@@ -4,6 +4,13 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Receipt,
   Loader2,
@@ -13,6 +20,7 @@ import {
   Package,
   Plus,
   Download,
+  FileText,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
@@ -24,6 +32,7 @@ import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
+import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -45,6 +54,13 @@ export default function Remitos() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [tipoFilter, setTipoFilter] = useState<string>("__all__");
+  const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+
+  // Unique tipo_material values for filter
+  const tiposUnicos = useMemo(() => {
+    return [...new Set(remitos.map(r => r.tipo_material).filter(Boolean) as string[])].sort();
+  }, [remitos]);
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
