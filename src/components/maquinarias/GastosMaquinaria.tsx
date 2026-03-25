@@ -131,7 +131,7 @@ export function GastosMaquinaria() {
   }, [partesDiarios]);
 
   // KM data from partes_diarios filtered by period
-  const kmData = useMemo(() => {
+  const rendimientoData = useMemo(() => {
     const filtered = partesDiarios.filter(p => {
       const f = parseISO(p.fecha);
       if (fechaDesde && f < fechaDesde) return false;
@@ -139,7 +139,28 @@ export function GastosMaquinaria() {
       return true;
     });
     const totalKm = filtered.reduce((sum, p) => sum + (p.km_camion || 0), 0);
-    return { totalKm };
+    const horasMaquina = filtered.reduce((sum, p) => {
+      const diff = Math.max((p.horometro_fin || 0) - (p.horometro_inicio || 0), 0);
+      return sum + diff;
+    }, 0);
+
+    // Conductores con días únicos
+    const conductorMap = new Map<string, Set<string>>();
+    for (const p of filtered) {
+      if (p.personal) {
+        const nombre = [p.personal.nombre, p.personal.apellido].filter(Boolean).join(' ');
+        if (nombre) {
+          if (!conductorMap.has(nombre)) conductorMap.set(nombre, new Set());
+          conductorMap.get(nombre)!.add(p.fecha);
+        }
+      }
+    }
+    const conductores = Array.from(conductorMap.entries()).map(([nombre, fechas]) => ({
+      nombre,
+      dias: fechas.size,
+    }));
+
+    return { totalKm, horasMaquina, conductores };
   }, [partesDiarios, fechaDesde, fechaHasta]);
 
   const mesesDisponibles = useMemo(() => {
