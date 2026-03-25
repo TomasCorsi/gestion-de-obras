@@ -1,28 +1,47 @@
 
 
-## Plan: Corregir layout del PDF - conductor, ancho de tabla y colores
+## Plan: Filtro por tipo en Remitos + Liquidación por cliente
 
-### Problemas identificados
-1. **Conductor pisa texto**: La fila del conductor usa `drawField` que concatena label+value en texto libre, y si el nombre es largo se superpone con "KM período" en `col2X`
-2. **Tabla actividad no ocupa todo el ancho**: Tiene `tableWidth: 110` hardcodeado (línea 324)
-3. **Colores poco profesionales**: Los pasteles actuales (naranja claro, lila, celeste) son inconsistentes
+### 1. Filtro por Tipo Material en la página de Remitos
 
-### Cambios en `src/utils/generateGastosMaquinariaPDF.ts`
+**Archivo: `src/pages/Remitos.tsx`**
+- Agregar un `Select` después del FilterBar existente para filtrar por `tipo_material` (Desmonte, Cascote, Mov. Interno, etc.)
+- Extraer los valores únicos de `tipo_material` de los remitos cargados para poblar las opciones dinámicamente
+- Aplicar el filtro en el `filteredRemitos` existente
 
-**1. Fix conductor - separar en su propia fila completa**
-- Mover conductor(es) a una fila dedicada que ocupe todo el ancho (sin compartir con KM/Hs)
-- Poner KM período y Hs período en otra fila separada
-- Aumentar `equipoBoxHeight` para acomodar las 2 filas extra
-- Truncar nombres largos si es necesario
+### 2. Sección de Liquidación por Cliente
 
-**2. Tabla actividad - ancho completo**
-- Eliminar `tableWidth: 110` (línea 324) para que use todo el ancho disponible entre márgenes
-- Ajustar `columnStyles` para que "Concepto" ocupe más espacio y "Cantidad" se alinee bien
+**Nuevo archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`**
+- Dialog/sheet que se abre desde un botón "Liquidar por Cliente" en la barra de acciones
+- Contenido:
+  - Selector de cliente (de los clientes presentes en los remitos filtrados)
+  - Checkboxes para elegir qué tipos incluir (Desmonte, Mov. Interno, Cascote, etc.) - todos marcados por defecto
+  - Selector de período (usa las mismas fechas del filtro activo)
+  - Tabla resumen con:
+    - Desglose por tipo de material: cantidad de viajes, cantidad total (m3/tn), precio total
+    - Fila de TOTAL general
+  - Botón para exportar a PDF o Excel
 
-**3. Colores más profesionales**
-- Header de tablas: gris oscuro corporativo `[45, 45, 45]` en vez de azul
-- Categorías del resumen: tonos de gris neutro en vez de pasteles coloridos
-- Tabla actividad header: mismo gris oscuro corporativo para consistencia
-- Fila total actividad: gris medio sutil
-- Mantener el rojo `[180, 0, 0]` solo para GASTO TOTAL (brand color)
+**Archivo: `src/pages/Remitos.tsx`**
+- Agregar botón "Liquidar" en la barra de acciones
+- Pasar los remitos filtrados y clientes al dialog
+
+### Detalle técnico
+
+**Filtro por tipo:**
+```
+tipos únicos = [...new Set(remitos.map(r => r.tipo_material).filter(Boolean))]
+filteredRemitos: si tipoFilter está activo, filtrar por r.tipo_material === tipoFilter
+```
+
+**Liquidación por cliente:**
+- Agrupa `filteredRemitos` por `cliente` (o `cliente_destino`)
+- Para el cliente seleccionado, agrupa por `tipo_material`
+- Suma `cantidad_viajes`, `cantidad`, `precio_total` por tipo
+- Los checkboxes de tipo permiten incluir/excluir categorías del total
+- Genera tabla con columnas: Tipo | Viajes | Cantidad | Unidad | Precio Total
+
+### Archivos a crear/editar
+- `src/pages/Remitos.tsx` — agregar filtro tipo + botón liquidar
+- `src/components/remitos/LiquidacionClienteDialog.tsx` — nuevo componente con la liquidación
 
