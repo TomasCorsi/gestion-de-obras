@@ -30,10 +30,7 @@ Movimiento de suelo. Excavaciones y fundaciones sujetas a modificación y poster
 
 function formatCurrency(value: number, moneda: string = "ARS"): string {
   if (moneda === "USD") {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      currencyDisplay: "symbol",
+    return "US$ " + new Intl.NumberFormat("en-US", {
       maximumFractionDigits: 0,
     }).format(value);
   }
