@@ -41,6 +41,9 @@ export interface RendimientoData {
   totalKm: number;
   horasMaquina: number;
   conductores: Array<{ nombre: string; dias: number }>;
+  totalViajesPartes: number;
+  totalMovInternos: number;
+  viajesPorTipo: Record<string, number>;
 }
 
 interface ImageData {
@@ -55,15 +58,6 @@ function formatCurrency(value: number): string {
     currency: "ARS",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function formatNumber(value: number, decimals = 1): string {
-  return value.toLocaleString("es-AR", { maximumFractionDigits: decimals });
-}
-
-function safeRatio(numerator: number, denominator: number, decimals = 1): string {
-  if (!denominator || denominator === 0) return "-";
-  return formatNumber(numerator / denominator, decimals);
 }
 
 async function loadImageAsBase64(url: string): Promise<ImageData> {
@@ -157,9 +151,10 @@ export async function generateGastosMaquinariaPDF(
   doc.text(`Período: ${periodoDesde} - ${periodoHasta}`, pageWidth - margin, yPos, { align: "right" });
   yPos += 7;
 
-  // ============== DATOS DEL EQUIPO ==============
+  // ============== DATOS DEL EQUIPO (con conductor y KM/Hs período) ==============
+  const equipoBoxHeight = rendimiento.conductores.length > 0 ? 26 : 20;
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos - 2, pageWidth - margin * 2, 18, "F");
+  doc.rect(margin, yPos - 2, pageWidth - margin * 2, equipoBoxHeight, "F");
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
@@ -191,24 +186,53 @@ export async function generateGastosMaquinariaPDF(
   drawField("Estado", estadoLabels[maquinaria.estado] || maquinaria.estado, col1X, yPos);
   drawField("Horas acum.", maquinaria.horas_acumuladas.toLocaleString(), col2X, yPos);
   drawField("KM acum.", maquinaria.km_acumulados.toLocaleString(), col3X, yPos);
-  yPos += 8;
+  yPos += 4;
 
-  // ============== RESUMEN DE GASTOS (autoTable) ==============
+  // Conductor(es) y KM/Hs del período
+  if (rendimiento.conductores.length > 0) {
+    const conductorTexto = rendimiento.conductores
+      .sort((a, b) => b.dias - a.dias)
+      .map(c => `${c.nombre} (${c.dias}d)`)
+      .join(" | ");
+    drawField("Conductor(es)", conductorTexto, col1X, yPos);
+    
+    const kmPeriodo = `${rendimiento.totalKm.toLocaleString()} km`;
+    const hsPeriodo = `${rendimiento.horasMaquina.toLocaleString()} hs`;
+    drawField("KM período", kmPeriodo, col2X, yPos);
+    drawField("Hs período", hsPeriodo, col3X, yPos);
+    yPos += 4;
+  }
+
+  yPos += 4;
+
+  // ============== RESUMEN DE GASTOS ==============
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("RESUMEN DE GASTOS", margin, yPos);
   yPos += 3;
 
   const resumenBody = [
-    ["Combustible / Insumos", `${totales.totalLitros.toLocaleString()} L  (${totales.cantCargas} cargas)`, formatCurrency(totales.totalCombustible)],
-    ["Mantenimientos", `${totales.totalMantenimientos} servicios`, formatCurrency(totales.costoMantenimientos)],
-    ["Remitos / Viajes", `${totales.totalRemitos} remitos - ${totales.totalViajes} viajes`, formatCurrency(totales.costoRemitos)],
+    [
+      "Combustible / Insumos",
+      `${totales.totalLitros.toLocaleString()} L  (${totales.cantCargas} cargas)`,
+      formatCurrency(totales.totalCombustible),
+    ],
+    [
+      "Mantenimientos",
+      `${totales.totalMantenimientos} servicio${totales.totalMantenimientos !== 1 ? "s" : ""}`,
+      formatCurrency(totales.costoMantenimientos),
+    ],
+    [
+      "Remitos / Viajes",
+      `${totales.totalRemitos} remitos - ${totales.totalViajes} viajes`,
+      formatCurrency(totales.costoRemitos),
+    ],
   ];
 
   const categoryColors: [number, number, number][] = [
-    [255, 243, 220], // amber light
-    [240, 230, 250], // purple light
-    [220, 235, 250], // blue light
+    [255, 243, 220],
+    [240, 230, 250],
+    [220, 235, 250],
   ];
 
   autoTable(doc, {
@@ -248,81 +272,66 @@ export async function generateGastosMaquinariaPDF(
 
   yPos = (doc as any).lastAutoTable.finalY + 8;
 
-  // ============== INDICADORES DE RENDIMIENTO ==============
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(20, 80, 60);
-  doc.text("INDICADORES DE RENDIMIENTO", margin, yPos);
-  doc.setTextColor(0, 0, 0);
-  yPos += 3;
+  // ============== ACTIVIDAD DEL PERÍODO ==============
+  const actividadBody: string[][] = [];
 
-  const { totalKm, horasMaquina } = rendimiento;
-  const rendimientoBody = [
-    ["KM recorridos (período)", `${formatNumber(totalKm, 0)} km`],
-    ["Horas máquina (período)", `${formatNumber(horasMaquina, 1)} hs`],
-    ["Costo por KM", totalKm > 0 ? formatCurrency(totales.gastoTotal / totalKm) : "-"],
-    ["Costo por hora máquina", horasMaquina > 0 ? formatCurrency(totales.gastoTotal / horasMaquina) : "-"],
-    ["Litros por KM", safeRatio(totales.totalLitros, totalKm)],
-    ["Litros por hora", safeRatio(totales.totalLitros, horasMaquina)],
-    ["Costo combustible por KM", totalKm > 0 ? formatCurrency(totales.totalCombustible / totalKm) : "-"],
-    ["Promedio litros/carga", totales.cantCargas > 0 ? `${formatNumber(totales.totalLitros / totales.cantCargas)} L` : "-"],
-    ["Cantidad de cargas", `${totales.cantCargas}`],
-  ];
+  // Viajes por tipo de material
+  const tiposOrdenados = Object.entries(rendimiento.viajesPorTipo)
+    .sort((a, b) => b[1] - a[1]);
+  
+  for (const [tipo, cant] of tiposOrdenados) {
+    actividadBody.push([tipo, `${cant} viaje${cant !== 1 ? "s" : ""}`]);
+  }
 
-  autoTable(doc, {
-    startY: yPos,
-    head: [["Indicador", "Valor"]],
-    body: rendimientoBody,
-    theme: "striped",
-    headStyles: {
-      fillColor: [40, 120, 90],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      fontSize: 7,
-      cellPadding: 2,
-    },
-    bodyStyles: { fontSize: 7, cellPadding: 2 },
-    columnStyles: {
-      0: { cellWidth: 60, fontStyle: "bold" },
-      1: { cellWidth: 45, halign: "right" },
-    },
-    margin: { left: margin, right: margin },
-    tableWidth: 105,
-  });
+  // Movimientos internos
+  if (rendimiento.totalMovInternos > 0) {
+    actividadBody.push(["Movimientos Internos", `${rendimiento.totalMovInternos}`]);
+  }
 
-  const rendimientoTableEndY = (doc as any).lastAutoTable.finalY;
+  // Cargas de combustible
+  actividadBody.push(["Cargas de Combustible", `${totales.cantCargas}`]);
 
-  // ============== CONDUCTORES DEL PERÍODO (side by side if fits) ==============
-  if (rendimiento.conductores.length > 0) {
-    const conductoresStartX = margin + 115;
-    const conductoresBody = rendimiento.conductores
-      .sort((a, b) => b.dias - a.dias)
-      .map((c) => [c.nombre, `${c.dias} día${c.dias !== 1 ? "s" : ""}`]);
+  // Total viajes
+  const totalViajes = rendimiento.totalViajesPartes || totales.totalViajes;
+  actividadBody.push(["Total Viajes", `${totalViajes}`]);
+
+  if (actividadBody.length > 0) {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(20, 60, 100);
+    doc.text("ACTIVIDAD DEL PERÍODO", margin, yPos);
+    doc.setTextColor(0, 0, 0);
+    yPos += 3;
 
     autoTable(doc, {
       startY: yPos,
-      head: [["Conductor", "Días"]],
-      body: conductoresBody,
+      head: [["Concepto", "Cantidad"]],
+      body: actividadBody,
       theme: "striped",
       headStyles: {
-        fillColor: [80, 80, 120],
+        fillColor: [40, 80, 140],
         textColor: [255, 255, 255],
         fontStyle: "bold",
         fontSize: 7,
         cellPadding: 2,
       },
-      bodyStyles: { fontSize: 7, cellPadding: 2 },
+      bodyStyles: { fontSize: 7.5, cellPadding: 2 },
       columnStyles: {
-        0: { cellWidth: 45 },
-        1: { cellWidth: 20, halign: "center" },
+        0: { cellWidth: 70, fontStyle: "bold" },
+        1: { cellWidth: 40, halign: "center" },
       },
-      margin: { left: conductoresStartX, right: margin },
-      tableWidth: 65,
+      margin: { left: margin, right: margin },
+      tableWidth: 110,
+      didParseCell: (data) => {
+        // Highlight total row
+        if (data.section === "body" && data.row.index === actividadBody.length - 1) {
+          data.cell.styles.fillColor = [220, 235, 250];
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
     });
 
-    yPos = Math.max(rendimientoTableEndY, (doc as any).lastAutoTable.finalY) + 10;
-  } else {
-    yPos = rendimientoTableEndY + 10;
+    yPos = (doc as any).lastAutoTable.finalY + 10;
   }
 
   // ============== FOOTER ==============

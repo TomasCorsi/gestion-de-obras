@@ -102,6 +102,8 @@ export function GastosMaquinaria() {
           km_camion,
           horometro_inicio,
           horometro_fin,
+          cantidad_viajes,
+          cantidad_movimiento_interno,
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -113,6 +115,8 @@ export function GastosMaquinaria() {
         km_camion: number | null;
         horometro_inicio: number | null;
         horometro_fin: number | null;
+        cantidad_viajes: number | null;
+        cantidad_movimiento_interno: number | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
@@ -130,7 +134,7 @@ export function GastosMaquinaria() {
     return map;
   }, [partesDiarios]);
 
-  // KM data from partes_diarios filtered by period
+  // KM data, conductores, viajes y movimientos from partes_diarios filtered by period
   const rendimientoData = useMemo(() => {
     const filtered = partesDiarios.filter(p => {
       const f = parseISO(p.fecha);
@@ -160,8 +164,19 @@ export function GastosMaquinaria() {
       dias: fechas.size,
     }));
 
-    return { totalKm, horasMaquina, conductores };
-  }, [partesDiarios, fechaDesde, fechaHasta]);
+    // Totales de viajes y movimientos internos desde partes
+    const totalViajesPartes = filtered.reduce((sum, p) => sum + (p.cantidad_viajes || 0), 0);
+    const totalMovInternos = filtered.reduce((sum, p) => sum + (p.cantidad_movimiento_interno || 0), 0);
+
+    // Viajes por tipo de material desde remitos filtrados
+    const viajesPorTipo: Record<string, number> = {};
+    datosFiltrados.remitos.forEach(r => {
+      const tipo = r.tipo_material || r.material || "Sin tipo";
+      viajesPorTipo[tipo] = (viajesPorTipo[tipo] || 0) + (r.cantidad_viajes || 1);
+    });
+
+    return { totalKm, horasMaquina, conductores, totalViajesPartes, totalMovInternos, viajesPorTipo };
+  }, [partesDiarios, fechaDesde, fechaHasta, datosFiltrados.remitos]);
 
   const mesesDisponibles = useMemo(() => {
     const now = new Date();
