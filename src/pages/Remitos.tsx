@@ -127,6 +127,7 @@ export default function Remitos() {
 
     if (!searchTerm) return result;
 
+    const term = searchTerm.toLowerCase();
     return result.filter((r) => {
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
