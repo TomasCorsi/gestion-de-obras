@@ -21,6 +21,7 @@ import {
   Plus,
   Download,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
@@ -56,6 +57,7 @@ export default function Remitos() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+  const [recalculando, setRecalculando] = useState(false);
 
   // Unique tipo_material values for filter
   const tiposUnicos = useMemo(() => {
@@ -210,6 +212,52 @@ export default function Remitos() {
     setEditingRemito(null);
   };
 
+  const getClienteForObra = (obraNombre: string | null | undefined) => {
+    if (!obraNombre) return "";
+    const obra = obras.find(o => o.nombre === obraNombre);
+    if (!obra) return "";
+    const num = parseInt(obra.numero || "0", 10);
+    if (num >= 300 && obra.cliente?.nombre) return obra.cliente.nombre;
+    return "";
+  };
+
+  const handleRecalcularClientes = async () => {
+    setRecalculando(true);
+    try {
+      const updates: { id: string; data: Partial<RemitoForm> }[] = [];
+
+      for (const remito of remitos) {
+        const nuevoCliente = getClienteForObra(remito.desde);
+        const nuevoDestino = getClienteForObra(remito.hasta);
+
+        const clienteChanged = (nuevoCliente || "") !== (remito.cliente || "");
+        const destinoChanged = (nuevoDestino || "") !== (remito.cliente_destino || "");
+
+        if (clienteChanged || destinoChanged) {
+          updates.push({
+            id: remito.id,
+            data: {
+              cliente: nuevoCliente || "",
+              cliente_destino: nuevoDestino || "",
+            },
+          });
+        }
+      }
+
+      if (updates.length === 0) {
+        toast.info("Todos los clientes ya están correctos");
+      } else {
+        const results = await batchSave({ created: [], updated: updates, deleted: [] });
+        toast.success(`${updates.length} remitos actualizados (${results.errors} errores)`);
+      }
+    } catch (error) {
+      console.error("Error recalculando:", error);
+      toast.error("Error al recalcular clientes");
+    } finally {
+      setRecalculando(false);
+    }
+  };
+
   const exportarExcel = () => {
     if (filteredRemitos.length === 0) {
       toast.error("No hay remitos para exportar");
@@ -342,6 +390,15 @@ export default function Remitos() {
         >
           <FileText className="w-4 h-4" />
           Liquidar
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleRecalcularClientes}
+          disabled={recalculando}
+          className="gap-2"
+        >
+          {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Recalcular Clientes
         </Button>
       </div>
 
