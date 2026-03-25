@@ -1,47 +1,41 @@
 
 
-## Plan: Filtro por tipo en Remitos + Liquidación por cliente
+## Plan: Recalcular clientes origen/destino en remitos existentes
 
-### 1. Filtro por Tipo Material en la página de Remitos
+### Problema
+Remitos viejos tienen `cliente` y `cliente_destino` incorrectos o vacíos porque fueron creados antes de la lógica de auto-clasificación.
 
-**Archivo: `src/pages/Remitos.tsx`**
-- Agregar un `Select` después del FilterBar existente para filtrar por `tipo_material` (Desmonte, Cascote, Mov. Interno, etc.)
-- Extraer los valores únicos de `tipo_material` de los remitos cargados para poblar las opciones dinámicamente
-- Aplicar el filtro en el `filteredRemitos` existente
+### Solución
+Agregar un botón "Recalcular Clientes" en la página de Remitos que ejecute la misma lógica de `getClienteForObra` sobre todos los remitos, actualizando `cliente` (desde el campo `desde`) y `cliente_destino` (desde el campo `hasta`).
 
-### 2. Sección de Liquidación por Cliente
+### Cambios
 
-**Nuevo archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`**
-- Dialog/sheet que se abre desde un botón "Liquidar por Cliente" en la barra de acciones
-- Contenido:
-  - Selector de cliente (de los clientes presentes en los remitos filtrados)
-  - Checkboxes para elegir qué tipos incluir (Desmonte, Mov. Interno, Cascote, etc.) - todos marcados por defecto
-  - Selector de período (usa las mismas fechas del filtro activo)
-  - Tabla resumen con:
-    - Desglose por tipo de material: cantidad de viajes, cantidad total (m3/tn), precio total
-    - Fila de TOTAL general
-  - Botón para exportar a PDF o Excel
+**1. `src/pages/Remitos.tsx`**
+- Agregar botón "Recalcular Clientes" en la barra de acciones (junto a Importar/Exportar)
+- Implementar función `handleRecalcularClientes`:
+  - Recorre todos los remitos
+  - Para cada remito, busca la obra que coincida con `desde` → obtiene el cliente si es obra externa (N° >= 300)
+  - Igual con `hasta` → `cliente_destino`
+  - Compara con los valores actuales; solo actualiza los que cambiaron
+  - Usa `batchSave` con los updates necesarios
+  - Muestra toast con cantidad de remitos actualizados
+- La lógica de matching es: buscar obra por nombre, verificar si `numero >= 300` (externa), y usar `obra.cliente?.nombre`
 
-**Archivo: `src/pages/Remitos.tsx`**
-- Agregar botón "Liquidar" en la barra de acciones
-- Pasar los remitos filtrados y clientes al dialog
+**2. `src/hooks/useRemitos.ts`**
+- Sin cambios — ya tiene `batchSave` con updates en paralelo
 
-### Detalle técnico
-
-**Filtro por tipo:**
+### Lógica de recálculo
+```text
+Para cada remito:
+  obra_desde = obras.find(o => o.nombre === remito.desde)
+  cliente_nuevo = obra_desde && numero >= 300 ? obra_desde.cliente.nombre : ""
+  
+  obra_hasta = obras.find(o => o.nombre === remito.hasta)  
+  cliente_destino_nuevo = obra_hasta && numero >= 300 ? obra_hasta.cliente.nombre : ""
+  
+  Si cambió alguno → agregar a lista de updates
 ```
-tipos únicos = [...new Set(remitos.map(r => r.tipo_material).filter(Boolean))]
-filteredRemitos: si tipoFilter está activo, filtrar por r.tipo_material === tipoFilter
-```
 
-**Liquidación por cliente:**
-- Agrupa `filteredRemitos` por `cliente` (o `cliente_destino`)
-- Para el cliente seleccionado, agrupa por `tipo_material`
-- Suma `cantidad_viajes`, `cantidad`, `precio_total` por tipo
-- Los checkboxes de tipo permiten incluir/excluir categorías del total
-- Genera tabla con columnas: Tipo | Viajes | Cantidad | Unidad | Precio Total
-
-### Archivos a crear/editar
-- `src/pages/Remitos.tsx` — agregar filtro tipo + botón liquidar
-- `src/components/remitos/LiquidacionClienteDialog.tsx` — nuevo componente con la liquidación
+### Archivos a editar
+- `src/pages/Remitos.tsx` — botón + función de recálculo
 
