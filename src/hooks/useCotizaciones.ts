@@ -17,6 +17,7 @@ export interface CotizacionDB {
   iva: number;
   total: number;
   notas: string | null;
+  moneda?: string;
   created_at: string;
   updated_at: string;
 }
