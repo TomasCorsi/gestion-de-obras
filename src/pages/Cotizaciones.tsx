@@ -247,6 +247,7 @@ export default function Cotizaciones() {
 
   const handleDownloadPDF = async (cot: CotizacionWithRelations) => {
     try {
+      console.log("PDF generation - cotizacion moneda:", cot.moneda, "full cot keys:", Object.keys(cot));
       await generateCotizacionPDF(cot, cot.obra?.nombre);
       toast.success("PDF generado correctamente");
     } catch (error) {
