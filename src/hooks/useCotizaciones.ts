@@ -179,6 +179,7 @@ export function useCotizaciones() {
         iva: cot.iva,
         total: cot.total,
         notas: cot.notas || null,
+        moneda: cot.moneda || 'ARS',
       }])
       .select()
       .single();
