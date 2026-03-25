@@ -100,6 +100,8 @@ export function GastosMaquinaria() {
         .select(`
           fecha,
           km_camion,
+          horometro_inicio,
+          horometro_fin,
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -109,6 +111,8 @@ export function GastosMaquinaria() {
       return data as unknown as Array<{
         fecha: string;
         km_camion: number | null;
+        horometro_inicio: number | null;
+        horometro_fin: number | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
@@ -127,7 +131,7 @@ export function GastosMaquinaria() {
   }, [partesDiarios]);
 
   // KM data from partes_diarios filtered by period
-  const kmData = useMemo(() => {
+  const rendimientoData = useMemo(() => {
     const filtered = partesDiarios.filter(p => {
       const f = parseISO(p.fecha);
       if (fechaDesde && f < fechaDesde) return false;
@@ -135,7 +139,28 @@ export function GastosMaquinaria() {
       return true;
     });
     const totalKm = filtered.reduce((sum, p) => sum + (p.km_camion || 0), 0);
-    return { totalKm };
+    const horasMaquina = filtered.reduce((sum, p) => {
+      const diff = Math.max((p.horometro_fin || 0) - (p.horometro_inicio || 0), 0);
+      return sum + diff;
+    }, 0);
+
+    // Conductores con días únicos
+    const conductorMap = new Map<string, Set<string>>();
+    for (const p of filtered) {
+      if (p.personal) {
+        const nombre = [p.personal.nombre, p.personal.apellido].filter(Boolean).join(' ');
+        if (nombre) {
+          if (!conductorMap.has(nombre)) conductorMap.set(nombre, new Set());
+          conductorMap.get(nombre)!.add(p.fecha);
+        }
+      }
+    }
+    const conductores = Array.from(conductorMap.entries()).map(([nombre, fechas]) => ({
+      nombre,
+      dias: fechas.size,
+    }));
+
+    return { totalKm, horasMaquina, conductores };
   }, [partesDiarios, fechaDesde, fechaHasta]);
 
   const mesesDisponibles = useMemo(() => {
@@ -383,44 +408,6 @@ export function GastosMaquinaria() {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
     if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
 
-    // Build combustible detail with operator
-    const combustibleParaPDF = datosFiltrados.combustible.map((c) => ({
-      fecha: c.fecha,
-      producto: c.tipo_producto || "combustible",
-      litros: c.litros || 0,
-      precioUnitario: (() => {
-        const mes = parseInt(c.fecha.split("-")[1], 10);
-        const producto = c.tipo_producto || "combustible";
-        return preciosPorMesProducto[`${mes}-${producto}`] || 0;
-      })(),
-      costo: getCostoCarga(c),
-      obra: c.obra?.nombre || "-",
-      operador: operadorPorFecha.get(c.fecha) || "-",
-    }));
-
-    // Build mantenimiento detail
-    const mantenimientoParaPDF = datosFiltrados.mantenimientos.map((m) => ({
-      fecha: m.fecha,
-      tipo: m.tipo,
-      descripcion: m.descripcion,
-      costoRepuestos: m.costo_repuestos || 0,
-      costoManoObra: m.costo_mano_obra || 0,
-      costo: m.costo_total || 0,
-      tecnico: m.tecnico || "-",
-    }));
-
-    // Build remitos detail with operator
-    const remitosParaPDF = datosFiltrados.remitos.map((r) => ({
-      fecha: r.fecha,
-      numero: r.remito_local || r.numero || "-",
-      tipo_material: r.tipo_material || r.material || "-",
-      viajes: r.cantidad_viajes || 0,
-      cantidad_total: r.cantidad || 0,
-      unidad: r.unidad || "-",
-      costo: r.precio_total || 0,
-      operador: operadorPorFecha.get(r.fecha) || "-",
-    }));
-
     try {
       await generateGastosMaquinariaPDF(
         {
@@ -434,11 +421,8 @@ export function GastosMaquinaria() {
           horas_acumuladas: maquinaria.horas_acumuladas,
           km_acumulados: maquinaria.km_acumulados || 0,
         },
-        totales,
-        combustibleParaPDF,
-        mantenimientoParaPDF,
-        remitosParaPDF,
-        { totalKm: kmData.totalKm },
+        { ...totales, cantCargas: datosFiltrados.combustible.length },
+        rendimientoData,
         fechaDesde,
         fechaHasta
       );
