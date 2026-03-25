@@ -266,7 +266,7 @@ export function useCotizaciones() {
     
     const { error } = await supabase
       .from("cotizaciones")
-      .update(sanitized)
+      .update(sanitized as any)
       .eq("id", id);
 
     if (error) {
