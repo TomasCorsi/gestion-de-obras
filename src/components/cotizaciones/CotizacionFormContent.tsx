@@ -10,7 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus, Sparkles } from "lucide-react";
+import { ImportComputoDialog } from "./ImportComputoDialog";
 import {
   CotizacionForm,
   CotizacionCategoriaForm,
@@ -66,6 +67,27 @@ export function CotizacionFormContent({
   onCancel,
 }: CotizacionFormContentProps) {
   const [openCategories, setOpenCategories] = useState<Record<number, boolean>>({});
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleImportComplete = (
+    newCategorias: CotizacionCategoriaForm[],
+    newItems: CotizacionItemForm[],
+    descripcion?: string
+  ) => {
+    setCategorias(newCategorias);
+    setItems(newItems);
+    const openCats: Record<number, boolean> = {};
+    newCategorias.forEach((_, i) => { openCats[i] = true; });
+    setOpenCategories(openCats);
+    const subtotal = newItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    const iva = subtotal * 0.21;
+    const total = subtotal + iva;
+    setFormData({
+      ...formData,
+      subtotal, iva, total,
+      ...(descripcion ? { descripcion } : {}),
+    });
+  };
 
   // Calculate totals whenever items change
   const calculateTotals = (itemsList: CotizacionItemForm[]) => {
@@ -314,11 +336,23 @@ export function CotizacionFormContent({
       <div className="border border-border rounded-lg p-4 space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-lg font-semibold">Rubros e Ítems</Label>
-          <Button type="button" variant="outline" size="sm" onClick={addCategoria}>
-            <FolderPlus className="w-4 h-4 mr-1" />
-            Agregar Rubro
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Sparkles className="w-4 h-4 mr-1" />
+              Importar con IA
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={addCategoria}>
+              <FolderPlus className="w-4 h-4 mr-1" />
+              Agregar Rubro
+            </Button>
+          </div>
         </div>
+
+        <ImportComputoDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImportComplete={handleImportComplete}
+        />
 
         {categorias.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-4">
