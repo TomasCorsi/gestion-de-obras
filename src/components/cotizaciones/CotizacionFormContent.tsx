@@ -336,11 +336,23 @@ export function CotizacionFormContent({
       <div className="border border-border rounded-lg p-4 space-y-4">
         <div className="flex items-center justify-between">
           <Label className="text-lg font-semibold">Rubros e Ítems</Label>
-          <Button type="button" variant="outline" size="sm" onClick={addCategoria}>
-            <FolderPlus className="w-4 h-4 mr-1" />
-            Agregar Rubro
-          </Button>
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Sparkles className="w-4 h-4 mr-1" />
+              Importar con IA
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={addCategoria}>
+              <FolderPlus className="w-4 h-4 mr-1" />
+              Agregar Rubro
+            </Button>
+          </div>
         </div>
+
+        <ImportComputoDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImportComplete={handleImportComplete}
+        />
 
         {categorias.length === 0 ? (
           <p className="text-muted-foreground text-sm text-center py-4">
