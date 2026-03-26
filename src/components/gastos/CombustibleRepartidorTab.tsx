@@ -261,6 +261,7 @@ export function CombustibleRepartidorTab() {
       const term = searchTerm.toLowerCase();
       result = result.filter(
         (c) =>
+          String(c.numero_remito || "").includes(term) ||
           formatOperador(c.operador).toLowerCase().includes(term) ||
           (c.maquinaria?.codigo || "").toLowerCase().includes(term) ||
           (c.maquinaria?.tipo || "").toLowerCase().includes(term) ||
