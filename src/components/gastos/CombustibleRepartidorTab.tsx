@@ -302,6 +302,7 @@ export function CombustibleRepartidorTab() {
     const exportData = filtered.map((c) => {
       const precio = getPrecioForCarga(c);
       return {
+        "N° Remito": c.numero_remito || "-",
         Fecha: formatDate(c.fecha),
         Producto: (c.tipo_producto || "combustible").charAt(0).toUpperCase() + (c.tipo_producto || "combustible").slice(1),
         Repartidor: c.repartidor ? formatOperador(c.repartidor) : formatOperador(c.parte_diario?.personal),
