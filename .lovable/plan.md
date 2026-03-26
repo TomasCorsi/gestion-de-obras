@@ -1,35 +1,24 @@
 
 
-## Plan: Asignar precios masivamente por tipo de material
+## Plan: Mejorar buscabilidad en el formulario de Remitos
 
-### Concepto
-Un dialog donde definís un precio unitario por tipo de material (ej: Desmonte = $5000) y se aplica automáticamente a todos los remitos filtrados que coincidan con ese tipo, recalculando `precio_unitario` y `precio_total`.
+### Problema
+1. Las maquinarias solo muestran código, no se puede buscar por número interno ni patente
+2. Los desplegables de Tipo Material y Unidad son `Select` estáticos sin buscador
 
-### Cambios
+### Cambios en `src/components/remitos/RemitoQuickFormDialog.tsx`
 
-**1. Nuevo componente: `src/components/remitos/AsignarPreciosMasivosDialog.tsx`**
-- Dialog con una tabla que lista cada `tipo_material` encontrado en los remitos filtrados
-- Cada fila muestra: Tipo | Cantidad de remitos | Input para precio unitario
-- Selector de modo de cálculo: "por viaje" o "por m3/tn" (determina si `precio_total = precio_unitario × cantidad_viajes` o `precio_unitario × cantidad`)
-- Botón "Aplicar" que actualiza todos los remitos del tipo seleccionado vía `batchSave`
-- Preview del total resultante antes de aplicar
+**1. Maquinaria Combobox — mostrar y buscar por código + patente**
+- Cambiar `maquinariaOptions` para que el `label` muestre `código - patente` (ej: "C01 - ABC123")
+- Agregar `searchValue` que concatene código + patente + nombre para que el Combobox busque en todos los campos
 
-**2. `src/pages/Remitos.tsx`**
-- Agregar botón "Asignar Precios" en la barra de acciones (junto a Liquidar, Recalcular, etc.)
-- Pasar `filteredRemitos` y `batchSave` al dialog
-- Al cerrar el dialog con éxito, se refresca la lista
+**2. Reemplazar `Select` por `Combobox` en:**
+- **Tipo Material** (actualmente `Select` con 23 opciones) → `Combobox` con buscador
+- **Unidad** (5 opciones, `Select` está bien pero por consistencia) → `Combobox`
+- **Modo Cálculo** (2 opciones) → mantener `Select`, no necesita buscador
 
-### Flujo de uso
-```text
-1. Filtrás por obra/período/tipo
-2. Click "Asignar Precios"
-3. Ves la lista de tipos de material con cantidad de remitos
-4. Cargás precio unitario en cada tipo que quieras
-5. Elegís modo (por viaje / por cantidad)
-6. Click "Aplicar" → actualiza masivamente
-```
-
-### Archivos a crear/editar
-- `src/components/remitos/AsignarPreciosMasivosDialog.tsx` — nuevo
-- `src/pages/Remitos.tsx` — botón + state para abrir dialog
+### Detalle técnico
+- El componente `Combobox` ya soporta `searchValue` para búsqueda custom
+- Se eliminarán los imports de `Select`/`SelectContent`/`SelectItem`/`SelectTrigger`/`SelectValue` si ya no se usan (Modo Cálculo aún los necesita)
+- La label de maquinaria pasará de `m.codigo || m.patente` a `[m.codigo, m.patente].filter(Boolean).join(" - ")` con searchValue incluyendo nombre
 
