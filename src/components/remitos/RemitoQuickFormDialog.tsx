@@ -213,7 +213,18 @@ export function RemitoQuickFormDialog({
 
   const maquinariaOptions: ComboboxOption[] = maquinarias.map((m) => ({
     value: m.id,
-    label: m.codigo || m.patente || m.id.slice(0, 8),
+    label: [m.codigo, m.patente].filter(Boolean).join(" - ") || m.id.slice(0, 8),
+    searchValue: [m.codigo, m.patente, m.nombre, m.tipo].filter(Boolean).join(" "),
+  }));
+
+  const tipoMaterialOptions: ComboboxOption[] = TIPO_MATERIAL_OPTIONS.map((t) => ({
+    value: t,
+    label: t,
+  }));
+
+  const unidadOptions: ComboboxOption[] = UNIDAD_OPTIONS.map((u) => ({
+    value: u,
+    label: u,
   }));
 
   const handleSubmit = async () => {
@@ -303,14 +314,12 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Tipo Material</Label>
-            <Select value={form.tipo_material} onValueChange={(v) => set("tipo_material", v)}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-              <SelectContent>
-                {TIPO_MATERIAL_OPTIONS.map((t) => (
-                  <SelectItem key={t} value={t}>{t}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={tipoMaterialOptions}
+              value={form.tipo_material}
+              onValueChange={(v) => set("tipo_material", v)}
+              placeholder="Buscar material..."
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Tipo Transporte</Label>
@@ -349,14 +358,12 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Unidad</Label>
-            <Select value={form.unidad} onValueChange={(v) => set("unidad", v)}>
-              <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {UNIDAD_OPTIONS.map((u) => (
-                  <SelectItem key={u} value={u}>{u}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={unidadOptions}
+              value={form.unidad}
+              onValueChange={(v) => set("unidad", v)}
+              placeholder="Buscar unidad..."
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Cantidad Total</Label>
