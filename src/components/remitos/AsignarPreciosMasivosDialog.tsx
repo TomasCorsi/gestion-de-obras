@@ -144,7 +144,8 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <ScrollArea className="max-h-[60vh]">
+        <div className="space-y-4 pr-4">
           {/* Mode selector */}
           <div className="flex items-center gap-4">
             <Label className="text-sm font-medium">Calcular precio total:</Label>
