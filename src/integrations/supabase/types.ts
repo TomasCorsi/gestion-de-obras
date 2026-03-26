@@ -197,6 +197,7 @@ export type Database = {
           km: number | null
           litros: number
           maquinaria_id: string | null
+          numero_remito: number | null
           obra_id: string | null
           observaciones: string | null
           operador_id: string | null
@@ -214,6 +215,7 @@ export type Database = {
           km?: number | null
           litros?: number
           maquinaria_id?: string | null
+          numero_remito?: number | null
           obra_id?: string | null
           observaciones?: string | null
           operador_id?: string | null
@@ -231,6 +233,7 @@ export type Database = {
           km?: number | null
           litros?: number
           maquinaria_id?: string | null
+          numero_remito?: number | null
           obra_id?: string | null
           observaciones?: string | null
           operador_id?: string | null
