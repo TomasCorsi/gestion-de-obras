@@ -1,41 +1,35 @@
 
 
-## Plan: Recalcular clientes origen/destino en remitos existentes
+## Plan: Asignar precios masivamente por tipo de material
 
-### Problema
-Remitos viejos tienen `cliente` y `cliente_destino` incorrectos o vacíos porque fueron creados antes de la lógica de auto-clasificación.
-
-### Solución
-Agregar un botón "Recalcular Clientes" en la página de Remitos que ejecute la misma lógica de `getClienteForObra` sobre todos los remitos, actualizando `cliente` (desde el campo `desde`) y `cliente_destino` (desde el campo `hasta`).
+### Concepto
+Un dialog donde definís un precio unitario por tipo de material (ej: Desmonte = $5000) y se aplica automáticamente a todos los remitos filtrados que coincidan con ese tipo, recalculando `precio_unitario` y `precio_total`.
 
 ### Cambios
 
-**1. `src/pages/Remitos.tsx`**
-- Agregar botón "Recalcular Clientes" en la barra de acciones (junto a Importar/Exportar)
-- Implementar función `handleRecalcularClientes`:
-  - Recorre todos los remitos
-  - Para cada remito, busca la obra que coincida con `desde` → obtiene el cliente si es obra externa (N° >= 300)
-  - Igual con `hasta` → `cliente_destino`
-  - Compara con los valores actuales; solo actualiza los que cambiaron
-  - Usa `batchSave` con los updates necesarios
-  - Muestra toast con cantidad de remitos actualizados
-- La lógica de matching es: buscar obra por nombre, verificar si `numero >= 300` (externa), y usar `obra.cliente?.nombre`
+**1. Nuevo componente: `src/components/remitos/AsignarPreciosMasivosDialog.tsx`**
+- Dialog con una tabla que lista cada `tipo_material` encontrado en los remitos filtrados
+- Cada fila muestra: Tipo | Cantidad de remitos | Input para precio unitario
+- Selector de modo de cálculo: "por viaje" o "por m3/tn" (determina si `precio_total = precio_unitario × cantidad_viajes` o `precio_unitario × cantidad`)
+- Botón "Aplicar" que actualiza todos los remitos del tipo seleccionado vía `batchSave`
+- Preview del total resultante antes de aplicar
 
-**2. `src/hooks/useRemitos.ts`**
-- Sin cambios — ya tiene `batchSave` con updates en paralelo
+**2. `src/pages/Remitos.tsx`**
+- Agregar botón "Asignar Precios" en la barra de acciones (junto a Liquidar, Recalcular, etc.)
+- Pasar `filteredRemitos` y `batchSave` al dialog
+- Al cerrar el dialog con éxito, se refresca la lista
 
-### Lógica de recálculo
+### Flujo de uso
 ```text
-Para cada remito:
-  obra_desde = obras.find(o => o.nombre === remito.desde)
-  cliente_nuevo = obra_desde && numero >= 300 ? obra_desde.cliente.nombre : ""
-  
-  obra_hasta = obras.find(o => o.nombre === remito.hasta)  
-  cliente_destino_nuevo = obra_hasta && numero >= 300 ? obra_hasta.cliente.nombre : ""
-  
-  Si cambió alguno → agregar a lista de updates
+1. Filtrás por obra/período/tipo
+2. Click "Asignar Precios"
+3. Ves la lista de tipos de material con cantidad de remitos
+4. Cargás precio unitario en cada tipo que quieras
+5. Elegís modo (por viaje / por cantidad)
+6. Click "Aplicar" → actualiza masivamente
 ```
 
-### Archivos a editar
-- `src/pages/Remitos.tsx` — botón + función de recálculo
+### Archivos a crear/editar
+- `src/components/remitos/AsignarPreciosMasivosDialog.tsx` — nuevo
+- `src/pages/Remitos.tsx` — botón + state para abrir dialog
 
