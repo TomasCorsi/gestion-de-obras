@@ -24,12 +24,6 @@ export interface CargaRepartidorFull {
   parte_diario?: { personal: { nombre: string | null; apellido: string | null } | null } | null;
   repartidor?: { nombre: string | null; apellido: string | null } | null;
 }
-  operador?: { nombre: string | null; apellido: string | null } | null;
-  maquinaria?: { codigo: string | null; tipo: string; nombre: string | null } | null;
-  obra?: { nombre: string } | null;
-  parte_diario?: { personal: { nombre: string | null; apellido: string | null } | null } | null;
-  repartidor?: { nombre: string | null; apellido: string | null } | null;
-}
 
 export function useCargasRepartidorAll() {
   const { data: cargas = [], isLoading } = useQuery({
