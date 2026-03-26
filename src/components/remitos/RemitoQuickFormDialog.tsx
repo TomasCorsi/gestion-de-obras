@@ -319,6 +319,8 @@ export function RemitoQuickFormDialog({
               value={form.tipo_material}
               onValueChange={(v) => set("tipo_material", v)}
               placeholder="Buscar material..."
+              allowCustom
+              customLabel="Agregar tipo"
             />
           </div>
           <div className="space-y-1.5">
@@ -328,6 +330,8 @@ export function RemitoQuickFormDialog({
               value={form.tipo_transporte}
               onValueChange={(v) => set("tipo_transporte", v)}
               placeholder="Transporte..."
+              allowCustom
+              customLabel="Agregar transporte"
             />
           </div>
 
