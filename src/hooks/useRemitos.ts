@@ -75,19 +75,32 @@ export interface RemitoForm {
 }
 
 const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
-  const { data, error } = await supabase
-    .from("remitos")
-    .select(`
-      *,
-      obra:obras(nombre),
-      viaje:viajes(origen, destino),
-      maquinaria:maquinarias(codigo, patente)
-    `)
-    .order("fecha", { ascending: false })
-    .order("created_at", { ascending: false });
+  const PAGE_SIZE = 1000;
+  let allData: RemitoWithRelations[] = [];
+  let from = 0;
+  
+  while (true) {
+    const { data, error } = await supabase
+      .from("remitos")
+      .select(`
+        *,
+        obra:obras(nombre),
+        viaje:viajes(origen, destino),
+        maquinaria:maquinarias(codigo, patente)
+      `)
+      .order("fecha", { ascending: false })
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
 
-  if (error) throw error;
-  return data || [];
+    if (error) throw error;
+    if (!data || data.length === 0) break;
+    
+    allData = allData.concat(data);
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  
+  return allData;
 };
 
 export function useRemitos() {
