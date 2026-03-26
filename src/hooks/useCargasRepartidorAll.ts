@@ -15,8 +15,15 @@ export interface CargaRepartidorFull {
   tipo_producto: string | null;
   repartidor_id: string | null;
   observaciones: string | null;
+  numero_remito: number | null;
   created_at: string;
   updated_at: string | null;
+  operador?: { nombre: string | null; apellido: string | null } | null;
+  maquinaria?: { codigo: string | null; tipo: string; nombre: string | null } | null;
+  obra?: { nombre: string } | null;
+  parte_diario?: { personal: { nombre: string | null; apellido: string | null } | null } | null;
+  repartidor?: { nombre: string | null; apellido: string | null } | null;
+}
   operador?: { nombre: string | null; apellido: string | null } | null;
   maquinaria?: { codigo: string | null; tipo: string; nombre: string | null } | null;
   obra?: { nombre: string } | null;

@@ -454,6 +454,7 @@ export function CombustibleRepartidorTab() {
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
+              <TableHead className="text-muted-foreground font-medium">N° Remito</TableHead>
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
               <TableHead className="text-muted-foreground font-medium">Producto</TableHead>
               <TableHead className="text-muted-foreground font-medium">Repartidor</TableHead>
@@ -465,14 +466,15 @@ export function CombustibleRepartidorTab() {
               <TableHead className="text-muted-foreground font-medium text-right">Precio U.</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Costo</TableHead>
               <TableHead className="text-muted-foreground font-medium text-right">Horas</TableHead>
-               <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
-               <TableHead className="text-muted-foreground font-medium w-20"></TableHead>
+              <TableHead className="text-muted-foreground font-medium text-right">Km</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Observaciones</TableHead>
+              <TableHead className="text-muted-foreground font-medium w-20"></TableHead>
              </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={15} className="text-center py-8 text-muted-foreground">
                   <Fuel className="w-10 h-10 mx-auto mb-2 opacity-40" />
                   <p>No hay entregas de repartidor registradas</p>
                 </TableCell>
@@ -483,6 +485,7 @@ export function CombustibleRepartidorTab() {
                 const costo = precio !== undefined ? (carga.litros || 0) * precio : undefined;
                 return (
                   <TableRow key={carga.id} className="border-border hover:bg-muted/50">
+                    <TableCell className="text-foreground font-mono text-xs">{carga.numero_remito || "-"}</TableCell>
                     <TableCell className="text-foreground">{formatDate(carga.fecha)}</TableCell>
                     <TableCell className="text-foreground capitalize">{carga.tipo_producto || "combustible"}</TableCell>
                     <TableCell className="text-foreground">
@@ -509,6 +512,7 @@ export function CombustibleRepartidorTab() {
                     </TableCell>
                     <TableCell className="text-right text-muted-foreground">{carga.horas || "-"}</TableCell>
                     <TableCell className="text-right text-muted-foreground">{carga.km || "-"}</TableCell>
+                    <TableCell className="text-muted-foreground text-xs max-w-[150px] truncate" title={carga.observaciones || ""}>{carga.observaciones || "-"}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button
@@ -540,13 +544,13 @@ export function CombustibleRepartidorTab() {
           {filtered.length > 0 && hayCostos && (
             <TableFooter>
               <TableRow className="border-border">
-                <TableCell colSpan={10} className="text-right font-semibold text-foreground">
+                <TableCell colSpan={12} className="text-right font-semibold text-foreground">
                   Total del período:
                 </TableCell>
                 <TableCell className="text-right font-bold text-primary text-base">
                   {formatPeso(totalCosto)}
                 </TableCell>
-                <TableCell colSpan={3} />
+                <TableCell colSpan={2} />
               </TableRow>
             </TableFooter>
           )}
