@@ -7,6 +7,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -143,7 +144,8 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <ScrollArea className="max-h-[60vh]">
+        <div className="space-y-4 pr-4">
           {/* Mode selector */}
           <div className="flex items-center gap-4">
             <Label className="text-sm font-medium">Calcular precio total:</Label>
@@ -223,6 +225,7 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
             </div>
           )}
         </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
