@@ -1,4 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChatReportesTab } from "@/components/reportes/ChatReportesTab";
+import { BarChart3, Sparkles } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -256,7 +259,24 @@ export default function Reportes() {
   };
 
   return (
-    <MainLayout title="Reportes" subtitle="Cotizaciones vs Gastos por Obra">
+    <MainLayout title="Reportes" subtitle="Análisis financiero y consultas con IA">
+      <Tabs defaultValue="financiero" className="mb-6">
+        <TabsList>
+          <TabsTrigger value="financiero" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Financiero
+          </TabsTrigger>
+          <TabsTrigger value="ia" className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4" />
+            Consultar con IA
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ia">
+          <ChatReportesTab />
+        </TabsContent>
+
+        <TabsContent value="financiero">
       {/* Filters Section */}
       <Card className="card-industrial mb-6">
         <CardContent className="pt-6">
@@ -781,6 +801,8 @@ export default function Reportes() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
     </MainLayout>
   );
 }
