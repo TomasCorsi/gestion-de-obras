@@ -225,6 +225,7 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
             </div>
           )}
         </div>
+        </ScrollArea>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
