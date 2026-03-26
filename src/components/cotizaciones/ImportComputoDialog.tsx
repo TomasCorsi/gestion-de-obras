@@ -42,11 +42,13 @@ export function ImportComputoDialog({ open, onOpenChange, onImportComplete }: Im
   const [textContent, setTextContent] = useState("");
   const [preview, setPreview] = useState<ExtractedData | null>(null);
   const [fileName, setFileName] = useState("");
+  const [instrucciones, setInstrucciones] = useState("");
 
   const reset = () => {
     setTextContent("");
     setPreview(null);
     setFileName("");
+    setInstrucciones("");
     setLoading(false);
   };
 
@@ -91,7 +93,7 @@ export function ImportComputoDialog({ open, onOpenChange, onImportComplete }: Im
     try {
       const isImage = textContent.startsWith("data:image/");
       const { data, error } = await supabase.functions.invoke("parse-computo", {
-        body: { content: textContent, type: isImage ? "image" : "text" },
+        body: { content: textContent, type: isImage ? "image" : "text", instrucciones: instrucciones.trim() || undefined },
       });
 
       if (error) throw error;
@@ -208,6 +210,16 @@ export function ImportComputoDialog({ open, onOpenChange, onImportComplete }: Im
                 />
               </TabsContent>
             </Tabs>
+
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Instrucciones para la IA (opcional)</Label>
+              <Textarea
+                value={instrucciones}
+                onChange={(e) => setInstrucciones(e.target.value)}
+                placeholder="Ej: Los precios están en dólares, la columna D es la cantidad, ignorar subtotales..."
+                className="bg-muted min-h-[60px] text-sm"
+              />
+            </div>
 
             <Button
               onClick={processWithAI}

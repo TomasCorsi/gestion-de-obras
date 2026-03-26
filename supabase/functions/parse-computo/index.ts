@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { content, type } = await req.json(); // type: "text" | "image"
+    const { content, type, instrucciones } = await req.json(); // type: "text" | "image"
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -28,6 +28,8 @@ Reglas:
 - Agrupa los ítems en rubros/categorías lógicas si no están agrupados
 - Extrae una descripción general de la obra si está disponible`;
 
+    const instruccionesPrefix = instrucciones ? `Instrucciones del usuario: ${instrucciones}\n\n` : "";
+
     const userContent: any[] = [];
     if (type === "image") {
       userContent.push({
@@ -36,12 +38,12 @@ Reglas:
       });
       userContent.push({
         type: "text",
-        text: "Extraé todos los rubros e ítems de este cómputo/presupuesto de obra.",
+        text: `${instruccionesPrefix}Extraé todos los rubros e ítems de este cómputo/presupuesto de obra.`,
       });
     } else {
       userContent.push({
         type: "text",
-        text: `Extraé todos los rubros e ítems del siguiente cómputo/presupuesto de obra:\n\n${content}`,
+        text: `${instruccionesPrefix}Extraé todos los rubros e ítems del siguiente cómputo/presupuesto de obra:\n\n${content}`,
       });
     }
 
