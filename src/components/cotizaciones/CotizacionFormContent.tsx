@@ -67,6 +67,27 @@ export function CotizacionFormContent({
   onCancel,
 }: CotizacionFormContentProps) {
   const [openCategories, setOpenCategories] = useState<Record<number, boolean>>({});
+  const [importOpen, setImportOpen] = useState(false);
+
+  const handleImportComplete = (
+    newCategorias: CotizacionCategoriaForm[],
+    newItems: CotizacionItemForm[],
+    descripcion?: string
+  ) => {
+    setCategorias(newCategorias);
+    setItems(newItems);
+    const openCats: Record<number, boolean> = {};
+    newCategorias.forEach((_, i) => { openCats[i] = true; });
+    setOpenCategories(openCats);
+    const subtotal = newItems.reduce((sum, item) => sum + (item.total || 0), 0);
+    const iva = subtotal * 0.21;
+    const total = subtotal + iva;
+    setFormData({
+      ...formData,
+      subtotal, iva, total,
+      ...(descripcion ? { descripcion } : {}),
+    });
+  };
 
   // Calculate totals whenever items change
   const calculateTotals = (itemsList: CotizacionItemForm[]) => {
