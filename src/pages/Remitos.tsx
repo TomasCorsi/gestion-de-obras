@@ -34,6 +34,7 @@ import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
+import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPreciosMasivosDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
@@ -58,6 +59,7 @@ export default function Remitos() {
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
+  const [preciosOpen, setPreciosOpen] = useState(false);
 
   // Unique tipo_material values for filter
   const tiposUnicos = useMemo(() => {
@@ -403,6 +405,14 @@ export default function Remitos() {
         </Button>
         <Button
           variant="outline"
+          onClick={() => setPreciosOpen(true)}
+          className="gap-2"
+        >
+          <DollarSign className="w-4 h-4" />
+          Asignar Precios
+        </Button>
+        <Button
+          variant="outline"
           onClick={handleRecalcularClientes}
           disabled={recalculando}
           className="gap-2"
@@ -505,6 +515,14 @@ export default function Remitos() {
         open={liquidacionOpen}
         onOpenChange={setLiquidacionOpen}
         remitos={filteredRemitos}
+      />
+
+      {/* Asignar Precios Masivos Dialog */}
+      <AsignarPreciosMasivosDialog
+        open={preciosOpen}
+        onOpenChange={setPreciosOpen}
+        remitos={filteredRemitos}
+        batchSave={batchSave}
       />
     </MainLayout>
   );
