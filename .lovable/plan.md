@@ -1,66 +1,26 @@
 
 
-## Plan: Chat de reportes con IA (lenguaje natural)
+## Plan: Corregir PDF de Certificados — cantidad y items fantasma
 
-### Concepto
-Agregar una pestaña "Consultar con IA" en la página de Reportes, con un chat donde el usuario escribe preguntas en español (ej: "¿Cuánto gastamos en combustible en marzo?", "¿Qué obra tiene más rentabilidad?") y la IA responde consultando la base de datos.
+### Problemas detectados
 
-### Arquitectura
+1. **Items fantasma**: Al generar el PDF de tipo "obra", el código (línea 657-679 de `Certificados.tsx`) inserta TODOS los conceptos activos de la obra, incluso los que el usuario no agregó al certificado. Crea items virtuales con cantidad=0 para rellenar.
 
-```text
-Usuario escribe pregunta
-        ↓
-  Frontend envía mensaje
-        ↓
-  Edge Function "chat-reportes"
-        ↓
-  1. Recibe pregunta + historial
-  2. Envía a Lovable AI con system prompt que incluye
-     el schema de las tablas relevantes
-  3. La IA genera una query SQL SELECT
-  4. La edge function ejecuta la query contra la DB
-  5. Envía los resultados de vuelta a la IA
-  6. La IA formula una respuesta legible en español
-  7. Devuelve respuesta al frontend (streaming)
-```
+2. **Cantidad no visible**: En el PDF tipo "obra", la tabla muestra "Cant. Tot." (cantidad total del concepto) pero NO la cantidad que el usuario ingresó para este período. Solo aparece como porcentaje (% Act.) pero no el número concreto.
 
 ### Cambios
 
-**1. Nueva edge function: `supabase/functions/chat-reportes/index.ts`**
-- Recibe `{ messages: [{role, content}] }`
-- System prompt con schema de tablas relevantes: `obras`, `cotizaciones`, `cargas_combustible`, `mantenimientos`, `remitos`, `partes_diarios`, `personal`, `maquinarias`, `horas_maquina`, `otros_gastos`, `viajes`
-- Usa tool calling: la IA llama una función `ejecutar_consulta_sql` con la query SELECT
-- La edge function ejecuta la query con `SUPABASE_DB_URL` (solo SELECT, con LIMIT 100)
-- Envía los resultados como mensaje de vuelta y pide a la IA que los interprete
-- Streaming de la respuesta final
-- Seguridad: solo permite SELECT, rechaza cualquier INSERT/UPDATE/DELETE/DROP/ALTER
+**1. `src/pages/Certificados.tsx` — Eliminar merge de conceptos fantasma**
+- Eliminar el bloque que crea items virtuales para todos los conceptos activos (líneas 657-679)
+- Solo pasar al PDF los items reales del certificado
+- Esto aplica al tipo "obra"; los acumulados se siguen calculando normalmente
 
-**2. Nuevo componente: `src/components/reportes/ChatReportesTab.tsx`**
-- Chat UI con historial de mensajes
-- Input para escribir preguntas
-- Renderiza respuestas con markdown (`react-markdown`)
-- Ejemplos de preguntas sugeridas como chips clickeables
-- Indicador de "pensando..." mientras la IA procesa
+**2. `src/utils/generateCertificadoPDF.ts` — Agregar columna "Cant." al PDF tipo obra**
+- En la función `generateObraPDF`, agregar una columna "Cant." que muestre `item.cantidad` (la cantidad del período actual)
+- Actualizar el header de la tabla para incluir esta columna
+- Ajustar anchos de columnas para que entre la nueva columna
 
-**3. Editar: `src/pages/Reportes.tsx`**
-- Agregar Tabs: "Financiero" (contenido actual) + "Consultar con IA"
-- La pestaña de IA muestra el ChatReportesTab
-
-### Ejemplos de preguntas soportadas
-- "¿Cuánto gastamos en combustible en marzo 2026?"
-- "¿Qué obra tiene más rentabilidad?"
-- "¿Cuántos remitos hay de desmonte este mes?"
-- "¿Qué máquinas tienen mantenimiento pendiente?"
-- "Lista las 5 obras con más horas máquina"
-- "¿Cuántos partes diarios se cargaron la semana pasada?"
-
-### Seguridad
-- La query generada se valida: solo se ejecutan SELECT, con LIMIT forzado
-- Se usa `SUPABASE_DB_URL` (ya disponible como secret) para la conexión directa a la DB desde la edge function
-- No se expone ningún dato sensible (passwords, tokens) — el schema del system prompt solo lista columnas de negocio
-
-### Archivos a crear/editar
-- `supabase/functions/chat-reportes/index.ts` — nueva edge function
-- `src/components/reportes/ChatReportesTab.tsx` — nuevo componente de chat
-- `src/pages/Reportes.tsx` — agregar tabs con la pestaña de IA
+### Archivos a modificar
+- `src/pages/Certificados.tsx` — quitar merge de items virtuales
+- `src/utils/generateCertificadoPDF.ts` — agregar columna cantidad en PDF obra
 
