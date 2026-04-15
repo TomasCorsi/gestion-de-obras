@@ -25,6 +25,7 @@ import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
+import { ProveedorDB } from "@/hooks/useProveedores";
 
 const TIPO_MATERIAL_OPTIONS = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
@@ -71,6 +72,7 @@ interface RemitoQuickFormDialogProps {
   obras: ObraWithRelations[];
   maquinarias: MaquinariaWithRelations[];
   clientes: ClienteDB[];
+  proveedores?: ProveedorDB[];
   generateNumero: () => string;
   onSubmit: (remito: RemitoForm & { id?: string }) => Promise<void>;
   editingRemito?: RemitoEditData | null;
@@ -93,6 +95,7 @@ export function RemitoQuickFormDialog({
   obras,
   maquinarias,
   clientes,
+  proveedores = [],
   generateNumero,
   onSubmit,
   editingRemito,
@@ -347,7 +350,12 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Proveedor</Label>
-            <Input value={form.proveedor} onChange={(e) => set("proveedor", e.target.value)} className="h-9 text-sm" placeholder="Proveedor..." />
+            <Combobox
+              options={proveedores.filter(p => p.activo).map(p => ({ value: p.nombre, label: p.nombre }))}
+              value={form.proveedor}
+              onValueChange={(v) => set("proveedor", v)}
+              placeholder="Proveedor..."
+            />
           </div>
 
           {/* === CANTIDADES Y PRECIOS === */}
