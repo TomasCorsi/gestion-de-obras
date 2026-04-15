@@ -1,26 +1,25 @@
 
 
-## Plan: Corregir PDF de Certificados — cantidad y items fantasma
+## Plan: Permitir nombre/número en creación y certificados con mismo período
 
-### Problemas detectados
+### Problemas actuales
 
-1. **Items fantasma**: Al generar el PDF de tipo "obra", el código (línea 657-679 de `Certificados.tsx`) inserta TODOS los conceptos activos de la obra, incluso los que el usuario no agregó al certificado. Crea items virtuales con cantidad=0 para rellenar.
+1. **Número solo editable al editar**: El campo "Número" del certificado solo aparece cuando `isEditing` es true (línea 1058). Al crear, se auto-genera como `CERT-001`, `CERT-002`, etc.
 
-2. **Cantidad no visible**: En el PDF tipo "obra", la tabla muestra "Cant. Tot." (cantidad total del concepto) pero NO la cantidad que el usuario ingresó para este período. Solo aparece como porcentaje (% Act.) pero no el número concreto.
+2. **No se pasa el número al crear**: La mutación `createCertificado` en `useCertificados.ts` genera el número automáticamente y no acepta uno personalizado.
 
 ### Cambios
 
-**1. `src/pages/Certificados.tsx` — Eliminar merge de conceptos fantasma**
-- Eliminar el bloque que crea items virtuales para todos los conceptos activos (líneas 657-679)
-- Solo pasar al PDF los items reales del certificado
-- Esto aplica al tipo "obra"; los acumulados se siguen calculando normalmente
+**1. `src/pages/Certificados.tsx`**
+- Mostrar el campo "Número" siempre (quitar la condición `isEditing`)
+- Pre-rellenar con el siguiente número auto-generado (CERT-XXX) para que el usuario pueda cambiarlo si quiere
+- Pasar `numeroCert` al `createCertificado` cuando se crea
 
-**2. `src/utils/generateCertificadoPDF.ts` — Agregar columna "Cant." al PDF tipo obra**
-- En la función `generateObraPDF`, agregar una columna "Cant." que muestre `item.cantidad` (la cantidad del período actual)
-- Actualizar el header de la tabla para incluir esta columna
-- Ajustar anchos de columnas para que entre la nueva columna
+**2. `src/hooks/useCertificados.ts`**
+- Agregar parámetro opcional `numero` a `createCertificado`
+- Si el usuario pasa un número personalizado, usarlo; si no, usar el auto-generado
 
 ### Archivos a modificar
-- `src/pages/Certificados.tsx` — quitar merge de items virtuales
-- `src/utils/generateCertificadoPDF.ts` — agregar columna cantidad en PDF obra
+- `src/pages/Certificados.tsx` — mostrar campo Número en creación y pasar el valor
+- `src/hooks/useCertificados.ts` — aceptar número personalizado en createCertificado
 
