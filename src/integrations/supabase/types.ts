@@ -1618,6 +1618,54 @@ export type Database = {
         }
         Relationships: []
       }
+      proveedores: {
+        Row: {
+          activo: boolean
+          contacto: string | null
+          created_at: string
+          cuit: string | null
+          direccion: string | null
+          email: string | null
+          id: string
+          localidad: string | null
+          nombre: string
+          observaciones: string | null
+          rubro: string | null
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          cuit?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          nombre: string
+          observaciones?: string | null
+          rubro?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          contacto?: string | null
+          created_at?: string
+          cuit?: string | null
+          direccion?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          nombre?: string
+          observaciones?: string | null
+          rubro?: string | null
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       registros_hh: {
         Row: {
           capataz_id: string
