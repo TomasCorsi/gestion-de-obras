@@ -654,29 +654,7 @@ export default function Certificados() {
     if ((targetCert.tipo === "obra" || targetCert.tipo === "mixto") && selectedObraId) {
       pdfAcumulados = await fetchAcumulados(selectedObraId, targetCert.periodo, targetCert.id);
 
-      if (targetCert.tipo === "obra") {
-        // Merge all active concepts with certificate items so all stages appear in PDF
-        const allItems: CertificadoItem[] = conceptos
-          .filter((c) => c.activo)
-          .map((c) => {
-            const existingItem = targetItems.find((i) => i.concepto_id === c.id);
-            if (existingItem) return existingItem;
-            return {
-              id: `virtual-${c.id}`,
-              certificado_id: targetCert.id,
-              concepto_id: c.id,
-              descripcion: c.nombre,
-              unidad: c.unidad,
-              cantidad: 0,
-              precio_unitario: c.precio_unitario,
-              subtotal: 0,
-              etapa: c.etapa || null,
-              seccion: null,
-              created_at: new Date().toISOString(),
-            } as CertificadoItem;
-          });
-        targetItems = allItems;
-      }
+      // Only use real certificate items — no virtual/phantom items
     }
 
     // Fetch pagos for this certificate

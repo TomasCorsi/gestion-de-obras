@@ -552,7 +552,7 @@ function generateObraPDF(
       headerRowIndices.add(tableData.length);
       tableData.push([{
         content: currentCategory.toUpperCase(),
-        colSpan: 12,
+        colSpan: 13,
         styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
       }]);
       lastCategory = currentCategory;
@@ -562,7 +562,7 @@ function generateObraPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: "  " + etapaName.toUpperCase(),
-      colSpan: 12,
+      colSpan: 13,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
 
@@ -593,6 +593,7 @@ function generateObraPDF(
         (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "-",
         formatCurrency(item.precio_unitario),
         cantTotal > 0 ? cantTotal.toLocaleString("es-AR") : "-",
+        item.cantidad > 0 ? item.cantidad.toLocaleString("es-AR") : "-",
         formatCurrency(valorTotal),
         formatPercent(pctAnterior),
         formatPercent(pctActual),
@@ -606,7 +607,7 @@ function generateObraPDF(
 
     // Subtotal row per etapa
     tableData.push([
-      { content: `Subtotal ${etapaName}`, colSpan: 8, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
+      { content: `Subtotal ${etapaName}`, colSpan: 9, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAnterior), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvActual), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAcumulado), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
@@ -617,24 +618,25 @@ function generateObraPDF(
   const pageBreakApplied = new Set<number>();
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."]],
+    head: [["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."]],
     body: tableData,
     theme: "grid",
     headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { cellWidth: 18, halign: "left" },
-      2: { cellWidth: 15, halign: "right" },
-      3: { cellWidth: 13, halign: "right" },
-      4: { cellWidth: 17, halign: "right" },
-      5: { cellWidth: 11, halign: "right" },
-      6: { cellWidth: 11, halign: "right" },
-      7: { cellWidth: 11, halign: "right" },
-      8: { cellWidth: 17, halign: "right" },
-      9: { cellWidth: 17, halign: "right" },
-      10: { cellWidth: 17, halign: "right" },
-      11: { cellWidth: 20 },
+      1: { cellWidth: 17, halign: "left" },
+      2: { cellWidth: 14, halign: "right" },
+      3: { cellWidth: 12, halign: "right" },
+      4: { cellWidth: 12, halign: "right" },
+      5: { cellWidth: 16, halign: "right" },
+      6: { cellWidth: 10, halign: "right" },
+      7: { cellWidth: 10, halign: "right" },
+      8: { cellWidth: 10, halign: "right" },
+      9: { cellWidth: 16, halign: "right" },
+      10: { cellWidth: 16, halign: "right" },
+      11: { cellWidth: 16, halign: "right" },
+      12: { cellWidth: 18 },
     },
     margin: { left: margin, right: margin },
     willDrawCell: (data: any) => {
