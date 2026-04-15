@@ -576,6 +576,7 @@ export default function Certificados() {
         tipo: tipoCert,
         anticipo_porcentaje: anticipoPorcentaje,
         incluir_iva: incluirIva,
+        numero: numeroCert || undefined,
       });
     }
     setCrearOpen(false);
@@ -1055,12 +1056,10 @@ export default function Certificados() {
                   <Label>Período</Label>
                   <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
                 </div>
-                {isEditing && (
-                  <div>
-                    <Label>Número</Label>
-                    <Input value={numeroCert} onChange={(e) => setNumeroCert(e.target.value)} placeholder="CERT-001" />
-                  </div>
-                )}
+                <div>
+                  <Label>Número</Label>
+                  <Input value={numeroCert} onChange={(e) => setNumeroCert(e.target.value)} placeholder="CERT-001 (auto si vacío)" />
+                </div>
                 {(tipoCert === "obra" || tipoCert === "mixto") && (
                   <div>
                     <Label>Anticipo (%)</Label>

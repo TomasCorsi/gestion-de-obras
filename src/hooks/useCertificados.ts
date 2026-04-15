@@ -298,6 +298,7 @@ export function useCertificados(obraId?: string) {
       tipo = "servicio",
       anticipo_porcentaje = 0,
       incluir_iva = true,
+      numero: customNumero,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
@@ -305,12 +306,15 @@ export function useCertificados(obraId?: string) {
       tipo?: TipoCertificado;
       anticipo_porcentaje?: number;
       incluir_iva?: boolean;
+      numero?: string;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
-      // Generate numero
-      const count = certificados.filter((c) => c.obra_id === obraId).length;
-      const numero = `CERT-${String(count + 1).padStart(3, "0")}`;
+      // Use custom numero or auto-generate
+      const numero = customNumero?.trim() || (() => {
+        const count = certificados.filter((c) => c.obra_id === obraId).length;
+        return `CERT-${String(count + 1).padStart(3, "0")}`;
+      })();
 
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
       const iva = incluir_iva ? Math.round(subtotal * 0.21 * 100) / 100 : 0;
