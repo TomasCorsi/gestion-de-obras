@@ -96,7 +96,7 @@ export function RemitosSimpleGrid({
                   <TableCell className="py-2 text-right">{r.cantidad_uni ?? "-"}</TableCell>
                   <TableCell className="py-2 text-right">{r.cantidad || 0}</TableCell>
                   <TableCell className="py-2">{r.unidad || "M3"}</TableCell>
-                  <TableCell className="py-2 text-right">{r.precio_unitario != null ? r.precio_unitario : "-"}</TableCell>
+                  <TableCell className="py-2 text-right">{r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-"}</TableCell>
                   <TableCell className="py-2 text-right">${(r.precio_total || 0).toLocaleString("es-AR")}</TableCell>
                   <TableCell className="py-2">{r.proveedor || "-"}</TableCell>
                   <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
