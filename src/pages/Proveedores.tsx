@@ -108,10 +108,10 @@ export default function Proveedores() {
     }
   };
 
-  if (loading) return <MainLayout><LoadingScreen /></MainLayout>;
+  if (loading) return <MainLayout title="Proveedores"><LoadingScreen /></MainLayout>;
 
   return (
-    <MainLayout>
+    <MainLayout title="Proveedores">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
