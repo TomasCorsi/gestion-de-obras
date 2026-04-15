@@ -593,6 +593,7 @@ function generateObraPDF(
         (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "-",
         formatCurrency(item.precio_unitario),
         cantTotal > 0 ? cantTotal.toLocaleString("es-AR") : "-",
+        item.cantidad > 0 ? item.cantidad.toLocaleString("es-AR") : "-",
         formatCurrency(valorTotal),
         formatPercent(pctAnterior),
         formatPercent(pctActual),
