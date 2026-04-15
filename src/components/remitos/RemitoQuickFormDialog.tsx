@@ -95,6 +95,7 @@ export function RemitoQuickFormDialog({
   obras,
   maquinarias,
   clientes,
+  proveedores = [],
   generateNumero,
   onSubmit,
   editingRemito,
@@ -349,7 +350,12 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Proveedor</Label>
-            <Input value={form.proveedor} onChange={(e) => set("proveedor", e.target.value)} className="h-9 text-sm" placeholder="Proveedor..." />
+            <Combobox
+              options={proveedores.filter(p => p.activo).map(p => ({ value: p.nombre, label: p.nombre }))}
+              value={form.proveedor}
+              onValueChange={(v) => set("proveedor", v)}
+              placeholder="Proveedor..."
+            />
           </div>
 
           {/* === CANTIDADES Y PRECIOS === */}

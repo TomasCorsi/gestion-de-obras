@@ -62,6 +62,7 @@ interface RemitosDataGridProps {
   maquinarias: MaquinariaWithRelations[];
   obras: ObraWithRelations[];
   clientes?: ClienteDB[];
+  proveedores?: ProveedorDB[];
   onSave: (changes: {
     created: RemitoForm[];
     updated: { id: string; data: Partial<RemitoForm> }[];
@@ -137,6 +138,7 @@ export function RemitosDataGrid({
   maquinarias,
   obras,
   clientes,
+  proveedores = [],
   onSave,
   generateNumero,
   fullScreen = false,
@@ -155,6 +157,14 @@ export function RemitosDataGrid({
     }));
     return [{ value: "", label: "Seleccionar..." }, ...options];
   }, [obras]);
+
+  const proveedoresOptions = useMemo(() => {
+    const options = proveedores
+      .filter(p => p.activo)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre))
+      .map(p => ({ value: p.nombre, label: p.nombre }));
+    return [{ value: "", label: "Seleccionar..." }, ...options];
+  }, [proveedores]);
 
   // Filter to only show vehicles (trucks, trailers, etc.)
   const vehiculoOptions = useMemo(() => {
@@ -325,7 +335,21 @@ export function RemitosDataGrid({
         minWidth: 140,
       },
       {
-        ...keyColumn("proveedor", textColumn),
+        ...keyColumn("proveedor", {
+          component: ({ rowData, setRowData, focus }: { rowData: string; setRowData: (v: string) => void; focus: boolean }) => (
+            <GridSelectCell
+              value={rowData}
+              onChange={setRowData}
+              options={proveedoresOptions}
+              placeholder="Proveedor..."
+              focus={focus}
+            />
+          ),
+          deleteValue: () => "",
+          copyValue: ({ rowData }: { rowData: string }) => rowData,
+          pasteValue: ({ value }: { value: string }) => value,
+          minWidth: 140,
+        }),
         title: (
           <ColumnFilterHeader
             column="proveedor"
@@ -337,7 +361,7 @@ export function RemitosDataGrid({
             setColumnFilters={setColumnFilters}
           />
         ),
-        minWidth: 120,
+        minWidth: 140,
       },
       {
         ...keyColumn("desde", {
