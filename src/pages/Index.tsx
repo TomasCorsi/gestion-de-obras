@@ -17,6 +17,7 @@ import {
   Settings,
   ContactRound,
   MessageCircle,
+  Store,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -100,6 +101,15 @@ const apps: AppItem[] = [
     bgColor: "bg-amber-500/15",
     description: "Gestión de remitos",
     roles: ['admin', 'capataz', 'maquinista', 'remitero']
+  },
+  {
+    icon: Store,
+    label: "Proveedores",
+    path: "/proveedores",
+    iconColor: "text-indigo-600",
+    bgColor: "bg-indigo-600/15",
+    description: "Gestión de proveedores",
+    roles: ['admin']
   },
   { 
     icon: HardHat,
