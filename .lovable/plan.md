@@ -1,25 +1,60 @@
 
 
-## Plan: Permitir nombre/número en creación y certificados con mismo período
+## Plan: Sección de Proveedores
 
-### Problemas actuales
+Crear un módulo de Proveedores siguiendo el mismo patrón que Obras: tabla con búsqueda/filtro, formulario CRUD, y diálogo de detalle.
 
-1. **Número solo editable al editar**: El campo "Número" del certificado solo aparece cuando `isEditing` es true (línea 1058). Al crear, se auto-genera como `CERT-001`, `CERT-002`, etc.
+### 1. Migración DB — Crear tabla `proveedores`
 
-2. **No se pasa el número al crear**: La mutación `createCertificado` en `useCertificados.ts` genera el número automáticamente y no acepta uno personalizado.
+```sql
+CREATE TABLE public.proveedores (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  cuit text,
+  direccion text,
+  localidad text,
+  telefono text,
+  email text,
+  contacto text,
+  rubro text,
+  observaciones text,
+  activo boolean NOT NULL DEFAULT true,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 
-### Cambios
+ALTER TABLE public.proveedores ENABLE ROW LEVEL SECURITY;
 
-**1. `src/pages/Certificados.tsx`**
-- Mostrar el campo "Número" siempre (quitar la condición `isEditing`)
-- Pre-rellenar con el siguiente número auto-generado (CERT-XXX) para que el usuario pueda cambiarlo si quiere
-- Pasar `numeroCert` al `createCertificado` cuando se crea
+CREATE POLICY "Admins and capataces can manage proveedores"
+  ON public.proveedores FOR ALL TO public
+  USING (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'capataz'))
+  WITH CHECK (has_role(auth.uid(), 'admin') OR has_role(auth.uid(), 'capataz'));
 
-**2. `src/hooks/useCertificados.ts`**
-- Agregar parámetro opcional `numero` a `createCertificado`
-- Si el usuario pasa un número personalizado, usarlo; si no, usar el auto-generado
+CREATE POLICY "Maquinistas can view proveedores"
+  ON public.proveedores FOR SELECT TO public
+  USING (has_role(auth.uid(), 'maquinista'));
 
-### Archivos a modificar
-- `src/pages/Certificados.tsx` — mostrar campo Número en creación y pasar el valor
-- `src/hooks/useCertificados.ts` — aceptar número personalizado en createCertificado
+CREATE TRIGGER update_proveedores_updated_at
+  BEFORE UPDATE ON public.proveedores
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+```
+
+### 2. Nuevo hook: `src/hooks/useProveedores.ts`
+- CRUD con React Query (mismo patrón que `useObras`)
+- Campos: nombre, cuit, dirección, localidad, teléfono, email, contacto, rubro, observaciones, activo
+
+### 3. Nueva página: `src/pages/Proveedores.tsx`
+- Copia del patrón de Obras: tabla, búsqueda, filtro activo/inactivo, formulario, detalle, eliminación
+- Columnas: Nombre, CUIT, Rubro, Localidad, Teléfono, Estado (activo/inactivo)
+
+### 4. Ruta y navegación
+- `src/App.tsx` — agregar ruta `/proveedores` protegida
+- `src/components/layout/AppLauncher.tsx` — agregar item "Proveedores" en la categoría correspondiente
+
+### Archivos a crear/editar
+- **Migración SQL** — tabla + RLS + trigger
+- `src/hooks/useProveedores.ts` — nuevo
+- `src/pages/Proveedores.tsx` — nuevo
+- `src/App.tsx` — nueva ruta
+- `src/components/layout/AppLauncher.tsx` — nuevo item de navegación
 
