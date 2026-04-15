@@ -57,6 +57,7 @@ const appCategories: AppCategory[] = [
       { icon: Award, label: "Certificados", path: "/certificados", color: "bg-blue-400", roles: ['admin'] },
       { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin'] },
       { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin'] },
+      { icon: Truck, label: "Proveedores", path: "/proveedores", color: "bg-indigo-500", roles: ['admin'] },
     ],
   },
   {

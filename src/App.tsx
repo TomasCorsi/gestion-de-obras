@@ -43,6 +43,7 @@ const Clientes = lazy(() => import("./pages/Clientes"));
 const Combustible = lazy(() => import("./pages/Combustible"));
 const Presentismo = lazy(() => import("./pages/Presentismo"));
 const Mensajes = lazy(() => import("./pages/Mensajes"));
+const Proveedores = lazy(() => import("./pages/Proveedores"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,6 +161,11 @@ const App = () => (
               <Route path="/configuracion" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Configuracion />
+                </ProtectedRoute>
+              } />
+              <Route path="/proveedores" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <Proveedores />
                 </ProtectedRoute>
               } />
 
