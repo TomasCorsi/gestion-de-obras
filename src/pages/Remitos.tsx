@@ -29,6 +29,7 @@ import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos"
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
+import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
@@ -43,6 +44,7 @@ export default function Remitos() {
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
+  const { proveedores } = useProveedores();
 
   const [searchTerm, setSearchTerm] = useUrlSearch("");
   const [filters, setFilters] = useState<FilterState>({
@@ -496,6 +498,7 @@ export default function Remitos() {
         obras={obras}
         maquinarias={maquinarias}
         clientes={clientes}
+        proveedores={proveedores}
         generateNumero={generateNumero}
         onSubmit={handleFormSubmit}
         editingRemito={editingRemito}

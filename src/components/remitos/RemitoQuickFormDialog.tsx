@@ -25,6 +25,7 @@ import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
+import { ProveedorDB } from "@/hooks/useProveedores";
 
 const TIPO_MATERIAL_OPTIONS = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
@@ -71,6 +72,7 @@ interface RemitoQuickFormDialogProps {
   obras: ObraWithRelations[];
   maquinarias: MaquinariaWithRelations[];
   clientes: ClienteDB[];
+  proveedores?: ProveedorDB[];
   generateNumero: () => string;
   onSubmit: (remito: RemitoForm & { id?: string }) => Promise<void>;
   editingRemito?: RemitoEditData | null;

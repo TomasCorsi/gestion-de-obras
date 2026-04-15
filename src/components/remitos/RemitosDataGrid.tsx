@@ -16,6 +16,7 @@ import { RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { ClienteDB } from "@/hooks/useClientes";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ObraWithRelations } from "@/hooks/useObras";
+import { ProveedorDB } from "@/hooks/useProveedores";
 import { GridSelectCell } from "@/components/shared/GridSelectCell";
 import { useGridDraftPersistence } from "@/hooks/useGridDraftPersistence";
 import { DraftRestorePrompt } from "@/components/shared/DraftRestorePrompt";
