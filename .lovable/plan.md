@@ -1,26 +1,37 @@
 
 
-## Plan: Conectar columna Proveedor de Remitos con tabla Proveedores
+## Plan: Corregir alineación de encabezados en tabla de certificados
 
-### Cambio
-Reemplazar la columna "Proveedor" de texto libre en la grilla de Remitos por un `GridSelectCell` que busque en la tabla `proveedores`, igual que ya se hace con Obras y Maquinarias.
+### Problema
+Los encabezados de las tablas de detalle de certificados se ven separados del contenido porque el componente `TableHead` tiene una altura fija de `h-12` (48px) que no se sobreescribe con los `py-2` personalizados. Además, el wrapper `overflow-hidden` externo genera conflicto visual.
 
-### Archivos a modificar
+### Solución
+En `src/pages/Certificados.tsx`, agregar `h-auto` a todos los `TableHead` de las tablas de certificados tipo "obra" y "mixto" (tanto en modo edición como en modo vista), y cambiar el wrapper `overflow-hidden` por `overflow-x-auto` para evitar conflictos de scroll.
 
-**1. `src/components/remitos/RemitosDataGrid.tsx`**
-- Importar `ProveedorDB` desde `useProveedores`
-- Agregar prop `proveedores: ProveedorDB[]`
-- Crear `proveedoresOptions` como `useMemo` mapeando `proveedores` a `{ value: nombre, label: nombre }`
-- Cambiar la columna `proveedor` de `textColumn` a usar `GridSelectCell` con las opciones de proveedores (mismo patrón que "Desde"/"Hasta")
+### Cambios en `src/pages/Certificados.tsx`
 
-**2. `src/pages/Remitos.tsx`**
-- Importar y llamar `useProveedores()`
-- Pasar `proveedores` como prop a `RemitosDataGrid`
+Hay 4 tablas afectadas (2 en modo edición, 2 en modo vista):
 
-**3. `src/components/remitos/RemitoQuickFormDialog.tsx`** (si existe un campo proveedor en el formulario rápido)
-- Verificar si tiene campo proveedor y también conectarlo
+1. **Modo edición - tabla obra** (~línea 1095-1113): Cambiar `overflow-hidden` → `overflow-x-auto` y agregar `h-auto` a cada `TableHead`
+2. **Modo edición - tabla mixta** (~línea 1189-1207): Mismo cambio
+3. **Modo vista - tabla obra** (~línea 1570-1587): Mismo cambio
+4. **Modo vista - tabla mixta** (~línea 1666-1680): Mismo cambio
 
-### Detalle técnico
-- El valor almacenado sigue siendo el nombre del proveedor (string), no el ID, para mantener compatibilidad con datos existentes
-- El `GridSelectCell` permite buscar por nombre con autocompletado
+Ejemplo de cambio por encabezado:
+```
+// Antes
+<TableHead className="px-1.5 py-2">Concepto</TableHead>
+
+// Después
+<TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+```
+
+Y el wrapper:
+```
+// Antes
+<div className="overflow-hidden">
+
+// Después
+<div className="overflow-x-auto">
+```
 
