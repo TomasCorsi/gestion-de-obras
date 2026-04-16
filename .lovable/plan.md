@@ -1,38 +1,22 @@
 
 
-## Plan: Repetir encabezados de columna debajo de cada categoría/etapa en el PDF
+## Plan: Eliminar columnas "Categoría" y "Cant. Tot." del PDF de certificados
 
-### Problema
-En el PDF exportado de certificados, los títulos de columna (Concepto, Categoría, V.Unit., etc.) solo aparecen una vez arriba de la tabla. Las filas de categoría (EJECUCIÓN DE OBRA) y etapa (GENERAL) aparecen dentro del cuerpo sin que se repitan los encabezados debajo.
+### Cambios en `src/utils/generateCertificadoPDF.ts`
 
-### Solución
-Insertar una fila de encabezados de columna después de cada fila de categoría y etapa, como una fila del body con estilos similares al header (fondo rojo oscuro, texto blanco, bold).
+**En `generateObraPDF` (~líneas 558-670):**
 
-### Archivo: `src/utils/generateCertificadoPDF.ts`
+1. **Header row** (línea 558): Quitar "Categoría" y "Cant. Tot." del array → quedan 11 columnas: `["Concepto", "V. Unit.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."]`
 
-**En `generateObraPDF` (~líneas 542-616):**
-- Después de cada fila de categoría (`currentCategory !== lastCategory`), insertar una fila con los mismos textos del header: `["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."]` con estilos de header (fillColor CORP_DARK_RED, textColor WHITE, bold, fontSize 5.5, halign center)
-- Marcar estas filas en `headerRowIndices` para el anti-orphan logic
-- Opcionalmente, ocultar el `head:` original del autoTable para que no haya un header duplicado al inicio, o dejarlo como primer encabezado
+2. **Category/etapa colSpan** (líneas 566-580): Cambiar `colSpan: 13` → `colSpan: 11`
 
-**En `generateServicioPDF` (~líneas 393-447):**
-- Después de cada fila de categoría, insertar fila de encabezados: `["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal", "Obs."]` con mismos estilos de header
+3. **Data rows** (líneas 608-622): Eliminar la celda de categoría (índice 1) y la celda de cantTotal (índice 3)
 
-**En `generateMixtoPDF` (~líneas 694+):**
-- Aplicar el mismo patrón en ambas secciones (obra y servicio)
+4. **Subtotal row** (líneas 626-632): Cambiar `colSpan: 9` → `colSpan: 7`
 
-### Resultado visual esperado
-```text
-┌─────────────────────────────────────────────────┐
-│ EJECUCIÓN DE OBRA                               │  ← categoría (gris)
-├─────────────────────────────────────────────────┤
-│   GENERAL                                       │  ← etapa (gris claro)
-├──────────┬──────┬────────┬──────┬──────┬────────┤
-│ Concepto │ Cat. │ V.Unit.│ C.T. │ Cant │ ...    │  ← encabezados (rojo)
-├──────────┼──────┼────────┼──────┼──────┼────────┤
-│ Cunetas  │ Ejec.│$12.000 │358   │358   │ ...    │  ← datos
-├──────────┼──────┼────────┼──────┼──────┼────────┤
-│ Paviment │ Ejec.│$12.000 │919   │919   │ ...    │  ← datos
-└──────────┴──────┴────────┴──────┴──────┴────────┘
-```
+5. **columnStyles** (líneas 642-656): Reindexar quitando los índices de Categoría (1) y Cant.Tot. (3), ajustar anchos de las 11 columnas restantes
+
+**En `generateServicioPDF`:** Esta función no tiene "Categoría" ni "Cant. Tot." como columnas separadas, así que no requiere cambios.
+
+**En `generateMixtoPDF`:** Usa `generateObraPDF` internamente, se hereda automáticamente.
 
