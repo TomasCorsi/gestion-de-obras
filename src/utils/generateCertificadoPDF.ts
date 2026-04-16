@@ -390,6 +390,11 @@ function generateServicioPDF(
   const headerRowIndices = new Set<number>();
   const sortedCategories = [...itemsByCategory.keys()].sort();
 
+  const servicioHeaderRow = ["Concepto", "Un.", "Cantidad", "P. Unitario", "Subtotal", "Obs."].map((text) => ({
+    content: text,
+    styles: { fillColor: [...CORP_DARK_RED] as [number, number, number], textColor: [...WHITE] as [number, number, number], fontStyle: "bold" as const, fontSize: 7, halign: "center" as const, cellPadding: 2 },
+  }));
+
   sortedCategories.forEach((catName) => {
     const catItems = itemsByCategory.get(catName) || [];
     if (catItems.length === 0) return;
@@ -425,6 +430,10 @@ function generateServicioPDF(
           styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
         }]);
       }
+
+      // Column headers row after category/etapa
+      headerRowIndices.add(tableData.length);
+      tableData.push([...servicioHeaderRow]);
 
       etapaItems.forEach((item) => {
         tableData.push([
@@ -547,6 +556,11 @@ function generateObraPDF(
     const firstItem = etapaItems[0];
     const currentCategory = (firstItem.concepto_id && categoriaMap && categoriaMap[firstItem.concepto_id]) || "";
 
+    const obraHeaderRow = ["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."].map((text) => ({
+      content: text,
+      styles: { fillColor: [...CORP_DARK_RED] as [number, number, number], textColor: [...WHITE] as [number, number, number], fontStyle: "bold" as const, fontSize: 5.5, halign: "center" as const, cellPadding: 1.5 },
+    }));
+
     // Insert category header row if category changed
     if (currentCategory && currentCategory !== lastCategory) {
       headerRowIndices.add(tableData.length);
@@ -565,6 +579,10 @@ function generateObraPDF(
       colSpan: 13,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
+
+    // Column headers row after category/etapa
+    headerRowIndices.add(tableData.length);
+    tableData.push([...obraHeaderRow]);
 
     let etapaAvAnterior = 0;
     let etapaAvActual = 0;
