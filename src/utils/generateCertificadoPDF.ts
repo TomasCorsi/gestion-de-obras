@@ -555,7 +555,7 @@ function generateObraPDF(
     const firstItem = etapaItems[0];
     const currentCategory = (firstItem.concepto_id && categoriaMap && categoriaMap[firstItem.concepto_id]) || "";
 
-    const obraHeaderRow = ["Concepto", "Categoría", "V. Unit.", "Cant. Tot.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."].map((text) => ({
+    const obraHeaderRow = ["Concepto", "V. Unit.", "Cant.", "V. Total", "% Ant.", "% Act.", "% Acum.", "Av. Ant.", "Av. Act.", "Av. Acum.", "Obs."].map((text) => ({
       content: text,
       styles: { fillColor: [...CORP_DARK_RED] as [number, number, number], textColor: [...WHITE] as [number, number, number], fontStyle: "bold" as const, fontSize: 5.5, halign: "center" as const, cellPadding: 1.5 },
     }));
@@ -565,7 +565,7 @@ function generateObraPDF(
       headerRowIndices.add(tableData.length);
       tableData.push([{
         content: currentCategory.toUpperCase(),
-        colSpan: 13,
+        colSpan: 11,
         styles: { fontStyle: "bold", fillColor: [200, 200, 200], fontSize: 7, cellPadding: 2.5, textColor: [40, 40, 40] },
       }]);
       lastCategory = currentCategory;
@@ -575,7 +575,7 @@ function generateObraPDF(
     headerRowIndices.add(tableData.length);
     tableData.push([{
       content: "  " + etapaName.toUpperCase(),
-      colSpan: 13,
+      colSpan: 11,
       styles: { fontStyle: "bold", fillColor: [235, 235, 235], fontSize: 6, cellPadding: 2 },
     }]);
 
@@ -607,9 +607,7 @@ function generateObraPDF(
 
       tableData.push([
         item.descripcion,
-        (item.concepto_id && categoriaMap && categoriaMap[item.concepto_id]) || "-",
         formatCurrency(item.precio_unitario),
-        cantTotal > 0 ? cantTotal.toLocaleString("es-AR") : "-",
         item.cantidad > 0 ? item.cantidad.toLocaleString("es-AR") : "-",
         formatCurrency(valorTotal),
         formatPercent(pctAnterior),
@@ -624,7 +622,7 @@ function generateObraPDF(
 
     // Subtotal row per etapa
     tableData.push([
-      { content: `Subtotal ${etapaName}`, colSpan: 9, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
+      { content: `Subtotal ${etapaName}`, colSpan: 7, styles: { fontStyle: "bold", halign: "right", fontSize: 5.5, fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAnterior), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvActual), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
       { content: formatCurrency(etapaAvAcumulado), styles: { fontStyle: "bold", fontSize: 5.5, halign: "right", fillColor: [245, 245, 245] } },
@@ -641,18 +639,16 @@ function generateObraPDF(
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
-      1: { cellWidth: 17, halign: "left" },
+      1: { cellWidth: 16, halign: "right" },
       2: { cellWidth: 14, halign: "right" },
-      3: { cellWidth: 12, halign: "right" },
-      4: { cellWidth: 12, halign: "right" },
-      5: { cellWidth: 16, halign: "right" },
-      6: { cellWidth: 10, halign: "right" },
-      7: { cellWidth: 10, halign: "right" },
-      8: { cellWidth: 10, halign: "right" },
-      9: { cellWidth: 16, halign: "right" },
-      10: { cellWidth: 16, halign: "right" },
-      11: { cellWidth: 16, halign: "right" },
-      12: { cellWidth: 18 },
+      3: { cellWidth: 18, halign: "right" },
+      4: { cellWidth: 11, halign: "right" },
+      5: { cellWidth: 11, halign: "right" },
+      6: { cellWidth: 11, halign: "right" },
+      7: { cellWidth: 18, halign: "right" },
+      8: { cellWidth: 18, halign: "right" },
+      9: { cellWidth: 18, halign: "right" },
+      10: { cellWidth: 18 },
     },
     margin: { left: margin, right: margin },
     willDrawCell: (data: any) => {
