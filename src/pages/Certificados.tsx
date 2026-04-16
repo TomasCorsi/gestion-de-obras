@@ -1092,23 +1092,23 @@ export default function Certificados() {
                         return (
                           <div key={group.etapa}>
                             <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                            <div className="overflow-hidden">
+                            <div className="overflow-x-auto">
                               <Table className="text-xs">
                                <TableHeader>
                                   <TableRow>
-                                    <TableHead className="px-1.5 py-2">Concepto</TableHead>
-                                    <TableHead className="px-1.5 py-2">Cat.</TableHead>
-                                    <TableHead className="px-1.5 py-2">Un.</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
-                                    <TableHead className="px-1.5 py-2 w-24">C.Act.</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
-                                    <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
                                     <TableHead className="px-1 py-2 w-8"></TableHead>
                                   </TableRow>
                                 </TableHeader>
@@ -1186,23 +1186,23 @@ export default function Certificados() {
                             return (
                               <div key={group.etapa}>
                                 <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                                <div className="overflow-hidden">
+                                <div className="overflow-x-auto">
                                   <Table className="text-xs">
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead className="px-1.5 py-2">Concepto</TableHead>
-                                        <TableHead className="px-1.5 py-2">Cat.</TableHead>
-                                        <TableHead className="px-1.5 py-2">Un.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
-                                        <TableHead className="px-1.5 py-2 w-24">C.Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
                                         <TableHead className="px-1 py-2 w-8"></TableHead>
                                       </TableRow>
                                     </TableHeader>
@@ -1567,23 +1567,23 @@ export default function Certificados() {
                           return (
                             <div key={group.etapa}>
                               <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
-                              <div className="overflow-hidden">
+                              <div className="overflow-x-auto">
                                 <Table className="text-xs">
                                   <TableHeader>
                                     <TableRow>
-                                      <TableHead className="px-1.5 py-2">Concepto</TableHead>
-                                      <TableHead className="px-1.5 py-2">Cat.</TableHead>
-                                      <TableHead className="px-1.5 py-2">Un.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">C.Act.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
-                                      <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
@@ -1663,22 +1663,22 @@ export default function Certificados() {
                             return (
                               <div key={group.etapa}>
                                 <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
-                                <div className="overflow-hidden">
+                                <div className="overflow-x-auto">
                                   <Table className="text-xs">
                                     <TableHeader>
                                       <TableRow>
-                                        <TableHead className="px-1.5 py-2">Concepto</TableHead>
-                                        <TableHead className="px-1.5 py-2">Cat.</TableHead>
-                                        <TableHead className="px-1.5 py-2">Un.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">P.Unit.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">C.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">V.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Ant.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">C.Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">%Ac.</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.A</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.Act</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
                                         <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
                                       </TableRow>
                                     </TableHeader>
