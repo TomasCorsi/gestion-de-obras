@@ -461,9 +461,8 @@ function generateServicioPDF(
     startY: yPos,
     body: tableData,
     showHead: "never",
-    body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 7, halign: "center", cellPadding: 2 },
+    bodyStyles: { fontSize: 7, cellPadding: 1.5 },
     bodyStyles: { fontSize: 7, cellPadding: 1.5 },
     columnStyles: {
       0: { cellWidth: "auto" },
@@ -639,9 +638,7 @@ function generateObraPDF(
     startY: yPos,
     body: tableData,
     showHead: "never",
-    body: tableData,
     theme: "grid",
-    headStyles: { fillColor: [...CORP_DARK_RED], textColor: [...WHITE], fontStyle: "bold", fontSize: 5.5, halign: "center", cellPadding: 1.5 },
     bodyStyles: { fontSize: 5.5, cellPadding: 1 },
     columnStyles: {
       0: { cellWidth: "auto" },
