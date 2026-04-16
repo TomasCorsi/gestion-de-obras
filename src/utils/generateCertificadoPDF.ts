@@ -463,7 +463,6 @@ function generateServicioPDF(
     showHead: "never",
     theme: "grid",
     bodyStyles: { fontSize: 7, cellPadding: 1.5 },
-    bodyStyles: { fontSize: 7, cellPadding: 1.5 },
     columnStyles: {
       0: { cellWidth: "auto" },
       1: { cellWidth: 14, halign: "center" },
