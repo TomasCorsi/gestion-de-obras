@@ -1,37 +1,66 @@
 
 
-## Plan: Corregir alineación de encabezados en tabla de certificados
+## Plan: Consolidar tablas de certificados — encabezados de columna arriba, etapas como filas de sección
 
 ### Problema
-Los encabezados de las tablas de detalle de certificados se ven separados del contenido porque el componente `TableHead` tiene una altura fija de `h-12` (48px) que no se sobreescribe con los `py-2` personalizados. Además, el wrapper `overflow-hidden` externo genera conflicto visual.
+Actualmente cada grupo/etapa (ej: "EJECUCIÓN DE OBRA", "GENERAL") genera su propia `<Table>` con su propio `<TableHeader>`. Esto hace que los títulos de sección queden intercalados con los encabezados de columna repetidos, dando un aspecto desordenado.
 
 ### Solución
-En `src/pages/Certificados.tsx`, agregar `h-auto` a todos los `TableHead` de las tablas de certificados tipo "obra" y "mixto" (tanto en modo edición como en modo vista), y cambiar el wrapper `overflow-hidden` por `overflow-x-auto` para evitar conflictos de scroll.
+Unificar cada bloque de grupos en **una sola tabla** con un único `<TableHeader>`, e insertar las etapas como **filas de sección** (`<TableRow>` con `colSpan`) dentro del `<TableBody>`.
 
 ### Cambios en `src/pages/Certificados.tsx`
 
-Hay 4 tablas afectadas (2 en modo edición, 2 en modo vista):
+**4 bloques afectados** (los mismos 4 de antes):
 
-1. **Modo edición - tabla obra** (~línea 1095-1113): Cambiar `overflow-hidden` → `overflow-x-auto` y agregar `h-auto` a cada `TableHead`
-2. **Modo edición - tabla mixta** (~línea 1189-1207): Mismo cambio
-3. **Modo vista - tabla obra** (~línea 1570-1587): Mismo cambio
-4. **Modo vista - tabla mixta** (~línea 1666-1680): Mismo cambio
+1. **Modo edición — tabla obra** (~líneas 1087-1165): Sacar la tabla del `.map()` de grupos. Una sola `<Table>` con un `<TableHeader>`, y dentro del `<TableBody>` iterar los grupos insertando primero una fila de sección y luego las filas de datos. El subtotal de cada grupo como fila dentro del body.
 
-Ejemplo de cambio por encabezado:
-```
-// Antes
-<TableHead className="px-1.5 py-2">Concepto</TableHead>
+2. **Modo edición — tabla mixta obra** (~líneas 1183-1260): Mismo refactor.
 
-// Después
-<TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
-```
+3. **Modo vista — tabla obra** (~líneas 1563-1629): Mismo refactor.
 
-Y el wrapper:
-```
-// Antes
-<div className="overflow-hidden">
+4. **Modo vista — tabla mixta obra** (~líneas 1659-1725): Mismo refactor.
 
-// Después
+### Estructura resultante (ejemplo vista obra)
+
+```text
 <div className="overflow-x-auto">
+  <Table className="text-xs">
+    <TableHeader>
+      <TableRow>
+        <TableHead>Concepto</TableHead>
+        <TableHead>Cat.</TableHead>
+        ...13 columnas...
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {groups.map(group => (
+        <>
+          {/* Fila de sección */}
+          <TableRow>
+            <TableCell colSpan={13} className="bg-muted font-semibold text-sm px-3 py-2">
+              {group.etapa}
+            </TableCell>
+          </TableRow>
+          {/* Filas de datos */}
+          {group.items.map(item => <TableRow>...</TableRow>)}
+          {/* Fila subtotal del grupo */}
+          <TableRow>
+            <TableCell colSpan={12} className="text-right font-medium">
+              Subtotal {group.etapa}
+            </TableCell>
+            <TableCell className="text-right font-semibold">
+              {formatCurrency(groupTotal)}
+            </TableCell>
+          </TableRow>
+        </>
+      ))}
+    </TableBody>
+  </Table>
+</div>
 ```
+
+### Detalle técnico
+- Se elimina el `<TableFooter>` por grupo (pasa a ser una fila normal en el body)
+- El colSpan de la fila de sección se ajusta al número total de columnas (13 en vista, 14 en edición por la columna de borrar)
+- Los estilos de la fila de sección mantienen `bg-muted font-semibold` para diferenciarse visualmente
 
