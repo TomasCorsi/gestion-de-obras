@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CertificadoServiceGrid } from "@/components/certificados/CertificadoServiceGrid";
 import { useObras } from "@/hooks/useObras";
@@ -1086,83 +1086,83 @@ export default function Certificados() {
                     />
                   ) : tipoCert === "obra" ? (
                     /* ---- OBRA: grouped by etapa with acumulado columns ---- */
-                    <>
-                      {draftGroupedEtapa.map((group) => {
-                        const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
-                        return (
-                          <div key={group.etapa}>
-                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                            <div className="overflow-x-auto">
-                              <Table className="text-xs">
-                               <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
-                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
-                                    <TableHead className="px-1 py-2 w-8"></TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {group.items.map((item) => {
-                                    const globalIdx = itemsDraft.indexOf(item);
-                                    const ac = getAcumuladoForItem(item.concepto_id);
-                                    const cantTotal = item.cantidad_total || 0;
-                                    const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
-                                    const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
-                                    const pctAcumulado = pctAnterior + pctActual;
-                                    const avAnterior = ac.avance_anterior;
-                                    const avActual = item.subtotal;
-                                    const avAcumulado = avAnterior + avActual;
-                                    const valorTotal = cantTotal * item.precio_unitario;
-                                    return (
-                                      <TableRow key={globalIdx}>
-                                        <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5">
-                                          <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-7 w-20 text-xs" />
-                                        </TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
-                                        <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                        <TableCell className="px-1 py-1.5">
-                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
-                                            <Trash2 className="w-3 h-3" />
-                                          </Button>
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </TableBody>
-                                <TableFooter>
-                                  <TableRow>
-                                    <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
-                                    <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
-                                    <TableCell />
-                                  </TableRow>
-                                </TableFooter>
-                              </Table>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
+                    <div className="overflow-x-auto">
+                      <Table className="text-xs">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                            <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
+                            <TableHead className="px-1 py-2 w-8"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {draftGroupedEtapa.map((group) => {
+                            const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                            return (
+                              <React.Fragment key={group.etapa}>
+                                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                  <TableCell colSpan={14} className="px-3 py-2 font-semibold text-sm">
+                                    {group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}
+                                  </TableCell>
+                                </TableRow>
+                                {group.items.map((item) => {
+                                  const globalIdx = itemsDraft.indexOf(item);
+                                  const ac = getAcumuladoForItem(item.concepto_id);
+                                  const cantTotal = item.cantidad_total || 0;
+                                  const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
+                                  const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
+                                  const pctAcumulado = pctAnterior + pctActual;
+                                  const avAnterior = ac.avance_anterior;
+                                  const avActual = item.subtotal;
+                                  const avAcumulado = avAnterior + avActual;
+                                  const valorTotal = cantTotal * item.precio_unitario;
+                                  return (
+                                    <TableRow key={globalIdx}>
+                                      <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5">
+                                        <Input type="number" min={0} value={item.cantidad || ""} onChange={(e) => updateItemCantidad(globalIdx, Number(e.target.value))} className="h-7 w-20 text-xs" />
+                                      </TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                      <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                      <TableCell className="px-1 py-1.5">
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeItemFromDraft(globalIdx)}>
+                                          <Trash2 className="w-3 h-3" />
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                  <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                  <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
+                                  <TableCell />
+                                </TableRow>
+                              </React.Fragment>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
                   ) : (
                     /* ---- MIXTO: Sección Obra + Sección Servicio ---- */
                     <>
@@ -1181,32 +1181,36 @@ export default function Certificados() {
                             No hay conceptos de obra. Agregá uno con el botón de arriba.
                           </div>
                         ) : (
-                          draftMixtoObraGrouped.map((group) => {
-                            const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
-                            return (
-                              <div key={group.etapa}>
-                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
-                                <div className="overflow-x-auto">
-                                  <Table className="text-xs">
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
-                                        <TableHead className="px-1 py-2 w-8"></TableHead>
+                          <div className="overflow-x-auto">
+                            <Table className="text-xs">
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto w-24">C.Act.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                  <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
+                                  <TableHead className="px-1 py-2 w-8"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {draftMixtoObraGrouped.map((group) => {
+                                  const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                                  return (
+                                    <React.Fragment key={group.etapa}>
+                                      <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                        <TableCell colSpan={14} className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40">
+                                          {group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}
+                                        </TableCell>
                                       </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
                                       {group.items.map((item) => {
                                         const globalIdx = itemsDraft.indexOf(item);
                                         const ac = getAcumuladoForItem(item.concepto_id);
@@ -1243,19 +1247,17 @@ export default function Certificados() {
                                           </TableRow>
                                         );
                                       })}
-                                    </TableBody>
-                                    <TableFooter>
-                                      <TableRow>
+                                      <TableRow className="bg-muted/30 hover:bg-muted/30">
                                         <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
                                         <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                         <TableCell />
                                       </TableRow>
-                                    </TableFooter>
-                                  </Table>
-                                </div>
-                              </div>
-                            );
-                          })
+                                    </React.Fragment>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
                       </div>
 
@@ -1562,31 +1564,33 @@ export default function Certificados() {
                       </>
                     ) : viewCert.tipo === "obra" ? (
                       <>
-                        {viewGroupedEtapa.map((group) => {
-                          const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
-                          return (
-                            <div key={group.etapa}>
-                              <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.etapa}</div>
-                              <div className="overflow-x-auto">
-                                <Table className="text-xs">
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
-                                      <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
+                        <div className="overflow-x-auto">
+                          <Table className="text-xs">
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {viewGroupedEtapa.map((group) => {
+                                const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                                return (
+                                  <React.Fragment key={group.etapa}>
+                                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                      <TableCell colSpan={13} className="px-3 py-2 font-semibold text-sm">{group.etapa}</TableCell>
                                     </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
                                     {group.items.map((item) => {
                                       const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
                                       const cantTotal = (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0;
@@ -1615,18 +1619,16 @@ export default function Certificados() {
                                         </TableRow>
                                       );
                                     })}
-                                  </TableBody>
-                                  <TableFooter>
-                                    <TableRow>
+                                    <TableRow className="bg-muted/30 hover:bg-muted/30">
                                       <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
                                       <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
                                     </TableRow>
-                                  </TableFooter>
-                                </Table>
-                              </div>
-                            </div>
-                          );
-                        })}
+                                  </React.Fragment>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
+                        </div>
                         <div className="border-t pt-3 space-y-1">
                           <div className="flex justify-between text-sm">
                             <span>Avance Anterior</span>
@@ -1658,71 +1660,75 @@ export default function Certificados() {
                           </div>
                           {viewMixtoObraGrouped.length === 0 ? (
                             <div className="px-4 py-4 text-sm text-muted-foreground text-center">Sin ítems de obra.</div>
-                          ) : viewMixtoObraGrouped.map((group) => {
-                            const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
-                            return (
-                              <div key={group.etapa}>
-                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.etapa}</div>
-                                <div className="overflow-x-auto">
-                                  <Table className="text-xs">
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
-                                        <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
-                                        <TableHead className="px-1.5 py-2 text-right">Av.Ac</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {group.items.map((item) => {
-                                        const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
-                                        const cantTotal = (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0;
-                                        const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
-                                        const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
-                                        const pctAcumulado = pctAnterior + pctActual;
-                                        const avAnterior = ac.avance_anterior;
-                                        const avActual = item.subtotal;
-                                        const avAcumulado = avAnterior + avActual;
-                                        const valorTotal = cantTotal * item.precio_unitario;
-                                        return (
-                                          <TableRow key={item.id}>
-                                            <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{item.cantidad}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
-                                            <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
-                                          </TableRow>
-                                        );
-                                      })}
-                                    </TableBody>
-                                    <TableFooter>
-                                      <TableRow>
-                                        <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
-                                        <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
-                                      </TableRow>
-                                    </TableFooter>
-                                  </Table>
-                                </div>
-                              </div>
-                            );
-                          })}
+                          ) : (
+                            <div className="overflow-x-auto">
+                              <Table className="text-xs">
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="px-1.5 py-2 h-auto">Concepto</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto">Cat.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto">Un.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">P.Unit.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">C.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">V.Tot</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ant.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">C.Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Act.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">%Ac.</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.A</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Act</TableHead>
+                                    <TableHead className="px-1.5 py-2 h-auto text-right">Av.Ac</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {viewMixtoObraGrouped.map((group) => {
+                                    const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
+                                    return (
+                                      <React.Fragment key={group.etapa}>
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                          <TableCell colSpan={13} className="px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40">
+                                            {group.etapa}
+                                          </TableCell>
+                                        </TableRow>
+                                        {group.items.map((item) => {
+                                          const ac = viewAcumulados.find((a) => a.concepto_id === item.concepto_id) || { cantidad_anterior: 0, avance_anterior: 0 };
+                                          const cantTotal = (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0;
+                                          const pctAnterior = cantTotal > 0 ? (ac.cantidad_anterior / cantTotal) * 100 : 0;
+                                          const pctActual = cantTotal > 0 ? (item.cantidad / cantTotal) * 100 : 0;
+                                          const pctAcumulado = pctAnterior + pctActual;
+                                          const avAnterior = ac.avance_anterior;
+                                          const avActual = item.subtotal;
+                                          const avAcumulado = avAnterior + avActual;
+                                          const valorTotal = cantTotal * item.precio_unitario;
+                                          return (
+                                            <TableRow key={item.id}>
+                                              <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{cantTotal.toLocaleString("es-AR")}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(valorTotal)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatPercent(pctAnterior)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{item.cantidad}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{formatPercent(pctActual)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatPercent(pctAcumulado)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right text-muted-foreground">{formatCurrency(avAnterior)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(avActual)}</TableCell>
+                                              <TableCell className="px-1.5 py-1.5 text-right font-medium">{formatCurrency(avAcumulado)}</TableCell>
+                                            </TableRow>
+                                          );
+                                        })}
+                                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                                          <TableCell colSpan={12} className="px-1.5 text-right text-xs font-medium">Subtotal {group.etapa}</TableCell>
+                                          <TableCell className="px-1.5 text-right font-semibold text-xs">{formatCurrency(groupAvanceActual)}</TableCell>
+                                        </TableRow>
+                                      </React.Fragment>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          )}
                         </div>
 
                         {/* Sección Servicio */}
