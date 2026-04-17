@@ -82,6 +82,9 @@ const tiposConfig: Record<TipoMaquinaria, string> = {
   grupo_electrogeno: "Grupo Electrógeno",
 };
 
+const TIPOS_KM: TipoMaquinaria[] = ["auto", "camioneta", "camion", "carreton", "cisterna", "tanque_cisterna", "tanque_regador_tractor", "batea", "acoplado"];
+const esVehiculoKm = (tipo: TipoMaquinaria) => TIPOS_KM.includes(tipo);
+
 const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
   operativa: { label: "Operativa", icon: CheckCircle, className: "status-active" },
   mantenimiento: { label: "Mantenimiento", icon: Wrench, className: "status-pending" },
