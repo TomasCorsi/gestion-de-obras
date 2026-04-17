@@ -1,30 +1,27 @@
 
-El usuario no puede cambiar el email manualmente desde el backend (probablemente porque el panel de Users de Lovable Cloud no expone edición directa de email para usuarios existentes). Necesitamos la Opción B: una funcionalidad in-app para que un admin cambie el email de otro usuario.
+## Diagnóstico
 
-## Plan: Funcionalidad "Cambiar email" para administradores
+Los km **sí se están sincronizando correctamente** en la base de datos. Verifiqué el camión 954 del screenshot: tiene `km_acumulados = 226.873` en la tabla `maquinarias`, igual al máximo de `km_camion` cargado en partes diarios. El trigger `sync_horas_km_from_parte` está funcionando.
 
-### 1. Edge function `admin-update-user-email`
-Archivo: `supabase/functions/admin-update-user-email/index.ts`
-- `verify_jwt = true` (default)
-- Recibe `{ userId, newEmail }`
-- Valida con Zod
-- Verifica que el caller tenga rol `admin` usando `has_role(auth.uid(), 'admin')`
-- Usa `SERVICE_ROLE_KEY` para llamar `supabase.auth.admin.updateUserById(userId, { email: newEmail, email_confirm: true })`
-- También actualiza la tabla `personal.email` si existe registro vinculado a ese `user_id`
-- Devuelve `{ success: true }` o error con status apropiado
+**El problema real:** el diálogo de detalle (y el formulario de edición) en `src/pages/Maquinarias.tsx` solo muestra "Kilómetros Actual" para tipos `auto` y `camioneta`. Para el resto (`camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `camion batea`, etc.) muestra "Horómetro Actual" en horas — y esos vehículos tienen `horas_acumuladas = 0` porque andan por km.
 
-### 2. UI: diálogo de cambio de email
-Nuevo componente: `src/components/configuracion/ChangeEmailDialog.tsx`
-- Props: `userId`, `currentEmail`, `open`, `onOpenChange`, `onSuccess`
-- Input para nuevo email + confirmación
-- Validación básica de formato
-- Llama a la edge function con `supabase.functions.invoke('admin-update-user-email', ...)`
-- Toast de éxito/error
+Por eso ves "0 h" en el camión 954, aunque la BD tiene 226.873 km guardados.
 
-### 3. Integración en `UserManagement.tsx`
-- Agregar botón "Cambiar email" (icono Mail) en cada fila de usuario
-- Estado local para abrir el diálogo con el usuario seleccionado
-- Refrescar lista al confirmar
+## Solución: mostrar km para todos los vehículos sobre ruedas
 
-### Resultado para el caso actual
-Una vez desplegado, vas a Configuración → Gestión de Usuarios → fila de `martu4234@gmail.com` → botón "Cambiar email" → ingresás `sanmartieduardo791@gmail.com` → confirmás. El usuario ingresa con el nuevo email y la misma contraseña (o usa "Olvidé mi contraseña" si la perdió).
+### Cambio único en `src/pages/Maquinarias.tsx`
+
+1. **Definir un helper** `esVehiculoKm(tipo)` que devuelva `true` para tipos que se miden por kilómetros:
+   - `auto`, `camioneta`, `camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `batea`, `acoplado`
+
+2. **Reemplazar los dos lugares** donde se compara `tipo === "auto" || tipo === "camioneta"`:
+   - Label del formulario de edición (línea 552)
+   - Label y valor del DetailRow en el diálogo de detalle (líneas 607-611)
+
+   Usar `esVehiculoKm(tipo)` para mostrar `km_acumulados` formateado como `"XXX.XXX km"`, y horómetro en horas para el resto (maquinaria pesada: cargadora, retro, motoniveladora, etc.).
+
+### Resultado
+El detalle del camión 954 mostrará "Kilómetros Actual: 226.873 km" en vez de "Horómetro Actual: 0 h". Lo mismo para los demás camiones, carretones y cisternas. No hay cambios en BD ni en triggers porque los datos ya están bien.
+
+### Nota adicional
+Hay 4 partes diarios con `maquinaria_id = NULL` y `km_camion` cargado (ej: 2185 km del 16/04). Esos no se sincronizan a ninguna maquinaria porque no se eligió el camión al cargar el parte. No es un bug del trigger, es un parte mal cargado por el chofer. Si querés, en otro plan podemos forzar que el chofer seleccione su camión obligatoriamente al cargar km.
