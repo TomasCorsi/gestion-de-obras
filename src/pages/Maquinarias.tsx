@@ -607,8 +607,8 @@ export default function Maquinarias() {
                 value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
               />
               <DetailRow 
-                label={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"} 
-                value={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta"
+                label={esVehiculoKm(selectedMaquinaria.tipo) ? "Kilómetros Actual" : "Horómetro Actual"} 
+                value={esVehiculoKm(selectedMaquinaria.tipo)
                   ? `${(selectedMaquinaria.km_acumulados ?? 0).toLocaleString()} km`
                   : `${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} 
               />
