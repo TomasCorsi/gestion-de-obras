@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Loader2, Link2, Unlink } from "lucide-react";
+import { Users, Shield, Loader2, Link2, Unlink, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
+import { ChangeEmailDialog } from "./ChangeEmailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 
 type AppRole = "admin" | "capataz" | "maquinista" | "ayudante" | "remitero";
