@@ -82,6 +82,9 @@ const tiposConfig: Record<TipoMaquinaria, string> = {
   grupo_electrogeno: "Grupo Electrógeno",
 };
 
+const TIPOS_KM: TipoMaquinaria[] = ["auto", "camioneta", "camion", "carreton", "cisterna", "tanque_cisterna", "tanque_regador_tractor", "batea", "acoplado"];
+const esVehiculoKm = (tipo: TipoMaquinaria) => TIPOS_KM.includes(tipo);
+
 const estadoConfig: Record<EstadoMaquinaria, { label: string; icon: any; className: string }> = {
   operativa: { label: "Operativa", icon: CheckCircle, className: "status-active" },
   mantenimiento: { label: "Mantenimiento", icon: Wrench, className: "status-pending" },
@@ -549,7 +552,7 @@ export default function Maquinarias() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="horas_acumuladas">{formData.tipo === "auto" || formData.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"}</Label>
+              <Label htmlFor="horas_acumuladas">{formData.tipo && esVehiculoKm(formData.tipo) ? "Kilómetros Actual" : "Horómetro Actual"}</Label>
               <Input
                 id="horas_acumuladas"
                 type="number"
@@ -604,8 +607,8 @@ export default function Maquinarias() {
                 value={selectedMaquinaria.operador ? `${selectedMaquinaria.operador.nombre} ${selectedMaquinaria.operador.apellido}` : "Sin asignar"} 
               />
               <DetailRow 
-                label={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta" ? "Kilómetros Actual" : "Horómetro Actual"} 
-                value={selectedMaquinaria.tipo === "auto" || selectedMaquinaria.tipo === "camioneta"
+                label={esVehiculoKm(selectedMaquinaria.tipo) ? "Kilómetros Actual" : "Horómetro Actual"} 
+                value={esVehiculoKm(selectedMaquinaria.tipo)
                   ? `${(selectedMaquinaria.km_acumulados ?? 0).toLocaleString()} km`
                   : `${selectedMaquinaria.horas_acumuladas.toLocaleString()} h`} 
               />
