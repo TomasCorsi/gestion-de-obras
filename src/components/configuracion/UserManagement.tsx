@@ -5,10 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Loader2, Link2, Unlink } from "lucide-react";
+import { Users, Shield, Loader2, Link2, Unlink, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
+import { ChangeEmailDialog } from "./ChangeEmailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 
 type AppRole = "admin" | "capataz" | "maquinista" | "ayudante" | "remitero";
@@ -60,6 +61,10 @@ export function UserManagement() {
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
   const [selectedUserForUnlink, setSelectedUserForUnlink] = useState<{ id: string; name: string } | null>(null);
   const [isUnlinking, setIsUnlinking] = useState(false);
+
+  // Change email dialog state
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [selectedUserForEmail, setSelectedUserForEmail] = useState<{ id: string; name: string } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -258,26 +263,40 @@ export function UserManagement() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Select
-                          value={user.role}
-                          onValueChange={(value: AppRole) => handleRoleChange(user.user_id, value)}
-                          disabled={updatingUserId === user.user_id}
-                        >
-                          <SelectTrigger className="w-[150px] bg-muted border-border">
-                            {updatingUserId === user.user_id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <SelectValue />
-                            )}
-                          </SelectTrigger>
-                          <SelectContent className="bg-popover border-border">
-                            <SelectItem value="admin">Administrador</SelectItem>
-                            <SelectItem value="capataz">Capataz</SelectItem>
-                            <SelectItem value="maquinista">Maquinista</SelectItem>
-                            <SelectItem value="ayudante">Ayudante</SelectItem>
-                            <SelectItem value="remitero">Remitero</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Cambiar email"
+                            onClick={() => {
+                              setSelectedUserForEmail({ id: user.user_id, name: user.nombre_completo });
+                              setEmailDialogOpen(true);
+                            }}
+                          >
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                          <Select
+                            value={user.role}
+                            onValueChange={(value: AppRole) => handleRoleChange(user.user_id, value)}
+                            disabled={updatingUserId === user.user_id}
+                          >
+                            <SelectTrigger className="w-[150px] bg-muted border-border">
+                              {updatingUserId === user.user_id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <SelectValue />
+                              )}
+                            </SelectTrigger>
+                            <SelectContent className="bg-popover border-border">
+                              <SelectItem value="admin">Administrador</SelectItem>
+                              <SelectItem value="capataz">Capataz</SelectItem>
+                              <SelectItem value="maquinista">Maquinista</SelectItem>
+                              <SelectItem value="ayudante">Ayudante</SelectItem>
+                              <SelectItem value="remitero">Remitero</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -308,6 +327,17 @@ export function UserManagement() {
         title="¿Desvincular usuario?"
         description={`Se eliminará la vinculación de "${selectedUserForUnlink?.name}" con su registro de empleado. El usuario seguirá existiendo pero no tendrá un legajo asociado.`}
       />
+
+      {/* Change Email Dialog */}
+      {selectedUserForEmail && (
+        <ChangeEmailDialog
+          open={emailDialogOpen}
+          onOpenChange={setEmailDialogOpen}
+          userId={selectedUserForEmail.id}
+          userName={selectedUserForEmail.name}
+          onSuccess={fetchData}
+        />
+      )}
     </>
   );
 }
