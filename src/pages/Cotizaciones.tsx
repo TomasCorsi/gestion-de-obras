@@ -115,10 +115,11 @@ export default function Cotizaciones() {
   const [items, setItems] = useState<CotizacionItemForm[]>([]);
 
   const filteredCotizaciones = cotizaciones.filter((cot) => {
+    const term = searchTerm.toLowerCase();
     const matchesSearch =
-      cot.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cot.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cot.descripcion.toLowerCase().includes(searchTerm.toLowerCase());
+      (cot.numero ?? "").toLowerCase().includes(term) ||
+      (cot.obra?.nombre ?? "").toLowerCase().includes(term) ||
+      (cot.descripcion ?? "").toLowerCase().includes(term);
     const matchesEstado = estadoFilter === "todos" || cot.estado === estadoFilter;
     return matchesSearch && matchesEstado;
   });
