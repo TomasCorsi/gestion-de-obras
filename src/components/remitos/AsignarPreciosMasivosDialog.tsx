@@ -44,7 +44,7 @@ interface TipoRow {
 }
 
 export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batchSave }: Props) {
-  const [mode, setMode] = useState<"viajes" | "cantidad">("viajes");
+  const [mode, setMode] = useState<"viajes" | "cantidad">("cantidad");
   const [precios, setPrecios] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
