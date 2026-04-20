@@ -1,27 +1,24 @@
 
-## Diagnóstico
+## Bug: las cards de maquinarias muestran "0 horas" para camiones
 
-Los km **sí se están sincronizando correctamente** en la base de datos. Verifiqué el camión 954 del screenshot: tiene `km_acumulados = 226.873` en la tabla `maquinarias`, igual al máximo de `km_camion` cargado en partes diarios. El trigger `sync_horas_km_from_parte` está funcionando.
+En `src/pages/Maquinarias.tsx` (líneas 406-408), las **cards de la grilla principal** todavía usan la condición vieja `maq.tipo === "auto" || maq.tipo === "camioneta"`. Por eso los camiones (944, 945, 946 del screenshot) muestran "0 horas" en vez de los km que tienen guardados en BD.
 
-**El problema real:** el diálogo de detalle (y el formulario de edición) en `src/pages/Maquinarias.tsx` solo muestra "Kilómetros Actual" para tipos `auto` y `camioneta`. Para el resto (`camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `camion batea`, etc.) muestra "Horómetro Actual" en horas — y esos vehículos tienen `horas_acumuladas = 0` porque andan por km.
+El fix anterior se aplicó al diálogo de detalle y al formulario de edición, pero esta sección de cards quedó sin cambiar.
 
-Por eso ves "0 h" en el camión 954, aunque la BD tiene 226.873 km guardados.
-
-## Solución: mostrar km para todos los vehículos sobre ruedas
+## Solución
 
 ### Cambio único en `src/pages/Maquinarias.tsx`
 
-1. **Definir un helper** `esVehiculoKm(tipo)` que devuelva `true` para tipos que se miden por kilómetros:
-   - `auto`, `camioneta`, `camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `batea`, `acoplado`
+Reemplazar la condición de las líneas 406-408 para que use el helper `esVehiculoKm(tipo)` (ya definido en este mismo archivo en el fix anterior), de modo que muestre km para todos los vehículos sobre ruedas: `auto`, `camioneta`, `camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `batea`, `acoplado`.
 
-2. **Reemplazar los dos lugares** donde se compara `tipo === "auto" || tipo === "camioneta"`:
-   - Label del formulario de edición (línea 552)
-   - Label y valor del DetailRow en el diálogo de detalle (líneas 607-611)
+```tsx
+{esVehiculoKm(maq.tipo)
+  ? `${(maq.km_acumulados ?? 0).toLocaleString()} km`
+  : `${maq.horas_acumuladas.toLocaleString()} horas`}
+```
 
-   Usar `esVehiculoKm(tipo)` para mostrar `km_acumulados` formateado como `"XXX.XXX km"`, y horómetro en horas para el resto (maquinaria pesada: cargadora, retro, motoniveladora, etc.).
+### Sobre la actualización automática
+La sincronización con el último dato del parte diario **ya funciona**: el trigger `sync_horas_km_from_parte` actualiza `maquinarias.km_acumulados` con el `MAX(km_camion)` cada vez que se completa un parte. No se requiere cambio en BD.
 
 ### Resultado
-El detalle del camión 954 mostrará "Kilómetros Actual: 226.873 km" en vez de "Horómetro Actual: 0 h". Lo mismo para los demás camiones, carretones y cisternas. No hay cambios en BD ni en triggers porque los datos ya están bien.
-
-### Nota adicional
-Hay 4 partes diarios con `maquinaria_id = NULL` y `km_camion` cargado (ej: 2185 km del 16/04). Esos no se sincronizan a ninguna maquinaria porque no se eligió el camión al cargar el parte. No es un bug del trigger, es un parte mal cargado por el chofer. Si querés, en otro plan podemos forzar que el chofer seleccione su camión obligatoriamente al cargar km.
+Los cards de los camiones 944, 945, 946 mostrarán sus km reales (los del último parte diario) en vez de "0 horas".
