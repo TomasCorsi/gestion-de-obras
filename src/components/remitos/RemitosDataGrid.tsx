@@ -725,7 +725,7 @@ export function RemitosDataGrid({
         cantidad: 0,
         tipo_material: "",
         precio_unitario: null,
-        precio_calc_mode: "viajes",
+        precio_calc_mode: "cantidad",
         precio_total: 0,
         tipo_transporte: "",
         maquinaria_id: "",
