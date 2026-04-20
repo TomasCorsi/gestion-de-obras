@@ -1,24 +1,27 @@
 
-## Bug: las cards de maquinarias muestran "0 horas" para camiones
 
-En `src/pages/Maquinarias.tsx` (líneas 406-408), las **cards de la grilla principal** todavía usan la condición vieja `maq.tipo === "auto" || maq.tipo === "camioneta"`. Por eso los camiones (944, 945, 946 del screenshot) muestran "0 horas" en vez de los km que tienen guardados en BD.
+## Bug: el buscador de Cotizaciones se rompe por descripción nula
 
-El fix anterior se aplicó al diálogo de detalle y al formulario de edición, pero esta sección de cards quedó sin cambiar.
+En `src/pages/Cotizaciones.tsx` (líneas 117-124), el filtro hace `cot.descripcion.toLowerCase()` y `cot.obra?.nombre?.toLowerCase()` sin proteger contra valores nulos. Confirmé en BD que hay 1 cotización con `descripcion = NULL`, lo que provoca un `TypeError: Cannot read properties of null` apenas se tipea en el input — por eso "no te deja buscar".
 
 ## Solución
 
-### Cambio único en `src/pages/Maquinarias.tsx`
+### Cambio único en `src/pages/Cotizaciones.tsx` (líneas 117-124)
 
-Reemplazar la condición de las líneas 406-408 para que use el helper `esVehiculoKm(tipo)` (ya definido en este mismo archivo en el fix anterior), de modo que muestre km para todos los vehículos sobre ruedas: `auto`, `camioneta`, `camion`, `carreton`, `cisterna`, `tanque_cisterna`, `tanque_regador_tractor`, `batea`, `acoplado`.
+Agregar fallback a string vacío en cada campo y normalizar el término de búsqueda una sola vez:
 
 ```tsx
-{esVehiculoKm(maq.tipo)
-  ? `${(maq.km_acumulados ?? 0).toLocaleString()} km`
-  : `${maq.horas_acumuladas.toLocaleString()} horas`}
+const filteredCotizaciones = cotizaciones.filter((cot) => {
+  const term = searchTerm.toLowerCase();
+  const matchesSearch =
+    (cot.numero ?? "").toLowerCase().includes(term) ||
+    (cot.obra?.nombre ?? "").toLowerCase().includes(term) ||
+    (cot.descripcion ?? "").toLowerCase().includes(term);
+  const matchesEstado = estadoFilter === "todos" || cot.estado === estadoFilter;
+  return matchesSearch && matchesEstado;
+});
 ```
 
-### Sobre la actualización automática
-La sincronización con el último dato del parte diario **ya funciona**: el trigger `sync_horas_km_from_parte` actualiza `maquinarias.km_acumulados` con el `MAX(km_camion)` cada vez que se completa un parte. No se requiere cambio en BD.
-
 ### Resultado
-Los cards de los camiones 944, 945, 946 mostrarán sus km reales (los del último parte diario) en vez de "0 horas".
+El buscador vuelve a filtrar por número, obra o descripción sin romperse, incluso cuando alguna cotización tiene campos vacíos.
+
