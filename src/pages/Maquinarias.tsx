@@ -403,7 +403,7 @@ export default function Maquinarias() {
                         )}
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Clock className="w-4 h-4" />
-                          {maq.tipo === "auto" || maq.tipo === "camioneta"
+                          {esVehiculoKm(maq.tipo)
                             ? `${(maq.km_acumulados ?? 0).toLocaleString()} km`
                             : `${maq.horas_acumuladas.toLocaleString()} horas`}
                         </div>
