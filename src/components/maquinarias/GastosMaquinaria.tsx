@@ -104,6 +104,8 @@ export function GastosMaquinaria() {
           horometro_fin,
           cantidad_viajes,
           cantidad_movimiento_interno,
+          obra_id,
+          obras:obra_id (nombre),
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -117,6 +119,8 @@ export function GastosMaquinaria() {
         horometro_fin: number | null;
         cantidad_viajes: number | null;
         cantidad_movimiento_interno: number | null;
+        obra_id: string | null;
+        obras: { nombre: string | null } | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
@@ -132,6 +136,29 @@ export function GastosMaquinaria() {
       }
     }
     return map;
+  }, [partesDiarios]);
+
+  // Selected maquinaria object
+  const maquinariaSeleccionada = useMemo(
+    () => maquinarias.find((m) => m.id === selectedMaquinariaId),
+    [maquinarias, selectedMaquinariaId]
+  );
+
+  const esVehiculoKm = useMemo(() => {
+    if (!maquinariaSeleccionada) return false;
+    return ["camion", "auto", "camioneta"].includes(maquinariaSeleccionada.tipo);
+  }, [maquinariaSeleccionada]);
+
+  // Vehicle real-time status (last known location, operator, etc.)
+  const vehicleStatus = useMemo(() => {
+    const ultimo = partesDiarios[0];
+    return {
+      ultimaObra: ultimo?.obras?.nombre || null,
+      ultimoOperador: ultimo?.personal
+        ? [ultimo.personal.nombre, ultimo.personal.apellido].filter(Boolean).join(' ') || null
+        : null,
+      ultimoParteFecha: ultimo?.fecha || null,
+    };
   }, [partesDiarios]);
 
   // KM data, conductores, viajes y movimientos from partes_diarios filtered by period
