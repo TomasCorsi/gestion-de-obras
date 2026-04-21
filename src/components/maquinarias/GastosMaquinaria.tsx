@@ -213,9 +213,11 @@ export function GastosMaquinaria() {
       .map((m) => {
         const codigo = m.codigo || "S/C";
         const tipo = tiposConfig[m.tipo] || m.tipo;
+        const marca = m.marca || "";
+        const anio = m.anio ? String(m.anio) : "";
         const patente = m.patente || "";
-        const label = patente ? `${codigo} - ${tipo} - ${patente}` : `${codigo} - ${tipo}`;
-        const searchValue = `${codigo} ${tipo} ${patente} ${m.nombre || ""} ${m.marca || ""}`.toLowerCase();
+        const label = [codigo, tipo, marca, anio, patente].filter(Boolean).join(" - ");
+        const searchValue = `${codigo} ${tipo} ${marca} ${anio} ${patente} ${m.nombre || ""}`.toLowerCase();
         return { value: m.id, label, searchValue };
       });
   }, [maquinariasFiltradas]);
