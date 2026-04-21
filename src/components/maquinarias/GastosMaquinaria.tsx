@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { es } from "date-fns/locale";
-import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle } from "lucide-react";
+import { Fuel, Truck, Wrench, Calendar, DollarSign, Download, FileText, ChevronDown, AlertTriangle, MapPin, User, Gauge, ClipboardList, Cog } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -104,6 +104,8 @@ export function GastosMaquinaria() {
           horometro_fin,
           cantidad_viajes,
           cantidad_movimiento_interno,
+          obra_id,
+          obras:obra_id (nombre),
           personal:personal_id (nombre, apellido)
         `)
         .eq('maquinaria_id', selectedMaquinariaId)
@@ -117,6 +119,8 @@ export function GastosMaquinaria() {
         horometro_fin: number | null;
         cantidad_viajes: number | null;
         cantidad_movimiento_interno: number | null;
+        obra_id: string | null;
+        obras: { nombre: string | null } | null;
         personal: { nombre: string | null; apellido: string | null } | null;
       }>;
     },
@@ -132,6 +136,29 @@ export function GastosMaquinaria() {
       }
     }
     return map;
+  }, [partesDiarios]);
+
+  // Selected maquinaria object
+  const maquinariaSeleccionada = useMemo(
+    () => maquinarias.find((m) => m.id === selectedMaquinariaId),
+    [maquinarias, selectedMaquinariaId]
+  );
+
+  const esVehiculoKm = useMemo(() => {
+    if (!maquinariaSeleccionada) return false;
+    return ["camion", "auto", "camioneta"].includes(maquinariaSeleccionada.tipo);
+  }, [maquinariaSeleccionada]);
+
+  // Vehicle real-time status (last known location, operator, etc.)
+  const vehicleStatus = useMemo(() => {
+    const ultimo = partesDiarios[0];
+    return {
+      ultimaObra: ultimo?.obras?.nombre || null,
+      ultimoOperador: ultimo?.personal
+        ? [ultimo.personal.nombre, ultimo.personal.apellido].filter(Boolean).join(' ') || null
+        : null,
+      ultimoParteFecha: ultimo?.fecha || null,
+    };
   }, [partesDiarios]);
 
   // KM data, conductores, viajes y movimientos from partes_diarios filtered by period
@@ -454,59 +481,35 @@ export function GastosMaquinaria() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Filtros */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="w-full md:w-48">
-            <Select value={tipoFilter} onValueChange={setTipoFilter}>
-              <SelectTrigger className="bg-background">
-                <SelectValue placeholder="Tipo de maquinaria" />
-              </SelectTrigger>
-              <SelectContent className="bg-background z-50">
-                <SelectItem value="todos">Todos los tipos</SelectItem>
-                {Object.entries(tiposConfig).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex-1 max-w-md">
-            <Combobox
-              options={maquinariaOptions}
-              value={selectedMaquinariaId}
-              onValueChange={setSelectedMaquinariaId}
-              placeholder="Seleccionar maquinaria..."
-              searchPlaceholder="Buscar por código o nombre..."
-              emptyText="No se encontraron maquinarias"
-            />
-          </div>
-          {selectedMaquinariaId && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Download className="w-4 h-4" />
-                  Exportar
-                  <ChevronDown className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="bg-background z-50">
-                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel (.xlsx)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
-                  <FileText className="w-4 h-4 mr-2" />
-                  PDF
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+    <div className="space-y-5">
+      {/* Filtros — todo en una sola fila */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+        <div className="w-full lg:w-44">
+          <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <SelectTrigger className="bg-background">
+              <SelectValue placeholder="Tipo de maquinaria" />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              <SelectItem value="todos">Todos los tipos</SelectItem>
+              {Object.entries(tiposConfig).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        {/* Filtro por mes */}
-        <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0 max-w-xl">
+          <Combobox
+            options={maquinariaOptions}
+            value={selectedMaquinariaId}
+            onValueChange={setSelectedMaquinariaId}
+            placeholder="Seleccionar maquinaria..."
+            searchPlaceholder="Buscar por código, marca, año o patente..."
+            emptyText="No se encontraron maquinarias"
+          />
+        </div>
+        <div className="w-full lg:w-48">
           <Select value={mesActivo} onValueChange={seleccionarMes}>
-            <SelectTrigger className="w-[200px] bg-background">
+            <SelectTrigger className="bg-background">
               <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Período" />
             </SelectTrigger>
@@ -519,116 +522,254 @@ export function GastosMaquinaria() {
               ))}
             </SelectContent>
           </Select>
-          {mesActivo !== "todos" && (
-            <Button variant="ghost" size="sm" onClick={limpiarFiltros} className="text-muted-foreground">
-              Limpiar
-            </Button>
-          )}
         </div>
+        {mesActivo !== "todos" && (
+          <Button variant="ghost" size="sm" onClick={limpiarFiltros} className="text-muted-foreground">
+            Limpiar
+          </Button>
+        )}
+        <div className="flex-1 hidden lg:block" />
+        {selectedMaquinariaId && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Exportar
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="bg-background z-50" align="end">
+              <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                <Download className="w-4 h-4 mr-2" />
+                Excel (.xlsx)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
 
-      {!selectedMaquinariaId ? (
-        <div className="text-center py-12 text-muted-foreground">
+      {!selectedMaquinariaId || !maquinariaSeleccionada ? (
+        <div className="text-center py-16 text-muted-foreground border border-dashed border-border rounded-lg">
           Selecciona una maquinaria para ver sus gastos asociados
         </div>
       ) : (
         <>
-          {/* Tarjetas de resumen */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Ficha del Vehículo + Próximo Mantenimiento */}
+          <div className={cn(
+            "grid gap-4",
+            proximoMantenimiento ? "grid-cols-1 lg:grid-cols-3" : "grid-cols-1"
+          )}>
+            <Card className={cn("card-industrial", proximoMantenimiento && "lg:col-span-2")}>
+              <CardContent className="p-5">
+                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                  {/* Identidad */}
+                  <div className="flex items-start gap-4 min-w-0">
+                    <div className="w-14 h-14 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <Cog className="w-7 h-7 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                          {maquinariaSeleccionada.codigo || "S/C"}
+                        </span>
+                        <Badge variant="outline" className="capitalize">
+                          {tiposConfig[maquinariaSeleccionada.tipo] || maquinariaSeleccionada.tipo}
+                        </Badge>
+                        <Badge
+                          className={cn(
+                            "capitalize",
+                            maquinariaSeleccionada.estado === "operativa" && "bg-green-500/15 text-green-400 border-green-500/30",
+                            maquinariaSeleccionada.estado === "mantenimiento" && "bg-amber-500/15 text-amber-400 border-amber-500/30",
+                            maquinariaSeleccionada.estado === "inactiva" && "bg-red-500/15 text-red-400 border-red-500/30",
+                            maquinariaSeleccionada.estado === "en_uso" && "bg-blue-500/15 text-blue-400 border-blue-500/30",
+                          )}
+                          variant="outline"
+                        >
+                          {maquinariaSeleccionada.estado.replace("_", " ")}
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-foreground mt-2 truncate">
+                        {maquinariaSeleccionada.nombre || tiposConfig[maquinariaSeleccionada.tipo]}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {[
+                          maquinariaSeleccionada.marca,
+                          maquinariaSeleccionada.anio,
+                          maquinariaSeleccionada.patente,
+                        ].filter(Boolean).join(" · ") || "Sin datos adicionales"}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mini-stats */}
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm shrink-0">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="w-4 h-4 text-blue-400" />
+                      <div>
+                        <div className="text-xs text-muted-foreground/80">Última obra</div>
+                        <div className="text-foreground font-medium truncate max-w-[180px]">
+                          {vehicleStatus.ultimaObra || "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <User className="w-4 h-4 text-purple-400" />
+                      <div>
+                        <div className="text-xs text-muted-foreground/80">Último operador</div>
+                        <div className="text-foreground font-medium truncate max-w-[180px]">
+                          {vehicleStatus.ultimoOperador || "—"}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Gauge className="w-4 h-4 text-amber-400" />
+                      <div>
+                        <div className="text-xs text-muted-foreground/80">
+                          {esVehiculoKm ? "Kilómetros" : "Horas"}
+                        </div>
+                        <div className="text-foreground font-medium font-mono">
+                          {esVehiculoKm
+                            ? `${(maquinariaSeleccionada.km_acumulados || 0).toLocaleString()} km`
+                            : `${(maquinariaSeleccionada.horas_acumuladas || 0).toLocaleString()} hr`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <ClipboardList className="w-4 h-4 text-green-400" />
+                      <div>
+                        <div className="text-xs text-muted-foreground/80">Último parte</div>
+                        <div className="text-foreground font-medium font-mono">
+                          {vehicleStatus.ultimoParteFecha
+                            ? format(parseISO(vehicleStatus.ultimoParteFecha), "dd/MM/yyyy")
+                            : "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {proximoMantenimiento && (
+              <Card className="card-industrial border-amber-500/30 bg-amber-500/5">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-400" />
+                    <span className="font-semibold text-foreground">Próximo Mantenimiento</span>
+                  </div>
+                  <div className="space-y-1.5 text-sm">
+                    {proximoMantenimiento.fecha && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Fecha</span>
+                        <span className="font-mono text-amber-400 font-medium">
+                          {format(parseISO(proximoMantenimiento.fecha), "dd/MM/yyyy")}
+                        </span>
+                      </div>
+                    )}
+                    {proximoMantenimiento.horas && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">A las</span>
+                        <span className="font-mono text-foreground">
+                          {proximoMantenimiento.horas.toLocaleString()} hr
+                        </span>
+                      </div>
+                    )}
+                    {proximoMantenimiento.km && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">A los</span>
+                        <span className="font-mono text-foreground">
+                          {proximoMantenimiento.km.toLocaleString()} km
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* KPIs financieros: 4 cards simétricas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="card-industrial">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
                   <Fuel className="w-4 h-4 text-amber-400" />
                   Combustible
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
                 <div className="text-2xl font-bold text-foreground">
                   ${totales.totalCombustible.toLocaleString()}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {totales.totalLitros.toLocaleString()} litros
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totales.totalLitros.toLocaleString()} L · {datosFiltrados.combustible.length} cargas
                 </p>
               </CardContent>
             </Card>
 
             <Card className="card-industrial">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
                   <Truck className="w-4 h-4 text-blue-400" />
                   Remitos / Viajes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
                 <div className="text-2xl font-bold text-foreground">
                   ${totales.costoRemitos.toLocaleString()}
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {totales.totalRemitos} remitos • {totales.totalViajes} viajes
+                <p className="text-xs text-muted-foreground mt-1">
+                  {totales.totalRemitos} remitos · {totales.totalViajes} viajes
                 </p>
               </CardContent>
             </Card>
 
             <Card className="card-industrial">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1.5">
                   <Wrench className="w-4 h-4 text-purple-400" />
                   Mantenimientos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
+                </div>
                 <div className="text-2xl font-bold text-foreground">
                   ${totales.costoMantenimientos.toLocaleString()}
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground mt-1">
                   {totales.totalMantenimientos} servicios
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="card-industrial border-primary/40 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-primary mb-1.5">
+                  <DollarSign className="w-4 h-4" />
+                  Gasto Total
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  ${totales.gastoTotal.toLocaleString()}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Combustible + Remitos + Mant.
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Próximo mantenimiento */}
-          {proximoMantenimiento && (
-            <Card className="card-industrial border-amber-500/30 bg-amber-500/5">
-              <CardContent className="py-4">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-                  <span className="font-medium text-foreground">Próximo Mantenimiento:</span>
-                  {proximoMantenimiento.fecha && (
-                    <Badge variant="outline" className="border-amber-500/30 text-amber-400">
-                      {format(parseISO(proximoMantenimiento.fecha), "dd/MM/yyyy")}
-                    </Badge>
-                  )}
-                  {proximoMantenimiento.horas && (
-                    <span className="text-sm text-muted-foreground">
-                      a las {proximoMantenimiento.horas.toLocaleString()} hr
-                    </span>
-                  )}
-                  {proximoMantenimiento.km && (
-                    <span className="text-sm text-muted-foreground">
-                      / {proximoMantenimiento.km.toLocaleString()} km
-                    </span>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Gráfico de evolución mensual */}
           {datosGraficoMensual.length > 0 && (
             <Card className="card-industrial">
-              <CardHeader>
-                <CardTitle className="text-lg">Evolución de Gastos Mensuales</CardTitle>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Evolución de Gastos Mensuales</CardTitle>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={chartConfig} className="h-[300px] w-full">
+                <ChartContainer config={chartConfig} className="h-[240px] w-full">
                   <BarChart data={datosGraficoMensual}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={{ stroke: 'hsl(var(--border))' }} />
-                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} tickLine={{ stroke: 'hsl(var(--border))' }} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                    <XAxis dataKey="mes" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--border))' }} />
+                    <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} tickLine={{ stroke: 'hsl(var(--border))' }} tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
                     <ChartTooltip content={<ChartTooltipContent formatter={(value) => <span>${Number(value).toLocaleString()}</span>} />} />
-                    <Legend />
-                    <Bar dataKey="combustible" name="Combustible" stackId="a" fill="hsl(38, 92%, 50%)" radius={[0, 0, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="combustible" name="Combustible" stackId="a" fill="hsl(38, 92%, 50%)" />
                     <Bar dataKey="mantenimiento" name="Mantenimiento" stackId="a" fill="hsl(270, 70%, 60%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ChartContainer>
@@ -636,62 +777,65 @@ export function GastosMaquinaria() {
             </Card>
           )}
 
-          {/* Total general */}
-          <Card className="card-industrial bg-primary/5 border-primary/20">
-            <CardContent className="py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-primary" />
-                  <span className="text-muted-foreground">Gasto Total (Combustible + Mantenimiento + Remitos)</span>
-                </div>
-                <span className="text-2xl font-bold text-primary">
-                  ${totales.gastoTotal.toLocaleString()}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Tabla detallada */}
           <Card className="card-industrial">
-            <CardHeader>
-              <CardTitle className="text-lg">Detalle de Gastos</CardTitle>
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Detalle de Gastos</CardTitle>
+              <span className="text-xs text-muted-foreground">
+                {gastosUnificados.length} {gastosUnificados.length === 1 ? "registro" : "registros"}
+              </span>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {gastosUnificados.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-12 text-muted-foreground">
                   No hay registros para esta maquinaria en el período seleccionado
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Descripción</TableHead>
-                      <TableHead>Obra</TableHead>
-                      <TableHead className="text-right">Costo</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {gastosUnificados.map((gasto) => (
-                      <TableRow key={`${gasto.tipo}-${gasto.id}`}>
-                        <TableCell className="font-mono text-sm">
-                          {gasto.fecha ? format(new Date(gasto.fecha), "dd/MM/yyyy") : "-"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn("status-badge", tipoGastoConfig[gasto.tipo].className)}>
-                            {tipoGastoConfig[gasto.tipo].label}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">{gasto.descripcion}</TableCell>
-                        <TableCell className="text-muted-foreground">{gasto.obra || "-"}</TableCell>
-                        <TableCell className="text-right font-mono">
-                          {gasto.costo > 0 ? `$${gasto.costo.toLocaleString()}` : "-"}
-                        </TableCell>
+                <div className="max-h-[480px] overflow-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 bg-card z-10">
+                      <TableRow>
+                        <TableHead className="w-[110px]">Fecha</TableHead>
+                        <TableHead className="w-[130px]">Tipo</TableHead>
+                        <TableHead>Descripción</TableHead>
+                        <TableHead className="w-[160px]">Operador</TableHead>
+                        <TableHead className="w-[160px]">Obra</TableHead>
+                        <TableHead className="w-[120px] text-right">Costo</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {gastosUnificados.map((gasto, idx) => {
+                        const operador = gasto.tipo !== "mantenimiento"
+                          ? operadorPorFecha.get(gasto.fecha) ?? "—"
+                          : "—";
+                        return (
+                          <TableRow
+                            key={`${gasto.tipo}-${gasto.id}`}
+                            className={cn(idx % 2 === 1 && "bg-muted/30")}
+                          >
+                            <TableCell className="font-mono text-sm">
+                              {gasto.fecha ? format(parseISO(gasto.fecha), "dd/MM/yyyy") : "-"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant="outline"
+                                className={cn("font-normal", tipoGastoConfig[gasto.tipo].className)}
+                              >
+                                {tipoGastoConfig[gasto.tipo].label}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate text-sm">{gasto.descripcion}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground truncate">{operador}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground truncate">{gasto.obra || "—"}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">
+                              {gasto.costo > 0 ? `$${gasto.costo.toLocaleString()}` : "—"}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
