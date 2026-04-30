@@ -44,6 +44,7 @@ import {
   Building,
   Wallet,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react";
 import {
   DropdownMenu,
