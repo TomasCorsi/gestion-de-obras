@@ -1,47 +1,58 @@
 
+## Sistema de Sueldos — Nueva pestaña dentro de Liquidaciones
 
-## Re-generar masivamente Cli. Origen y Cli. Destino en Remitos
+### Contexto
+Los sueldos que están en la tabla `personal` (campos `sueldo`, `sueldo_negro`, `modalidad_pago`) no son confiables para el usuario. Se necesita un sistema independiente donde se importen los sueldos desde un Excel del estudio contable y se pueda ver un resumen cada quincena y fin de mes.
 
-### Diagnóstico
-En BD hay **519 remitos** y faltan datos de cliente:
-- **322 remitos** tienen `desde` cargado pero `cliente` vacío.
-- **179 remitos** tienen `hasta` cargado pero `cliente_destino` vacío.
+### 1. Nueva tabla `sueldos`
 
-El formulario completa estos campos automáticamente buscando la obra por nombre y tomando su cliente asociado (`obras.cliente_id → clientes.nombre`). Cuando se cargaron remitos con obras que **aún no tenían cliente asignado**, los campos quedaron vacíos. Ahora que muchas obras ya tienen cliente, podemos repoblar de una sola vez.
+Crear una tabla para almacenar los sueldos importados por período:
 
-### Cambio único: migración de datos (UPDATE masivo)
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | uuid PK | |
+| personal_id | uuid | Referencia al empleado |
+| legajo | text | Para matching en importación |
+| nombre | text | Nombre del archivo (respaldo) |
+| sueldo_blanco | numeric | Monto en blanco |
+| sueldo_negro | numeric | Monto en negro |
+| modalidad_pago | text | 'quincenal' o 'mensual' |
+| periodo | text | Ej: '2026-04' (año-mes) |
+| created_at | timestamptz | |
 
-Una sola sentencia SQL vía la herramienta de inserción de datos:
+RLS: solo admin y capataz.
 
-```sql
--- Rellenar cliente (origen) cuando esté vacío y la obra "desde" tenga cliente
-UPDATE remitos r
-SET cliente = c.nombre
-FROM obras o
-JOIN clientes c ON c.id = o.cliente_id
-WHERE (r.cliente IS NULL OR r.cliente = '')
-  AND r.desde IS NOT NULL AND r.desde <> ''
-  AND o.nombre = r.desde;
+### 2. Importación Excel/CSV
 
--- Rellenar cliente_destino cuando esté vacío y la obra "hasta" tenga cliente
-UPDATE remitos r
-SET cliente_destino = c.nombre
-FROM obras o
-JOIN clientes c ON c.id = o.cliente_id
-WHERE (r.cliente_destino IS NULL OR r.cliente_destino = '')
-  AND r.hasta IS NOT NULL AND r.hasta <> ''
-  AND o.nombre = r.hasta;
-```
+Un uploader dentro de la pestaña que:
+- Acepta Excel o CSV con columnas: Legajo, Nombre, Blanco, Negro, Modalidad
+- Matchea por legajo contra la tabla `personal`
+- Muestra preview con estados (encontrado / no encontrado)
+- Al confirmar, inserta en `sueldos` con el período seleccionado (mes/año)
+- Si ya existe data para ese período, pregunta si reemplazar
 
-### Detalles importantes
-- **No pisa datos existentes**: solo actualiza filas donde el cliente está nulo o vacío. Los remitos que ya tienen cliente cargado a mano se respetan.
-- **Match exacto por nombre de obra** (igual lógica que `getClienteForObra` del formulario).
-- Las obras que **siguen sin cliente asignado** (Campo el Tatu, Espacio Nova, Moreno, etc.) seguirán dejando el remito vacío hasta que se les cargue cliente.
-- Los textos libres en `desde`/`hasta` que no coincidan con ninguna obra (ej. "Cantera de tercero") tampoco se completan — comportamiento correcto.
-- No se cambia código ni se toca el formulario; el auto-fill ya funciona para remitos nuevos.
+### 3. Vista resumen "Sueldos"
 
-### Resultado esperado
-- Hasta **322** remitos pasarán a tener `cliente` poblado.
-- Hasta **179** remitos pasarán a tener `cliente_destino` poblado.
-- Después podrás filtrar y liquidar por cliente correctamente en la grilla y en `LiquidacionClienteDialog`.
+Nueva sub-pestaña dentro de Liquidaciones con:
 
+**Filtros**: Selector de período (mes/año)
+
+**KPIs en cards**:
+- Total Blanco Quincenal (quincena 1 y 2)
+- Total Negro Quincenal
+- Total Blanco Mensual
+- Total Negro Mensual
+- **Gran Total** (blanco + negro de todos)
+
+**Tabla detallada**: Lista de empleados con columnas Legajo, Nombre, Modalidad, Blanco, Negro, Total, con filtro por modalidad y totales al pie.
+
+### 4. Archivos a crear/modificar
+
+- **Migración SQL**: Crear tabla `sueldos` con RLS
+- **`src/hooks/useSueldos.ts`**: Hook para CRUD de sueldos con filtro por período
+- **`src/components/personal/SueldosTab.tsx`**: Componente principal con importación, KPIs y tabla
+- **`src/pages/Personal.tsx`**: Agregar pestaña "Sueldos" dentro de la sección Liquidaciones (o como sub-tab junto a la generación de planilla bancaria existente)
+
+### Detalle técnico
+
+La pestaña de Liquidaciones actualmente tiene el generador de planilla bancaria. La nueva funcionalidad de Sueldos se agrega como una sección separada arriba o como sub-tabs dentro de Liquidaciones: **Sueldos | Planilla Bancaria**.

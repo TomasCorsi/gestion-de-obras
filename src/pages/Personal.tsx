@@ -44,6 +44,7 @@ import {
   Building,
   Wallet,
   AlertTriangle,
+  DollarSign,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -58,6 +59,7 @@ import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
+import { SueldosTab } from "@/components/personal/SueldosTab";
 import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
@@ -488,7 +490,24 @@ export default function Personal() {
         </TabsContent>
 
         <TabsContent value="liquidaciones">
-          <LiquidacionesTab personal={personal} />
+          <Tabs defaultValue="sueldos" className="space-y-4">
+            <TabsList className="bg-card border border-border">
+              <TabsTrigger value="sueldos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Sueldos
+              </TabsTrigger>
+              <TabsTrigger value="planilla" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <FileText className="w-4 h-4 mr-2" />
+                Planilla Bancaria
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="sueldos">
+              <SueldosTab personal={personal} />
+            </TabsContent>
+            <TabsContent value="planilla">
+              <LiquidacionesTab personal={personal} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="epp">
