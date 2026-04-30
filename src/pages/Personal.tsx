@@ -489,7 +489,24 @@ export default function Personal() {
         </TabsContent>
 
         <TabsContent value="liquidaciones">
-          <LiquidacionesTab personal={personal} />
+          <Tabs defaultValue="sueldos" className="space-y-4">
+            <TabsList className="bg-card border border-border">
+              <TabsTrigger value="sueldos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <DollarSign className="w-4 h-4 mr-2" />
+                Sueldos
+              </TabsTrigger>
+              <TabsTrigger value="planilla" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <FileText className="w-4 h-4 mr-2" />
+                Planilla Bancaria
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="sueldos">
+              <SueldosTab personal={personal} />
+            </TabsContent>
+            <TabsContent value="planilla">
+              <LiquidacionesTab personal={personal} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="epp">
