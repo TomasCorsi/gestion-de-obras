@@ -1,58 +1,28 @@
+## Adaptar importador de sueldos al formato real del Excel
 
-## Sistema de Sueldos — Nueva pestaña dentro de Liquidaciones
+El Excel del usuario tiene estas columnas:
+- **TIPO**: "Q" (quincenal) o "M" (mensual)
+- **Leg.**: Legajo (algunos tienen "-" = sin legajo)
+- **SUELDO TOTAL (NEGRO+BLANCO)**: Monto total
+- **PARTE BLANCO**: Porcion en blanco
+- **PARTE NEGRA**: Porcion en negro (a veces vacio, a veces tiene valor)
+- **OBS**: Observaciones
 
-### Contexto
-Los sueldos que están en la tabla `personal` (campos `sueldo`, `sueldo_negro`, `modalidad_pago`) no son confiables para el usuario. Se necesita un sistema independiente donde se importen los sueldos desde un Excel del estudio contable y se pueda ver un resumen cada quincena y fin de mes.
+### Cambios en `SueldosTab.tsx`
 
-### 1. Nueva tabla `sueldos`
+1. **Ampliar `findCol`** para reconocer los nombres reales:
+   - Legajo: agregar "leg." y "leg"
+   - Blanco: agregar "parte blanco"
+   - Negro: agregar "parte negra", "negro+blanco" (para el total)
+   - Modalidad/Tipo: agregar "tipo"
 
-Crear una tabla para almacenar los sueldos importados por período:
+2. **Parsear modalidad**: Convertir "Q" a "quincenal" y "M" a "mensual"
 
-| Columna | Tipo | Descripción |
-|---------|------|-------------|
-| id | uuid PK | |
-| personal_id | uuid | Referencia al empleado |
-| legajo | text | Para matching en importación |
-| nombre | text | Nombre del archivo (respaldo) |
-| sueldo_blanco | numeric | Monto en blanco |
-| sueldo_negro | numeric | Monto en negro |
-| modalidad_pago | text | 'quincenal' o 'mensual' |
-| periodo | text | Ej: '2026-04' (año-mes) |
-| created_at | timestamptz | |
+3. **Calcular negro cuando falta**: Si PARTE NEGRA esta vacia pero hay SUELDO TOTAL y PARTE BLANCO, calcular negro = total - blanco
 
-RLS: solo admin y capataz.
+4. **Manejar legajos "-"**: Tratar "-" como legajo vacio pero permitir la importacion (no matcheara con personal, status "not_found", pero se guarda igual)
 
-### 2. Importación Excel/CSV
+5. **Ignorar filas con errores Excel** (#VALOR!): Saltar filas donde blanco o negro contengan "#"
 
-Un uploader dentro de la pestaña que:
-- Acepta Excel o CSV con columnas: Legajo, Nombre, Blanco, Negro, Modalidad
-- Matchea por legajo contra la tabla `personal`
-- Muestra preview con estados (encontrado / no encontrado)
-- Al confirmar, inserta en `sueldos` con el período seleccionado (mes/año)
-- Si ya existe data para ese período, pregunta si reemplazar
-
-### 3. Vista resumen "Sueldos"
-
-Nueva sub-pestaña dentro de Liquidaciones con:
-
-**Filtros**: Selector de período (mes/año)
-
-**KPIs en cards**:
-- Total Blanco Quincenal (quincena 1 y 2)
-- Total Negro Quincenal
-- Total Blanco Mensual
-- Total Negro Mensual
-- **Gran Total** (blanco + negro de todos)
-
-**Tabla detallada**: Lista de empleados con columnas Legajo, Nombre, Modalidad, Blanco, Negro, Total, con filtro por modalidad y totales al pie.
-
-### 4. Archivos a crear/modificar
-
-- **Migración SQL**: Crear tabla `sueldos` con RLS
-- **`src/hooks/useSueldos.ts`**: Hook para CRUD de sueldos con filtro por período
-- **`src/components/personal/SueldosTab.tsx`**: Componente principal con importación, KPIs y tabla
-- **`src/pages/Personal.tsx`**: Agregar pestaña "Sueldos" dentro de la sección Liquidaciones (o como sub-tab junto a la generación de planilla bancaria existente)
-
-### Detalle técnico
-
-La pestaña de Liquidaciones actualmente tiene el generador de planilla bancaria. La nueva funcionalidad de Sueldos se agrega como una sección separada arriba o como sub-tabs dentro de Liquidaciones: **Sueldos | Planilla Bancaria**.
+### Archivos a modificar
+- `src/components/personal/SueldosTab.tsx` — Solo el bloque de parsing (`findCol` y `parseRows`)
