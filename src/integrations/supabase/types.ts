@@ -1942,6 +1942,45 @@ export type Database = {
         }
         Relationships: []
       }
+      sueldos: {
+        Row: {
+          created_at: string
+          id: string
+          legajo: string
+          modalidad_pago: string
+          nombre: string | null
+          periodo: string
+          personal_id: string | null
+          sueldo_blanco: number
+          sueldo_negro: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          legajo: string
+          modalidad_pago?: string
+          nombre?: string | null
+          periodo: string
+          personal_id?: string | null
+          sueldo_blanco?: number
+          sueldo_negro?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          legajo?: string
+          modalidad_pago?: string
+          nombre?: string | null
+          periodo?: string
+          personal_id?: string | null
+          sueldo_blanco?: number
+          sueldo_negro?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
