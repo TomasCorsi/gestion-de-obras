@@ -58,6 +58,7 @@ import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
 import { VacacionesTab } from "@/components/personal/VacacionesTab";
 import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
+import { SueldosTab } from "@/components/personal/SueldosTab";
 import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
