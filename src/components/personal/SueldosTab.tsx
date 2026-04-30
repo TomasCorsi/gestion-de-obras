@@ -124,32 +124,56 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       return;
     }
     const headers = (rows[0] as string[]).map((h) => String(h || "").trim());
-    const legajoIdx = findCol(headers, ["legajo", "leg", "nro"]);
+    const legajoIdx = findCol(headers, ["legajo", "leg.", "leg", "nro"]);
     const nombreIdx = findCol(headers, ["nombre", "apellido", "empleado"]);
-    const blancoIdx = findCol(headers, ["blanco", "sueldo blanco", "sueldo_blanco"]);
-    const negroIdx = findCol(headers, ["negro", "sueldo negro", "sueldo_negro"]);
-    const modalidadIdx = findCol(headers, ["modalidad", "mod", "tipo pago", "modalidad_pago"]);
+    const blancoIdx = findCol(headers, ["parte blanco", "blanco", "sueldo blanco", "sueldo_blanco"]);
+    const negroIdx = findCol(headers, ["parte negra", "negro", "sueldo negro", "sueldo_negro"]);
+    const totalIdx = findCol(headers, ["sueldo total", "negro+blanco", "total"]);
+    const modalidadIdx = findCol(headers, ["tipo", "modalidad", "mod", "tipo pago", "modalidad_pago"]);
 
-    if (legajoIdx === -1) { toast.error("No se encontró columna 'Legajo'"); return; }
-    if (blancoIdx === -1) { toast.error("No se encontró columna 'Blanco'"); return; }
+    if (legajoIdx === -1 && blancoIdx === -1 && totalIdx === -1) {
+      toast.error("No se encontraron columnas reconocibles (Legajo, Blanco, Total)");
+      return;
+    }
 
     const result: ImportRow[] = [];
     for (let i = 1; i < rows.length; i++) {
       const cols = rows[i] as (string | number)[];
-      if (!cols || cols.length <= legajoIdx) continue;
-      const legajo = String(cols[legajoIdx] ?? "").trim();
-      if (!legajo) continue;
+      if (!cols || cols.length < 2) continue;
 
-      const blanco = parseNumber(cols[blancoIdx] ?? 0);
-      const negro = negroIdx !== -1 ? parseNumber(cols[negroIdx] ?? 0) : 0;
+      // Get legajo - treat "-" as empty
+      let legajo = legajoIdx !== -1 ? String(cols[legajoIdx] ?? "").trim() : "";
+      if (legajo === "-") legajo = "";
+      if (!legajo && legajoIdx !== -1) {
+        // Skip rows with no legajo at all (truly empty)
+        const hasAnyData = cols.some((c) => c !== null && c !== undefined && String(c).trim() !== "");
+        if (!hasAnyData) continue;
+      }
+
+      // Skip rows with Excel errors (#¡VALOR!, #REF!, etc.)
+      const rowStr = cols.map((c) => String(c ?? "")).join("");
+      if (rowStr.includes("#¡VALOR") || rowStr.includes("#VALUE") || rowStr.includes("#REF")) continue;
+
+      const blanco = blancoIdx !== -1 ? parseNumber(cols[blancoIdx] ?? 0) : 0;
+      const totalVal = totalIdx !== -1 ? parseNumber(cols[totalIdx] ?? 0) : 0;
+      let negro = negroIdx !== -1 ? parseNumber(cols[negroIdx] ?? 0) : 0;
+
+      // If negro is 0 but we have total and blanco, calculate it
+      if (negro === 0 && totalVal > 0 && blanco > 0 && totalVal > blanco) {
+        negro = totalVal - blanco;
+      }
+
+      // Skip rows with no salary data
+      if (blanco === 0 && negro === 0 && totalVal === 0) continue;
+
       const nombre = nombreIdx !== -1 ? String(cols[nombreIdx] ?? "").trim() : "";
       let modalidad = modalidadIdx !== -1 ? String(cols[modalidadIdx] ?? "").trim().toLowerCase() : "quincenal";
-      if (modalidad.startsWith("quince") || modalidad === "q") modalidad = "quincenal";
-      else if (modalidad.startsWith("mens") || modalidad === "m") modalidad = "mensual";
+      if (modalidad === "q" || modalidad.startsWith("quince")) modalidad = "quincenal";
+      else if (modalidad === "m" || modalidad.startsWith("mens")) modalidad = "mensual";
 
-      const emp = personal.find((p) => p.legajo === legajo);
+      const emp = legajo ? personal.find((p) => p.legajo === legajo) : null;
       result.push({
-        legajo,
+        legajo: legajo || `SIN-${i}`,
         nombre: nombre || (emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.trim() : ""),
         sueldo_blanco: blanco,
         sueldo_negro: negro,
