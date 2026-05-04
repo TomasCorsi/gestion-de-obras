@@ -1944,6 +1944,7 @@ export type Database = {
       }
       sueldos: {
         Row: {
+          apellido: string | null
           created_at: string
           id: string
           legajo: string
@@ -1951,11 +1952,13 @@ export type Database = {
           nombre: string | null
           periodo: string
           personal_id: string | null
+          puesto: string | null
           sueldo_blanco: number
           sueldo_negro: number
           updated_at: string
         }
         Insert: {
+          apellido?: string | null
           created_at?: string
           id?: string
           legajo: string
@@ -1963,11 +1966,13 @@ export type Database = {
           nombre?: string | null
           periodo: string
           personal_id?: string | null
+          puesto?: string | null
           sueldo_blanco?: number
           sueldo_negro?: number
           updated_at?: string
         }
         Update: {
+          apellido?: string | null
           created_at?: string
           id?: string
           legajo?: string
@@ -1975,6 +1980,7 @@ export type Database = {
           nombre?: string | null
           periodo?: string
           personal_id?: string | null
+          puesto?: string | null
           sueldo_blanco?: number
           sueldo_negro?: number
           updated_at?: string

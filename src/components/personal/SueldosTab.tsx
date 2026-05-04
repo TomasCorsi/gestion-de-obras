@@ -25,6 +25,8 @@ import {
   XCircle,
   Trash2,
   FileSpreadsheet,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 import { PersonalDB } from "@/hooks/usePersonal";
 import { useSueldos } from "@/hooks/useSueldos";
@@ -37,14 +39,18 @@ interface SueldosTabProps {
   personal: PersonalDB[];
 }
 
+type RowStatus = "ok" | "match_nombre" | "sin_legajo" | "not_found";
+
 interface ImportRow {
   legajo: string;
   nombre: string;
+  apellido: string;
+  puesto: string;
   sueldo_blanco: number;
   sueldo_negro: number;
   modalidad_pago: string;
   personal_id: string | null;
-  status: "ok" | "not_found";
+  status: RowStatus;
 }
 
 function parseNumber(value: string | number): number {
@@ -72,6 +78,8 @@ function findCol(headers: string[], names: string[]): number {
   }
   return -1;
 }
+
+const norm = (s: string) => s.toLowerCase().trim().replace(/\s+/g, " ");
 
 const meses = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -125,7 +133,9 @@ export function SueldosTab({ personal }: SueldosTabProps) {
     }
     const headers = (rows[0] as string[]).map((h) => String(h || "").trim());
     const legajoIdx = findCol(headers, ["legajo", "leg.", "leg", "nro"]);
-    const nombreIdx = findCol(headers, ["nombre", "apellido", "empleado"]);
+    const apellidoIdx = findCol(headers, ["apellido"]);
+    const nombreIdx = findCol(headers, ["nombre", "empleado"]);
+    const puestoIdx = findCol(headers, ["puesto", "cargo", "rol"]);
     const blancoIdx = findCol(headers, ["parte blanco", "blanco", "sueldo blanco", "sueldo_blanco"]);
     const negroIdx = findCol(headers, ["parte negra", "negro", "sueldo negro", "sueldo_negro"]);
     const totalIdx = findCol(headers, ["sueldo total", "negro+blanco", "total"]);
@@ -141,45 +151,82 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       const cols = rows[i] as (string | number)[];
       if (!cols || cols.length < 2) continue;
 
-      // Get legajo - treat "-" as empty
-      let legajo = legajoIdx !== -1 ? String(cols[legajoIdx] ?? "").trim() : "";
-      if (legajo === "-") legajo = "";
-      if (!legajo && legajoIdx !== -1) {
-        // Skip rows with no legajo at all (truly empty)
-        const hasAnyData = cols.some((c) => c !== null && c !== undefined && String(c).trim() !== "");
-        if (!hasAnyData) continue;
-      }
-
-      // Skip rows with Excel errors (#¡VALOR!, #REF!, etc.)
+      // Skip rows with Excel errors
       const rowStr = cols.map((c) => String(c ?? "")).join("");
       if (rowStr.includes("#¡VALOR") || rowStr.includes("#VALUE") || rowStr.includes("#REF")) continue;
+
+      let legajo = legajoIdx !== -1 ? String(cols[legajoIdx] ?? "").trim() : "";
+      if (legajo === "-") legajo = "";
+
+      const apellido = apellidoIdx !== -1 ? String(cols[apellidoIdx] ?? "").trim() : "";
+      const nombreVal = nombreIdx !== -1 ? String(cols[nombreIdx] ?? "").trim() : "";
+      const puesto = puestoIdx !== -1 ? String(cols[puestoIdx] ?? "").trim() : "";
 
       const blanco = blancoIdx !== -1 ? parseNumber(cols[blancoIdx] ?? 0) : 0;
       const totalVal = totalIdx !== -1 ? parseNumber(cols[totalIdx] ?? 0) : 0;
       let negro = negroIdx !== -1 ? parseNumber(cols[negroIdx] ?? 0) : 0;
 
-      // If negro is 0 but we have total and blanco, calculate it
       if (negro === 0 && totalVal > 0 && blanco > 0 && totalVal > blanco) {
         negro = totalVal - blanco;
       }
 
-      // Skip rows with no salary data
+      // Skip rows with no salary data AND no legajo/nombre
       if (blanco === 0 && negro === 0 && totalVal === 0) continue;
+      if (!legajo && !apellido && !nombreVal) continue;
 
-      const nombre = nombreIdx !== -1 ? String(cols[nombreIdx] ?? "").trim() : "";
       let modalidad = modalidadIdx !== -1 ? String(cols[modalidadIdx] ?? "").trim().toLowerCase() : "quincenal";
       if (modalidad === "q" || modalidad.startsWith("quince")) modalidad = "quincenal";
       else if (modalidad === "m" || modalidad.startsWith("mens")) modalidad = "mensual";
 
-      const emp = legajo ? personal.find((p) => p.legajo === legajo) : null;
+      // Match logic: 1) by legajo, 2) by apellido+nombre, 3) by apellido alone
+      let emp: PersonalDB | undefined;
+      let status: RowStatus = "not_found";
+
+      if (legajo) {
+        emp = personal.find((p) => p.legajo === legajo);
+        status = emp ? "ok" : "not_found";
+      } else if (apellido) {
+        const ap = norm(apellido);
+        const no = norm(nombreVal);
+        // Exact apellido + nombre match
+        if (no) {
+          const matches = personal.filter(
+            (p) => norm(p.apellido || "") === ap && norm(p.nombre || "") === no
+          );
+          if (matches.length === 1) {
+            emp = matches[0];
+            status = "match_nombre";
+          }
+        }
+        // Fallback: unique apellido match
+        if (!emp) {
+          const matches = personal.filter((p) => norm(p.apellido || "") === ap);
+          if (matches.length === 1) {
+            emp = matches[0];
+            status = "match_nombre";
+          }
+        }
+        if (!emp) status = "sin_legajo";
+      } else {
+        status = "sin_legajo";
+      }
+
+      // Build a unique synthetic legajo for entries without one
+      const finalLegajo =
+        legajo ||
+        emp?.legajo ||
+        `SIN-${(apellido || "X").slice(0, 10)}-${(nombreVal || String(i)).slice(0, 10)}`.toUpperCase().replace(/\s+/g, "_");
+
       result.push({
-        legajo: legajo || `SIN-${i}`,
-        nombre: nombre || (emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.trim() : ""),
+        legajo: finalLegajo,
+        nombre: nombreVal || (emp?.nombre || ""),
+        apellido: apellido || (emp?.apellido || ""),
+        puesto,
         sueldo_blanco: blanco,
         sueldo_negro: negro,
         modalidad_pago: modalidad,
         personal_id: emp?.id || null,
-        status: emp ? "ok" : "not_found",
+        status,
       });
     }
     if (result.length === 0) { toast.error("No se encontraron registros válidos"); return; }
@@ -203,7 +250,9 @@ export function SueldosTab({ personal }: SueldosTabProps) {
     const rows = importRows.map((r) => ({
       personal_id: r.personal_id,
       legajo: r.legajo,
-      nombre: r.nombre,
+      nombre: r.nombre || null,
+      apellido: r.apellido || null,
+      puesto: r.puesto || null,
       sueldo_blanco: r.sueldo_blanco,
       sueldo_negro: r.sueldo_negro,
       modalidad_pago: r.modalidad_pago,
@@ -212,41 +261,51 @@ export function SueldosTab({ personal }: SueldosTabProps) {
     upsertSueldos.mutate(rows, { onSuccess: () => setImportRows([]) });
   };
 
-  // Filter data for display
   const displayData = useMemo(() => {
     if (filterModalidad.length === 0) return sueldos;
     return sueldos.filter((s) => filterModalidad.includes(s.modalidad_pago));
   }, [sueldos, filterModalidad]);
 
-  // KPIs
   const kpis = useMemo(() => {
     const quinc = sueldos.filter((s) => s.modalidad_pago === "quincenal");
     const mens = sueldos.filter((s) => s.modalidad_pago === "mensual");
     return {
-      quincBlanco: quinc.reduce((a, s) => a + s.sueldo_blanco, 0),
-      quincNegro: quinc.reduce((a, s) => a + s.sueldo_negro, 0),
+      quincBlanco: quinc.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
+      quincNegro: quinc.reduce((a, s) => a + Number(s.sueldo_negro), 0),
       quincCount: quinc.length,
-      mensBlanco: mens.reduce((a, s) => a + s.sueldo_blanco, 0),
-      mensNegro: mens.reduce((a, s) => a + s.sueldo_negro, 0),
+      mensBlanco: mens.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
+      mensNegro: mens.reduce((a, s) => a + Number(s.sueldo_negro), 0),
       mensCount: mens.length,
-      totalBlanco: sueldos.reduce((a, s) => a + s.sueldo_blanco, 0),
-      totalNegro: sueldos.reduce((a, s) => a + s.sueldo_negro, 0),
-      total: sueldos.reduce((a, s) => a + s.sueldo_blanco + s.sueldo_negro, 0),
+      totalBlanco: sueldos.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
+      totalNegro: sueldos.reduce((a, s) => a + Number(s.sueldo_negro), 0),
+      total: sueldos.reduce((a, s) => a + Number(s.sueldo_blanco) + Number(s.sueldo_negro), 0),
     };
   }, [sueldos]);
 
-  const fmt = (n: number) => "$" + n.toLocaleString("es-AR", { minimumFractionDigits: 0 });
+  const fmt = (n: number) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 0 });
 
-  // Table totals
   const tableTotals = useMemo(() => ({
-    blanco: displayData.reduce((a, s) => a + s.sueldo_blanco, 0),
-    negro: displayData.reduce((a, s) => a + s.sueldo_negro, 0),
-    total: displayData.reduce((a, s) => a + s.sueldo_blanco + s.sueldo_negro, 0),
+    blanco: displayData.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
+    negro: displayData.reduce((a, s) => a + Number(s.sueldo_negro), 0),
+    total: displayData.reduce((a, s) => a + Number(s.sueldo_blanco) + Number(s.sueldo_negro), 0),
   }), [displayData]);
+
+  const empleadoLabel = (apellido?: string | null, nombre?: string | null) => {
+    const a = (apellido || "").trim();
+    const n = (nombre || "").trim();
+    if (a && n) return `${a}, ${n}`;
+    return a || n || "-";
+  };
+
+  const StatusBadge = ({ status }: { status: RowStatus }) => {
+    if (status === "ok") return <Badge variant="outline" className="gap-1"><CheckCircle className="w-3 h-3 text-green-500" /> Legajo OK</Badge>;
+    if (status === "match_nombre") return <Badge variant="outline" className="gap-1"><UserCheck className="w-3 h-3 text-blue-400" /> Match nombre</Badge>;
+    if (status === "sin_legajo") return <Badge variant="outline" className="gap-1"><UserX className="w-3 h-3 text-muted-foreground" /> Sin legajo</Badge>;
+    return <Badge variant="outline" className="gap-1"><XCircle className="w-3 h-3 text-red-500" /> No encontrado</Badge>;
+  };
 
   return (
     <div className="space-y-6">
-      {/* Period selector + Import */}
       <div className="card-industrial p-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
@@ -264,51 +323,33 @@ export function SueldosTab({ personal }: SueldosTabProps) {
           <div className="space-y-2">
             <Label>Año</Label>
             <Select value={anio} onValueChange={setAnio}>
-              <SelectTrigger className="w-[100px] bg-muted border-border">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-[100px] bg-muted border-border"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                {years.map((y) => (
-                  <SelectItem key={y} value={y}>{y}</SelectItem>
-                ))}
+                {years.map((y) => (<SelectItem key={y} value={y}>{y}</SelectItem>))}
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
             <Label>Mes</Label>
             <Select value={mes} onValueChange={setMes}>
-              <SelectTrigger className="w-[150px] bg-muted border-border">
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger className="w-[150px] bg-muted border-border"><SelectValue /></SelectTrigger>
               <SelectContent className="bg-popover border-border">
                 {meses.map((m, i) => (
-                  <SelectItem key={i} value={String(i + 1).padStart(2, "0")}>
-                    {m}
-                  </SelectItem>
+                  <SelectItem key={i} value={String(i + 1).padStart(2, "0")}>{m}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
           {sueldos.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => deletePeriodo.mutate()}
-              disabled={deletePeriodo.isPending}
-            >
-              <Trash2 className="w-4 h-4 mr-1" />
-              Borrar período
+            <Button variant="destructive" size="sm" onClick={() => deletePeriodo.mutate()} disabled={deletePeriodo.isPending}>
+              <Trash2 className="w-4 h-4 mr-1" /> Borrar período
             </Button>
           )}
         </div>
 
-        {/* Upload zone */}
         <div
-          className={cn(
-            "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
-            "border-primary/50 bg-primary/5 hover:border-primary"
-          )}
+          className={cn("border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+            "border-primary/50 bg-primary/5 hover:border-primary")}
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
@@ -316,47 +357,33 @@ export function SueldosTab({ personal }: SueldosTabProps) {
           <Upload className="w-10 h-10 mx-auto mb-3 text-primary" />
           <p className="text-foreground font-medium">Arrastrá el Excel con los sueldos</p>
           <p className="text-sm text-muted-foreground mt-1">
-            Columnas esperadas: Legajo, Blanco, Negro, Modalidad (opcional: Nombre)
+            Columnas: TIPO, Leg., APELLIDO, NOMBRE, PUESTO, SUELDO TOTAL, PARTE BLANCO, PARTE NEGRA
           </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv,.txt,.tsv,.xlsx,.xls"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" onChange={handleFileSelect} className="hidden" />
         </div>
       </div>
 
-      {/* Import preview */}
       {importRows.length > 0 && (
         <div className="card-industrial overflow-hidden">
-          <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3 flex-wrap">
               <FileSpreadsheet className="w-5 h-5 text-primary" />
               <span className="font-medium text-foreground">
                 Preview — {importRows.length} registros para {meses[parseInt(mes) - 1]} {anio}
               </span>
-              <Badge variant="outline">
-                <CheckCircle className="w-3 h-3 mr-1 text-green-500" />
-                {importRows.filter((r) => r.status === "ok").length} encontrados
+              <Badge variant="outline"><CheckCircle className="w-3 h-3 mr-1 text-green-500" />
+                {importRows.filter((r) => r.status === "ok").length} legajo
               </Badge>
-              {importRows.some((r) => r.status === "not_found") && (
-                <Badge variant="outline">
-                  <XCircle className="w-3 h-3 mr-1 text-red-500" />
-                  {importRows.filter((r) => r.status === "not_found").length} no encontrados
-                </Badge>
-              )}
+              <Badge variant="outline"><UserCheck className="w-3 h-3 mr-1 text-blue-400" />
+                {importRows.filter((r) => r.status === "match_nombre").length} por nombre
+              </Badge>
+              <Badge variant="outline"><UserX className="w-3 h-3 mr-1 text-muted-foreground" />
+                {importRows.filter((r) => r.status === "sin_legajo" || r.status === "not_found").length} sin legajo
+              </Badge>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setImportRows([])}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={confirmImport}
-                disabled={upsertSueldos.isPending}
-                className="bg-primary hover:bg-primary/90"
-              >
+              <Button variant="outline" size="sm" onClick={() => setImportRows([])}>Cancelar</Button>
+              <Button onClick={confirmImport} disabled={upsertSueldos.isPending} className="bg-primary hover:bg-primary/90">
                 <Download className="w-4 h-4 mr-2" />
                 {sueldos.length > 0 ? "Reemplazar período" : "Importar"}
               </Button>
@@ -366,33 +393,29 @@ export function SueldosTab({ personal }: SueldosTabProps) {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground font-medium">Legajo</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Nombre</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Modalidad</TableHead>
-                  <TableHead className="text-muted-foreground font-medium text-right">Blanco</TableHead>
-                  <TableHead className="text-muted-foreground font-medium text-right">Negro</TableHead>
-                  <TableHead className="text-muted-foreground font-medium text-right">Total</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Estado</TableHead>
+                  <TableHead>Legajo</TableHead>
+                  <TableHead>Empleado</TableHead>
+                  <TableHead>Puesto</TableHead>
+                  <TableHead>Modalidad</TableHead>
+                  <TableHead className="text-right">Blanco</TableHead>
+                  <TableHead className="text-right">Negro</TableHead>
+                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {importRows.map((row, idx) => (
                   <TableRow key={idx} className="border-border">
-                    <TableCell className="font-mono text-sm">{row.legajo}</TableCell>
-                    <TableCell>{row.nombre || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">{row.modalidad_pago}</Badge>
+                    <TableCell className="font-mono text-xs">
+                      {row.legajo.startsWith("SIN-") ? <span className="text-muted-foreground">—</span> : row.legajo}
                     </TableCell>
+                    <TableCell>{empleadoLabel(row.apellido, row.nombre)}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{row.puesto || "-"}</TableCell>
+                    <TableCell><Badge variant="outline" className="capitalize">{row.modalidad_pago}</Badge></TableCell>
                     <TableCell className="text-right font-medium">{fmt(row.sueldo_blanco)}</TableCell>
                     <TableCell className="text-right font-medium">{fmt(row.sueldo_negro)}</TableCell>
                     <TableCell className="text-right font-bold">{fmt(row.sueldo_blanco + row.sueldo_negro)}</TableCell>
-                    <TableCell>
-                      {row.status === "ok" ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-red-500" />
-                      )}
-                    </TableCell>
+                    <TableCell><StatusBadge status={row.status} /></TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -401,7 +424,6 @@ export function SueldosTab({ personal }: SueldosTabProps) {
         </div>
       )}
 
-      {/* KPIs */}
       {sueldos.length > 0 && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -412,32 +434,14 @@ export function SueldosTab({ personal }: SueldosTabProps) {
             <KPICard title="TOTAL GENERAL" value={fmt(kpis.total)} sub={`B: ${fmt(kpis.totalBlanco)} | N: ${fmt(kpis.totalNegro)}`} color="primary" />
           </div>
 
-          {/* Filter + Table */}
           <div className="card-industrial overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
-              <span className="font-medium text-foreground">
-                Detalle — {meses[parseInt(mes) - 1]} {anio}
-              </span>
-              <ToggleGroup
-                type="multiple"
-                value={filterModalidad}
-                onValueChange={setFilterModalidad}
-                className="gap-2"
-              >
-                <ToggleGroupItem
-                  value="quincenal"
-                  variant="outline"
-                  size="sm"
-                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                >
+              <span className="font-medium text-foreground">Detalle — {meses[parseInt(mes) - 1]} {anio}</span>
+              <ToggleGroup type="multiple" value={filterModalidad} onValueChange={setFilterModalidad} className="gap-2">
+                <ToggleGroupItem value="quincenal" variant="outline" size="sm" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   Quincenal ({kpis.quincCount})
                 </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="mensual"
-                  variant="outline"
-                  size="sm"
-                  className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
-                >
+                <ToggleGroupItem value="mensual" variant="outline" size="sm" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   Mensual ({kpis.mensCount})
                 </ToggleGroupItem>
               </ToggleGroup>
@@ -446,30 +450,31 @@ export function SueldosTab({ personal }: SueldosTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow className="border-border hover:bg-transparent sticky top-0 bg-card z-10">
-                    <TableHead className="text-muted-foreground font-medium">Legajo</TableHead>
-                    <TableHead className="text-muted-foreground font-medium">Nombre</TableHead>
-                    <TableHead className="text-muted-foreground font-medium">Modalidad</TableHead>
-                    <TableHead className="text-muted-foreground font-medium text-right">Blanco</TableHead>
-                    <TableHead className="text-muted-foreground font-medium text-right">Negro</TableHead>
-                    <TableHead className="text-muted-foreground font-medium text-right">Total</TableHead>
+                    <TableHead>Legajo</TableHead>
+                    <TableHead>Empleado</TableHead>
+                    <TableHead>Puesto</TableHead>
+                    <TableHead>Modalidad</TableHead>
+                    <TableHead className="text-right">Blanco</TableHead>
+                    <TableHead className="text-right">Negro</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {displayData.map((s) => (
                     <TableRow key={s.id} className="border-border">
-                      <TableCell className="font-mono text-sm">{s.legajo}</TableCell>
-                      <TableCell>{s.nombre || "-"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize">{s.modalidad_pago}</Badge>
+                      <TableCell className="font-mono text-xs">
+                        {s.legajo.startsWith("SIN-") ? <span className="text-muted-foreground">—</span> : s.legajo}
                       </TableCell>
-                      <TableCell className="text-right font-medium">{fmt(s.sueldo_blanco)}</TableCell>
-                      <TableCell className="text-right font-medium">{fmt(s.sueldo_negro)}</TableCell>
-                      <TableCell className="text-right font-bold">{fmt(s.sueldo_blanco + s.sueldo_negro)}</TableCell>
+                      <TableCell>{empleadoLabel(s.apellido, s.nombre)}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{s.puesto || "-"}</TableCell>
+                      <TableCell><Badge variant="outline" className="capitalize">{s.modalidad_pago}</Badge></TableCell>
+                      <TableCell className="text-right font-medium">{fmt(Number(s.sueldo_blanco))}</TableCell>
+                      <TableCell className="text-right font-medium">{fmt(Number(s.sueldo_negro))}</TableCell>
+                      <TableCell className="text-right font-bold">{fmt(Number(s.sueldo_blanco) + Number(s.sueldo_negro))}</TableCell>
                     </TableRow>
                   ))}
-                  {/* Totals row */}
                   <TableRow className="border-border bg-muted/50 font-bold">
-                    <TableCell colSpan={3} className="text-right text-muted-foreground">TOTALES</TableCell>
+                    <TableCell colSpan={4} className="text-right text-muted-foreground">TOTALES</TableCell>
                     <TableCell className="text-right">{fmt(tableTotals.blanco)}</TableCell>
                     <TableCell className="text-right">{fmt(tableTotals.negro)}</TableCell>
                     <TableCell className="text-right text-primary">{fmt(tableTotals.total)}</TableCell>
