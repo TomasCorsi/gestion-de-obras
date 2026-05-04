@@ -203,11 +203,16 @@ export function CombustibleRepartidorTab() {
   const currentYear = new Date().getFullYear();
   const currentMonth = String(new Date().getMonth() + 1).padStart(2, "0");
 
-  const [searchTerm, setSearchTerm] = useState("");
   const [mes, setMes] = useState<string | undefined>(undefined);
   const [year, setYear] = useState(currentYear);
   const [fechaFiltro, setFechaFiltro] = useState<string>("");
   const [operadorFiltro, setOperadorFiltro] = useState<string>("all");
+  const [numeroRemito, setNumeroRemito] = useState<string>("");
+  const [productoFiltro, setProductoFiltro] = useState<string>("all");
+  const [maquinariaFiltro, setMaquinariaFiltro] = useState<string>("all");
+  const [obraFiltro, setObraFiltro] = useState<string>("all");
+  const [repartidorFiltro, setRepartidorFiltro] = useState<string>("all");
+  const [tipoOperadorFiltro, setTipoOperadorFiltro] = useState<string>("all");
 
   // Edit / Delete state
   const [editingCarga, setEditingCarga] = useState<CargaRepartidorFull | null>(null);
