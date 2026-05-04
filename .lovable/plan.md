@@ -1,32 +1,55 @@
-## Soportar empleados sin legajo en la importación de Sueldos
+## Objetivo
 
-### Contexto
-El nuevo Excel agrega columnas **APELLIDO**, **NOMBRE** y **PUESTO** para identificar a la gente sin legajo (donde `Leg.` aparece como `-`). Hoy el importador omite esos casos porque los nombres no se reconocen y el match contra `personal` solo se hace por legajo.
+Reemplazar el buscador general "todo en uno" de la pestaña **Cargas del Repartidor** (Gastos → Combustible Repartidor) por **filtros dedicados por columna**, para que cada criterio filtre exactamente lo que dice (no haya cruces ambiguos entre operador, máquina, obra, etc.).
 
-### Cambios
+## Archivo a modificar
 
-**1. Migración DB — `sueldos` table**
-- Agregar columna `apellido TEXT` (nullable).
-- Agregar columna `puesto TEXT` (nullable).
-- (`nombre` ya existe — se reutiliza para el primer nombre.)
+- `src/components/gastos/CombustibleRepartidorTab.tsx`
 
-**2. `src/components/personal/SueldosTab.tsx` — parser**
-- Detectar nuevas columnas: `apellido`, `nombre`, `puesto`.
-- Si **no hay legajo** (`-` o vacío):
-  - Intentar matchear con `personal` por `apellido + nombre` (case-insensitive, trimmed). Si hay match único → usar ese `personal_id` y `legajo` real.
-  - Si no hay match → seguir importando igual con `personal_id = null`, marcando estado "sin legajo" en el preview (badge informativo, no error). El registro se guarda usando un legajo sintético `SIN-{apellido}-{nombre}` para que sea único en el período.
-- Si **hay legajo** → comportamiento actual (match por legajo).
-- Pasar `apellido` y `puesto` al payload de upsert.
+## Cambios de UI
 
-**3. `src/hooks/useSueldos.ts`**
-- Extender la interfaz `SueldoDB` con `apellido` y `puesto`.
+Quitar el `Input` de "Buscar por operador, máquina, obra o repartidor..." y reemplazarlo por una barra de filtros con los siguientes controles independientes:
 
-**4. UI**
-- Preview y tabla de detalle: mostrar columna **Empleado** combinando `apellido + nombre` (fallback a `nombre` solo) y una columna **Puesto**.
-- Badge de estado: "OK" (verde, match por legajo), "Match por nombre" (azul), "Sin legajo" (gris) — todos importables.
-- Texto de la zona de upload actualizado: "Columnas: TIPO, Leg., APELLIDO, NOMBRE, PUESTO, SUELDO TOTAL, PARTE BLANCO, PARTE NEGRA".
+1. **N° Remito** — `Input` numérico/texto (match exacto o "empieza con").
+2. **Producto** — `Select`: Todos / Combustible / Grasa / Aceite / Urea (usa `tipo_producto`).
+3. **Máquina** — `Select` con las máquinas que aparecen en las cargas (etiqueta: `código — tipo · patente` cuando exista). Filtra por `maquinaria_id`.
+4. **Obra** — `Select` con obras presentes en las cargas. Filtra por `obra_id`.
+5. **Operador** — `Select` (ya existe, se mantiene). Filtra por `operador_id`.
+6. **Repartidor** — `Select` nuevo. Filtra por `repartidor_id` (o por `parte_diario.personal` cuando `repartidor_id` es null).
+7. **Tipo Operador** — `Select`: Todos / Interno / Externo / Fletero. Filtra por `tipo_operador`.
 
-**5. Tipos Supabase** — se regeneran automáticamente tras la migración.
+Se conservan: filtro por **fecha exacta**, **año**, **mes** y el botón **Excel**.
 
-### Resultado
-Los ~20 empleados sin legajo del Excel (jornaleros, serenos, administración, etc.) se van a importar correctamente con apellido, nombre y puesto, y van a sumar a los KPIs de blanco/negro por modalidad.
+Agregar un botón **"Limpiar filtros"** (visible solo cuando hay al menos un filtro activo) que resetea remito, producto, máquina, obra, operador, repartidor y tipo de operador (no toca fecha/mes/año para no perder el contexto del panel de precios).
+
+### Layout
+
+Filtros agrupados en una `card-industrial` con grid responsivo (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2`), separados visualmente del bloque de fecha/mes/año/Export. Cada control con su `<Label>` chico arriba para que el usuario sepa qué está filtrando.
+
+## Cambios de lógica
+
+En el `useMemo` de `filtered`:
+
+- Eliminar el bloque actual de `searchTerm` que mezcla 5 campos.
+- Agregar filtros encadenados, cada uno solo si tiene valor:
+  - `numeroRemito`: `String(c.numero_remito ?? "").includes(numeroRemito.trim())`
+  - `productoFiltro !== "all"`: `(c.tipo_producto || "combustible") === productoFiltro`
+  - `maquinariaFiltro !== "all"`: `c.maquinaria_id === maquinariaFiltro`
+  - `obraFiltro !== "all"`: `c.obra_id === obraFiltro`
+  - `repartidorFiltro !== "all"`: matchea contra `c.repartidor_id` o el `personal_id` del parte diario.
+  - `tipoOperadorFiltro !== "all"`: `(c.tipo_operador || "interno") === tipoOperadorFiltro`
+
+Construir `useMemo` adicionales para las opciones de selects, igual que `operadorOptions` actual:
+
+- `maquinariaOptions` — únicas a partir de `cargas` con `maquinaria_id` y `maquinaria.codigo/tipo/patente`.
+- `obraOptions` — únicas a partir de `cargas` con `obra_id` y `obra.nombre`.
+- `repartidorOptions` — combinando `repartidor` y `parte_diario.personal` (deduplicado por id).
+
+## Resultado esperado
+
+Cada filtro actúa de forma estricta sobre su propio campo, los selects muestran solo valores realmente presentes en los datos, y el usuario puede combinarlos (por ej. "Obra X + Producto Grasa + Máquina ABC") sin que un buscador genérico los mezcle.
+
+## Notas
+
+- No se requieren cambios de base de datos ni de hooks.
+- Se respeta el patrón visual de `card-industrial`, dark theme y el filtro de mes/año existente.
