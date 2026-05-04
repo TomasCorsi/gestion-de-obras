@@ -407,81 +407,182 @@ export function CombustibleRepartidorTab() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      {/* Date / month / year row */}
+      <div className="flex flex-wrap gap-2 items-center justify-end">
+        <div className="relative">
+          <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Buscar por operador, máquina, obra o repartidor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-card border-border"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="relative">
-            <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <Input
-              type="date"
-              value={fechaFiltro}
-              onChange={(e) => {
-                setFechaFiltro(e.target.value);
-                if (e.target.value) setMes(undefined);
-              }}
-              className="pl-9 w-40 bg-card border-border"
-            />
-            {fechaFiltro && (
-              <button
-                onClick={() => setFechaFiltro("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-          <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
-            <SelectTrigger className="w-24 bg-card border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map((y) => (
-                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={fechaFiltro ? "all" : (mes || "all")}
-            onValueChange={(v) => {
-              setMes(v === "all" ? undefined : v);
-              setFechaFiltro("");
+            type="date"
+            value={fechaFiltro}
+            onChange={(e) => {
+              setFechaFiltro(e.target.value);
+              if (e.target.value) setMes(undefined);
             }}
-            disabled={!!fechaFiltro}
-          >
-            <SelectTrigger className="w-36 bg-card border-border">
-              <SelectValue placeholder="Todos los meses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {meses.map((m) => (
-                <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={operadorFiltro} onValueChange={setOperadorFiltro}>
-            <SelectTrigger className="w-44 bg-card border-border">
-              <SelectValue placeholder="Todos los operadores" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los operadores</SelectItem>
-              {operadorOptions.map((op) => (
-                <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" onClick={handleExport} className="border-border">
-            <Download className="w-4 h-4 mr-2" />
-            Excel
-          </Button>
+            className="pl-9 w-40 bg-card border-border"
+          />
+          {fechaFiltro && (
+            <button
+              onClick={() => setFechaFiltro("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <Select value={year.toString()} onValueChange={(v) => setYear(parseInt(v))}>
+          <SelectTrigger className="w-24 bg-card border-border">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map((y) => (
+              <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={fechaFiltro ? "all" : (mes || "all")}
+          onValueChange={(v) => {
+            setMes(v === "all" ? undefined : v);
+            setFechaFiltro("");
+          }}
+          disabled={!!fechaFiltro}
+        >
+          <SelectTrigger className="w-36 bg-card border-border">
+            <SelectValue placeholder="Todos los meses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            {meses.map((m) => (
+              <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" onClick={handleExport} className="border-border">
+          <Download className="w-4 h-4 mr-2" />
+          Excel
+        </Button>
+      </div>
+
+      {/* Dedicated column filters */}
+      <div className="card-industrial p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-foreground">Filtros</h3>
+          {(numeroRemito || productoFiltro !== "all" || maquinariaFiltro !== "all" || obraFiltro !== "all" || operadorFiltro !== "all" || repartidorFiltro !== "all" || tipoOperadorFiltro !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setNumeroRemito("");
+                setProductoFiltro("all");
+                setMaquinariaFiltro("all");
+                setObraFiltro("all");
+                setOperadorFiltro("all");
+                setRepartidorFiltro("all");
+                setTipoOperadorFiltro("all");
+              }}
+              className="h-8 text-muted-foreground"
+            >
+              <X className="w-3.5 h-3.5 mr-1" /> Limpiar filtros
+            </Button>
+          )}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">N° Remito</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar remito..."
+                value={numeroRemito}
+                onChange={(e) => setNumeroRemito(e.target.value)}
+                className="pl-8 h-9 bg-background border-border"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Producto</label>
+            <Select value={productoFiltro} onValueChange={setProductoFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {productos.map((p) => (
+                  <SelectItem key={p.key} value={p.key}>{p.emoji} {p.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Máquina</label>
+            <Select value={maquinariaFiltro} onValueChange={setMaquinariaFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las máquinas</SelectItem>
+                {maquinariaOptions.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Obra</label>
+            <Select value={obraFiltro} onValueChange={setObraFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las obras</SelectItem>
+                {obraOptions.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Operador</label>
+            <Select value={operadorFiltro} onValueChange={setOperadorFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los operadores</SelectItem>
+                {operadorOptions.map((op) => (
+                  <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Repartidor</label>
+            <Select value={repartidorFiltro} onValueChange={setRepartidorFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los repartidores</SelectItem>
+                {repartidorOptions.map((r) => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground mb-1 block">Tipo Operador</label>
+            <Select value={tipoOperadorFiltro} onValueChange={setTipoOperadorFiltro}>
+              <SelectTrigger className="h-9 bg-background border-border">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="interno">Interno</SelectItem>
+                <SelectItem value="externo">Externo</SelectItem>
+                <SelectItem value="fletero">Fletero</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
