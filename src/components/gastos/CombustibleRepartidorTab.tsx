@@ -246,6 +246,47 @@ export function CombustibleRepartidorTab() {
       .sort((a, b) => a.label.localeCompare(b.label));
   }, [cargas]);
 
+  // Build unique option lists from cargas
+  const maquinariaOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    cargas.forEach((c) => {
+      if (c.maquinaria_id && c.maquinaria) {
+        const m = c.maquinaria;
+        const label = [m.codigo, m.nombre || m.tipo].filter(Boolean).join(" — ");
+        if (label) map.set(c.maquinaria_id, label);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cargas]);
+
+  const obraOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    cargas.forEach((c) => {
+      if (c.obra_id && c.obra?.nombre) map.set(c.obra_id, c.obra.nombre);
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cargas]);
+
+  const repartidorOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    cargas.forEach((c) => {
+      if (c.repartidor_id && c.repartidor) {
+        map.set(c.repartidor_id, formatOperador(c.repartidor));
+      } else if (c.parte_diario?.personal) {
+        // Use parte personal as a synthetic key
+        const label = formatOperador(c.parte_diario.personal);
+        if (label !== "-") map.set(`pd:${label}`, label);
+      }
+    });
+    return Array.from(map.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [cargas]);
+
   const filtered = useMemo(() => {
     let result = [...cargas];
 
@@ -258,25 +299,43 @@ export function CombustibleRepartidorTab() {
       result = result.filter((c) => c.fecha >= desde && c.fecha <= hasta);
     }
 
-    if (operadorFiltro && operadorFiltro !== "all") {
+    if (operadorFiltro !== "all") {
       result = result.filter((c) => c.operador_id === operadorFiltro);
     }
 
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      result = result.filter(
-        (c) =>
-          String(c.numero_remito || "").includes(term) ||
-          formatOperador(c.operador).toLowerCase().includes(term) ||
-          (c.maquinaria?.codigo || "").toLowerCase().includes(term) ||
-          (c.maquinaria?.tipo || "").toLowerCase().includes(term) ||
-          (c.obra?.nombre || "").toLowerCase().includes(term) ||
-          formatOperador(c.parte_diario?.personal).toLowerCase().includes(term)
-      );
+    if (numeroRemito.trim()) {
+      const t = numeroRemito.trim();
+      result = result.filter((c) => String(c.numero_remito ?? "").includes(t));
+    }
+
+    if (productoFiltro !== "all") {
+      result = result.filter((c) => (c.tipo_producto || "combustible") === productoFiltro);
+    }
+
+    if (maquinariaFiltro !== "all") {
+      result = result.filter((c) => c.maquinaria_id === maquinariaFiltro);
+    }
+
+    if (obraFiltro !== "all") {
+      result = result.filter((c) => c.obra_id === obraFiltro);
+    }
+
+    if (repartidorFiltro !== "all") {
+      result = result.filter((c) => {
+        if (c.repartidor_id === repartidorFiltro) return true;
+        if (repartidorFiltro.startsWith("pd:") && !c.repartidor_id) {
+          return `pd:${formatOperador(c.parte_diario?.personal)}` === repartidorFiltro;
+        }
+        return false;
+      });
+    }
+
+    if (tipoOperadorFiltro !== "all") {
+      result = result.filter((c) => (c.tipo_operador || "interno") === tipoOperadorFiltro);
     }
 
     return result;
-  }, [cargas, mes, year, searchTerm, fechaFiltro, operadorFiltro]);
+  }, [cargas, mes, year, fechaFiltro, operadorFiltro, numeroRemito, productoFiltro, maquinariaFiltro, obraFiltro, repartidorFiltro, tipoOperadorFiltro]);
 
   // Calculate cost per row using monthly prices
   const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
