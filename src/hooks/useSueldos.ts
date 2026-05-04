@@ -7,6 +7,8 @@ export interface SueldoDB {
   personal_id: string | null;
   legajo: string;
   nombre: string | null;
+  apellido: string | null;
+  puesto: string | null;
   sueldo_blanco: number;
   sueldo_negro: number;
   modalidad_pago: string;
