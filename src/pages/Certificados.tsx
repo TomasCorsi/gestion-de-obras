@@ -242,6 +242,7 @@ export default function Certificados() {
   const [crearOpen, setCrearOpen] = useState(false);
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [periodo, setPeriodo] = useState(() => format(new Date(), "yyyy-MM"));
+  const [fechaCertificado, setFechaCertificado] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [observaciones, setObservaciones] = useState("");
   const [itemsDraft, setItemsDraft] = useState<CertificadoItemForm[]>([]);
   const [tipoCert, setTipoCert] = useState<TipoCertificado>("servicio");
