@@ -1068,7 +1068,7 @@ export default function Certificados() {
                           </div>
                         ) : (
                           <div className="space-y-0">
-                            {groupByCategoria(conceptos.filter(c => c.tipo === 'obra')).map((group) => (
+                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'obra'))).map((group) => (
                               <div key={group.categoria}>
                                 <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
                                   {group.categoria}
@@ -1125,7 +1125,7 @@ export default function Certificados() {
                           </div>
                         ) : (
                           <div className="space-y-0">
-                            {groupByCategoria(conceptos.filter(c => c.tipo === 'servicio')).map((group) => (
+                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'servicio'))).map((group) => (
                               <div key={group.categoria}>
                                 <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
                                   {group.categoria}
