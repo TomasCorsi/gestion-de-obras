@@ -53,6 +53,7 @@ export interface Certificado {
   periodo: string;
   estado: EstadoCertificado;
   fecha_emision: string | null;
+  fecha_certificado: string;
   subtotal: number;
   iva: number;
   total: number;
@@ -299,6 +300,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje = 0,
       incluir_iva = true,
       numero: customNumero,
+      fecha_certificado,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
@@ -307,6 +309,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje?: number;
       incluir_iva?: boolean;
       numero?: string;
+      fecha_certificado?: string;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
@@ -333,6 +336,7 @@ export function useCertificados(obraId?: string) {
           tipo,
           anticipo_porcentaje,
           incluir_iva,
+          ...(fecha_certificado ? { fecha_certificado } : {}),
         }])
         .select()
         .single();
@@ -407,6 +411,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje,
       numero,
       incluir_iva,
+      fecha_certificado,
     }: {
       id: string;
       periodo: string;
@@ -416,6 +421,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje?: number;
       numero?: string;
       incluir_iva?: boolean;
+      fecha_certificado?: string;
     }) => {
       const shouldIncludeIva = incluir_iva !== false;
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
@@ -427,6 +433,7 @@ export function useCertificados(obraId?: string) {
       if (anticipo_porcentaje !== undefined) updateData.anticipo_porcentaje = anticipo_porcentaje;
       if (numero !== undefined && numero.trim() !== "") updateData.numero = numero.trim();
       if (incluir_iva !== undefined) updateData.incluir_iva = incluir_iva;
+      if (fecha_certificado !== undefined && fecha_certificado !== "") updateData.fecha_certificado = fecha_certificado;
 
       // Update certificado header
       const { error } = await supabase

@@ -242,6 +242,7 @@ export default function Certificados() {
   const [crearOpen, setCrearOpen] = useState(false);
   const [editingCertId, setEditingCertId] = useState<string | null>(null);
   const [periodo, setPeriodo] = useState(() => format(new Date(), "yyyy-MM"));
+  const [fechaCertificado, setFechaCertificado] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [observaciones, setObservaciones] = useState("");
   const [itemsDraft, setItemsDraft] = useState<CertificadoItemForm[]>([]);
   const [tipoCert, setTipoCert] = useState<TipoCertificado>("servicio");
@@ -328,6 +329,7 @@ export default function Certificados() {
     const initialTipo: TipoCertificado = "servicio";
     setItemsDraft([]);
     setPeriodo(format(new Date(), "yyyy-MM"));
+    setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
     setTipoCert(initialTipo);
@@ -360,6 +362,7 @@ export default function Certificados() {
 
     setItemsDraft(draft);
     setPeriodo(cert.periodo);
+    setFechaCertificado((cert as any).fecha_certificado || cert.fecha_emision || format(new Date(), "yyyy-MM-dd"));
     setObservaciones(cert.observaciones || "");
     setEditingCertId(cert.id);
     skipTipoEffectRef.current = true;
@@ -393,6 +396,7 @@ export default function Certificados() {
 
     setItemsDraft(draft);
     setPeriodo(format(new Date(), "yyyy-MM"));
+    setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
     setTipoCert(ultimo.tipo);
@@ -567,6 +571,7 @@ export default function Certificados() {
         anticipo_porcentaje: anticipoPorcentaje,
         numero: numeroCert,
         incluir_iva: incluirIva,
+        fecha_certificado: fechaCertificado,
       });
     } else {
       await createCertificado({
@@ -577,6 +582,7 @@ export default function Certificados() {
         anticipo_porcentaje: anticipoPorcentaje,
         incluir_iva: incluirIva,
         numero: numeroCert || undefined,
+        fecha_certificado: fechaCertificado,
       });
     }
     setCrearOpen(false);
@@ -1055,6 +1061,10 @@ export default function Certificados() {
                 <div>
                   <Label>Período</Label>
                   <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Fecha del certificado</Label>
+                  <Input type="date" value={fechaCertificado} onChange={(e) => setFechaCertificado(e.target.value)} />
                 </div>
                 <div>
                   <Label>Número</Label>
@@ -1920,6 +1930,11 @@ function CertificadoCard({
             <p className="text-sm text-muted-foreground capitalize">
               {format(parseISO(cert.periodo + "-01"), "MMMM yyyy", { locale: es })}
             </p>
+            {cert.fecha_certificado && (
+              <p className="text-xs text-muted-foreground">
+                Fecha: {format(parseISO(cert.fecha_certificado), "dd/MM/yyyy")}
+              </p>
+            )}
           </div>
           <Badge variant="secondary" className={ESTADO_COLORS[cert.estado]}>
             {ESTADO_LABELS[cert.estado]}

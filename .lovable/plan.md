@@ -1,55 +1,26 @@
-## Objetivo
+# Certificados: múltiples por período + fecha de creación
 
-Reemplazar el buscador general "todo en uno" de la pestaña **Cargas del Repartidor** (Gastos → Combustible Repartidor) por **filtros dedicados por columna**, para que cada criterio filtre exactamente lo que dice (no haya cruces ambiguos entre operador, máquina, obra, etc.).
+## Cambios
 
-## Archivo a modificar
+### 1. Base de datos (migración)
+- Eliminar constraint `UNIQUE(obra_id, periodo)` de la tabla `certificados` (definido en migración `20260212150507`). Esto permite crear varios certificados para el mismo período (ej. dos en abril).
+- Agregar columna `fecha_certificado DATE` (default `CURRENT_DATE`) a la tabla `certificados`. Será la fecha de creación/emisión manual editable, independiente de `created_at` (timestamp técnico) y de `fecha_emision` (que se setea cuando pasa a estado "emitido").
 
-- `src/components/gastos/CombustibleRepartidorTab.tsx`
+### 2. Hook `src/hooks/useCertificados.ts`
+- Agregar `fecha_certificado: string` al tipo `Certificado`.
+- En `createCertificado` y `updateCertificado`: aceptar y persistir `fecha_certificado`.
+- Auto-numerado: actualmente usa el conteo de certificados de la obra (`CERT-001`, etc.). Mantener; sigue siendo único aunque se repita período.
+- En `fetchAcumulados`: como ahora pueden existir varios certificados con el mismo período, cambiar el filtro `lt("periodo", periodoActual)` para que use `fecha_certificado` (o combinación período + fecha) y así no se pierdan acumulados de certificados del mismo período creados antes.
 
-## Cambios de UI
+### 3. UI `src/pages/Certificados.tsx`
+- En el diálogo de crear/editar certificado: agregar un campo **"Fecha del certificado"** (DatePicker shadcn, formato dd/mm/yyyy) junto al campo de período. Default: hoy.
+- En la tabla/listado de certificados: agregar columna **"Fecha"** mostrando `fecha_certificado` formateada con `formatDate()`.
+- Quitar cualquier validación de UI que impida repetir período en la misma obra (si existe).
 
-Quitar el `Input` de "Buscar por operador, máquina, obra o repartidor..." y reemplazarlo por una barra de filtros con los siguientes controles independientes:
+### 4. PDF `src/utils/generateCertificadoPDF.ts`
+- Si el PDF muestra el período, agregar también la fecha del certificado en el encabezado.
 
-1. **N° Remito** — `Input` numérico/texto (match exacto o "empieza con").
-2. **Producto** — `Select`: Todos / Combustible / Grasa / Aceite / Urea (usa `tipo_producto`).
-3. **Máquina** — `Select` con las máquinas que aparecen en las cargas (etiqueta: `código — tipo · patente` cuando exista). Filtra por `maquinaria_id`.
-4. **Obra** — `Select` con obras presentes en las cargas. Filtra por `obra_id`.
-5. **Operador** — `Select` (ya existe, se mantiene). Filtra por `operador_id`.
-6. **Repartidor** — `Select` nuevo. Filtra por `repartidor_id` (o por `parte_diario.personal` cuando `repartidor_id` es null).
-7. **Tipo Operador** — `Select`: Todos / Interno / Externo / Fletero. Filtra por `tipo_operador`.
-
-Se conservan: filtro por **fecha exacta**, **año**, **mes** y el botón **Excel**.
-
-Agregar un botón **"Limpiar filtros"** (visible solo cuando hay al menos un filtro activo) que resetea remito, producto, máquina, obra, operador, repartidor y tipo de operador (no toca fecha/mes/año para no perder el contexto del panel de precios).
-
-### Layout
-
-Filtros agrupados en una `card-industrial` con grid responsivo (`grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2`), separados visualmente del bloque de fecha/mes/año/Export. Cada control con su `<Label>` chico arriba para que el usuario sepa qué está filtrando.
-
-## Cambios de lógica
-
-En el `useMemo` de `filtered`:
-
-- Eliminar el bloque actual de `searchTerm` que mezcla 5 campos.
-- Agregar filtros encadenados, cada uno solo si tiene valor:
-  - `numeroRemito`: `String(c.numero_remito ?? "").includes(numeroRemito.trim())`
-  - `productoFiltro !== "all"`: `(c.tipo_producto || "combustible") === productoFiltro`
-  - `maquinariaFiltro !== "all"`: `c.maquinaria_id === maquinariaFiltro`
-  - `obraFiltro !== "all"`: `c.obra_id === obraFiltro`
-  - `repartidorFiltro !== "all"`: matchea contra `c.repartidor_id` o el `personal_id` del parte diario.
-  - `tipoOperadorFiltro !== "all"`: `(c.tipo_operador || "interno") === tipoOperadorFiltro`
-
-Construir `useMemo` adicionales para las opciones de selects, igual que `operadorOptions` actual:
-
-- `maquinariaOptions` — únicas a partir de `cargas` con `maquinaria_id` y `maquinaria.codigo/tipo/patente`.
-- `obraOptions` — únicas a partir de `cargas` con `obra_id` y `obra.nombre`.
-- `repartidorOptions` — combinando `repartidor` y `parte_diario.personal` (deduplicado por id).
-
-## Resultado esperado
-
-Cada filtro actúa de forma estricta sobre su propio campo, los selects muestran solo valores realmente presentes en los datos, y el usuario puede combinarlos (por ej. "Obra X + Producto Grasa + Máquina ABC") sin que un buscador genérico los mezcle.
-
-## Notas
-
-- No se requieren cambios de base de datos ni de hooks.
-- Se respeta el patrón visual de `card-industrial`, dark theme y el filtro de mes/año existente.
+## Notas técnicas
+- La eliminación del UNIQUE no afecta datos existentes.
+- `fecha_emision` se mantiene tal cual (se setea automático al cambiar estado a "emitido").
+- `created_at` no se toca (timestamp del sistema).
