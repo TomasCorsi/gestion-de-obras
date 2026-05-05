@@ -85,13 +85,24 @@ import {
   ArrowDown,
   HardHat,
   Wrench,
+  Search,
+  Percent,
+  FileSpreadsheet,
+  LayoutGrid,
+  List as ListIcon,
+  Upload,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
+import * as XLSX from "xlsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { useUrlState } from "@/hooks/useUrlState";
+import { ConceptosCSVImportDialog } from "@/components/certificados/ConceptosCSVImportDialog";
+import { AjustePreciosDialog } from "@/components/certificados/AjustePreciosDialog";
 
 
 const formatCurrency = (n: number) =>
@@ -146,6 +157,30 @@ function groupByEtapa<T extends { etapa?: string | null }>(items: T[], etapaOrde
     .map(({ key, items }) => ({ etapa: key, items }));
 }
 
+function exportCertificadosExcel(certs: Certificado[], getPagado: (id: string) => number, obraNombre: string) {
+  const rows = certs.map((c) => {
+    const pagado = getPagado(c.id);
+    return {
+      Numero: c.numero,
+      Periodo: c.periodo,
+      "Fecha Certificado": c.fecha_certificado || "",
+      "Fecha Emisión": c.fecha_emision || "",
+      Tipo: c.tipo,
+      Estado: c.estado,
+      Subtotal: c.subtotal,
+      IVA: c.iva,
+      Total: c.total,
+      Pagado: pagado,
+      Saldo: c.total - pagado,
+      Observaciones: c.observaciones || "",
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Certificados");
+  XLSX.writeFile(wb, `certificados-${obraNombre.replace(/\s+/g, "_")}-${format(new Date(), "yyyyMMdd")}.xlsx`);
+}
+
 export default function Certificados() {
   const { obras, loading: loadingObras } = useObras();
   const [selectedObraId, setSelectedObraId] = useState<string>("");
@@ -170,6 +205,8 @@ export default function Certificados() {
     createPago,
     deletePago,
     getPagadoByCert,
+    bulkInsertConceptos,
+    bulkAdjustPrices,
   } = useCertificados(selectedObraId);
 
   // Build etapaOrdenMap from conceptos' orden field (min orden per etapa)
@@ -181,14 +218,46 @@ export default function Certificados() {
     }
   });
 
+  // ---- Filtros listado ----
+  const [filtroEstado, setFiltroEstado] = useUrlState<string>({ key: "fest", defaultValue: "todos", serialize: v => v, deserialize: v => v });
+  const [filtroTipo, setFiltroTipo] = useUrlState<string>({ key: "ftipo", defaultValue: "todos", serialize: v => v, deserialize: v => v });
+  const [filtroBusqueda, setFiltroBusqueda] = useUrlState<string>({ key: "fq", defaultValue: "", serialize: v => v, deserialize: v => v });
+  const [filtroPeriodoDesde, setFiltroPeriodoDesde] = useUrlState<string>({ key: "fpd", defaultValue: "", serialize: v => v, deserialize: v => v });
+  const [filtroPeriodoHasta, setFiltroPeriodoHasta] = useUrlState<string>({ key: "fph", defaultValue: "", serialize: v => v, deserialize: v => v });
+  const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "cards", serialize: v => v, deserialize: v => (v === "tabla" ? "tabla" : "cards") });
+
+  const certificadosFiltrados = certificados.filter((c) => {
+    if (filtroEstado !== "todos" && c.estado !== filtroEstado) return false;
+    if (filtroTipo !== "todos" && c.tipo !== filtroTipo) return false;
+    if (filtroBusqueda && !c.numero.toLowerCase().includes(filtroBusqueda.toLowerCase())) return false;
+    if (filtroPeriodoDesde && c.periodo < filtroPeriodoDesde) return false;
+    if (filtroPeriodoHasta && c.periodo > filtroPeriodoHasta) return false;
+    return true;
+  });
+
   // ---- KPIs ----
-  const totalCertificados = certificados.length;
-  const montoTotal = certificados.reduce((s, c) => s + c.total, 0);
-  const totalPagado = allPagos.reduce((s, p) => s + p.monto, 0);
-  const montoPendiente = certificados
+  const totalCertificados = certificadosFiltrados.length;
+  const montoTotal = certificadosFiltrados.reduce((s, c) => s + c.total, 0);
+  const montoCobrado = certificadosFiltrados.reduce((s, c) => s + getPagadoByCert(c.id), 0);
+  const montoPendiente = certificadosFiltrados
     .filter((c) => c.estado !== "cobrado")
     .reduce((s, c) => s + (c.total - getPagadoByCert(c.id)), 0);
-  const montoCobrado = totalPagado;
+  const pctCobranza = montoTotal > 0 ? (montoCobrado / montoTotal) * 100 : 0;
+  const pendientes = certificadosFiltrados.filter((c) => c.estado !== "cobrado" && c.fecha_emision);
+  const antiguedadProm = pendientes.length > 0
+    ? pendientes.reduce((s, c) => s + differenceInDays(new Date(), parseISO(c.fecha_emision!)), 0) / pendientes.length
+    : 0;
+
+  // ---- Conceptos tab filters ----
+  const [conceptoSearch, setConceptoSearch] = useState("");
+  const [conceptoCatFilter, setConceptoCatFilter] = useState<string>("__ALL__");
+  const [importConceptosOpen, setImportConceptosOpen] = useState(false);
+  const [ajustePreciosOpen, setAjustePreciosOpen] = useState(false);
+  const filterConceptos = (list: typeof conceptos) => list.filter((c) => {
+    if (conceptoSearch && !c.nombre.toLowerCase().includes(conceptoSearch.toLowerCase())) return false;
+    if (conceptoCatFilter !== "__ALL__" && c.categoria !== conceptoCatFilter) return false;
+    return true;
+  });
 
   // ---- Add concepto dialog ----
   const [addConceptoOpen, setAddConceptoOpen] = useState(false);
@@ -373,13 +442,8 @@ export default function Certificados() {
     setCrearOpen(true);
   };
 
-  const openDuplicarCertificado = async () => {
-    if (certificados.length === 0) return;
-    const ultimo = certificados[0];
-    const items = await fetchItems(ultimo.id);
-
-    // Copy items exactly as saved — snapshot of the last period
-    // User can then adjust quantities and prices for the new month
+  const duplicateFromCert = async (source: Certificado) => {
+    const items = await fetchItems(source.id);
     const draft: CertificadoItemForm[] = items.map((item) => ({
       concepto_id: item.concepto_id,
       descripcion: item.descripcion,
@@ -390,20 +454,26 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
-      seccion: item.seccion || (ultimo.tipo === "mixto" ? "servicio" : null),
+      seccion: item.seccion || (source.tipo === "mixto" ? "servicio" : null),
       observaciones: (item as any).observaciones || "",
     }));
-
     setItemsDraft(draft);
     setPeriodo(format(new Date(), "yyyy-MM"));
     setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
-    setTipoCert(ultimo.tipo);
-    setAnticipoPorcentaje(ultimo.anticipo_porcentaje);
+    skipTipoEffectRef.current = true;
+    setTipoCert(source.tipo);
+    setAnticipoPorcentaje(source.anticipo_porcentaje);
     setNumeroCert("");
-    setIncluirIva(ultimo.incluir_iva !== false);
+    setIncluirIva(source.incluir_iva !== false);
+    setViewCertId(null);
     setCrearOpen(true);
+  };
+
+  const openDuplicarCertificado = async () => {
+    if (certificados.length === 0) return;
+    await duplicateFromCert(certificados[0]);
   };
 
   const updateItemCantidad = (idx: number, cantidad: number) => {
@@ -755,11 +825,13 @@ export default function Certificados() {
             <>
               {/* KPIs */}
               {!loadingCertificados && certificados.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <KPICard title="Certificados" value={totalCertificados} icon={FileText} variant="default" />
-                  <KPICard title="Total Certificado" value={formatCurrency(montoTotal)} icon={TrendingUp} variant="primary" />
-                  <KPICard title="Pendiente de Cobro" value={formatCurrency(montoPendiente)} icon={Clock} variant="warning" />
+                  <KPICard title="Total" value={formatCurrency(montoTotal)} icon={TrendingUp} variant="primary" />
+                  <KPICard title="Pendiente" value={formatCurrency(montoPendiente)} icon={Clock} variant="warning" />
                   <KPICard title="Cobrado" value={formatCurrency(montoCobrado)} icon={DollarSign} variant="success" />
+                  <KPICard title="% Cobranza" value={`${pctCobranza.toFixed(1)}%`} icon={Percent} variant="primary" />
+                  <KPICard title="Antig. prom (días)" value={antiguedadProm.toFixed(0)} icon={Clock} variant="default" />
                 </div>
               )}
 
@@ -772,11 +844,69 @@ export default function Certificados() {
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
                 <TabsContent value="certificados" className="space-y-4">
-                  <div className="flex gap-2 justify-end">
+                  {/* Filtros + acciones */}
+                  <Card>
+                    <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+                      <div className="flex-1 min-w-[160px]">
+                        <Label className="text-xs">Buscar Nº</Label>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input className="pl-7 h-8 text-xs" placeholder="CERT-001..." value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Estado</Label>
+                        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                          <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            <SelectItem value="borrador">Borrador</SelectItem>
+                            <SelectItem value="emitido">Emitido</SelectItem>
+                            <SelectItem value="cobrado">Cobrado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tipo</Label>
+                        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                          <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            <SelectItem value="obra">Obra</SelectItem>
+                            <SelectItem value="servicio">Servicio</SelectItem>
+                            <SelectItem value="mixto">Mixto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Período desde</Label>
+                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoDesde} onChange={(e) => setFiltroPeriodoDesde(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Período hasta</Label>
+                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoHasta} onChange={(e) => setFiltroPeriodoHasta(e.target.value)} />
+                      </div>
+                      <div className="flex gap-1 ml-auto">
+                        <Button type="button" variant={vistaListado === "cards" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("cards")}>
+                          <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                        <Button type="button" variant={vistaListado === "tabla" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("tabla")}>
+                          <ListIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex gap-2 justify-end flex-wrap">
+                    {certificadosFiltrados.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={() => exportCertificadosExcel(certificadosFiltrados, getPagadoByCert, selectedObra?.nombre || "obra")}>
+                        <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar Excel
+                      </Button>
+                    )}
                     {certificados.length > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" onClick={openDuplicarCertificado}>
+                          <Button variant="outline" size="sm" onClick={openDuplicarCertificado}>
                             <Copy className="w-4 h-4 mr-2" />
                             Duplicar último
                           </Button>
@@ -784,7 +914,7 @@ export default function Certificados() {
                         <TooltipContent>Crea un nuevo certificado con los datos del último periodo</TooltipContent>
                       </Tooltip>
                     )}
-                    <Button onClick={openCrearCertificado} disabled={conceptos.filter((c) => c.activo).length === 0}>
+                    <Button size="sm" onClick={openCrearCertificado} disabled={conceptos.filter((c) => c.activo).length === 0}>
                       <Plus className="w-4 h-4 mr-2" />
                       Nuevo Certificado
                     </Button>
@@ -796,15 +926,59 @@ export default function Certificados() {
                         <Skeleton key={i} className="h-48 w-full rounded-lg" />
                       ))}
                     </div>
-                  ) : certificados.length === 0 ? (
+                  ) : certificadosFiltrados.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">
-                        No hay certificados para esta obra.
+                        {certificados.length === 0 ? "No hay certificados para esta obra." : "Ningún certificado coincide con los filtros."}
                       </CardContent>
+                    </Card>
+                  ) : vistaListado === "tabla" ? (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Número</TableHead>
+                            <TableHead>Período</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Pagado</TableHead>
+                            <TableHead className="text-right">Saldo</TableHead>
+                            <TableHead className="text-right">% Cobr.</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {certificadosFiltrados.map((cert) => {
+                            const pagado = getPagadoByCert(cert.id);
+                            const saldo = cert.total - pagado;
+                            const pct = cert.total > 0 ? (pagado / cert.total) * 100 : 0;
+                            return (
+                              <TableRow key={cert.id} className="cursor-pointer hover:bg-muted/40" onClick={() => openViewCert(cert.id)}>
+                                <TableCell className="font-medium">{cert.numero}</TableCell>
+                                <TableCell className="capitalize">{format(parseISO(cert.periodo + "-01"), "MMM yyyy", { locale: es })}</TableCell>
+                                <TableCell>{cert.fecha_certificado ? format(parseISO(cert.fecha_certificado), "dd/MM/yyyy") : "-"}</TableCell>
+                                <TableCell><Badge variant="outline" className="text-xs">{cert.tipo}</Badge></TableCell>
+                                <TableCell><Badge variant="secondary" className={ESTADO_COLORS[cert.estado]}>{ESTADO_LABELS[cert.estado]}</Badge></TableCell>
+                                <TableCell className="text-right font-medium">{formatCurrency(cert.total)}</TableCell>
+                                <TableCell className="text-right text-green-600 dark:text-green-400">{formatCurrency(pagado)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(saldo)}</TableCell>
+                                <TableCell className="text-right">{pct.toFixed(0)}%</TableCell>
+                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPDFFromCard(cert)}>
+                                    <Download className="w-3.5 h-3.5" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {certificados.map((cert) => (
+                      {certificadosFiltrados.map((cert) => (
                         <CertificadoCard
                           key={cert.id}
                           cert={cert}
@@ -832,6 +1006,38 @@ export default function Certificados() {
                   <p className="text-sm text-muted-foreground">
                     Definí los conceptos que aplican a <strong>{selectedObra?.nombre}</strong>. Los conceptos de Obra se usan en certificados de tipo Obra o Mixto; los de Servicio en certificados de tipo Servicio o Mixto.
                   </p>
+
+                  <Card>
+                    <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+                      <div className="flex-1 min-w-[180px]">
+                        <Label className="text-xs">Buscar concepto</Label>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input className="pl-7 h-8 text-xs" placeholder="Nombre..." value={conceptoSearch} onChange={(e) => setConceptoSearch(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Categoría</Label>
+                        <Select value={conceptoCatFilter} onValueChange={setConceptoCatFilter}>
+                          <SelectTrigger className="h-8 text-xs w-44"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__ALL__">Todas</SelectItem>
+                            {CATEGORIAS_CERTIFICADO.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2 ml-auto">
+                        <Button size="sm" variant="outline" onClick={() => setImportConceptosOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" /> Importar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAjustePreciosOpen(true)} disabled={conceptos.length === 0}>
+                          <Percent className="w-4 h-4 mr-1" /> Ajustar precios %
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   {loadingConceptos ? (
                     <div className="space-y-2">
@@ -862,7 +1068,7 @@ export default function Certificados() {
                           </div>
                         ) : (
                           <div className="space-y-0">
-                            {groupByCategoria(conceptos.filter(c => c.tipo === 'obra')).map((group) => (
+                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'obra'))).map((group) => (
                               <div key={group.categoria}>
                                 <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
                                   {group.categoria}
@@ -919,7 +1125,7 @@ export default function Certificados() {
                           </div>
                         ) : (
                           <div className="space-y-0">
-                            {groupByCategoria(conceptos.filter(c => c.tipo === 'servicio')).map((group) => (
+                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'servicio'))).map((group) => (
                               <div key={group.categoria}>
                                 <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
                                   {group.categoria}
