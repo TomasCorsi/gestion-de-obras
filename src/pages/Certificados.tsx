@@ -1063,6 +1063,10 @@ export default function Certificados() {
                   <Input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} />
                 </div>
                 <div>
+                  <Label>Fecha del certificado</Label>
+                  <Input type="date" value={fechaCertificado} onChange={(e) => setFechaCertificado(e.target.value)} />
+                </div>
+                <div>
                   <Label>Número</Label>
                   <Input value={numeroCert} onChange={(e) => setNumeroCert(e.target.value)} placeholder="CERT-001 (auto si vacío)" />
                 </div>
