@@ -584,6 +584,49 @@ export function useCertificados(obraId?: string) {
   const getPagadoByCert = (certId: string) =>
     allPagos.filter((p) => p.certificado_id === certId).reduce((s, p) => s + p.monto, 0);
 
+  // Bulk import conceptos
+  const bulkInsertConceptos = useMutation({
+    mutationFn: async (rows: ConceptoForm[]) => {
+      if (!obraId) throw new Error("No obra selected");
+      const payload = rows.map((r, i) => ({
+        ...r,
+        obra_id: obraId,
+        orden: (r.orden ?? conceptos.length) + i,
+      }));
+      const { error } = await supabase.from("certificado_conceptos").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      toast.success(`${vars.length} conceptos importados`);
+      queryClient.invalidateQueries({ queryKey: ["certificado_conceptos", obraId] });
+    },
+    onError: (e: any) => {
+      console.error(e);
+      toast.error("Error al importar conceptos");
+    },
+  });
+
+  // Bulk update price by % on a list of concepto ids
+  const bulkAdjustPrices = useMutation({
+    mutationFn: async ({ ids, percent }: { ids: string[]; percent: number }) => {
+      const factor = 1 + percent / 100;
+      const targets = conceptos.filter((c) => ids.includes(c.id));
+      for (const c of targets) {
+        const newPrice = Math.round(c.precio_unitario * factor * 100) / 100;
+        const { error } = await supabase
+          .from("certificado_conceptos")
+          .update({ precio_unitario: newPrice })
+          .eq("id", c.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_, vars) => {
+      toast.success(`${vars.ids.length} precios ajustados`);
+      queryClient.invalidateQueries({ queryKey: ["certificado_conceptos", obraId] });
+    },
+    onError: () => toast.error("Error al ajustar precios"),
+  });
+
   return {
     conceptos,
     loadingConceptos,
