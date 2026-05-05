@@ -300,6 +300,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje = 0,
       incluir_iva = true,
       numero: customNumero,
+      fecha_certificado,
     }: {
       periodo: string;
       items: CertificadoItemForm[];
@@ -308,6 +309,7 @@ export function useCertificados(obraId?: string) {
       anticipo_porcentaje?: number;
       incluir_iva?: boolean;
       numero?: string;
+      fecha_certificado?: string;
     }) => {
       if (!obraId) throw new Error("No obra selected");
 
