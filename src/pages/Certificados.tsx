@@ -1930,6 +1930,11 @@ function CertificadoCard({
             <p className="text-sm text-muted-foreground capitalize">
               {format(parseISO(cert.periodo + "-01"), "MMMM yyyy", { locale: es })}
             </p>
+            {cert.fecha_certificado && (
+              <p className="text-xs text-muted-foreground">
+                Fecha: {format(parseISO(cert.fecha_certificado), "dd/MM/yyyy")}
+              </p>
+            )}
           </div>
           <Badge variant="secondary" className={ESTADO_COLORS[cert.estado]}>
             {ESTADO_LABELS[cert.estado]}
