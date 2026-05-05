@@ -169,7 +169,10 @@ export const ParteDiarioFormView = ({
     { id: 'check_aceite_hidraulico', label: 'Control aceite hidráulico', roles: ['maquinista'] },
     { id: 'check_liquido_refrigerante', label: 'Control líquido refrigerante', roles: ['maquinista', 'chofer'] },
     { id: 'check_uria', label: 'Control Uría', roles: ['chofer'] },
-  ].filter(item => rol && item.roles.includes(rol));
+  ].filter(item => {
+    if (capatazUsaMaquina) return ['check_filtro_aire', 'check_aceite_motor', 'check_aceite_hidraulico', 'check_liquido_refrigerante'].includes(item.id);
+    return rol && item.roles.includes(rol);
+  });
 
   // Filter personal for ausencias (exclude current employee)
   const personalForAusencias = useMemo(() => {
