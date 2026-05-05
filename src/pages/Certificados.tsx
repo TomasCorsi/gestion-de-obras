@@ -329,6 +329,7 @@ export default function Certificados() {
     const initialTipo: TipoCertificado = "servicio";
     setItemsDraft([]);
     setPeriodo(format(new Date(), "yyyy-MM"));
+    setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
     setTipoCert(initialTipo);
