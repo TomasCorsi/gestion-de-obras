@@ -800,11 +800,13 @@ export default function Certificados() {
             <>
               {/* KPIs */}
               {!loadingCertificados && certificados.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                   <KPICard title="Certificados" value={totalCertificados} icon={FileText} variant="default" />
-                  <KPICard title="Total Certificado" value={formatCurrency(montoTotal)} icon={TrendingUp} variant="primary" />
-                  <KPICard title="Pendiente de Cobro" value={formatCurrency(montoPendiente)} icon={Clock} variant="warning" />
+                  <KPICard title="Total" value={formatCurrency(montoTotal)} icon={TrendingUp} variant="primary" />
+                  <KPICard title="Pendiente" value={formatCurrency(montoPendiente)} icon={Clock} variant="warning" />
                   <KPICard title="Cobrado" value={formatCurrency(montoCobrado)} icon={DollarSign} variant="success" />
+                  <KPICard title="% Cobranza" value={`${pctCobranza.toFixed(1)}%`} icon={Percent} variant="primary" />
+                  <KPICard title="Antig. prom (días)" value={antiguedadProm.toFixed(0)} icon={Clock} variant="default" />
                 </div>
               )}
 
@@ -817,11 +819,69 @@ export default function Certificados() {
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
                 <TabsContent value="certificados" className="space-y-4">
-                  <div className="flex gap-2 justify-end">
+                  {/* Filtros + acciones */}
+                  <Card>
+                    <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+                      <div className="flex-1 min-w-[160px]">
+                        <Label className="text-xs">Buscar Nº</Label>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input className="pl-7 h-8 text-xs" placeholder="CERT-001..." value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Estado</Label>
+                        <Select value={filtroEstado} onValueChange={setFiltroEstado}>
+                          <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            <SelectItem value="borrador">Borrador</SelectItem>
+                            <SelectItem value="emitido">Emitido</SelectItem>
+                            <SelectItem value="cobrado">Cobrado</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Tipo</Label>
+                        <Select value={filtroTipo} onValueChange={setFiltroTipo}>
+                          <SelectTrigger className="h-8 text-xs w-32"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="todos">Todos</SelectItem>
+                            <SelectItem value="obra">Obra</SelectItem>
+                            <SelectItem value="servicio">Servicio</SelectItem>
+                            <SelectItem value="mixto">Mixto</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Período desde</Label>
+                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoDesde} onChange={(e) => setFiltroPeriodoDesde(e.target.value)} />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Período hasta</Label>
+                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoHasta} onChange={(e) => setFiltroPeriodoHasta(e.target.value)} />
+                      </div>
+                      <div className="flex gap-1 ml-auto">
+                        <Button type="button" variant={vistaListado === "cards" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("cards")}>
+                          <LayoutGrid className="w-4 h-4" />
+                        </Button>
+                        <Button type="button" variant={vistaListado === "tabla" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("tabla")}>
+                          <ListIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="flex gap-2 justify-end flex-wrap">
+                    {certificadosFiltrados.length > 0 && (
+                      <Button variant="outline" size="sm" onClick={() => exportCertificadosExcel(certificadosFiltrados, getPagadoByCert, selectedObra?.nombre || "obra")}>
+                        <FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar Excel
+                      </Button>
+                    )}
                     {certificados.length > 0 && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Button variant="outline" onClick={openDuplicarCertificado}>
+                          <Button variant="outline" size="sm" onClick={openDuplicarCertificado}>
                             <Copy className="w-4 h-4 mr-2" />
                             Duplicar último
                           </Button>
@@ -829,7 +889,7 @@ export default function Certificados() {
                         <TooltipContent>Crea un nuevo certificado con los datos del último periodo</TooltipContent>
                       </Tooltip>
                     )}
-                    <Button onClick={openCrearCertificado} disabled={conceptos.filter((c) => c.activo).length === 0}>
+                    <Button size="sm" onClick={openCrearCertificado} disabled={conceptos.filter((c) => c.activo).length === 0}>
                       <Plus className="w-4 h-4 mr-2" />
                       Nuevo Certificado
                     </Button>
@@ -841,15 +901,59 @@ export default function Certificados() {
                         <Skeleton key={i} className="h-48 w-full rounded-lg" />
                       ))}
                     </div>
-                  ) : certificados.length === 0 ? (
+                  ) : certificadosFiltrados.length === 0 ? (
                     <Card>
                       <CardContent className="py-8 text-center text-muted-foreground">
-                        No hay certificados para esta obra.
+                        {certificados.length === 0 ? "No hay certificados para esta obra." : "Ningún certificado coincide con los filtros."}
                       </CardContent>
+                    </Card>
+                  ) : vistaListado === "tabla" ? (
+                    <Card>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Número</TableHead>
+                            <TableHead>Período</TableHead>
+                            <TableHead>Fecha</TableHead>
+                            <TableHead>Tipo</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead className="text-right">Total</TableHead>
+                            <TableHead className="text-right">Pagado</TableHead>
+                            <TableHead className="text-right">Saldo</TableHead>
+                            <TableHead className="text-right">% Cobr.</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {certificadosFiltrados.map((cert) => {
+                            const pagado = getPagadoByCert(cert.id);
+                            const saldo = cert.total - pagado;
+                            const pct = cert.total > 0 ? (pagado / cert.total) * 100 : 0;
+                            return (
+                              <TableRow key={cert.id} className="cursor-pointer hover:bg-muted/40" onClick={() => openViewCert(cert.id)}>
+                                <TableCell className="font-medium">{cert.numero}</TableCell>
+                                <TableCell className="capitalize">{format(parseISO(cert.periodo + "-01"), "MMM yyyy", { locale: es })}</TableCell>
+                                <TableCell>{cert.fecha_certificado ? format(parseISO(cert.fecha_certificado), "dd/MM/yyyy") : "-"}</TableCell>
+                                <TableCell><Badge variant="outline" className="text-xs">{cert.tipo}</Badge></TableCell>
+                                <TableCell><Badge variant="secondary" className={ESTADO_COLORS[cert.estado]}>{ESTADO_LABELS[cert.estado]}</Badge></TableCell>
+                                <TableCell className="text-right font-medium">{formatCurrency(cert.total)}</TableCell>
+                                <TableCell className="text-right text-green-600 dark:text-green-400">{formatCurrency(pagado)}</TableCell>
+                                <TableCell className="text-right">{formatCurrency(saldo)}</TableCell>
+                                <TableCell className="text-right">{pct.toFixed(0)}%</TableCell>
+                                <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDownloadPDFFromCard(cert)}>
+                                    <Download className="w-3.5 h-3.5" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
                     </Card>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {certificados.map((cert) => (
+                      {certificadosFiltrados.map((cert) => (
                         <CertificadoCard
                           key={cert.id}
                           cert={cert}
