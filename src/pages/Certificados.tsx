@@ -85,13 +85,23 @@ import {
   ArrowDown,
   HardHat,
   Wrench,
+  Search,
+  Percent,
+  FileSpreadsheet,
+  LayoutGrid,
+  List as ListIcon,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
+import * as XLSX from "xlsx";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { useUrlState } from "@/hooks/useUrlState";
+import { ConceptosCSVImportDialog } from "@/components/certificados/ConceptosCSVImportDialog";
+import { AjustePreciosDialog } from "@/components/certificados/AjustePreciosDialog";
 
 
 const formatCurrency = (n: number) =>
