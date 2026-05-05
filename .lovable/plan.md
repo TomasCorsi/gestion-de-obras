@@ -1,60 +1,47 @@
 
-# Plan de mejoras para Certificados (puntos 1.1, 1.2, 1.3, 1.5, 1.6, 2.8)
+# Mejoras en el módulo de Sueldos
 
-## 1.1 Filtros y búsqueda en el listado
-En `src/pages/Certificados.tsx`, sobre la grilla de cards, agregar `FilterBar` con:
-- Búsqueda por número (input).
-- Select de **estado** (todos/borrador/emitido/cobrado).
-- Select de **tipo** (todos/obra/servicio/mixto).
-- Rango de **período** (desde/hasta `yyyy-MM`) y rango opcional de **fecha de certificado**.
-- Toggle **Cards / Tabla**: nueva vista tabla con columnas Número, Período, Fecha, Tipo, Estado, Subtotal, Total, Pagado, Saldo, Acciones.
+Tres cambios en `src/components/personal/SueldosTab.tsx` (+ pequeños helpers en `src/hooks/useSueldos.ts`):
 
-Estado sincronizado con URL vía `useUrlState` (siguiendo memoria `app-state-persistence-url-v3`). Filtrado se aplica a `certificados` antes del render.
+## 1. Mostrar quincena para empleados quincenales
 
-## 1.2 KPIs adicionales
-Reemplazar/extender los 4 KPI cards actuales con:
-- Total certificados (existente).
-- Monto total facturado (existente).
-- **% de cobranza** = `montoCobrado / montoTotal * 100`.
-- **Antigüedad promedio de pendientes** en días (promedio de `now - fecha_emision` para certs no cobrados con `fecha_emision` set).
-- Pendiente de cobro (existente, conservar).
+En la tabla de detalle y en los KPIs:
+- Si `modalidad_pago === 'quincenal'`, mostrar dos columnas extra (o un sub-renglón) con **Blanco/Quincena** = `sueldo_blanco / 2` y **Negro/Quincena** = `sueldo_negro / 2`. El total mensual se mantiene.
+- KPIs nuevos: "Total quincena (1ra/2da)" mostrando la mitad del total quincenal + el mensual prorrateado si aplica.
+- Misma lógica también en el preview de importación.
 
-Cálculos memoizados en el componente.
+Sin cambios en la base: la división es solo visual (la base sigue guardando el sueldo mensual completo).
 
-## 1.3 Card de certificado más informativa
-En la card de cada certificado:
-- **Barra de progreso de cobranza** (`<Progress value={pagado/total*100}/>`) con etiqueta "Cobrado X de Y (Z%)".
-- Badge "Pagos parciales" cuando `0 < pagado < total`.
-- Badge "Hace N días" cuando estado=emitido, calculando días desde `fecha_emision`.
-- En vista tabla mostrar el % como columna.
+## 2. Edición inline de sueldos cargados
 
-## 1.5 Vista de detalle (`viewCert` dialog)
-- Botón **"Duplicar este certificado"** que abre el flujo de creación pre-cargado con los items de ese cert (refactor: extraer la lógica actual de `openDuplicarCertificado` a `duplicateFromCert(cert)`).
-- **Saldo pendiente destacado** en la sección de pagos (bloque grande con `formatCurrency(total - pagado)`).
-- Validación al cargar pago: bloquear `monto > saldo` mostrando mensaje inline.
-- **Historial de estados**: como no hay tabla de auditoría, mostrar timeline simple usando `created_at` (creado), `fecha_emision` (emitido) y la fecha del último pago que cierra el total (cobrado). Listado pequeño con iconos.
+En la tabla de detalle:
+- Convertir las celdas **Blanco**, **Negro** y **Modalidad** en editables (Input numérico / Select) con guardado al hacer blur (debounce).
+- Botón "Guardar cambios" en el encabezado para aplicar pendientes (o auto-save por fila).
+- Nuevo método `updateSueldo(id, patch)` en `useSueldos.ts` que hace un `update` directo a `sueldos` por id e invalida la query.
+- Botón eliminar fila individual (`deleteSueldo(id)`).
 
-## 1.6 Pestaña Conceptos
-En la sección Conceptos:
-- **Buscador** por nombre + filtro por **categoría** y **etapa** (selects).
-- **Edición inline** de `precio_unitario`: la celda del precio se vuelve `Input number` que dispara `updateConcepto` on blur (debounced).
-- **Importación masiva CSV**: nuevo `ConceptosCSVImportDialog` siguiendo el patrón de `src/components/personal/CSVImportDialog.tsx`. Columnas: nombre, unidad, precio_unitario, categoria, cantidad_total, etapa, tipo. Inserta en lote vía `createConcepto` o un `insert` directo.
-- **Ajuste masivo de precios**: botón "Ajustar precios %" que abre dialog con: select categoría (o "Todas"), input %, vista previa de cuántos conceptos se afectan, confirmar. Aplica `precio_unitario * (1 + pct/100)` a los seleccionados con `update` batch.
+## 3. Replicar sueldos a todos los meses del año
 
-## 2.8 Exportar listado a Excel
-Botón "Exportar Excel" arriba del listado. Usa `xlsx` (ya disponible en el proyecto por importaciones previas). Exporta los certificados filtrados (respeta los filtros de 1.1) con columnas:
-Número, Período, Fecha certificado, Fecha emisión, Tipo, Estado, Subtotal, IVA, Total, Pagado, Saldo, Observaciones.
-Nombre archivo: `certificados-{obra}-{yyyyMMdd}.xlsx`.
+Nuevo botón **"Replicar a todos los meses"** junto a "Borrar período":
+- Abre dialog con: año destino (default actual), checkbox "Sobrescribir si ya existe" y rango de meses (default Enero–Diciembre, excluyendo el actual).
+- Toma los sueldos del período actualmente cargado y los inserta en cada uno de los meses seleccionados con el mismo `legajo`, `personal_id`, `nombre`, `apellido`, `puesto`, `modalidad_pago`, `sueldo_blanco`, `sueldo_negro`.
+- Implementación en `useSueldos.ts`: nuevo `replicateToMonths(targetMonths: string[], overwrite: boolean)` que para cada período destino borra (si overwrite) y luego inserta en lote.
 
-## Archivos a modificar / crear
-- `src/pages/Certificados.tsx` — filtros, KPIs, cards mejoradas, tabla, detalle ampliado, conceptos buscador/edición inline/ajuste %, botón export.
-- `src/components/certificados/ConceptosCSVImportDialog.tsx` — nuevo (basado en patrón existente).
-- `src/components/certificados/AjustePreciosDialog.tsx` — nuevo (dialog de ajuste por %).
-- `src/hooks/useCertificados.ts` — pequeño helper `bulkUpdateConceptosPrice(ids, pct)` y `bulkInsertConceptos(items)`.
+## 4. Subir Excel de aumento (actualizar montos manteniendo el resto)
+
+Junto al dropzone actual, un segundo modo: **"Aplicar aumento desde Excel"**:
+- Mismo formato de Excel (Legajo + Blanco/Negro/Total) pero NO reemplaza el período.
+- En vez de eso, hace **match por legajo** contra los sueldos cargados del período actual y solo actualiza `sueldo_blanco` / `sueldo_negro` de las filas matcheadas. Las no matcheadas se reportan en preview pero no se insertan.
+- Checkbox opcional **"Aplicar también a meses siguientes del año"** que ejecuta el mismo update sobre `mes+1..diciembre` del mismo año (útil si el aumento aplica desde determinado mes en adelante).
+- Reutiliza el `parseRows` existente; el botón de confirmar en preview cambia a "Actualizar montos" en este modo.
+
+## Archivos
+- `src/components/personal/SueldosTab.tsx` — UI: columnas quincena, edición inline, dialog replicar, modo "aumento".
+- `src/hooks/useSueldos.ts` — agregar `updateSueldo`, `deleteSueldo`, `replicateToMonths`, `applyIncrease(rows, periodos[])`.
 
 ## Sin cambios
-- Esquema de base de datos (no hace falta nueva columna para esto — `fecha_vencimiento` quedó fuera, era 2.3).
-- RLS, edge functions, PDF generator.
+- Esquema DB (la tabla `sueldos` ya tiene todo lo necesario, incluyendo `periodo`).
+- RLS, edge functions.
 
-## Resultado esperado
-Listado filtrable y exportable con KPIs de cobranza claros, cards que muestran progreso de pago de un vistazo, detalle con duplicar/saldo/historial, y una pestaña de Conceptos mucho más rápida de mantener (buscar, editar precio inline, importar masivo, ajustar por %).
+## Resultado
+Para quincenales se ve cuánto cobran por quincena de un vistazo, los sueldos cargados se pueden editar fila por fila, una sola carga se puede replicar a todo el año, y los aumentos se aplican subiendo otro Excel sin tener que recargar todo desde cero.
