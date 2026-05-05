@@ -132,6 +132,7 @@ export const ParteDiarioFormView = ({
         observaciones_inconvenientes: parte.observaciones_inconvenientes || '',
         km_camion: parte.km_camion?.toString() || '',
       });
+      if (parte.maquinaria_id) setUsoMaquina(true);
     }
   }, [parte]);
 
