@@ -53,6 +53,7 @@ export interface Certificado {
   periodo: string;
   estado: EstadoCertificado;
   fecha_emision: string | null;
+  fecha_certificado: string;
   subtotal: number;
   iva: number;
   total: number;
