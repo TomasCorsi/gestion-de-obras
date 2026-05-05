@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -65,6 +66,7 @@ export const ParteDiarioFormView = ({
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
   const [searchAusencia, setSearchAusencia] = useState('');
   const [showObsError, setShowObsError] = useState(false);
+  const [usoMaquina, setUsoMaquina] = useState(false);
   
   const defaultFormData = useMemo(() => ({
     fecha: format(new Date(), 'yyyy-MM-dd'),
@@ -130,6 +132,7 @@ export const ParteDiarioFormView = ({
         observaciones_inconvenientes: parte.observaciones_inconvenientes || '',
         km_camion: parte.km_camion?.toString() || '',
       });
+      if (parte.maquinaria_id) setUsoMaquina(true);
     }
   }, [parte]);
 
@@ -145,14 +148,17 @@ export const ParteDiarioFormView = ({
 
 
 
+  // Capataz puede activar opcionalmente uso de máquina
+  const capatazUsaMaquina = isCapataz && usoMaquina;
+
   // Fields visibility
   const showObraField = isMaquinista || isCapataz || isMecanicoAyudante || isSerenoTopografo;
-  const showMaquinaField = isMaquinista || isChofer;
-  const showHorometro = isMaquinista;
+  const showMaquinaField = isMaquinista || isChofer || capatazUsaMaquina;
+  const showHorometro = isMaquinista || capatazUsaMaquina;
   const showViajes = isChofer;
-  const showCombustible = isMaquinista || isChofer;
-  const showEstadoMaquina = isMaquinista || isChofer;
-  const showChecklist = isMaquinista || isChofer;
+  const showCombustible = isMaquinista || isChofer || capatazUsaMaquina;
+  const showEstadoMaquina = isMaquinista || isChofer || capatazUsaMaquina;
+  const showChecklist = isMaquinista || isChofer || capatazUsaMaquina;
   const showNovedades = isCapataz || isRepartidorCalecita;
   const showAusencias = isCapataz;
   const showTareas = isMecanicoAyudante;
@@ -163,7 +169,10 @@ export const ParteDiarioFormView = ({
     { id: 'check_aceite_hidraulico', label: 'Control aceite hidráulico', roles: ['maquinista'] },
     { id: 'check_liquido_refrigerante', label: 'Control líquido refrigerante', roles: ['maquinista', 'chofer'] },
     { id: 'check_uria', label: 'Control Uría', roles: ['chofer'] },
-  ].filter(item => rol && item.roles.includes(rol));
+  ].filter(item => {
+    if (capatazUsaMaquina) return ['check_filtro_aire', 'check_aceite_motor', 'check_aceite_hidraulico', 'check_liquido_refrigerante'].includes(item.id);
+    return rol && item.roles.includes(rol);
+  });
 
   // Filter personal for ausencias (exclude current employee)
   const personalForAusencias = useMemo(() => {
@@ -383,7 +392,26 @@ export const ParteDiarioFormView = ({
           </Card>
         )}
 
-        {/* Horarios */}
+        {/* Capataz: ¿usaste una máquina? */}
+        {isCapataz && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium block mb-1">🚜 ¿Usaste una máquina o camión hoy?</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Activalo si además de tus tareas de capataz operaste una máquina.
+                  </p>
+                </div>
+                <Switch
+                  checked={usoMaquina}
+                  onCheckedChange={setUsoMaquina}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-3">
