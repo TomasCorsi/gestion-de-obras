@@ -417,13 +417,8 @@ export default function Certificados() {
     setCrearOpen(true);
   };
 
-  const openDuplicarCertificado = async () => {
-    if (certificados.length === 0) return;
-    const ultimo = certificados[0];
-    const items = await fetchItems(ultimo.id);
-
-    // Copy items exactly as saved — snapshot of the last period
-    // User can then adjust quantities and prices for the new month
+  const duplicateFromCert = async (source: Certificado) => {
+    const items = await fetchItems(source.id);
     const draft: CertificadoItemForm[] = items.map((item) => ({
       concepto_id: item.concepto_id,
       descripcion: item.descripcion,
@@ -434,20 +429,26 @@ export default function Certificados() {
       categoria: (item.concepto_id && categoriaMap[item.concepto_id]) || "General",
       etapa: item.etapa,
       cantidad_total: (item.concepto_id && cantidadTotalMap[item.concepto_id]) || 0,
-      seccion: item.seccion || (ultimo.tipo === "mixto" ? "servicio" : null),
+      seccion: item.seccion || (source.tipo === "mixto" ? "servicio" : null),
       observaciones: (item as any).observaciones || "",
     }));
-
     setItemsDraft(draft);
     setPeriodo(format(new Date(), "yyyy-MM"));
     setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
-    setTipoCert(ultimo.tipo);
-    setAnticipoPorcentaje(ultimo.anticipo_porcentaje);
+    skipTipoEffectRef.current = true;
+    setTipoCert(source.tipo);
+    setAnticipoPorcentaje(source.anticipo_porcentaje);
     setNumeroCert("");
-    setIncluirIva(ultimo.incluir_iva !== false);
+    setIncluirIva(source.incluir_iva !== false);
+    setViewCertId(null);
     setCrearOpen(true);
+  };
+
+  const openDuplicarCertificado = async () => {
+    if (certificados.length === 0) return;
+    await duplicateFromCert(certificados[0]);
   };
 
   const updateItemCantidad = (idx: number, cantidad: number) => {
