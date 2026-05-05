@@ -90,6 +90,7 @@ import {
   FileSpreadsheet,
   LayoutGrid,
   List as ListIcon,
+  Upload,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
