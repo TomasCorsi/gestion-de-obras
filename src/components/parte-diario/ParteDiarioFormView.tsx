@@ -148,14 +148,17 @@ export const ParteDiarioFormView = ({
 
 
 
+  // Capataz puede activar opcionalmente uso de máquina
+  const capatazUsaMaquina = isCapataz && usoMaquina;
+
   // Fields visibility
   const showObraField = isMaquinista || isCapataz || isMecanicoAyudante || isSerenoTopografo;
-  const showMaquinaField = isMaquinista || isChofer;
-  const showHorometro = isMaquinista;
+  const showMaquinaField = isMaquinista || isChofer || capatazUsaMaquina;
+  const showHorometro = isMaquinista || capatazUsaMaquina;
   const showViajes = isChofer;
-  const showCombustible = isMaquinista || isChofer;
-  const showEstadoMaquina = isMaquinista || isChofer;
-  const showChecklist = isMaquinista || isChofer;
+  const showCombustible = isMaquinista || isChofer || capatazUsaMaquina;
+  const showEstadoMaquina = isMaquinista || isChofer || capatazUsaMaquina;
+  const showChecklist = isMaquinista || isChofer || capatazUsaMaquina;
   const showNovedades = isCapataz || isRepartidorCalecita;
   const showAusencias = isCapataz;
   const showTareas = isMecanicoAyudante;
