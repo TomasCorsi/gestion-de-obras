@@ -361,6 +361,7 @@ export default function Certificados() {
 
     setItemsDraft(draft);
     setPeriodo(cert.periodo);
+    setFechaCertificado((cert as any).fecha_certificado || cert.fecha_emision || format(new Date(), "yyyy-MM-dd"));
     setObservaciones(cert.observaciones || "");
     setEditingCertId(cert.id);
     skipTipoEffectRef.current = true;
