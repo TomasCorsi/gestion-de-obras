@@ -1006,6 +1006,38 @@ export default function Certificados() {
                     Definí los conceptos que aplican a <strong>{selectedObra?.nombre}</strong>. Los conceptos de Obra se usan en certificados de tipo Obra o Mixto; los de Servicio en certificados de tipo Servicio o Mixto.
                   </p>
 
+                  <Card>
+                    <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+                      <div className="flex-1 min-w-[180px]">
+                        <Label className="text-xs">Buscar concepto</Label>
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                          <Input className="pl-7 h-8 text-xs" placeholder="Nombre..." value={conceptoSearch} onChange={(e) => setConceptoSearch(e.target.value)} />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Categoría</Label>
+                        <Select value={conceptoCatFilter} onValueChange={setConceptoCatFilter}>
+                          <SelectTrigger className="h-8 text-xs w-44"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__ALL__">Todas</SelectItem>
+                            {CATEGORIAS_CERTIFICADO.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex gap-2 ml-auto">
+                        <Button size="sm" variant="outline" onClick={() => setImportConceptosOpen(true)}>
+                          <Upload className="w-4 h-4 mr-1" /> Importar
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => setAjustePreciosOpen(true)} disabled={conceptos.length === 0}>
+                          <Percent className="w-4 h-4 mr-1" /> Ajustar precios %
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
                   {loadingConceptos ? (
                     <div className="space-y-2">
                       {[1, 2, 3].map((i) => (
