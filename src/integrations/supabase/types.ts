@@ -465,6 +465,7 @@ export type Database = {
           anticipo_porcentaje: number
           created_at: string
           estado: Database["public"]["Enums"]["estado_certificado"]
+          fecha_certificado: string
           fecha_emision: string | null
           id: string
           incluir_iva: boolean
@@ -482,6 +483,7 @@ export type Database = {
           anticipo_porcentaje?: number
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_certificado"]
+          fecha_certificado?: string
           fecha_emision?: string | null
           id?: string
           incluir_iva?: boolean
@@ -499,6 +501,7 @@ export type Database = {
           anticipo_porcentaje?: number
           created_at?: string
           estado?: Database["public"]["Enums"]["estado_certificado"]
+          fecha_certificado?: string
           fecha_emision?: string | null
           id?: string
           incluir_iva?: boolean
