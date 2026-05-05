@@ -336,6 +336,7 @@ export function useCertificados(obraId?: string) {
           tipo,
           anticipo_porcentaje,
           incluir_iva,
+          ...(fecha_certificado ? { fecha_certificado } : {}),
         }])
         .select()
         .single();
