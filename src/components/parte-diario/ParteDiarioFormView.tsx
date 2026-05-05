@@ -66,6 +66,7 @@ export const ParteDiarioFormView = ({
   const [savingType, setSavingType] = useState<'draft' | 'complete' | null>(null);
   const [searchAusencia, setSearchAusencia] = useState('');
   const [showObsError, setShowObsError] = useState(false);
+  const [usoMaquina, setUsoMaquina] = useState(false);
   
   const defaultFormData = useMemo(() => ({
     fecha: format(new Date(), 'yyyy-MM-dd'),
