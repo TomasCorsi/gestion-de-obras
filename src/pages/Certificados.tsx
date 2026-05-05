@@ -156,6 +156,30 @@ function groupByEtapa<T extends { etapa?: string | null }>(items: T[], etapaOrde
     .map(({ key, items }) => ({ etapa: key, items }));
 }
 
+function exportCertificadosExcel(certs: Certificado[], getPagado: (id: string) => number, obraNombre: string) {
+  const rows = certs.map((c) => {
+    const pagado = getPagado(c.id);
+    return {
+      Numero: c.numero,
+      Periodo: c.periodo,
+      "Fecha Certificado": c.fecha_certificado || "",
+      "Fecha Emisión": c.fecha_emision || "",
+      Tipo: c.tipo,
+      Estado: c.estado,
+      Subtotal: c.subtotal,
+      IVA: c.iva,
+      Total: c.total,
+      Pagado: pagado,
+      Saldo: c.total - pagado,
+      Observaciones: c.observaciones || "",
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Certificados");
+  XLSX.writeFile(wb, `certificados-${obraNombre.replace(/\s+/g, "_")}-${format(new Date(), "yyyyMMdd")}.xlsx`);
+}
+
 export default function Certificados() {
   const { obras, loading: loadingObras } = useObras();
   const [selectedObraId, setSelectedObraId] = useState<string>("");
