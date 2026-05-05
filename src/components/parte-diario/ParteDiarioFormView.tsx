@@ -392,7 +392,26 @@ export const ParteDiarioFormView = ({
           </Card>
         )}
 
-        {/* Horarios */}
+        {/* Capataz: ¿usaste una máquina? */}
+        {isCapataz && (
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium block mb-1">🚜 ¿Usaste una máquina o camión hoy?</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Activalo si además de tus tareas de capataz operaste una máquina.
+                  </p>
+                </div>
+                <Switch
+                  checked={usoMaquina}
+                  onCheckedChange={setUsoMaquina}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardContent className="pt-4">
             <div className="flex items-center gap-2 mb-3">
