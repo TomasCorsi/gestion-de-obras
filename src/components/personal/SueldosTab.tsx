@@ -2,6 +2,8 @@ import { useState, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -18,6 +20,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
   Upload,
   Download,
   DollarSign,
@@ -27,6 +36,8 @@ import {
   FileSpreadsheet,
   UserCheck,
   UserX,
+  Copy,
+  TrendingUp,
 } from "lucide-react";
 import { PersonalDB } from "@/hooks/usePersonal";
 import { useSueldos } from "@/hooks/useSueldos";
@@ -40,6 +51,7 @@ interface SueldosTabProps {
 }
 
 type RowStatus = "ok" | "match_nombre" | "sin_legajo" | "not_found";
+type ImportMode = "replace" | "increase";
 
 interface ImportRow {
   legajo: string;
@@ -91,11 +103,21 @@ export function SueldosTab({ personal }: SueldosTabProps) {
   const [anio, setAnio] = useState(String(now.getFullYear()));
   const [mes, setMes] = useState(String(now.getMonth() + 1).padStart(2, "0"));
   const [importRows, setImportRows] = useState<ImportRow[]>([]);
+  const [importMode, setImportMode] = useState<ImportMode>("replace");
+  const [increaseAlsoNextMonths, setIncreaseAlsoNextMonths] = useState(false);
   const [filterModalidad, setFilterModalidad] = useState<string[]>([]);
+  const [replicateOpen, setReplicateOpen] = useState(false);
+  const [replicateMonths, setReplicateMonths] = useState<number[]>([]);
+  const [replicateOverwrite, setReplicateOverwrite] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const periodo = `${anio}-${mes}`;
-  const { sueldos, isLoading, upsertSueldos, deletePeriodo } = useSueldos(periodo);
+  const {
+    sueldos, isLoading,
+    upsertSueldos, deletePeriodo,
+    updateSueldo, deleteSueldo,
+    replicateToMonths, applyIncrease,
+  } = useSueldos(periodo);
 
   const years = useMemo(() => {
     const y = now.getFullYear();
@@ -151,7 +173,6 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       const cols = rows[i] as (string | number)[];
       if (!cols || cols.length < 2) continue;
 
-      // Skip rows with Excel errors
       const rowStr = cols.map((c) => String(c ?? "")).join("");
       if (rowStr.includes("#¡VALOR") || rowStr.includes("#VALUE") || rowStr.includes("#REF")) continue;
 
@@ -170,7 +191,6 @@ export function SueldosTab({ personal }: SueldosTabProps) {
         negro = totalVal - blanco;
       }
 
-      // Skip rows with no salary data AND no legajo/nombre
       if (blanco === 0 && negro === 0 && totalVal === 0) continue;
       if (!legajo && !apellido && !nombreVal) continue;
 
@@ -178,7 +198,6 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       if (modalidad === "q" || modalidad.startsWith("quince")) modalidad = "quincenal";
       else if (modalidad === "m" || modalidad.startsWith("mens")) modalidad = "mensual";
 
-      // Match logic: 1) by legajo, 2) by apellido+nombre, 3) by apellido alone
       let emp: PersonalDB | undefined;
       let status: RowStatus = "not_found";
 
@@ -188,33 +207,23 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       } else if (apellido) {
         const ap = norm(apellido);
         const no = norm(nombreVal);
-        // Exact apellido + nombre match
         if (no) {
           const matches = personal.filter(
             (p) => norm(p.apellido || "") === ap && norm(p.nombre || "") === no
           );
-          if (matches.length === 1) {
-            emp = matches[0];
-            status = "match_nombre";
-          }
+          if (matches.length === 1) { emp = matches[0]; status = "match_nombre"; }
         }
-        // Fallback: unique apellido match
         if (!emp) {
           const matches = personal.filter((p) => norm(p.apellido || "") === ap);
-          if (matches.length === 1) {
-            emp = matches[0];
-            status = "match_nombre";
-          }
+          if (matches.length === 1) { emp = matches[0]; status = "match_nombre"; }
         }
         if (!emp) status = "sin_legajo";
       } else {
         status = "sin_legajo";
       }
 
-      // Build a unique synthetic legajo for entries without one
       const finalLegajo =
-        legajo ||
-        emp?.legajo ||
+        legajo || emp?.legajo ||
         `SIN-${(apellido || "X").slice(0, 10)}-${(nombreVal || String(i)).slice(0, 10)}`.toUpperCase().replace(/\s+/g, "_");
 
       result.push({
@@ -247,18 +256,39 @@ export function SueldosTab({ personal }: SueldosTabProps) {
   };
 
   const confirmImport = () => {
-    const rows = importRows.map((r) => ({
-      personal_id: r.personal_id,
-      legajo: r.legajo,
-      nombre: r.nombre || null,
-      apellido: r.apellido || null,
-      puesto: r.puesto || null,
-      sueldo_blanco: r.sueldo_blanco,
-      sueldo_negro: r.sueldo_negro,
-      modalidad_pago: r.modalidad_pago,
-      periodo,
-    }));
-    upsertSueldos.mutate(rows, { onSuccess: () => setImportRows([]) });
+    if (importMode === "replace") {
+      const rows = importRows.map((r) => ({
+        personal_id: r.personal_id,
+        legajo: r.legajo,
+        nombre: r.nombre || null,
+        apellido: r.apellido || null,
+        puesto: r.puesto || null,
+        sueldo_blanco: r.sueldo_blanco,
+        sueldo_negro: r.sueldo_negro,
+        modalidad_pago: r.modalidad_pago,
+        periodo,
+      }));
+      upsertSueldos.mutate(rows, { onSuccess: () => setImportRows([]) });
+    } else {
+      // increase mode: only update matching legajos
+      const updates = importRows
+        .filter((r) => !r.legajo.startsWith("SIN-"))
+        .map((r) => ({
+          legajo: r.legajo,
+          sueldo_blanco: r.sueldo_blanco,
+          sueldo_negro: r.sueldo_negro,
+        }));
+      const targets: string[] = [periodo];
+      if (increaseAlsoNextMonths) {
+        const m0 = parseInt(mes);
+        for (let m = m0 + 1; m <= 12; m++) {
+          targets.push(`${anio}-${String(m).padStart(2, "0")}`);
+        }
+      }
+      applyIncrease.mutate({ updates, targetPeriodos: targets }, {
+        onSuccess: () => { setImportRows([]); setIncreaseAlsoNextMonths(false); },
+      });
+    }
   };
 
   const displayData = useMemo(() => {
@@ -269,9 +299,12 @@ export function SueldosTab({ personal }: SueldosTabProps) {
   const kpis = useMemo(() => {
     const quinc = sueldos.filter((s) => s.modalidad_pago === "quincenal");
     const mens = sueldos.filter((s) => s.modalidad_pago === "mensual");
+    const quincBlanco = quinc.reduce((a, s) => a + Number(s.sueldo_blanco), 0);
+    const quincNegro = quinc.reduce((a, s) => a + Number(s.sueldo_negro), 0);
     return {
-      quincBlanco: quinc.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
-      quincNegro: quinc.reduce((a, s) => a + Number(s.sueldo_negro), 0),
+      quincBlanco, quincNegro,
+      quincBlancoQ: quincBlanco / 2,
+      quincNegroQ: quincNegro / 2,
       quincCount: quinc.length,
       mensBlanco: mens.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
       mensNegro: mens.reduce((a, s) => a + Number(s.sueldo_negro), 0),
@@ -282,7 +315,7 @@ export function SueldosTab({ personal }: SueldosTabProps) {
     };
   }, [sueldos]);
 
-  const fmt = (n: number) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 0 });
+  const fmt = (n: number) => "$" + Number(n).toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const tableTotals = useMemo(() => ({
     blanco: displayData.reduce((a, s) => a + Number(s.sueldo_blanco), 0),
@@ -302,6 +335,56 @@ export function SueldosTab({ personal }: SueldosTabProps) {
     if (status === "match_nombre") return <Badge variant="outline" className="gap-1"><UserCheck className="w-3 h-3 text-blue-400" /> Match nombre</Badge>;
     if (status === "sin_legajo") return <Badge variant="outline" className="gap-1"><UserX className="w-3 h-3 text-muted-foreground" /> Sin legajo</Badge>;
     return <Badge variant="outline" className="gap-1"><XCircle className="w-3 h-3 text-red-500" /> No encontrado</Badge>;
+  };
+
+  // Editable cell component
+  const EditableNumberCell = ({ id, field, value }: { id: string; field: "sueldo_blanco" | "sueldo_negro"; value: number }) => {
+    const [v, setV] = useState(String(value));
+    return (
+      <Input
+        type="number"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        onBlur={() => {
+          const newVal = parseFloat(v) || 0;
+          if (newVal !== Number(value)) {
+            updateSueldo.mutate({ id, patch: { [field]: newVal } });
+          }
+        }}
+        className="h-8 text-right w-28 ml-auto"
+      />
+    );
+  };
+
+  const ModalidadCell = ({ id, value }: { id: string; value: string }) => (
+    <Select value={value} onValueChange={(nv) => {
+      if (nv !== value) updateSueldo.mutate({ id, patch: { modalidad_pago: nv } });
+    }}>
+      <SelectTrigger className="h-8 w-[120px]"><SelectValue /></SelectTrigger>
+      <SelectContent>
+        <SelectItem value="quincenal">Quincenal</SelectItem>
+        <SelectItem value="mensual">Mensual</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+
+  const handleReplicate = () => {
+    if (replicateMonths.length === 0) { toast.error("Seleccioná al menos un mes"); return; }
+    const targetPeriodos = replicateMonths.map((m) => `${anio}-${String(m).padStart(2, "0")}`);
+    replicateToMonths.mutate(
+      { targetPeriodos, overwrite: replicateOverwrite },
+      {
+        onSuccess: () => {
+          setReplicateOpen(false);
+          setReplicateMonths([]);
+          setReplicateOverwrite(false);
+        },
+      }
+    );
+  };
+
+  const toggleReplicateMonth = (m: number) => {
+    setReplicateMonths((prev) => prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]);
   };
 
   return (
@@ -341,9 +424,33 @@ export function SueldosTab({ personal }: SueldosTabProps) {
             </Select>
           </div>
           {sueldos.length > 0 && (
-            <Button variant="destructive" size="sm" onClick={() => deletePeriodo.mutate()} disabled={deletePeriodo.isPending}>
-              <Trash2 className="w-4 h-4 mr-1" /> Borrar período
-            </Button>
+            <>
+              <Button variant="outline" size="sm" onClick={() => setReplicateOpen(true)}>
+                <Copy className="w-4 h-4 mr-1" /> Replicar a meses
+              </Button>
+              <Button variant="destructive" size="sm" onClick={() => deletePeriodo.mutate()} disabled={deletePeriodo.isPending}>
+                <Trash2 className="w-4 h-4 mr-1" /> Borrar período
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Mode selector */}
+        <div className="flex items-center gap-3 mb-3 flex-wrap">
+          <Label className="text-sm">Modo de carga:</Label>
+          <ToggleGroup type="single" value={importMode} onValueChange={(v) => v && setImportMode(v as ImportMode)} className="gap-2">
+            <ToggleGroupItem value="replace" variant="outline" size="sm" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <Upload className="w-3 h-3 mr-1" /> Reemplazar período
+            </ToggleGroupItem>
+            <ToggleGroupItem value="increase" variant="outline" size="sm" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
+              <TrendingUp className="w-3 h-3 mr-1" /> Aplicar aumento
+            </ToggleGroupItem>
+          </ToggleGroup>
+          {importMode === "increase" && (
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Checkbox checked={increaseAlsoNextMonths} onCheckedChange={(c) => setIncreaseAlsoNextMonths(c === true)} />
+              También aplicar a meses siguientes del año
+            </label>
           )}
         </div>
 
@@ -355,9 +462,13 @@ export function SueldosTab({ personal }: SueldosTabProps) {
           onClick={() => fileInputRef.current?.click()}
         >
           <Upload className="w-10 h-10 mx-auto mb-3 text-primary" />
-          <p className="text-foreground font-medium">Arrastrá el Excel con los sueldos</p>
+          <p className="text-foreground font-medium">
+            {importMode === "replace" ? "Arrastrá el Excel con los sueldos" : "Arrastrá el Excel con los nuevos montos"}
+          </p>
           <p className="text-sm text-muted-foreground mt-1">
-            Columnas: TIPO, Leg., APELLIDO, NOMBRE, PUESTO, SUELDO TOTAL, PARTE BLANCO, PARTE NEGRA
+            {importMode === "replace"
+              ? "Columnas: TIPO, Leg., APELLIDO, NOMBRE, PUESTO, SUELDO TOTAL, PARTE BLANCO, PARTE NEGRA"
+              : "Hace match por LEGAJO y solo actualiza los montos en el período actual" + (increaseAlsoNextMonths ? " y meses siguientes" : "")}
           </p>
           <input ref={fileInputRef} type="file" accept=".csv,.txt,.tsv,.xlsx,.xls" onChange={handleFileSelect} className="hidden" />
         </div>
@@ -370,6 +481,7 @@ export function SueldosTab({ personal }: SueldosTabProps) {
               <FileSpreadsheet className="w-5 h-5 text-primary" />
               <span className="font-medium text-foreground">
                 Preview — {importRows.length} registros para {meses[parseInt(mes) - 1]} {anio}
+                {importMode === "increase" && <span className="ml-2 text-primary">(modo aumento)</span>}
               </span>
               <Badge variant="outline"><CheckCircle className="w-3 h-3 mr-1 text-green-500" />
                 {importRows.filter((r) => r.status === "ok").length} legajo
@@ -383,9 +495,9 @@ export function SueldosTab({ personal }: SueldosTabProps) {
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={() => setImportRows([])}>Cancelar</Button>
-              <Button onClick={confirmImport} disabled={upsertSueldos.isPending} className="bg-primary hover:bg-primary/90">
+              <Button onClick={confirmImport} disabled={upsertSueldos.isPending || applyIncrease.isPending} className="bg-primary hover:bg-primary/90">
                 <Download className="w-4 h-4 mr-2" />
-                {sueldos.length > 0 ? "Reemplazar período" : "Importar"}
+                {importMode === "increase" ? "Actualizar montos" : (sueldos.length > 0 ? "Reemplazar período" : "Importar")}
               </Button>
             </div>
           </div>
@@ -400,6 +512,7 @@ export function SueldosTab({ personal }: SueldosTabProps) {
                   <TableHead className="text-right">Blanco</TableHead>
                   <TableHead className="text-right">Negro</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-right">Quincena (B/N)</TableHead>
                   <TableHead>Estado</TableHead>
                 </TableRow>
               </TableHeader>
@@ -415,6 +528,11 @@ export function SueldosTab({ personal }: SueldosTabProps) {
                     <TableCell className="text-right font-medium">{fmt(row.sueldo_blanco)}</TableCell>
                     <TableCell className="text-right font-medium">{fmt(row.sueldo_negro)}</TableCell>
                     <TableCell className="text-right font-bold">{fmt(row.sueldo_blanco + row.sueldo_negro)}</TableCell>
+                    <TableCell className="text-right text-xs text-muted-foreground">
+                      {row.modalidad_pago === "quincenal"
+                        ? `${fmt(row.sueldo_blanco / 2)} / ${fmt(row.sueldo_negro / 2)}`
+                        : "—"}
+                    </TableCell>
                     <TableCell><StatusBadge status={row.status} /></TableCell>
                   </TableRow>
                 ))}
@@ -427,16 +545,16 @@ export function SueldosTab({ personal }: SueldosTabProps) {
       {sueldos.length > 0 && (
         <>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <KPICard title="Blanco Quincenal" value={fmt(kpis.quincBlanco)} sub={`${kpis.quincCount} empleados`} color="blue" />
-            <KPICard title="Negro Quincenal" value={fmt(kpis.quincNegro)} sub={`${kpis.quincCount} empleados`} color="red" />
-            <KPICard title="Blanco Mensual" value={fmt(kpis.mensBlanco)} sub={`${kpis.mensCount} empleados`} color="blue" />
-            <KPICard title="Negro Mensual" value={fmt(kpis.mensNegro)} sub={`${kpis.mensCount} empleados`} color="red" />
+            <KPICard title="Quincenal Mensual (B+N)" value={fmt(kpis.quincBlanco + kpis.quincNegro)} sub={`${kpis.quincCount} empleados`} color="blue" />
+            <KPICard title="Quincenal × Quincena" value={fmt(kpis.quincBlancoQ + kpis.quincNegroQ)} sub={`B: ${fmt(kpis.quincBlancoQ)} | N: ${fmt(kpis.quincNegroQ)}`} color="primary" />
+            <KPICard title="Mensual (B+N)" value={fmt(kpis.mensBlanco + kpis.mensNegro)} sub={`${kpis.mensCount} empleados`} color="red" />
+            <KPICard title="Total Blanco" value={fmt(kpis.totalBlanco)} sub={`Período ${meses[parseInt(mes) - 1]} ${anio}`} color="blue" />
             <KPICard title="TOTAL GENERAL" value={fmt(kpis.total)} sub={`B: ${fmt(kpis.totalBlanco)} | N: ${fmt(kpis.totalNegro)}`} color="primary" />
           </div>
 
           <div className="card-industrial overflow-hidden">
             <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between">
-              <span className="font-medium text-foreground">Detalle — {meses[parseInt(mes) - 1]} {anio}</span>
+              <span className="font-medium text-foreground">Detalle — {meses[parseInt(mes) - 1]} {anio} <span className="text-xs text-muted-foreground ml-2">(editable)</span></span>
               <ToggleGroup type="multiple" value={filterModalidad} onValueChange={setFilterModalidad} className="gap-2">
                 <ToggleGroupItem value="quincenal" variant="outline" size="sm" className="data-[state=on]:bg-primary data-[state=on]:text-primary-foreground">
                   Quincenal ({kpis.quincCount})
@@ -457,27 +575,52 @@ export function SueldosTab({ personal }: SueldosTabProps) {
                     <TableHead className="text-right">Blanco</TableHead>
                     <TableHead className="text-right">Negro</TableHead>
                     <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Por quincena (B/N)</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {displayData.map((s) => (
-                    <TableRow key={s.id} className="border-border">
-                      <TableCell className="font-mono text-xs">
-                        {s.legajo.startsWith("SIN-") ? <span className="text-muted-foreground">—</span> : s.legajo}
-                      </TableCell>
-                      <TableCell>{empleadoLabel(s.apellido, s.nombre)}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{s.puesto || "-"}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{s.modalidad_pago}</Badge></TableCell>
-                      <TableCell className="text-right font-medium">{fmt(Number(s.sueldo_blanco))}</TableCell>
-                      <TableCell className="text-right font-medium">{fmt(Number(s.sueldo_negro))}</TableCell>
-                      <TableCell className="text-right font-bold">{fmt(Number(s.sueldo_blanco) + Number(s.sueldo_negro))}</TableCell>
-                    </TableRow>
-                  ))}
+                  {displayData.map((s) => {
+                    const blanco = Number(s.sueldo_blanco);
+                    const negro = Number(s.sueldo_negro);
+                    const isQuinc = s.modalidad_pago === "quincenal";
+                    return (
+                      <TableRow key={s.id} className="border-border">
+                        <TableCell className="font-mono text-xs">
+                          {s.legajo.startsWith("SIN-") ? <span className="text-muted-foreground">—</span> : s.legajo}
+                        </TableCell>
+                        <TableCell>{empleadoLabel(s.apellido, s.nombre)}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{s.puesto || "-"}</TableCell>
+                        <TableCell><ModalidadCell id={s.id} value={s.modalidad_pago} /></TableCell>
+                        <TableCell className="text-right"><EditableNumberCell id={s.id} field="sueldo_blanco" value={blanco} /></TableCell>
+                        <TableCell className="text-right"><EditableNumberCell id={s.id} field="sueldo_negro" value={negro} /></TableCell>
+                        <TableCell className="text-right font-bold">{fmt(blanco + negro)}</TableCell>
+                        <TableCell className="text-right text-xs">
+                          {isQuinc ? (
+                            <span className="text-primary font-medium">
+                              {fmt(blanco / 2)} / {fmt(negro / 2)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                            if (confirm("¿Eliminar este registro?")) deleteSueldo.mutate(s.id);
+                          }}>
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   <TableRow className="border-border bg-muted/50 font-bold">
                     <TableCell colSpan={4} className="text-right text-muted-foreground">TOTALES</TableCell>
                     <TableCell className="text-right">{fmt(tableTotals.blanco)}</TableCell>
                     <TableCell className="text-right">{fmt(tableTotals.negro)}</TableCell>
                     <TableCell className="text-right text-primary">{fmt(tableTotals.total)}</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -496,6 +639,57 @@ export function SueldosTab({ personal }: SueldosTabProps) {
           </p>
         </div>
       )}
+
+      {/* Replicate Dialog */}
+      <Dialog open={replicateOpen} onOpenChange={setReplicateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Replicar sueldos a otros meses</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Copia los <strong>{sueldos.length}</strong> sueldos del período <strong>{meses[parseInt(mes) - 1]} {anio}</strong> a los meses seleccionados del año <strong>{anio}</strong>.
+            </p>
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => {
+                const all = Array.from({ length: 12 }, (_, i) => i + 1).filter((m) => m !== parseInt(mes));
+                setReplicateMonths(all);
+              }}>Todos los meses</Button>
+              <Button variant="outline" size="sm" onClick={() => setReplicateMonths([])}>Limpiar</Button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {meses.map((m, i) => {
+                const mNum = i + 1;
+                const isCurrent = mNum === parseInt(mes);
+                const checked = replicateMonths.includes(mNum);
+                return (
+                  <label key={i} className={cn("flex items-center gap-2 text-sm p-2 rounded border cursor-pointer",
+                    isCurrent && "opacity-50 cursor-not-allowed",
+                    checked && "border-primary bg-primary/10")}>
+                    <Checkbox
+                      checked={checked}
+                      disabled={isCurrent}
+                      onCheckedChange={() => !isCurrent && toggleReplicateMonth(mNum)}
+                    />
+                    {m}
+                    {isCurrent && <span className="text-xs text-muted-foreground">(actual)</span>}
+                  </label>
+                );
+              })}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={replicateOverwrite} onCheckedChange={(c) => setReplicateOverwrite(c === true)} />
+              Sobrescribir si ya hay datos cargados en ese mes
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReplicateOpen(false)}>Cancelar</Button>
+            <Button onClick={handleReplicate} disabled={replicateToMonths.isPending || replicateMonths.length === 0}>
+              <Copy className="w-4 h-4 mr-1" /> Replicar a {replicateMonths.length} mes(es)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
