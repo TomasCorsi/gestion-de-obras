@@ -647,5 +647,7 @@ export function useCertificados(obraId?: string) {
     createPago: createPago.mutateAsync,
     deletePago: deletePago.mutateAsync,
     getPagadoByCert,
+    bulkInsertConceptos: bulkInsertConceptos.mutateAsync,
+    bulkAdjustPrices: bulkAdjustPrices.mutateAsync,
   };
 }
