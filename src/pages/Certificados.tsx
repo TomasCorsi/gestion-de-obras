@@ -396,6 +396,7 @@ export default function Certificados() {
 
     setItemsDraft(draft);
     setPeriodo(format(new Date(), "yyyy-MM"));
+    setFechaCertificado(format(new Date(), "yyyy-MM-dd"));
     setObservaciones("");
     setEditingCertId(null);
     setTipoCert(ultimo.tipo);
