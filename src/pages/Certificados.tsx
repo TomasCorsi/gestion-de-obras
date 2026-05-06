@@ -670,7 +670,17 @@ export default function Certificados() {
   const [viewCertId, setViewCertId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<CertificadoItem[]>([]);
   const [viewPagos, setViewPagos] = useState<CertificadoPago[]>([]);
-  const [newPago, setNewPago] = useState({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+  const emptyPago = () => ({
+    fecha: format(new Date(), "yyyy-MM-dd"),
+    monto: "",
+    descripcion: "",
+    metodo: "transferencia" as MetodoPago,
+    referencia: "",
+    banco: "",
+    comprobante: null as File | null,
+  });
+  const [newPago, setNewPago] = useState(emptyPago());
+  const [editingPagoId, setEditingPagoId] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
   const [viewAcumulados, setViewAcumulados] = useState<AcumuladoConcepto[]>([]);
   const viewCert = certificados.find((c) => c.id === viewCertId);
@@ -678,7 +688,8 @@ export default function Certificados() {
   const openViewCert = async (id: string) => {
     setViewCertId(id);
     setLoadingItems(true);
-    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    setNewPago(emptyPago());
+    setEditingPagoId(null);
     const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
     setViewItems(items);
     setViewPagos(pagos);
@@ -693,25 +704,85 @@ export default function Certificados() {
     setLoadingItems(false);
   };
 
-  const handleAddPago = async () => {
+  const handleSavePago = async () => {
     if (!viewCertId || !newPago.monto) return;
-    await createPago({
-      certificado_id: viewCertId,
-      fecha: newPago.fecha,
-      monto: Number(newPago.monto),
-      descripcion: newPago.descripcion || undefined,
-    });
-    const pagos = await fetchPagos(viewCertId);
-    setViewPagos(pagos);
-    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    try {
+      if (editingPagoId) {
+        await updatePago({
+          id: editingPagoId,
+          certificado_id: viewCertId,
+          fecha: newPago.fecha,
+          monto: Number(newPago.monto),
+          descripcion: newPago.descripcion,
+          metodo: newPago.metodo,
+          referencia: newPago.referencia,
+          banco: newPago.banco,
+          comprobante: newPago.comprobante,
+        });
+      } else {
+        await createPago({
+          certificado_id: viewCertId,
+          fecha: newPago.fecha,
+          monto: Number(newPago.monto),
+          descripcion: newPago.descripcion,
+          metodo: newPago.metodo,
+          referencia: newPago.referencia,
+          banco: newPago.banco,
+          comprobante: newPago.comprobante,
+        });
+      }
+      const pagos = await fetchPagos(viewCertId);
+      setViewPagos(pagos);
+      setNewPago(emptyPago());
+      setEditingPagoId(null);
+    } catch {
+      // toast handled in hook
+    }
   };
 
-  const handleDeletePago = async (pagoId: string) => {
-    await deletePago(pagoId);
+  const handleEditPago = (pago: CertificadoPago) => {
+    setEditingPagoId(pago.id);
+    setNewPago({
+      fecha: pago.fecha,
+      monto: String(pago.monto),
+      descripcion: pago.descripcion || "",
+      metodo: (pago.metodo as MetodoPago) || "transferencia",
+      referencia: pago.referencia || "",
+      banco: pago.banco || "",
+      comprobante: null,
+    });
+  };
+
+  const handleDeletePago = async (pago: CertificadoPago) => {
+    await deletePago({ id: pago.id, certificado_id: pago.certificado_id });
     if (viewCertId) {
       const pagos = await fetchPagos(viewCertId);
       setViewPagos(pagos);
     }
+  };
+
+  const handleOpenComprobante = async (path: string) => {
+    const url = await getComprobanteSignedUrl(path);
+    if (url) window.open(url, "_blank");
+  };
+
+  const handleReciboPDF = async (pago: CertificadoPago, allPagosCert: CertificadoPago[]) => {
+    if (!viewCert) return;
+    const sorted = [...allPagosCert].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    const idx = sorted.findIndex((p) => p.id === pago.id) + 1;
+    const acumulado = sorted.slice(0, idx).reduce((s, p) => s + p.monto, 0);
+    await generateReciboPDF({
+      certificado: viewCert,
+      pago,
+      pagoIndex: idx,
+      totalPagado: acumulado,
+      obraNombre: selectedObra?.nombre || "",
+      clienteNombre: selectedObra?.cliente?.nombre,
+      clienteCuit: selectedObra?.cliente?.cuit,
+      clienteDireccion: selectedObra?.cliente?.direccion,
+    });
   };
 
   // Build categoriaMap for PDF
