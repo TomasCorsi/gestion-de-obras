@@ -35,6 +35,8 @@ export interface ConceptoForm {
   tipo?: 'obra' | 'servicio';
 }
 
+export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
+
 export type MetodoPago = "transferencia" | "cheque" | "efectivo" | "echeq" | "deposito" | "otro";
 
 export const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
