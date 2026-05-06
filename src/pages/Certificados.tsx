@@ -776,6 +776,29 @@ export default function Certificados() {
   const draftMixtoObraGrouped = groupByEtapa(draftMixtoObra, etapaOrdenMap);
   const draftMixtoServicioGrouped = groupByCategoria(draftMixtoServicio);
 
+  // Move an etapa within itemsDraft (visual order in this certificate) and persist globally
+  const moveEtapaInDraft = (etapa: string, dir: -1 | 1, scope: "obra" | "mixto-obra") => {
+    const filterFn = scope === "obra"
+      ? (i: CertificadoItemForm) => !i.seccion || i.seccion === "obra"
+      : (i: CertificadoItemForm) => i.seccion === "obra";
+    const groups = scope === "obra" ? draftGroupedEtapa : draftMixtoObraGrouped;
+    const etapasOrden = groups.map((g) => g.etapa);
+    const idx = etapasOrden.indexOf(etapa);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= etapasOrden.length) return;
+    [etapasOrden[idx], etapasOrden[swap]] = [etapasOrden[swap], etapasOrden[idx]];
+
+    const scoped = itemsDraft.filter(filterFn);
+    const others = itemsDraft.filter((i) => !filterFn(i));
+    const reorderedScoped = etapasOrden.flatMap((e) =>
+      scoped.filter((i) => (i.etapa || "Sin etapa") === e)
+    );
+    setItemsDraft([...reorderedScoped, ...others]);
+
+    reorderEtapas(etapasOrden.map((e, i) => ({ etapa: e, orden: i }))).catch(() => {});
+  };
+
+
   // Group view items
   const viewItemsWithCat = viewItems.map((item) => ({
     ...item,
