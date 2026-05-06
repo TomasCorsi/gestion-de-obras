@@ -940,6 +940,7 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
+                  <TabsTrigger value="pagos">Pagos</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
