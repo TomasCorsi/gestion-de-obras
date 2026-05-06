@@ -1420,7 +1420,13 @@ export default function Certificados() {
                             const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                             return (
                               <div key={group.etapa}>
-                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
+                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1 flex items-center justify-between gap-2">
+                                  <span>{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</span>
+                                  <div className="flex gap-1">
+                                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" disabled={draftMixtoObraGrouped[0]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, -1, "mixto-obra")} title="Subir"><ArrowUp className="w-3 h-3" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" disabled={draftMixtoObraGrouped[draftMixtoObraGrouped.length - 1]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, 1, "mixto-obra")} title="Bajar"><ArrowDown className="w-3 h-3" /></Button>
+                                  </div>
+                                </div>
                                 <div className="overflow-hidden">
                                   <Table className="text-xs">
                                     <TableHeader>
