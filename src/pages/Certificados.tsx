@@ -7,14 +7,21 @@ import {
   fetchAcumulados,
   CONCEPTOS_ESTANDAR,
   CATEGORIAS_CERTIFICADO,
+  METODOS_PAGO,
+  getEstadoEfectivo,
+  ESTADO_EFECTIVO_LABEL,
+  ESTADO_EFECTIVO_COLOR,
   type CertificadoItemForm,
   type CertificadoItem,
   type CertificadoPago,
   type Certificado,
   type EstadoCertificado,
+  type EstadoEfectivo,
+  type MetodoPago,
   type TipoCertificado,
   type AcumuladoConcepto,
 } from "@/hooks/useCertificados";
+import { generateReciboPDF } from "@/utils/generateReciboPDF";
 import { generateCertificadoPDF } from "@/utils/generateCertificadoPDF";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -203,7 +210,9 @@ export default function Certificados() {
     allPagos,
     fetchPagos,
     createPago,
+    updatePago,
     deletePago,
+    getComprobanteSignedUrl,
     getPagadoByCert,
     bulkInsertConceptos,
     bulkAdjustPrices,
@@ -661,7 +670,17 @@ export default function Certificados() {
   const [viewCertId, setViewCertId] = useState<string | null>(null);
   const [viewItems, setViewItems] = useState<CertificadoItem[]>([]);
   const [viewPagos, setViewPagos] = useState<CertificadoPago[]>([]);
-  const [newPago, setNewPago] = useState({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+  const emptyPago = () => ({
+    fecha: format(new Date(), "yyyy-MM-dd"),
+    monto: "",
+    descripcion: "",
+    metodo: "transferencia" as MetodoPago,
+    referencia: "",
+    banco: "",
+    comprobante: null as File | null,
+  });
+  const [newPago, setNewPago] = useState(emptyPago());
+  const [editingPagoId, setEditingPagoId] = useState<string | null>(null);
   const [loadingItems, setLoadingItems] = useState(false);
   const [viewAcumulados, setViewAcumulados] = useState<AcumuladoConcepto[]>([]);
   const viewCert = certificados.find((c) => c.id === viewCertId);
@@ -669,7 +688,8 @@ export default function Certificados() {
   const openViewCert = async (id: string) => {
     setViewCertId(id);
     setLoadingItems(true);
-    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    setNewPago(emptyPago());
+    setEditingPagoId(null);
     const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
     setViewItems(items);
     setViewPagos(pagos);
@@ -684,25 +704,85 @@ export default function Certificados() {
     setLoadingItems(false);
   };
 
-  const handleAddPago = async () => {
+  const handleSavePago = async () => {
     if (!viewCertId || !newPago.monto) return;
-    await createPago({
-      certificado_id: viewCertId,
-      fecha: newPago.fecha,
-      monto: Number(newPago.monto),
-      descripcion: newPago.descripcion || undefined,
-    });
-    const pagos = await fetchPagos(viewCertId);
-    setViewPagos(pagos);
-    setNewPago({ fecha: format(new Date(), "yyyy-MM-dd"), monto: "", descripcion: "" });
+    try {
+      if (editingPagoId) {
+        await updatePago({
+          id: editingPagoId,
+          certificado_id: viewCertId,
+          fecha: newPago.fecha,
+          monto: Number(newPago.monto),
+          descripcion: newPago.descripcion,
+          metodo: newPago.metodo,
+          referencia: newPago.referencia,
+          banco: newPago.banco,
+          comprobante: newPago.comprobante,
+        });
+      } else {
+        await createPago({
+          certificado_id: viewCertId,
+          fecha: newPago.fecha,
+          monto: Number(newPago.monto),
+          descripcion: newPago.descripcion,
+          metodo: newPago.metodo,
+          referencia: newPago.referencia,
+          banco: newPago.banco,
+          comprobante: newPago.comprobante,
+        });
+      }
+      const pagos = await fetchPagos(viewCertId);
+      setViewPagos(pagos);
+      setNewPago(emptyPago());
+      setEditingPagoId(null);
+    } catch {
+      // toast handled in hook
+    }
   };
 
-  const handleDeletePago = async (pagoId: string) => {
-    await deletePago(pagoId);
+  const handleEditPago = (pago: CertificadoPago) => {
+    setEditingPagoId(pago.id);
+    setNewPago({
+      fecha: pago.fecha,
+      monto: String(pago.monto),
+      descripcion: pago.descripcion || "",
+      metodo: (pago.metodo as MetodoPago) || "transferencia",
+      referencia: pago.referencia || "",
+      banco: pago.banco || "",
+      comprobante: null,
+    });
+  };
+
+  const handleDeletePago = async (pago: CertificadoPago) => {
+    await deletePago({ id: pago.id, certificado_id: pago.certificado_id });
     if (viewCertId) {
       const pagos = await fetchPagos(viewCertId);
       setViewPagos(pagos);
     }
+  };
+
+  const handleOpenComprobante = async (path: string) => {
+    const url = await getComprobanteSignedUrl(path);
+    if (url) window.open(url, "_blank");
+  };
+
+  const handleReciboPDF = async (pago: CertificadoPago, allPagosCert: CertificadoPago[]) => {
+    if (!viewCert) return;
+    const sorted = [...allPagosCert].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    const idx = sorted.findIndex((p) => p.id === pago.id) + 1;
+    const acumulado = sorted.slice(0, idx).reduce((s, p) => s + p.monto, 0);
+    await generateReciboPDF({
+      certificado: viewCert,
+      pago,
+      pagoIndex: idx,
+      totalPagado: acumulado,
+      obraNombre: selectedObra?.nombre || "",
+      clienteNombre: selectedObra?.cliente?.nombre,
+      clienteCuit: selectedObra?.cliente?.cuit,
+      clienteDireccion: selectedObra?.cliente?.direccion,
+    });
   };
 
   // Build categoriaMap for PDF
@@ -860,6 +940,7 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
+                  <TabsTrigger value="pagos">Pagos</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
@@ -1183,6 +1264,16 @@ export default function Certificados() {
                       </Collapsible>
                     </>
                   )}
+                </TabsContent>
+
+                {/* ==================== PAGOS TAB ==================== */}
+                <TabsContent value="pagos" className="space-y-4">
+                  <PagosTab
+                    certificados={certificados}
+                    allPagos={allPagos}
+                    onOpenComprobante={handleOpenComprobante}
+                    onOpenCert={openViewCert}
+                  />
                 </TabsContent>
 
               </Tabs>
@@ -2064,54 +2155,127 @@ export default function Certificados() {
                       <h4 className="font-semibold text-sm flex items-center gap-2">
                         <DollarSign className="w-4 h-4" /> Pagos
                       </h4>
-                      {viewPagos.length > 0 ? (
-                        <div className="space-y-2">
-                          {viewPagos.map((pago) => (
-                            <div key={pago.id} className="flex items-center justify-between bg-muted/50 rounded-md px-3 py-2 text-sm">
-                              <div className="flex items-center gap-3">
-                                <span className="text-muted-foreground">{format(new Date(pago.fecha), "dd/MM/yyyy")}</span>
-                                <span className="font-semibold">{formatCurrency(pago.monto)}</span>
-                                {pago.descripcion && <span className="text-muted-foreground">— {pago.descripcion}</span>}
-                              </div>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeletePago(pago.id)}>
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
+
+                      {/* Resumen + barra */}
+                      {(() => {
+                        const totalPagadoCert = viewPagos.reduce((s, p) => s + p.monto, 0);
+                        const saldoCert = viewCert.total - totalPagadoCert;
+                        const pct = viewCert.total > 0 ? Math.min(100, (totalPagadoCert / viewCert.total) * 100) : 0;
+                        const barColor = pct >= 100 ? "bg-green-500" : pct >= 50 ? "bg-yellow-500" : "bg-red-500";
+                        return (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm font-medium">
+                              <span>Pagado: <span className="text-green-600 dark:text-green-400">{formatCurrency(totalPagadoCert)}</span></span>
+                              <span>Saldo: <strong>{formatCurrency(saldoCert)}</strong></span>
+                              <span>{pct.toFixed(1)}%</span>
                             </div>
-                          ))}
+                            <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                              <div className={`h-full ${barColor} transition-all`} style={{ width: `${pct}%` }} />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {viewPagos.length > 0 ? (
+                        <div className="rounded-md border overflow-hidden">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs">Fecha</TableHead>
+                                <TableHead className="text-xs">Método</TableHead>
+                                <TableHead className="text-xs">Referencia</TableHead>
+                                <TableHead className="text-xs">Banco</TableHead>
+                                <TableHead className="text-xs text-right">Monto</TableHead>
+                                <TableHead className="text-xs text-right">Acciones</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {viewPagos.map((pago) => (
+                                <TableRow key={pago.id}>
+                                  <TableCell className="text-xs">{format(parseISO(pago.fecha), "dd/MM/yyyy")}</TableCell>
+                                  <TableCell className="text-xs">{pago.metodo ? (METODOS_PAGO.find(m => m.value === pago.metodo)?.label || pago.metodo) : "—"}</TableCell>
+                                  <TableCell className="text-xs">{pago.referencia || "—"}</TableCell>
+                                  <TableCell className="text-xs">{pago.banco || "—"}</TableCell>
+                                  <TableCell className="text-xs text-right font-semibold">{formatCurrency(pago.monto)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <div className="flex justify-end gap-1">
+                                      {pago.comprobante_url && (
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver comprobante" onClick={() => handleOpenComprobante(pago.comprobante_url!)}>
+                                          <Eye className="w-3.5 h-3.5" />
+                                        </Button>
+                                      )}
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Recibo PDF" onClick={() => handleReciboPDF(pago, viewPagos)}>
+                                        <FileText className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Editar" onClick={() => handleEditPago(pago)}>
+                                        <Pencil className="w-3.5 h-3.5" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Eliminar" onClick={() => handleDeletePago(pago)}>
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
                         </div>
                       ) : (
                         <p className="text-sm text-muted-foreground">Sin pagos registrados.</p>
                       )}
 
-                      {/* Saldo */}
-                      {(() => {
-                        const totalPagadoCert = viewPagos.reduce((s, p) => s + p.monto, 0);
-                        const saldoCert = viewCert.total - totalPagadoCert;
-                        return (
-                          <div className="flex justify-between text-sm font-medium border-t pt-2">
-                            <span>Pagado: {formatCurrency(totalPagadoCert)}</span>
-                            <span>Saldo pendiente: <strong>{formatCurrency(saldoCert)}</strong></span>
+                      {/* Form */}
+                      <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wide">
+                            {editingPagoId ? "Editar pago" : "Registrar nuevo pago"}
+                          </span>
+                          {editingPagoId && (
+                            <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { setEditingPagoId(null); setNewPago(emptyPago()); }}>
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Fecha</Label>
+                            <Input type="date" value={newPago.fecha} onChange={(e) => setNewPago((p) => ({ ...p, fecha: e.target.value }))} className="h-8 text-xs" />
                           </div>
-                        );
-                      })()}
-
-                      {/* Inline form */}
-                      <div className="flex gap-2 items-end flex-wrap">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Fecha</Label>
-                          <Input type="date" value={newPago.fecha} onChange={(e) => setNewPago((p) => ({ ...p, fecha: e.target.value }))} className="h-8 text-xs w-36" />
+                          <div className="space-y-1">
+                            <Label className="text-xs">Monto *</Label>
+                            <Input type="number" min={0} step={0.01} placeholder="0" value={newPago.monto} onChange={(e) => setNewPago((p) => ({ ...p, monto: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Método</Label>
+                            <Select value={newPago.metodo} onValueChange={(v) => setNewPago((p) => ({ ...p, metodo: v as MetodoPago }))}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Referencia / N°</Label>
+                            <Input placeholder="N° transf, cheque..." value={newPago.referencia} onChange={(e) => setNewPago((p) => ({ ...p, referencia: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Banco</Label>
+                            <Input placeholder="Banco" value={newPago.banco} onChange={(e) => setNewPago((p) => ({ ...p, banco: e.target.value }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Comprobante</Label>
+                            <Input type="file" accept="image/*,application/pdf" onChange={(e) => setNewPago((p) => ({ ...p, comprobante: e.target.files?.[0] || null }))} className="h-8 text-xs" />
+                          </div>
+                          <div className="space-y-1 col-span-2 md:col-span-3">
+                            <Label className="text-xs">Descripción</Label>
+                            <Input placeholder="Notas..." value={newPago.descripcion} onChange={(e) => setNewPago((p) => ({ ...p, descripcion: e.target.value }))} className="h-8 text-xs" />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Monto</Label>
-                          <Input type="number" min={0} step={0.01} placeholder="0" value={newPago.monto} onChange={(e) => setNewPago((p) => ({ ...p, monto: e.target.value }))} className="h-8 text-xs w-28" />
+                        <div className="flex justify-end">
+                          <Button size="sm" onClick={handleSavePago} disabled={!newPago.monto || Number(newPago.monto) <= 0} className="h-8">
+                            <Plus className="w-3.5 h-3.5 mr-1" /> {editingPagoId ? "Guardar cambios" : "Registrar pago"}
+                          </Button>
                         </div>
-                        <div className="space-y-1 flex-1 min-w-[120px]">
-                          <Label className="text-xs">Descripción</Label>
-                          <Input placeholder="Transferencia, cheque..." value={newPago.descripcion} onChange={(e) => setNewPago((p) => ({ ...p, descripcion: e.target.value }))} className="h-8 text-xs" />
-                        </div>
-                        <Button size="sm" onClick={handleAddPago} disabled={!newPago.monto || Number(newPago.monto) <= 0} className="h-8">
-                          <Plus className="w-3.5 h-3.5 mr-1" /> Registrar
-                        </Button>
                       </div>
                     </div>
                   </div>
@@ -2440,3 +2604,175 @@ function ConceptoRow({
   );
 }
 
+
+// ---- Pagos Tab ----
+function PagosTab({
+  certificados,
+  allPagos,
+  onOpenComprobante,
+  onOpenCert,
+}: {
+  certificados: Certificado[];
+  allPagos: CertificadoPago[];
+  onOpenComprobante: (path: string) => void;
+  onOpenCert: (id: string) => void;
+}) {
+  const [fMes, setFMes] = useState("");
+  const [fMetodo, setFMetodo] = useState<string>("__ALL__");
+  const [fCert, setFCert] = useState<string>("__ALL__");
+  const [fQ, setFQ] = useState("");
+
+  const certMap = new Map(certificados.map((c) => [c.id, c]));
+
+  const pagosFilt = allPagos.filter((p) => {
+    if (fMes && !p.fecha.startsWith(fMes)) return false;
+    if (fMetodo !== "__ALL__" && p.metodo !== fMetodo) return false;
+    if (fCert !== "__ALL__" && p.certificado_id !== fCert) return false;
+    if (fQ) {
+      const q = fQ.toLowerCase();
+      const c = certMap.get(p.certificado_id);
+      if (
+        !(p.referencia || "").toLowerCase().includes(q) &&
+        !(p.banco || "").toLowerCase().includes(q) &&
+        !(p.descripcion || "").toLowerCase().includes(q) &&
+        !(c?.numero || "").toLowerCase().includes(q)
+      )
+        return false;
+    }
+    return true;
+  });
+
+  const totalFacturado = certificados.reduce((s, c) => s + (c.estado !== "borrador" ? c.total : 0), 0);
+  const totalCobrado = allPagos.reduce((s, p) => s + p.monto, 0);
+  const totalPendiente = totalFacturado - totalCobrado;
+  const hoy = Date.now();
+  const totalVencido = certificados
+    .filter((c) => {
+      if (c.estado === "cobrado" || !c.fecha_emision) return false;
+      const pagado = allPagos.filter((p) => p.certificado_id === c.id).reduce((s, p) => s + p.monto, 0);
+      const dias = Math.floor((hoy - new Date(c.fecha_emision).getTime()) / 86400000);
+      return dias > 30 && pagado < c.total;
+    })
+    .reduce((s, c) => {
+      const pagado = allPagos.filter((p) => p.certificado_id === c.id).reduce((a, p) => a + p.monto, 0);
+      return s + (c.total - pagado);
+    }, 0);
+
+  const exportCSV = () => {
+    const headers = ["Fecha", "Certificado", "Periodo", "Monto", "Metodo", "Referencia", "Banco", "Descripcion"];
+    const rows = pagosFilt.map((p) => {
+      const c = certMap.get(p.certificado_id);
+      return [
+        p.fecha,
+        c?.numero || "",
+        c?.periodo || "",
+        p.monto,
+        p.metodo || "",
+        (p.referencia || "").replace(/[",\n]/g, " "),
+        (p.banco || "").replace(/[",\n]/g, " "),
+        (p.descripcion || "").replace(/[",\n]/g, " "),
+      ].join(",");
+    });
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pagos-${format(new Date(), "yyyyMMdd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KPICard title="Facturado" value={formatCurrency(totalFacturado)} icon={FileText} variant="primary" />
+        <KPICard title="Cobrado" value={formatCurrency(totalCobrado)} icon={DollarSign} variant="success" />
+        <KPICard title="Pendiente" value={formatCurrency(totalPendiente)} icon={Clock} variant="warning" />
+        <KPICard title="Vencido (>30d)" value={formatCurrency(totalVencido)} icon={Clock} variant="danger" />
+      </div>
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap gap-2 items-end">
+          <div className="flex-1 min-w-[160px]">
+            <Label className="text-xs">Buscar</Label>
+            <Input className="h-8 text-xs" placeholder="Referencia, banco, cert..." value={fQ} onChange={(e) => setFQ(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Mes</Label>
+            <Input type="month" className="h-8 text-xs w-36" value={fMes} onChange={(e) => setFMes(e.target.value)} />
+          </div>
+          <div>
+            <Label className="text-xs">Método</Label>
+            <Select value={fMetodo} onValueChange={setFMetodo}>
+              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__ALL__">Todos</SelectItem>
+                {METODOS_PAGO.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs">Certificado</Label>
+            <Select value={fCert} onValueChange={setFCert}>
+              <SelectTrigger className="h-8 text-xs w-40"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__ALL__">Todos</SelectItem>
+                {certificados.map((c) => <SelectItem key={c.id} value={c.id}>{c.numero}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto">
+            <Button variant="outline" size="sm" onClick={exportCSV} disabled={pagosFilt.length === 0}>
+              <Download className="w-4 h-4 mr-1" /> CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {pagosFilt.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-muted-foreground">No hay pagos.</CardContent></Card>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Fecha</TableHead>
+                <TableHead>Certificado</TableHead>
+                <TableHead>Período</TableHead>
+                <TableHead>Método</TableHead>
+                <TableHead>Referencia</TableHead>
+                <TableHead>Banco</TableHead>
+                <TableHead className="text-right">Monto</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pagosFilt.map((p) => {
+                const c = certMap.get(p.certificado_id);
+                return (
+                  <TableRow key={p.id} className="cursor-pointer hover:bg-muted/40" onClick={() => onOpenCert(p.certificado_id)}>
+                    <TableCell className="text-xs">{format(parseISO(p.fecha), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="text-xs font-medium">{c?.numero || "—"}</TableCell>
+                    <TableCell className="text-xs">{c?.periodo || "—"}</TableCell>
+                    <TableCell className="text-xs">{p.metodo ? METODOS_PAGO.find((m) => m.value === p.metodo)?.label || p.metodo : "—"}</TableCell>
+                    <TableCell className="text-xs">{p.referencia || "—"}</TableCell>
+                    <TableCell className="text-xs">{p.banco || "—"}</TableCell>
+                    <TableCell className="text-xs text-right font-semibold">{formatCurrency(p.monto)}</TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      {p.comprobante_url && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onOpenComprobante(p.comprobante_url!)}>
+                          <Eye className="w-3.5 h-3.5" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+    </div>
+  );
+}

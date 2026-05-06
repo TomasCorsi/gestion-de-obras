@@ -427,28 +427,40 @@ export type Database = {
       }
       certificado_pagos: {
         Row: {
+          banco: string | null
           certificado_id: string
+          comprobante_url: string | null
           created_at: string
           descripcion: string | null
           fecha: string
           id: string
+          metodo: string | null
           monto: number
+          referencia: string | null
         }
         Insert: {
+          banco?: string | null
           certificado_id: string
+          comprobante_url?: string | null
           created_at?: string
           descripcion?: string | null
           fecha?: string
           id?: string
+          metodo?: string | null
           monto?: number
+          referencia?: string | null
         }
         Update: {
+          banco?: string | null
           certificado_id?: string
+          comprobante_url?: string | null
           created_at?: string
           descripcion?: string | null
           fecha?: string
           id?: string
+          metodo?: string | null
           monto?: number
+          referencia?: string | null
         }
         Relationships: [
           {
