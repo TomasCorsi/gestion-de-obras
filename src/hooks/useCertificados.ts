@@ -598,34 +598,155 @@ export function useCertificados(obraId?: string) {
     return data as CertificadoPago[];
   };
 
+  // ---- Helper: upload comprobante and return path ----
+  const uploadComprobante = async (file: File, certId: string): Promise<string> => {
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `${obraId || "x"}/${certId}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("certificado-comprobantes")
+      .upload(path, file, { upsert: false, contentType: file.type });
+    if (error) throw error;
+    return path;
+  };
+
+  const getComprobanteSignedUrl = async (path: string): Promise<string | null> => {
+    if (!path) return null;
+    const { data } = await supabase.storage
+      .from("certificado-comprobantes")
+      .createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  };
+
+  // ---- Helper: auto-update certificado.estado based on pagos ----
+  const syncCertificadoEstado = async (certificadoId: string) => {
+    const { data: cert } = await supabase
+      .from("certificados")
+      .select("id, total, estado, fecha_emision")
+      .eq("id", certificadoId)
+      .single();
+    if (!cert) return;
+    const { data: pagos } = await supabase
+      .from("certificado_pagos")
+      .select("monto")
+      .eq("certificado_id", certificadoId);
+    const totalPagado = (pagos || []).reduce((s, p) => s + Number(p.monto), 0);
+    const updates: Record<string, unknown> = {};
+    if (totalPagado >= Number(cert.total) && cert.total > 0) {
+      if (cert.estado !== "cobrado") updates.estado = "cobrado";
+      if (!cert.fecha_emision) updates.fecha_emision = new Date().toISOString().slice(0, 10);
+    } else if (totalPagado > 0 && cert.estado === "borrador") {
+      updates.estado = "emitido";
+      if (!cert.fecha_emision) updates.fecha_emision = new Date().toISOString().slice(0, 10);
+    } else if (totalPagado < Number(cert.total) && cert.estado === "cobrado") {
+      updates.estado = "emitido";
+    }
+    if (Object.keys(updates).length > 0) {
+      await supabase.from("certificados").update(updates).eq("id", certificadoId);
+    }
+  };
+
+  type PagoInput = {
+    certificado_id: string;
+    fecha: string;
+    monto: number;
+    descripcion?: string | null;
+    metodo?: MetodoPago | null;
+    referencia?: string | null;
+    banco?: string | null;
+    comprobante?: File | null;
+  };
+
   const createPago = useMutation({
-    mutationFn: async (pago: { certificado_id: string; fecha: string; monto: number; descripcion?: string }) => {
+    mutationFn: async (pago: PagoInput) => {
+      // Validate: pago + already paid must not exceed total
+      const { data: cert } = await supabase
+        .from("certificados")
+        .select("total")
+        .eq("id", pago.certificado_id)
+        .single();
+      const { data: existing } = await supabase
+        .from("certificado_pagos")
+        .select("monto")
+        .eq("certificado_id", pago.certificado_id);
+      const yaPagado = (existing || []).reduce((s, p) => s + Number(p.monto), 0);
+      if (cert && yaPagado + Number(pago.monto) > Number(cert.total) + 0.01) {
+        throw new Error(`El pago excede el saldo pendiente (${(Number(cert.total) - yaPagado).toFixed(2)})`);
+      }
+
+      let comprobante_url: string | null = null;
+      if (pago.comprobante) {
+        comprobante_url = await uploadComprobante(pago.comprobante, pago.certificado_id);
+      }
+
       const { data, error } = await supabase
         .from("certificado_pagos")
-        .insert([pago])
+        .insert([{
+          certificado_id: pago.certificado_id,
+          fecha: pago.fecha,
+          monto: pago.monto,
+          descripcion: pago.descripcion || null,
+          metodo: pago.metodo || null,
+          referencia: pago.referencia || null,
+          banco: pago.banco || null,
+          comprobante_url,
+        }])
         .select()
         .single();
       if (error) throw error;
+      await syncCertificadoEstado(pago.certificado_id);
       return data;
     },
     onSuccess: () => {
       toast.success("Pago registrado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
-    onError: () => toast.error("Error al registrar pago"),
+    onError: (e: any) => toast.error(e?.message || "Error al registrar pago"),
+  });
+
+  const updatePago = useMutation({
+    mutationFn: async ({ id, certificado_id, ...pago }: PagoInput & { id: string }) => {
+      let comprobante_url: string | undefined;
+      if (pago.comprobante) {
+        comprobante_url = await uploadComprobante(pago.comprobante, certificado_id);
+      }
+      const updates: Record<string, unknown> = {
+        fecha: pago.fecha,
+        monto: pago.monto,
+        descripcion: pago.descripcion || null,
+        metodo: pago.metodo || null,
+        referencia: pago.referencia || null,
+        banco: pago.banco || null,
+      };
+      if (comprobante_url !== undefined) updates.comprobante_url = comprobante_url;
+      const { error } = await supabase
+        .from("certificado_pagos")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+      await syncCertificadoEstado(certificado_id);
+    },
+    onSuccess: () => {
+      toast.success("Pago actualizado");
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Error al actualizar pago"),
   });
 
   const deletePago = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, certificado_id }: { id: string; certificado_id: string }) => {
       const { error } = await supabase
         .from("certificado_pagos")
         .delete()
         .eq("id", id);
       if (error) throw error;
+      await syncCertificadoEstado(certificado_id);
     },
     onSuccess: () => {
       toast.success("Pago eliminado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: () => toast.error("Error al eliminar pago"),
   });
