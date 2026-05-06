@@ -92,7 +92,7 @@ export function getEstadoEfectivo(
   return "emitido";
 }
 
-export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
+
 
 export interface Certificado {
   id: string;
