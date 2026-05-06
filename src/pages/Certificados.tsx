@@ -222,16 +222,14 @@ export default function Certificados() {
   const [filtroEstado, setFiltroEstado] = useUrlState<string>({ key: "fest", defaultValue: "todos", serialize: v => v, deserialize: v => v });
   const [filtroTipo, setFiltroTipo] = useUrlState<string>({ key: "ftipo", defaultValue: "todos", serialize: v => v, deserialize: v => v });
   const [filtroBusqueda, setFiltroBusqueda] = useUrlState<string>({ key: "fq", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [filtroPeriodoDesde, setFiltroPeriodoDesde] = useUrlState<string>({ key: "fpd", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [filtroPeriodoHasta, setFiltroPeriodoHasta] = useUrlState<string>({ key: "fph", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "cards", serialize: v => v, deserialize: v => (v === "tabla" ? "tabla" : "cards") });
+  const [filtroMes, setFiltroMes] = useUrlState<string>({ key: "fmes", defaultValue: "", serialize: v => v, deserialize: v => v });
+  const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "tabla", serialize: v => v, deserialize: v => (v === "cards" ? "cards" : "tabla") });
 
   const certificadosFiltrados = certificados.filter((c) => {
     if (filtroEstado !== "todos" && c.estado !== filtroEstado) return false;
     if (filtroTipo !== "todos" && c.tipo !== filtroTipo) return false;
     if (filtroBusqueda && !c.numero.toLowerCase().includes(filtroBusqueda.toLowerCase())) return false;
-    if (filtroPeriodoDesde && c.periodo < filtroPeriodoDesde) return false;
-    if (filtroPeriodoHasta && c.periodo > filtroPeriodoHasta) return false;
+    if (filtroMes && c.periodo !== filtroMes) return false;
     return true;
   });
 
