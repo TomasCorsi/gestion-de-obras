@@ -1162,14 +1162,6 @@ export default function Certificados() {
                   )}
                 </TabsContent>
 
-                {/* ==================== ORDEN DE ETAPAS TAB ==================== */}
-                <TabsContent value="orden-etapas" className="space-y-4">
-                  <EtapasOrdenTab
-                    conceptos={conceptos}
-                    etapaOrdenMap={etapaOrdenMap}
-                    onReorder={reorderEtapas}
-                  />
-                </TabsContent>
               </Tabs>
             </>
           )}
