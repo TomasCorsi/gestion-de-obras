@@ -837,7 +837,6 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
-                  <TabsTrigger value="orden-etapas">Orden de Sub Categorías</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
