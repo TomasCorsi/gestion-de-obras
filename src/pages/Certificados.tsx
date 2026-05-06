@@ -1320,7 +1320,13 @@ export default function Certificados() {
                         const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                         return (
                           <div key={group.etapa}>
-                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
+                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm flex items-center justify-between gap-2">
+                              <span>{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</span>
+                              <div className="flex gap-1">
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={draftGroupedEtapa[0]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, -1, "obra")} title="Subir"><ArrowUp className="w-3.5 h-3.5" /></Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={draftGroupedEtapa[draftGroupedEtapa.length - 1]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, 1, "obra")} title="Bajar"><ArrowDown className="w-3.5 h-3.5" /></Button>
+                              </div>
+                            </div>
                             <div className="overflow-hidden">
                               <Table className="text-xs">
                                <TableHeader>
