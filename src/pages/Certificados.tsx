@@ -222,16 +222,14 @@ export default function Certificados() {
   const [filtroEstado, setFiltroEstado] = useUrlState<string>({ key: "fest", defaultValue: "todos", serialize: v => v, deserialize: v => v });
   const [filtroTipo, setFiltroTipo] = useUrlState<string>({ key: "ftipo", defaultValue: "todos", serialize: v => v, deserialize: v => v });
   const [filtroBusqueda, setFiltroBusqueda] = useUrlState<string>({ key: "fq", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [filtroPeriodoDesde, setFiltroPeriodoDesde] = useUrlState<string>({ key: "fpd", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [filtroPeriodoHasta, setFiltroPeriodoHasta] = useUrlState<string>({ key: "fph", defaultValue: "", serialize: v => v, deserialize: v => v });
-  const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "cards", serialize: v => v, deserialize: v => (v === "tabla" ? "tabla" : "cards") });
+  const [filtroMes, setFiltroMes] = useUrlState<string>({ key: "fmes", defaultValue: "", serialize: v => v, deserialize: v => v });
+  const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "tabla", serialize: v => v, deserialize: v => (v === "cards" ? "cards" : "tabla") });
 
   const certificadosFiltrados = certificados.filter((c) => {
     if (filtroEstado !== "todos" && c.estado !== filtroEstado) return false;
     if (filtroTipo !== "todos" && c.tipo !== filtroTipo) return false;
     if (filtroBusqueda && !c.numero.toLowerCase().includes(filtroBusqueda.toLowerCase())) return false;
-    if (filtroPeriodoDesde && c.periodo < filtroPeriodoDesde) return false;
-    if (filtroPeriodoHasta && c.periodo > filtroPeriodoHasta) return false;
+    if (filtroMes && c.periodo !== filtroMes) return false;
     return true;
   });
 
@@ -778,6 +776,29 @@ export default function Certificados() {
   const draftMixtoObraGrouped = groupByEtapa(draftMixtoObra, etapaOrdenMap);
   const draftMixtoServicioGrouped = groupByCategoria(draftMixtoServicio);
 
+  // Move an etapa within itemsDraft (visual order in this certificate) and persist globally
+  const moveEtapaInDraft = (etapa: string, dir: -1 | 1, scope: "obra" | "mixto-obra") => {
+    const filterFn = scope === "obra"
+      ? (i: CertificadoItemForm) => !i.seccion || i.seccion === "obra"
+      : (i: CertificadoItemForm) => i.seccion === "obra";
+    const groups = scope === "obra" ? draftGroupedEtapa : draftMixtoObraGrouped;
+    const etapasOrden = groups.map((g) => g.etapa);
+    const idx = etapasOrden.indexOf(etapa);
+    const swap = idx + dir;
+    if (idx < 0 || swap < 0 || swap >= etapasOrden.length) return;
+    [etapasOrden[idx], etapasOrden[swap]] = [etapasOrden[swap], etapasOrden[idx]];
+
+    const scoped = itemsDraft.filter(filterFn);
+    const others = itemsDraft.filter((i) => !filterFn(i));
+    const reorderedScoped = etapasOrden.flatMap((e) =>
+      scoped.filter((i) => (i.etapa || "Sin etapa") === e)
+    );
+    setItemsDraft([...reorderedScoped, ...others]);
+
+    reorderEtapas(etapasOrden.map((e, i) => ({ etapa: e, orden: i }))).catch(() => {});
+  };
+
+
   // Group view items
   const viewItemsWithCat = viewItems.map((item) => ({
     ...item,
@@ -839,7 +860,6 @@ export default function Certificados() {
                 <TabsList>
                   <TabsTrigger value="certificados">Certificados</TabsTrigger>
                   <TabsTrigger value="conceptos">Conceptos</TabsTrigger>
-                  <TabsTrigger value="orden-etapas">Orden de Sub Categorías</TabsTrigger>
                 </TabsList>
 
                 {/* ==================== CERTIFICADOS TAB ==================== */}
@@ -879,12 +899,13 @@ export default function Certificados() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs">Período desde</Label>
-                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoDesde} onChange={(e) => setFiltroPeriodoDesde(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Período hasta</Label>
-                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoHasta} onChange={(e) => setFiltroPeriodoHasta(e.target.value)} />
+                        <Label className="text-xs">Mes</Label>
+                        <div className="flex gap-1">
+                          <Input type="month" className="h-8 text-xs w-36" value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} />
+                          {filtroMes && (
+                            <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFiltroMes("")}>Limpiar</Button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-1 ml-auto">
                         <Button type="button" variant={vistaListado === "cards" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("cards")}>
@@ -1164,14 +1185,6 @@ export default function Certificados() {
                   )}
                 </TabsContent>
 
-                {/* ==================== ORDEN DE ETAPAS TAB ==================== */}
-                <TabsContent value="orden-etapas" className="space-y-4">
-                  <EtapasOrdenTab
-                    conceptos={conceptos}
-                    etapaOrdenMap={etapaOrdenMap}
-                    onReorder={reorderEtapas}
-                  />
-                </TabsContent>
               </Tabs>
             </>
           )}
@@ -1307,7 +1320,13 @@ export default function Certificados() {
                         const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                         return (
                           <div key={group.etapa}>
-                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
+                            <div className="bg-muted px-3 py-2 rounded-t-md font-semibold text-sm flex items-center justify-between gap-2">
+                              <span>{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</span>
+                              <div className="flex gap-1">
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={draftGroupedEtapa[0]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, -1, "obra")} title="Subir"><ArrowUp className="w-3.5 h-3.5" /></Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" disabled={draftGroupedEtapa[draftGroupedEtapa.length - 1]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, 1, "obra")} title="Bajar"><ArrowDown className="w-3.5 h-3.5" /></Button>
+                              </div>
+                            </div>
                             <div className="overflow-hidden">
                               <Table className="text-xs">
                                <TableHeader>
@@ -1401,7 +1420,13 @@ export default function Certificados() {
                             const groupAvanceActual = group.items.reduce((s, i) => s + i.subtotal, 0);
                             return (
                               <div key={group.etapa}>
-                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1">{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</div>
+                                <div className="bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground border-l-2 border-primary/40 ml-2 mt-1 flex items-center justify-between gap-2">
+                                  <span>{group.items[0]?.categoria ? `${group.items[0].categoria} > ${group.etapa}` : group.etapa}</span>
+                                  <div className="flex gap-1">
+                                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" disabled={draftMixtoObraGrouped[0]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, -1, "mixto-obra")} title="Subir"><ArrowUp className="w-3 h-3" /></Button>
+                                    <Button type="button" variant="ghost" size="icon" className="h-5 w-5" disabled={draftMixtoObraGrouped[draftMixtoObraGrouped.length - 1]?.etapa === group.etapa} onClick={() => moveEtapaInDraft(group.etapa, 1, "mixto-obra")} title="Bajar"><ArrowDown className="w-3 h-3" /></Button>
+                                  </div>
+                                </div>
                                 <div className="overflow-hidden">
                                   <Table className="text-xs">
                                     <TableHeader>
@@ -2415,97 +2440,3 @@ function ConceptoRow({
   );
 }
 
-// ---- Etapas Orden Tab Component ----
-
-function EtapasOrdenTab({
-  conceptos,
-  etapaOrdenMap,
-  onReorder,
-}: {
-  conceptos: { id: string; etapa: string | null; orden: number }[];
-  etapaOrdenMap: Record<string, number>;
-  onReorder: (etapaOrder: { etapa: string; orden: number }[]) => Promise<void>;
-}) {
-  // Derive unique etapas sorted by current orden
-  const etapas = Object.entries(etapaOrdenMap)
-    .sort(([, a], [, b]) => a - b)
-    .map(([etapa]) => etapa);
-
-  const [saving, setSaving] = useState(false);
-
-  const moveEtapa = async (index: number, direction: "up" | "down") => {
-    if (direction === "up" && index === 0) return;
-    if (direction === "down" && index === etapas.length - 1) return;
-
-    const newEtapas = [...etapas];
-    const swapIdx = direction === "up" ? index - 1 : index + 1;
-    [newEtapas[index], newEtapas[swapIdx]] = [newEtapas[swapIdx], newEtapas[index]];
-
-    setSaving(true);
-    try {
-      await onReorder(newEtapas.map((etapa, i) => ({ etapa, orden: i })));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (etapas.length === 0) {
-    return (
-      <Card>
-        <CardContent className="py-8 text-center text-muted-foreground">
-          No hay sub categorías definidas. Asigná sub categorías a los conceptos en la pestaña "Conceptos".
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        Ordená las sub categorías como quieras que aparezcan en el certificado y el PDF.
-      </p>
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-16 text-center">#</TableHead>
-              <TableHead>Sub Categoría</TableHead>
-              <TableHead className="text-center">Conceptos</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {etapas.map((etapa, idx) => {
-              const count = conceptos.filter((c) => (c.etapa || "Sin etapa") === etapa).length;
-              return (
-                <TableRow key={etapa}>
-                  <TableCell className="text-center font-medium text-muted-foreground">{idx + 1}</TableCell>
-                  <TableCell className="font-medium">{etapa}</TableCell>
-                  <TableCell className="text-center text-muted-foreground">{count}</TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={idx === 0 || saving}
-                      onClick={() => moveEtapa(idx, "up")}
-                    >
-                      <ArrowUp className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={idx === etapas.length - 1 || saving}
-                      onClick={() => moveEtapa(idx, "down")}
-                    >
-                      <ArrowDown className="w-4 h-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </Card>
-    </div>
-  );
-}
