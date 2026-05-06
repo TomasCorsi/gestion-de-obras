@@ -877,12 +877,13 @@ export default function Certificados() {
                         </Select>
                       </div>
                       <div>
-                        <Label className="text-xs">Período desde</Label>
-                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoDesde} onChange={(e) => setFiltroPeriodoDesde(e.target.value)} />
-                      </div>
-                      <div>
-                        <Label className="text-xs">Período hasta</Label>
-                        <Input type="month" className="h-8 text-xs w-36" value={filtroPeriodoHasta} onChange={(e) => setFiltroPeriodoHasta(e.target.value)} />
+                        <Label className="text-xs">Mes</Label>
+                        <div className="flex gap-1">
+                          <Input type="month" className="h-8 text-xs w-36" value={filtroMes} onChange={(e) => setFiltroMes(e.target.value)} />
+                          {filtroMes && (
+                            <Button type="button" variant="ghost" size="sm" className="h-8 px-2 text-xs" onClick={() => setFiltroMes("")}>Limpiar</Button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex gap-1 ml-auto">
                         <Button type="button" variant={vistaListado === "cards" ? "default" : "outline"} size="sm" onClick={() => setVistaListado("cards")}>
