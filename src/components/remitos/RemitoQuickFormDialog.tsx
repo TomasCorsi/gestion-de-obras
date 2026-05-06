@@ -173,6 +173,31 @@ export function RemitoQuickFormDialog({
     }
   }, [open, editingRemito]);
 
+  // Buffers de texto para campos decimales (permite escribir "0.", "1,", etc.)
+  const [cantUniStr, setCantUniStr] = useState<string>("");
+  const [precioUniStr, setPrecioUniStr] = useState<string>("");
+
+  useEffect(() => {
+    if (open) {
+      const cu = editingRemito?.cantidad_uni ?? 0;
+      const pu = editingRemito?.precio_unitario ?? 0;
+      setCantUniStr(cu ? String(cu) : "");
+      setPrecioUniStr(pu ? String(pu) : "");
+    }
+  }, [open, editingRemito]);
+
+  const handleDecimalChange = (
+    raw: string,
+    setStr: (s: string) => void,
+    field: string,
+  ) => {
+    const normalized = raw.replace(",", ".");
+    if (normalized !== "" && !/^[0-9]*\.?[0-9]*$/.test(normalized)) return;
+    setStr(raw);
+    const num = normalized === "" || normalized === "." ? 0 : parseFloat(normalized);
+    set(field, isNaN(num) ? 0 : num);
+  };
+
   const isDirty = useMemo(() => {
     const initial = getInitialForm();
     return JSON.stringify(form) !== JSON.stringify(initial);
@@ -369,13 +394,8 @@ export function RemitoQuickFormDialog({
             <Input
               type="text"
               inputMode="decimal"
-              value={form.cantidad_uni ?? ""}
-              onChange={(e) => {
-                const raw = e.target.value.replace(",", ".");
-                if (raw === "" || /^[0-9]*\.?[0-9]*$/.test(raw)) {
-                  set("cantidad_uni", raw === "" ? 0 : Number(raw));
-                }
-              }}
+              value={cantUniStr}
+              onChange={(e) => handleDecimalChange(e.target.value, setCantUniStr, "cantidad_uni")}
               className="h-9 text-sm"
             />
           </div>
@@ -404,7 +424,13 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Precio Unitario</Label>
-            <Input type="number" value={form.precio_unitario} onChange={(e) => set("precio_unitario", Number(e.target.value))} className="h-9 text-sm" min={0} step="0.01" />
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={precioUniStr}
+              onChange={(e) => handleDecimalChange(e.target.value, setPrecioUniStr, "precio_unitario")}
+              className="h-9 text-sm"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Precio Total</Label>
