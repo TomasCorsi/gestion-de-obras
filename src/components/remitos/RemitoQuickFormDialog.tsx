@@ -394,13 +394,8 @@ export function RemitoQuickFormDialog({
             <Input
               type="text"
               inputMode="decimal"
-              value={form.cantidad_uni ?? ""}
-              onChange={(e) => {
-                const raw = e.target.value.replace(",", ".");
-                if (raw === "" || /^[0-9]*\.?[0-9]*$/.test(raw)) {
-                  set("cantidad_uni", raw === "" ? 0 : Number(raw));
-                }
-              }}
+              value={cantUniStr}
+              onChange={(e) => handleDecimalChange(e.target.value, setCantUniStr, "cantidad_uni")}
               className="h-9 text-sm"
             />
           </div>
