@@ -2689,7 +2689,7 @@ function PagosTab({
         <KPICard title="Facturado" value={formatCurrency(totalFacturado)} icon={FileText} variant="primary" />
         <KPICard title="Cobrado" value={formatCurrency(totalCobrado)} icon={DollarSign} variant="success" />
         <KPICard title="Pendiente" value={formatCurrency(totalPendiente)} icon={Clock} variant="warning" />
-        <KPICard title="Vencido (>30d)" value={formatCurrency(totalVencido)} icon={Clock} variant="danger" />
+        <KPICard title="Vencido (>30d)" value={formatCurrency(totalVencido)} icon={Clock} variant="warning" />
       </div>
 
       <Card>
