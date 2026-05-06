@@ -1266,6 +1266,16 @@ export default function Certificados() {
                   )}
                 </TabsContent>
 
+                {/* ==================== PAGOS TAB ==================== */}
+                <TabsContent value="pagos" className="space-y-4">
+                  <PagosTab
+                    certificados={certificados}
+                    allPagos={allPagos}
+                    onOpenComprobante={handleOpenComprobante}
+                    onOpenCert={openViewCert}
+                  />
+                </TabsContent>
+
               </Tabs>
             </>
           )}
