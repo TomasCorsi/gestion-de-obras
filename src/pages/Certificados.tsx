@@ -7,14 +7,21 @@ import {
   fetchAcumulados,
   CONCEPTOS_ESTANDAR,
   CATEGORIAS_CERTIFICADO,
+  METODOS_PAGO,
+  getEstadoEfectivo,
+  ESTADO_EFECTIVO_LABEL,
+  ESTADO_EFECTIVO_COLOR,
   type CertificadoItemForm,
   type CertificadoItem,
   type CertificadoPago,
   type Certificado,
   type EstadoCertificado,
+  type EstadoEfectivo,
+  type MetodoPago,
   type TipoCertificado,
   type AcumuladoConcepto,
 } from "@/hooks/useCertificados";
+import { generateReciboPDF } from "@/utils/generateReciboPDF";
 import { generateCertificadoPDF } from "@/utils/generateCertificadoPDF";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
