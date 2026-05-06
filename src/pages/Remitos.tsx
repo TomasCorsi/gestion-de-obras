@@ -153,7 +153,9 @@ export default function Remitos() {
         (r.tipo_transporte?.toLowerCase() || "").includes(term) ||
         (r.proveedor?.toLowerCase() || "").includes(term) ||
         (r.cliente?.toLowerCase() || "").includes(term) ||
-        ((r as any).cliente_destino?.toLowerCase() || "").includes(term)
+        ((r as any).cliente_destino?.toLowerCase() || "").includes(term) ||
+        (r.desde?.toLowerCase() || "").includes(term) ||
+        (r.hasta?.toLowerCase() || "").includes(term)
       ) return true;
 
       if (r.maquinaria_id) {
