@@ -173,6 +173,31 @@ export function RemitoQuickFormDialog({
     }
   }, [open, editingRemito]);
 
+  // Buffers de texto para campos decimales (permite escribir "0.", "1,", etc.)
+  const [cantUniStr, setCantUniStr] = useState<string>("");
+  const [precioUniStr, setPrecioUniStr] = useState<string>("");
+
+  useEffect(() => {
+    if (open) {
+      const cu = editingRemito?.cantidad_uni ?? 0;
+      const pu = editingRemito?.precio_unitario ?? 0;
+      setCantUniStr(cu ? String(cu) : "");
+      setPrecioUniStr(pu ? String(pu) : "");
+    }
+  }, [open, editingRemito]);
+
+  const handleDecimalChange = (
+    raw: string,
+    setStr: (s: string) => void,
+    field: string,
+  ) => {
+    const normalized = raw.replace(",", ".");
+    if (normalized !== "" && !/^[0-9]*\.?[0-9]*$/.test(normalized)) return;
+    setStr(raw);
+    const num = normalized === "" || normalized === "." ? 0 : parseFloat(normalized);
+    set(field, isNaN(num) ? 0 : num);
+  };
+
   const isDirty = useMemo(() => {
     const initial = getInitialForm();
     return JSON.stringify(form) !== JSON.stringify(initial);
