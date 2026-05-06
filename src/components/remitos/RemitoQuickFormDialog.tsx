@@ -424,7 +424,13 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Precio Unitario</Label>
-            <Input type="number" value={form.precio_unitario} onChange={(e) => set("precio_unitario", Number(e.target.value))} className="h-9 text-sm" min={0} step="0.01" />
+            <Input
+              type="text"
+              inputMode="decimal"
+              value={precioUniStr}
+              onChange={(e) => handleDecimalChange(e.target.value, setPrecioUniStr, "precio_unitario")}
+              className="h-9 text-sm"
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Precio Total</Label>
