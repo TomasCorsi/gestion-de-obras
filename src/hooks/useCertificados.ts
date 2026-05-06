@@ -35,13 +35,61 @@ export interface ConceptoForm {
   tipo?: 'obra' | 'servicio';
 }
 
+export type MetodoPago = "transferencia" | "cheque" | "efectivo" | "echeq" | "deposito" | "otro";
+
+export const METODOS_PAGO: { value: MetodoPago; label: string }[] = [
+  { value: "transferencia", label: "Transferencia" },
+  { value: "cheque", label: "Cheque" },
+  { value: "echeq", label: "eCheq" },
+  { value: "deposito", label: "Depósito" },
+  { value: "efectivo", label: "Efectivo" },
+  { value: "otro", label: "Otro" },
+];
+
 export interface CertificadoPago {
   id: string;
   certificado_id: string;
   fecha: string;
   monto: number;
   descripcion: string | null;
+  metodo: MetodoPago | null;
+  referencia: string | null;
+  banco: string | null;
+  comprobante_url: string | null;
   created_at: string;
+}
+
+export type EstadoEfectivo = "borrador" | "emitido" | "parcial" | "cobrado" | "vencido";
+
+export const ESTADO_EFECTIVO_LABEL: Record<EstadoEfectivo, string> = {
+  borrador: "Borrador",
+  emitido: "Emitido",
+  parcial: "Cobro parcial",
+  cobrado: "Cobrado",
+  vencido: "Vencido",
+};
+
+export const ESTADO_EFECTIVO_COLOR: Record<EstadoEfectivo, string> = {
+  borrador: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400",
+  emitido: "bg-blue-500/15 text-blue-700 dark:text-blue-400",
+  parcial: "bg-orange-500/15 text-orange-700 dark:text-orange-400",
+  cobrado: "bg-green-500/15 text-green-700 dark:text-green-400",
+  vencido: "bg-red-500/15 text-red-700 dark:text-red-400",
+};
+
+export function getEstadoEfectivo(
+  cert: { estado: EstadoCertificado; total: number; fecha_emision: string | null },
+  pagado: number,
+  diasVencimiento = 30
+): EstadoEfectivo {
+  if (cert.estado === "borrador") return "borrador";
+  if (pagado >= cert.total && cert.total > 0) return "cobrado";
+  if (pagado > 0) return "parcial";
+  if (cert.fecha_emision) {
+    const dias = Math.floor((Date.now() - new Date(cert.fecha_emision).getTime()) / 86400000);
+    if (dias > diasVencimiento) return "vencido";
+  }
+  return "emitido";
 }
 
 export type EstadoCertificado = "borrador" | "emitido" | "cobrado";
