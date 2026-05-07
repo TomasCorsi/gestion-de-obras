@@ -173,7 +173,7 @@ export function RemitoQuickFormDialog({
     }
   }, [open, editingRemito]);
 
-  // Buffers de texto para campos decimales (permite escribir "0.", "1,", etc.)
+  // Buffers de texto para campos decimales (permite escribir "0.", "1,", ".5", etc.)
   const [cantUniStr, setCantUniStr] = useState<string>("");
   const [precioUniStr, setPrecioUniStr] = useState<string>("");
 
@@ -186,15 +186,26 @@ export function RemitoQuickFormDialog({
     }
   }, [open, editingRemito]);
 
+  // NO rechaza input: filtra caracteres inválidos y normaliza coma->punto.
+  // Acepta múltiples separadores temporalmente; al parsear toma el primero.
   const handleDecimalChange = (
     raw: string,
     setStr: (s: string) => void,
     field: string,
   ) => {
-    const normalized = raw.replace(",", ".");
-    if (normalized !== "" && !/^[0-9]*\.?[0-9]*$/.test(normalized)) return;
-    setStr(raw);
-    const num = normalized === "" || normalized === "." ? 0 : parseFloat(normalized);
+    // Quitar todo lo que no sea dígito, punto o coma
+    let cleaned = raw.replace(/[^0-9.,]/g, "");
+    // Unificar coma en punto para mostrar consistente (opcional: dejar lo que tipea)
+    // Mantenemos el carácter original que tipeó el usuario para no sorprenderlo
+    setStr(cleaned);
+    // Para parsear: reemplazar coma por punto y dejar solo el primer separador
+    const normalized = cleaned.replace(/,/g, ".");
+    const firstDot = normalized.indexOf(".");
+    const numericStr =
+      firstDot === -1
+        ? normalized
+        : normalized.slice(0, firstDot + 1) + normalized.slice(firstDot + 1).replace(/\./g, "");
+    const num = numericStr === "" || numericStr === "." ? 0 : parseFloat(numericStr);
     set(field, isNaN(num) ? 0 : num);
   };
 
