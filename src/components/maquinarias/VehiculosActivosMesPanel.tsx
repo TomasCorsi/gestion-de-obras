@@ -37,7 +37,7 @@ interface Props {
   mantenimientos: MantRow[];
   preciosPorMesProducto: Record<string, number>;
   selectedId: string;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, mesYYYYMM: string) => void;
 }
 
 const TIPOS_VEHICULO: TipoMaquinaria[] = [
