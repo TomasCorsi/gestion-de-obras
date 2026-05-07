@@ -483,6 +483,20 @@ export function GastosMaquinaria() {
 
   return (
     <div className="space-y-5">
+      {/* Vehículos activos del mes (vista rápida) */}
+      <VehiculosActivosMesPanel
+        maquinarias={maquinarias}
+        cargas={cargasRepartidor}
+        remitos={remitos}
+        mantenimientos={mantenimientos}
+        preciosPorMesProducto={preciosPorMesProducto}
+        selectedId={selectedMaquinariaId}
+        onSelect={(id) => {
+          setSelectedMaquinariaId(id);
+          seleccionarMes(format(new Date(), "yyyy-MM"));
+        }}
+      />
+
       {/* Filtros — todo en una sola fila */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-3">
         <div className="w-full lg:w-44">
