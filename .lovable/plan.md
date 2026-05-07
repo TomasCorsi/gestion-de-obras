@@ -1,18 +1,35 @@
-## Problema
+Voy a corregir la carga y edición de remitos para que **Cant. Unitaria** acepte decimales de forma confiable con punto o coma.
 
-En `src/pages/Remitos.tsx`, el buscador (searchTerm) filtra por número, remito tercero/local, tipo de material, transporte, proveedor, cliente, cliente_destino y maquinaria — **pero no busca dentro de los campos `desde` y `hasta`**. Por eso al escribir "Canteras del Gaucho" no aparecen resultados aunque haya remitos cargados con ese origen/destino.
+Cambios propuestos:
 
-## Cambio
+1. **Reemplazar la entrada decimal por una lógica más robusta**
+   - Mantener el campo como texto controlado, pero agregar atributos explícitos para evitar restricciones del navegador:
+     - `type="text"`
+     - `inputMode="decimal"`
+     - `pattern="[0-9]*[.,]?[0-9]*"`
+     - `autoComplete="off"`
+   - Aceptar tanto `.` como `,` como separador decimal.
 
-Agregar `r.desde` y `r.hasta` al filtro de búsqueda en `filteredRemitos` (líneas 144-168 de `src/pages/Remitos.tsx`):
+2. **Normalizar antes de guardar**
+   - Convertir coma a punto internamente.
+   - Guardar el número real en `cantidad_uni`, sin redondear ni truncar.
+   - Mantener cálculos automáticos de `Cantidad Total = Cant. Unitaria × Cant. Viajes`.
 
-```ts
-(r.desde?.toLowerCase() || "").includes(term) ||
-(r.hasta?.toLowerCase() || "").includes(term) ||
-```
+3. **Evitar que el formulario pierda el decimal mientras se escribe**
+   - Permitir estados intermedios como:
+     - `0.`
+     - `0,`
+     - `.5`
+     - `,5`
+   - Mostrar lo que el usuario escribió, pero guardar numéricamente el equivalente.
 
-Con eso, escribir "Canteras del Gaucho" matcheará remitos donde aparezca como origen o destino.
+4. **Aplicar lo mismo en crear y editar**
+   - Al abrir un remito existente, cargar el valor decimal correctamente.
+   - Al crear uno nuevo, permitir escribir decimal desde cero.
 
-## Archivos afectados
+5. **Verificación**
+   - Revisar que el campo ya no use ninguna validación nativa que bloquee el separador decimal.
+   - Confirmar en el código que `cantidad_uni` llega como número decimal al guardar.
 
-- `src/pages/Remitos.tsx` (1 edit puntual en el bloque del buscador)
+Archivo a modificar:
+- `src/components/remitos/RemitoQuickFormDialog.tsx`
