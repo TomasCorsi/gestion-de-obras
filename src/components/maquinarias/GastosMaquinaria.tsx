@@ -491,9 +491,9 @@ export function GastosMaquinaria() {
         mantenimientos={mantenimientos}
         preciosPorMesProducto={preciosPorMesProducto}
         selectedId={selectedMaquinariaId}
-        onSelect={(id) => {
+        onSelect={(id, mes) => {
           setSelectedMaquinariaId(id);
-          seleccionarMes(format(new Date(), "yyyy-MM"));
+          seleccionarMes(mes);
         }}
       />
 
