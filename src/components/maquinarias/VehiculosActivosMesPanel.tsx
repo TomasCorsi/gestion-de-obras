@@ -175,7 +175,7 @@ export function VehiculosActivosMesPanel({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
           <Truck className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">
@@ -185,9 +185,23 @@ export function VehiculosActivosMesPanel({
             {vehiculosActivos.length}
           </Badge>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => setCollapsed((v) => !v)} className="text-muted-foreground gap-1">
-          {collapsed ? <><ChevronDown className="w-4 h-4" /> Mostrar</> : <><ChevronUp className="w-4 h-4" /> Ocultar</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Select value={mesSeleccionado} onValueChange={setMesSeleccionado}>
+            <SelectTrigger className="h-8 w-44 bg-background text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50">
+              {mesesDisponibles.map((m) => (
+                <SelectItem key={m.value} value={m.value} className="capitalize text-xs">
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="sm" onClick={() => setCollapsed((v) => !v)} className="text-muted-foreground gap-1">
+            {collapsed ? <><ChevronDown className="w-4 h-4" /> Mostrar</> : <><ChevronUp className="w-4 h-4" /> Ocultar</>}
+          </Button>
+        </div>
       </div>
 
       {!collapsed && (
@@ -197,7 +211,7 @@ export function VehiculosActivosMesPanel({
             return (
               <button
                 key={v.id}
-                onClick={() => onSelect(v.id)}
+                onClick={() => onSelect(v.id, mesSeleccionado)}
                 className={cn(
                   "text-left rounded-lg border bg-card transition-all p-3 hover:border-primary/60 hover:shadow-md",
                   isSelected ? "border-primary ring-2 ring-primary/40" : "border-border",
