@@ -54,12 +54,20 @@ export function VehiculosActivosMesPanel({
   selectedId, onSelect,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
-  const now = new Date();
-  const desde = startOfMonth(now);
-  const hasta = endOfMonth(now);
+  const mesesDisponibles = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = subMonths(now, i);
+      return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
+    });
+  }, []);
+  const [mesSeleccionado, setMesSeleccionado] = useState<string>(mesesDisponibles[0].value);
+  const mesDate = useMemo(() => parseISO(mesSeleccionado + "-01"), [mesSeleccionado]);
+  const desde = startOfMonth(mesDate);
+  const hasta = endOfMonth(mesDate);
   const desdeStr = format(desde, "yyyy-MM-dd");
   const hastaStr = format(hasta, "yyyy-MM-dd");
-  const mesLabel = format(now, "MMMM yyyy", { locale: es });
+  const mesLabel = format(mesDate, "MMMM yyyy", { locale: es });
 
   // Active vehicles this month from partes_diarios
   const { data: partesMes = [], isLoading } = useQuery({
