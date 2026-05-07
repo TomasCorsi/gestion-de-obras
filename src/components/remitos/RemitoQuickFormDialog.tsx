@@ -441,8 +441,11 @@ export function RemitoQuickFormDialog({
             <Input
               type="text"
               inputMode="decimal"
+              pattern="[0-9]*[.,]?[0-9]*"
+              autoComplete="off"
               value={precioUniStr}
               onChange={(e) => handleDecimalChange(e.target.value, setPrecioUniStr, "precio_unitario")}
+              placeholder="0.00"
               className="h-9 text-sm"
             />
           </div>
