@@ -396,42 +396,43 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-          className="gap-2"
-        >
-          <Upload className="w-4 h-4" />
-          Importar
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setLiquidacionOpen(true)}
-          className="gap-2"
-        >
-          <FileText className="w-4 h-4" />
-          Liquidar
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setPreciosOpen(true)}
-          className="gap-2"
-        >
-          <DollarSign className="w-4 h-4" />
-          Asignar Precios
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleRecalcularClientes}
-          disabled={recalculando}
-          className="gap-2"
-        >
-          {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Recalcular Clientes
-        </Button>
-      </div>
-
-      {/* Stats */}
+        {!isSergio && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLiquidacionOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Liquidar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPreciosOpen(true)}
+              className="gap-2"
+            >
+              <DollarSign className="w-4 h-4" />
+              Asignar Precios
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRecalcularClientes}
+              disabled={recalculando}
+              className="gap-2"
+            >
+              {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Recalcular Clientes
+            </Button>
+          </>
+        )}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
