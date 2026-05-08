@@ -37,6 +37,9 @@ interface GastoUnificado {
   descripcion: string;
   costo: number;
   obra?: string;
+  cantidad?: number;
+  unidad?: string;
+  precioUnitario?: number;
 }
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
