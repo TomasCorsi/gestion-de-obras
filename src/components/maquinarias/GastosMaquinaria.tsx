@@ -452,11 +452,14 @@ export function GastosMaquinaria() {
     XLSX.utils.book_append_sheet(workbook, wsResumen, "Resumen");
 
     const detalleData = [
-      ["Fecha", "Tipo", "Descripción", "Obra", "Costo"],
+      ["Fecha", "Tipo", "Descripción", "Cantidad", "Unidad", "P. Unitario", "Obra", "Costo"],
       ...gastosUnificados.map((g) => [
         g.fecha ? format(parseISO(g.fecha), "dd/MM/yyyy") : "",
         tipoGastoConfig[g.tipo].label,
         g.descripcion,
+        g.cantidad ?? "",
+        g.unidad ?? "",
+        g.precioUnitario ?? "",
         g.obra || "-",
         g.costo,
       ]),
