@@ -87,6 +87,8 @@ export const ParteDiarioHomeView = ({
   onNuevoMantenimiento,
   onRetomarMantenimiento,
   isDiscarding = false,
+  showRemitosButton = false,
+  onIrRemitos,
 }: ParteDiarioHomeViewProps) => {
   return (
     <div className="space-y-6">
