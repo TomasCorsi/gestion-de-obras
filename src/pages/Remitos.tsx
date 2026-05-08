@@ -26,6 +26,7 @@ import {
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
@@ -39,7 +40,11 @@ import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPrecios
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
+const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+
 export default function Remitos() {
+  const { user } = useAuth();
+  const isSergio = user?.id === SERGIO_USER_ID;
   const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
@@ -391,39 +396,43 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
-        <Button
-          variant="outline"
-          onClick={() => setImportOpen(true)}
-          className="gap-2"
-        >
-          <Upload className="w-4 h-4" />
-          Importar
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setLiquidacionOpen(true)}
-          className="gap-2"
-        >
-          <FileText className="w-4 h-4" />
-          Liquidar
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setPreciosOpen(true)}
-          className="gap-2"
-        >
-          <DollarSign className="w-4 h-4" />
-          Asignar Precios
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleRecalcularClientes}
-          disabled={recalculando}
-          className="gap-2"
-        >
-          {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-          Recalcular Clientes
-        </Button>
+        {!isSergio && (
+          <>
+            <Button
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLiquidacionOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Liquidar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setPreciosOpen(true)}
+              className="gap-2"
+            >
+              <DollarSign className="w-4 h-4" />
+              Asignar Precios
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleRecalcularClientes}
+              disabled={recalculando}
+              className="gap-2"
+            >
+              {recalculando ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Recalcular Clientes
+            </Button>
+          </>
+        )}
       </div>
 
       {/* Stats */}

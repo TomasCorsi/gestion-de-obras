@@ -1793,6 +1793,7 @@ export type Database = {
           cliente: string | null
           cliente_destino: string | null
           created_at: string
+          created_by: string | null
           desde: string | null
           evidencia_url: string | null
           fecha: string
@@ -1826,6 +1827,7 @@ export type Database = {
           cliente?: string | null
           cliente_destino?: string | null
           created_at?: string
+          created_by?: string | null
           desde?: string | null
           evidencia_url?: string | null
           fecha: string
@@ -1859,6 +1861,7 @@ export type Database = {
           cliente?: string | null
           cliente_destino?: string | null
           created_at?: string
+          created_by?: string | null
           desde?: string | null
           evidencia_url?: string | null
           fecha?: string

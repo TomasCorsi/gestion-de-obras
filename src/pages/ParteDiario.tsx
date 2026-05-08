@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,8 +40,11 @@ const ROL_LABELS: Record<RolPersonal, string> = {
 
 type ViewMode = 'home' | 'form' | 'list' | 'alerts' | 'mantenimiento';
 
+const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+
 const ParteDiario = () => {
-  const { role, loading: loadingAuth } = useAuth();
+  const navigate = useNavigate();
+  const { user, role, loading: loadingAuth } = useAuth();
   const { empleado, rolPersonal, loading: loadingEmpleado } = useEmpleadoProfile();
   const { 
     partes = [], 
@@ -369,6 +373,8 @@ const ParteDiario = () => {
               onNextDayMec={handleNextDayMec}
               onEditMantenimiento={handleRetomarMantenimiento}
               onDeleteMantenimiento={(mant) => setDeletingMantenimiento(mant)}
+              showRemitosButton={user?.id === SERGIO_USER_ID}
+              onIrRemitos={() => navigate('/remitos')}
             />
             {isMecanico && (
               <DeleteConfirmDialog

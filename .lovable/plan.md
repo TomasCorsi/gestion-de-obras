@@ -1,25 +1,54 @@
-## Mostrar cantidad y precio unitario de remitos en el detalle de gastos
+## Objetivo
 
-En `src/components/maquinarias/GastosMaquinaria.tsx`, la tabla "Detalle de Gastos" sólo muestra el costo total. Para los remitos hay que exponer la cantidad (m2, m3, viajes, etc.) y el precio unitario que ya están en la tabla `remitos` (`cantidad_uni`, `unidad`, `precio_unitario`, `precio_calc_mode`, `cantidad_viajes`, `cantidad`).
+Agregar un botón en la vista de parte diario de **SERGIO GARCIA** (capataz, legajo 178, user_id `c92028bd-dd42-416d-8892-f00b5ef90f8f`) que lo lleve a la sección de Remitos, donde solo verá y podrá editar los remitos que él mismo cargue. Arranca con lista vacía (los remitos viejos no son suyos).
 
-### Cambios
+## Cambios
 
-1. **Tipo `GastoUnificado`**: agregar campos opcionales `cantidad?: number`, `unidad?: string`, `precioUnitario?: number` para que los tres tipos puedan informar (los de combustible y mantenimiento dejan en blanco lo que no aplica).
+### 1. Base de datos — columna `created_by` y RLS específica
 
-2. **Construcción de `gastosUnificados` (línea ~376)**:
-   - **Remito**: 
-     - Si `precio_calc_mode === "viajes"` → `cantidad = cantidad_viajes`, `unidad = "viajes"`, `precioUnitario = precio_unitario` (o `precio_total / cantidad_viajes` si está vacío).
-     - Si no → `cantidad = cantidad_uni ?? cantidad`, `unidad = unidad` (m2, m3, tn, etc.), `precioUnitario = precio_unitario` (o `precio_total / cantidad`).
-     - Quitar el "- N viaje(s)" del string de descripción (queda redundante con la nueva columna).
-   - **Combustible**: `cantidad = litros`, `unidad = "L"`, `precioUnitario` = precio del mes.
-   - **Mantenimiento**: dejar los campos vacíos.
+- Agregar columna `created_by uuid` a `public.remitos` (nullable, indexada).
+- Trigger `BEFORE INSERT` que setee `created_by = auth.uid()` cuando viene null.
+- **Backfill**: dejar todos los existentes en `null` → Sergio arranca con lista vacía.
 
-3. **Tabla** (líneas 810-852):
-   - Insertar dos columnas nuevas entre "Descripción" y "Operador": **"Cantidad"** (`{cantidad?.toLocaleString()} {unidad}`) y **"P. Unitario"** (`$${precioUnitario?.toLocaleString()}`), alineadas a la derecha y monoespaciadas como "Costo".
-   - Mostrar "—" cuando no haya valor.
+### 2. Políticas RLS de `remitos`
 
-4. **Export Excel** (línea ~414): agregar las mismas dos columnas al detalle exportado para mantener paridad.
+Mantener todas las políticas actuales (admin/capataz/maquinista global SELECT/remitero) sin cambios, y **agregar** políticas específicas solo para el user_id de Sergio:
 
-### Resultado
+- `Sergio can manage own remitos` (ALL): `USING (auth.uid() = 'c92028bd-dd42-416d-8892-f00b5ef90f8f' AND created_by = auth.uid())`.
+- `Sergio can insert remitos` (INSERT): `WITH CHECK (auth.uid() = 'c92028bd-dd42-416d-8892-f00b5ef90f8f')`.
 
-En el detalle se ve, por cada remito, por ejemplo: `120 m3 · $4.500 · $540.000 total`, permitiendo verificar precios unitarios de m2/m3/viajes directamente sin abrir el remito.
+Esto le da permiso de cargar/editar/borrar sus propios remitos sin afectar a los demás maquinistas (que siguen con SELECT global).
+
+### 3. Botón en el parte diario
+
+`src/components/parte-diario/ParteDiarioHomeView.tsx`
+
+- Agregar props `showRemitosButton?: boolean` y `onIrRemitos?: () => void`.
+- Renderizar tarjeta destacada "Cargar Remitos" (icono `Receipt`, color primario) cuando esté activa.
+
+`src/pages/ParteDiario.tsx`
+
+- Constante `SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f"`.
+- `const showRemitosButton = user?.id === SERGIO_USER_ID;`
+- `onIrRemitos = () => navigate('/remitos')`.
+
+### 4. Filtrado en la vista de Remitos para Sergio
+
+`src/hooks/useRemitos.ts`
+
+- Si el `auth.uid()` es el de Sergio (chequeo client-side por UX), filtrar el query con `.eq("created_by", user.id)`. La RLS de todos modos lo enforza.
+- En `createMutation` y `batchSave.created`, incluir `created_by: user.id` defensivo.
+
+`src/pages/Remitos.tsx`
+
+- Si el user es Sergio, ocultar acciones administrativas (importación CSV, asignación masiva de precios, liquidación cliente). Mantener: agregar / editar / borrar fila.
+
+## Resumen de archivos
+
+```text
+supabase migration                                  → columna + trigger + 2 policies
+src/pages/ParteDiario.tsx                           → detectar Sergio + handler navegación
+src/components/parte-diario/ParteDiarioHomeView.tsx → botón "Cargar Remitos"
+src/hooks/useRemitos.ts                             → filtro por created_by + insert con created_by
+src/pages/Remitos.tsx                               → ocultar acciones admin para Sergio
+```

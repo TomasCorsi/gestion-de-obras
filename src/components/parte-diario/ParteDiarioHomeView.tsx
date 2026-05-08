@@ -1,4 +1,4 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell, Clock } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell, Clock, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,8 @@ interface ParteDiarioHomeViewProps {
   onNuevoMantenimiento?: () => void;
   onRetomarMantenimiento?: (mant: MantenimientoWithRelations) => void;
   isDiscarding?: boolean;
+  showRemitosButton?: boolean;
+  onIrRemitos?: () => void;
 }
 
 export const ParteDiarioHomeView = ({
@@ -85,6 +87,8 @@ export const ParteDiarioHomeView = ({
   onNuevoMantenimiento,
   onRetomarMantenimiento,
   isDiscarding = false,
+  showRemitosButton = false,
+  onIrRemitos,
 }: ParteDiarioHomeViewProps) => {
   return (
     <div className="space-y-6">
@@ -129,7 +133,20 @@ export const ParteDiarioHomeView = ({
         )}
       </div>
 
+      {/* Remitos shortcut (Sergio) */}
+      {showRemitosButton && onIrRemitos && (
+        <Button
+          onClick={onIrRemitos}
+          className="w-full h-16 gap-3"
+          size="lg"
+        >
+          <Receipt className="w-6 h-6" />
+          <span className="font-semibold">Cargar Remitos</span>
+        </Button>
+      )}
+
       {/* Mechanic buttons */}
+
       {isMecanico && (
         <div className="grid grid-cols-2 gap-3">
           <Button
