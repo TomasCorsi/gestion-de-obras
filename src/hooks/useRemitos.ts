@@ -74,13 +74,15 @@ export interface RemitoForm {
   row_color?: string | null;
 }
 
-const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
+const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+
+const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<RemitoWithRelations[]> => {
   const PAGE_SIZE = 1000;
   let allData: RemitoWithRelations[] = [];
   let from = 0;
   
   while (true) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("remitos")
       .select(`
         *,
@@ -91,6 +93,12 @@ const fetchRemitosFromDB = async (): Promise<RemitoWithRelations[]> => {
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
+
+    if (filterByUserId) {
+      query = query.eq("created_by", filterByUserId);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     if (!data || data.length === 0) break;
