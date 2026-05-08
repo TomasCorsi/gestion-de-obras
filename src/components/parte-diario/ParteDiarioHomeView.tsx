@@ -133,7 +133,20 @@ export const ParteDiarioHomeView = ({
         )}
       </div>
 
+      {/* Remitos shortcut (Sergio) */}
+      {showRemitosButton && onIrRemitos && (
+        <Button
+          onClick={onIrRemitos}
+          className="w-full h-16 gap-3"
+          size="lg"
+        >
+          <Receipt className="w-6 h-6" />
+          <span className="font-semibold">Cargar Remitos</span>
+        </Button>
+      )}
+
       {/* Mechanic buttons */}
+
       {isMecanico && (
         <div className="grid grid-cols-2 gap-3">
           <Button
