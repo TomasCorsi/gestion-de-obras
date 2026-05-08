@@ -138,13 +138,24 @@ export function useRemitos() {
     };
   }, [queryClient, debouncedInvalidate]);
 
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserId(data.user?.id ?? null);
+    });
+  }, []);
+
+  const isSergio = currentUserId === SERGIO_USER_ID;
+  const filterUserId = isSergio ? currentUserId : null;
+
   const { 
     data: remitos = [], 
     isLoading: loading,
     refetch: fetchRemitos 
-  } = useQuery({
-    queryKey: ['remitos'],
-    queryFn: fetchRemitosFromDB,
+  } = useQuery<RemitoWithRelations[]>({
+    queryKey: ['remitos', filterUserId],
+    queryFn: () => fetchRemitosFromDB(filterUserId),
+    enabled: currentUserId !== null,
   });
 
   const createMutation = useMutation({
