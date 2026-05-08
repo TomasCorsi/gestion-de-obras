@@ -47,6 +47,8 @@ interface ParteDiarioHomeViewProps {
   onNuevoMantenimiento?: () => void;
   onRetomarMantenimiento?: (mant: MantenimientoWithRelations) => void;
   isDiscarding?: boolean;
+  showRemitosButton?: boolean;
+  onIrRemitos?: () => void;
 }
 
 export const ParteDiarioHomeView = ({
