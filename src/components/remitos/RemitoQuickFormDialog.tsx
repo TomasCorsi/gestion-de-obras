@@ -38,6 +38,7 @@ const TIPO_MATERIAL_OPTIONS = [
 const TIPO_TRANSPORTE_OPTIONS = [
   "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu",
   "Patan", "Hormicret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez",
+  "Ranelga", "San-vol",
 ];
 
 const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U"];
