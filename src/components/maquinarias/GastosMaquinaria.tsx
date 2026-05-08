@@ -833,8 +833,10 @@ export function GastosMaquinaria() {
                         <TableHead className="w-[110px]">Fecha</TableHead>
                         <TableHead className="w-[130px]">Tipo</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead className="w-[160px]">Operador</TableHead>
-                        <TableHead className="w-[160px]">Obra</TableHead>
+                        <TableHead className="w-[120px] text-right">Cantidad</TableHead>
+                        <TableHead className="w-[120px] text-right">P. Unitario</TableHead>
+                        <TableHead className="w-[140px]">Operador</TableHead>
+                        <TableHead className="w-[140px]">Obra</TableHead>
                         <TableHead className="w-[120px] text-right">Costo</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -842,6 +844,12 @@ export function GastosMaquinaria() {
                       {gastosUnificados.map((gasto, idx) => {
                         const operador = gasto.tipo !== "mantenimiento"
                           ? operadorPorFecha.get(gasto.fecha) ?? "—"
+                          : "—";
+                        const cantidadTxt = gasto.cantidad && gasto.cantidad > 0
+                          ? `${gasto.cantidad.toLocaleString(undefined, { maximumFractionDigits: 2 })}${gasto.unidad ? ` ${gasto.unidad}` : ""}`
+                          : "—";
+                        const precioUnitTxt = gasto.precioUnitario && gasto.precioUnitario > 0
+                          ? `$${gasto.precioUnitario.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                           : "—";
                         return (
                           <TableRow
@@ -860,6 +868,8 @@ export function GastosMaquinaria() {
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-xs truncate text-sm">{gasto.descripcion}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{cantidadTxt}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{precioUnitTxt}</TableCell>
                             <TableCell className="text-sm text-muted-foreground truncate">{operador}</TableCell>
                             <TableCell className="text-sm text-muted-foreground truncate">{gasto.obra || "—"}</TableCell>
                             <TableCell className="text-right font-mono text-sm">
