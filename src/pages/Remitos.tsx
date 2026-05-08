@@ -26,6 +26,7 @@ import {
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
