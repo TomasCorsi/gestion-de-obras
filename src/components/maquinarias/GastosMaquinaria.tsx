@@ -366,25 +366,39 @@ export function GastosMaquinaria() {
     datosFiltrados.combustible.forEach((c) => {
       const costo = getCostoCarga(c);
       const producto = c.tipo_producto || "combustible";
+      const litros = Number(c.litros) || 0;
+      const precioUnit = litros > 0 ? costo / litros : 0;
       gastos.push({
         id: c.id,
         fecha: c.fecha || "",
         tipo: "combustible",
-        descripcion: `${c.litros?.toLocaleString() || 0} L - ${producto}`,
+        descripcion: `${litros.toLocaleString()} L - ${producto}`,
         costo,
         obra: c.obra?.nombre,
+        cantidad: litros,
+        unidad: "L",
+        precioUnitario: precioUnit,
       });
     });
 
     datosFiltrados.remitos.forEach((r) => {
       const ruta = [r.desde, r.hasta].filter(Boolean).join(" → ");
+      const modoViajes = (r.precio_calc_mode || "viajes") === "viajes";
+      const cantidad = modoViajes
+        ? Number(r.cantidad_viajes) || 0
+        : Number(r.cantidad_uni ?? r.cantidad) || 0;
+      const unidad = modoViajes ? "viajes" : (r.unidad || "");
+      const precioUnit = Number(r.precio_unitario) || (cantidad > 0 ? (r.precio_total || 0) / cantidad : 0);
       gastos.push({
         id: r.id,
         fecha: r.fecha,
         tipo: "remito",
-        descripcion: `Remito #${r.remito_local || r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""} - ${r.cantidad_viajes || 1} viaje(s)`,
+        descripcion: `Remito #${r.remito_local || r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""}`,
         costo: r.precio_total || 0,
         obra: r.obra?.nombre,
+        cantidad,
+        unidad,
+        precioUnitario: precioUnit,
       });
     });
 
