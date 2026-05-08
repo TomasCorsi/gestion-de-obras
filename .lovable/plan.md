@@ -1,21 +1,25 @@
-## Filtro por mes en el panel "Vehículos activos"
+## Mostrar cantidad y precio unitario de remitos en el detalle de gastos
 
-### Cambios en `src/components/maquinarias/VehiculosActivosMesPanel.tsx`
+En `src/components/maquinarias/GastosMaquinaria.tsx`, la tabla "Detalle de Gastos" sólo muestra el costo total. Para los remitos hay que exponer la cantidad (m2, m3, viajes, etc.) y el precio unitario que ya están en la tabla `remitos` (`cantidad_uni`, `unidad`, `precio_unitario`, `precio_calc_mode`, `cantidad_viajes`, `cantidad`).
 
-1. **Agregar selector de mes** en el header del panel (al lado del título), con los últimos 12 meses (igual lógica que `mesesDisponibles` de `GastosMaquinaria`). Default = mes actual.
-2. **Estado local `mesSeleccionado`** (`yyyy-MM`). Calcular `desdeStr` / `hastaStr` a partir de ese mes en lugar de hardcodear `new Date()`.
-3. **Query key** incluye el mes para refetch al cambiar.
-4. **Título dinámico**: "Vehículos activos · {mes seleccionado}".
-5. **Tarjeta total**: ya muestra "Total mes" — los montos se recalculan automáticamente al cambiar el mes porque dependen de `desdeStr`/`hastaStr`.
-6. **Click en tarjeta**: cuando el usuario selecciona un vehículo, en `GastosMaquinaria.tsx` se aplica también el mes elegido (no el actual). Para esto el panel expone el mes vía callback: `onSelect(id, mesYYYYMM)` y el padre lo pasa a `seleccionarMes(mesYYYYMM)`.
+### Cambios
 
-### Cambios en `src/components/maquinarias/GastosMaquinaria.tsx`
+1. **Tipo `GastoUnificado`**: agregar campos opcionales `cantidad?: number`, `unidad?: string`, `precioUnitario?: number` para que los tres tipos puedan informar (los de combustible y mantenimiento dejan en blanco lo que no aplica).
 
-- Ajustar `onSelect` del panel para recibir el mes y propagarlo a `seleccionarMes`:
-  ```tsx
-  onSelect={(id, mes) => { setSelectedMaquinariaId(id); seleccionarMes(mes); }}
-  ```
+2. **Construcción de `gastosUnificados` (línea ~376)**:
+   - **Remito**: 
+     - Si `precio_calc_mode === "viajes"` → `cantidad = cantidad_viajes`, `unidad = "viajes"`, `precioUnitario = precio_unitario` (o `precio_total / cantidad_viajes` si está vacío).
+     - Si no → `cantidad = cantidad_uni ?? cantidad`, `unidad = unidad` (m2, m3, tn, etc.), `precioUnitario = precio_unitario` (o `precio_total / cantidad`).
+     - Quitar el "- N viaje(s)" del string de descripción (queda redundante con la nueva columna).
+   - **Combustible**: `cantidad = litros`, `unidad = "L"`, `precioUnitario` = precio del mes.
+   - **Mantenimiento**: dejar los campos vacíos.
+
+3. **Tabla** (líneas 810-852):
+   - Insertar dos columnas nuevas entre "Descripción" y "Operador": **"Cantidad"** (`{cantidad?.toLocaleString()} {unidad}`) y **"P. Unitario"** (`$${precioUnitario?.toLocaleString()}`), alineadas a la derecha y monoespaciadas como "Costo".
+   - Mostrar "—" cuando no haya valor.
+
+4. **Export Excel** (línea ~414): agregar las mismas dos columnas al detalle exportado para mantener paridad.
 
 ### Resultado
 
-El usuario puede elegir cualquier mes del último año en el panel y ver inmediatamente qué camiones estuvieron activos ese mes con su liquidación de combustible, remitos y mantenimientos. Al hacer click, el detalle inferior se filtra al mismo mes.
+En el detalle se ve, por cada remito, por ejemplo: `120 m3 · $4.500 · $540.000 total`, permitiendo verificar precios unitarios de m2/m3/viajes directamente sin abrir el remito.

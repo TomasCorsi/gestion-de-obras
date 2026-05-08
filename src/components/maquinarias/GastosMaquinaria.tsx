@@ -37,6 +37,9 @@ interface GastoUnificado {
   descripcion: string;
   costo: number;
   obra?: string;
+  cantidad?: number;
+  unidad?: string;
+  precioUnitario?: number;
 }
 
 const tiposConfig: Record<TipoMaquinaria, string> = {
@@ -363,25 +366,39 @@ export function GastosMaquinaria() {
     datosFiltrados.combustible.forEach((c) => {
       const costo = getCostoCarga(c);
       const producto = c.tipo_producto || "combustible";
+      const litros = Number(c.litros) || 0;
+      const precioUnit = litros > 0 ? costo / litros : 0;
       gastos.push({
         id: c.id,
         fecha: c.fecha || "",
         tipo: "combustible",
-        descripcion: `${c.litros?.toLocaleString() || 0} L - ${producto}`,
+        descripcion: `${litros.toLocaleString()} L - ${producto}`,
         costo,
         obra: c.obra?.nombre,
+        cantidad: litros,
+        unidad: "L",
+        precioUnitario: precioUnit,
       });
     });
 
     datosFiltrados.remitos.forEach((r) => {
       const ruta = [r.desde, r.hasta].filter(Boolean).join(" → ");
+      const modoViajes = (r.precio_calc_mode || "viajes") === "viajes";
+      const cantidad = modoViajes
+        ? Number(r.cantidad_viajes) || 0
+        : Number(r.cantidad_uni ?? r.cantidad) || 0;
+      const unidad = modoViajes ? "viajes" : (r.unidad || "");
+      const precioUnit = Number(r.precio_unitario) || (cantidad > 0 ? (r.precio_total || 0) / cantidad : 0);
       gastos.push({
         id: r.id,
         fecha: r.fecha,
         tipo: "remito",
-        descripcion: `Remito #${r.remito_local || r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""} - ${r.cantidad_viajes || 1} viaje(s)`,
+        descripcion: `Remito #${r.remito_local || r.numero} - ${r.material}${ruta ? ` (${ruta})` : ""}`,
         costo: r.precio_total || 0,
         obra: r.obra?.nombre,
+        cantidad,
+        unidad,
+        precioUnitario: precioUnit,
       });
     });
 
@@ -435,11 +452,14 @@ export function GastosMaquinaria() {
     XLSX.utils.book_append_sheet(workbook, wsResumen, "Resumen");
 
     const detalleData = [
-      ["Fecha", "Tipo", "Descripción", "Obra", "Costo"],
+      ["Fecha", "Tipo", "Descripción", "Cantidad", "Unidad", "P. Unitario", "Obra", "Costo"],
       ...gastosUnificados.map((g) => [
         g.fecha ? format(parseISO(g.fecha), "dd/MM/yyyy") : "",
         tipoGastoConfig[g.tipo].label,
         g.descripcion,
+        g.cantidad ?? "",
+        g.unidad ?? "",
+        g.precioUnitario ?? "",
         g.obra || "-",
         g.costo,
       ]),
@@ -813,8 +833,10 @@ export function GastosMaquinaria() {
                         <TableHead className="w-[110px]">Fecha</TableHead>
                         <TableHead className="w-[130px]">Tipo</TableHead>
                         <TableHead>Descripción</TableHead>
-                        <TableHead className="w-[160px]">Operador</TableHead>
-                        <TableHead className="w-[160px]">Obra</TableHead>
+                        <TableHead className="w-[120px] text-right">Cantidad</TableHead>
+                        <TableHead className="w-[120px] text-right">P. Unitario</TableHead>
+                        <TableHead className="w-[140px]">Operador</TableHead>
+                        <TableHead className="w-[140px]">Obra</TableHead>
                         <TableHead className="w-[120px] text-right">Costo</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -822,6 +844,12 @@ export function GastosMaquinaria() {
                       {gastosUnificados.map((gasto, idx) => {
                         const operador = gasto.tipo !== "mantenimiento"
                           ? operadorPorFecha.get(gasto.fecha) ?? "—"
+                          : "—";
+                        const cantidadTxt = gasto.cantidad && gasto.cantidad > 0
+                          ? `${gasto.cantidad.toLocaleString(undefined, { maximumFractionDigits: 2 })}${gasto.unidad ? ` ${gasto.unidad}` : ""}`
+                          : "—";
+                        const precioUnitTxt = gasto.precioUnitario && gasto.precioUnitario > 0
+                          ? `$${gasto.precioUnitario.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
                           : "—";
                         return (
                           <TableRow
@@ -840,6 +868,8 @@ export function GastosMaquinaria() {
                               </Badge>
                             </TableCell>
                             <TableCell className="max-w-xs truncate text-sm">{gasto.descripcion}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{cantidadTxt}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{precioUnitTxt}</TableCell>
                             <TableCell className="text-sm text-muted-foreground truncate">{operador}</TableCell>
                             <TableCell className="text-sm text-muted-foreground truncate">{gasto.obra || "—"}</TableCell>
                             <TableCell className="text-right font-mono text-sm">
