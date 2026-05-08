@@ -40,8 +40,11 @@ const ROL_LABELS: Record<RolPersonal, string> = {
 
 type ViewMode = 'home' | 'form' | 'list' | 'alerts' | 'mantenimiento';
 
+const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+
 const ParteDiario = () => {
-  const { role, loading: loadingAuth } = useAuth();
+  const navigate = useNavigate();
+  const { user, role, loading: loadingAuth } = useAuth();
   const { empleado, rolPersonal, loading: loadingEmpleado } = useEmpleadoProfile();
   const { 
     partes = [], 
