@@ -373,6 +373,8 @@ const ParteDiario = () => {
               onNextDayMec={handleNextDayMec}
               onEditMantenimiento={handleRetomarMantenimiento}
               onDeleteMantenimiento={(mant) => setDeletingMantenimiento(mant)}
+              showRemitosButton={user?.id === SERGIO_USER_ID}
+              onIrRemitos={() => navigate('/remitos')}
             />
             {isMecanico && (
               <DeleteConfirmDialog
