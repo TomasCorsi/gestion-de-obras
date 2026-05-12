@@ -108,6 +108,7 @@ export function useOrdenesCompra() {
       const { data: orden, error } = await supabase
         .from("ordenes_compra")
         .insert([{
+          numero: "",
           fecha: form.fecha,
           proveedor_id: form.proveedor_id || null,
           obra_id: form.obra_id || null,
