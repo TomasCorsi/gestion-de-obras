@@ -1,74 +1,44 @@
-## Objetivo
+## Actualización masiva de precios en remitos
 
-Agregar un módulo de **Órdenes de Compra** dentro de la sección de Proveedores para registrar compras a proveedores destinadas a obras, con generación de PDF para enviar al proveedor.
+Aplico los precios del Excel sobre **todos los remitos existentes** que coincidan con cada par DESDE/HASTA (mapeando los números de obra a sus nombres exactos), más una regla por tipo de material para "Movimiento interno".
 
-## Decisiones acordadas
+### Mapeo de obras (número → nombre)
 
-- **IVA**: separado, con switch "Incluye IVA 21%" (igual que cotizaciones/certificados).
-- **Estado**: solo a nivel orden general (`borrador`, `emitida`, `recibida`, `cancelada`). Sin recepción parcial por ítem.
-- **Stock**: no se integra ahora (se evalúa más adelante).
-- **PDF**: imprimible y enviable al proveedor (logo, datos del proveedor, ítems, totales, condiciones).
+| Número | Nombre |
+|---|---|
+| 200 | La Alameda |
+| 201 | Sky Center |
+| 202 | Campo el Tatu |
+| 304 | Pride Center |
+| 321 | Talud Ceamse Tristan Suarez |
+| 331 | CANCHAS DE PADEL (GUERNICA) |
+| 337 | LOTE 306 - POLO EZEIZA |
 
-## Cambios
+### Reglas a aplicar
 
-### 1. Base de datos
+| DESDE | HASTA | Precio unit. | Modo |
+|---|---|---|---|
+| Campo el Tatu (202) | La Alameda (200) | $4.000 | Cantidad × Precio |
+| LOTE 306 - POLO EZEIZA (337) | Campo el Tatu (202) | $2.500 | Cantidad × Precio |
+| Campo el Tatu (202) | CANCHAS DE PADEL (GUERNICA) (331) | $5.000 | Cantidad × Precio |
+| Campo el Tatu (202) | Campo el Tatu (202) | $2.500 | Cantidad × Precio |
+| Pride Center (304) | Campo el Tatu (202) | $120.000 | Viajes × Precio |
+| Campo el Tatu (202) | Talud Ceamse Tristan Suarez (321) | $2.000 | Cantidad × Precio |
+| Campo el Tatu (202) | Sky Center (201) | $4.000 | Cantidad × Precio |
+| Sky Center (201) | Campo el Tatu (202) | $4.000 | Cantidad × Precio |
+| Cualquier remito con `tipo_material = 'Movimiento interno'` | — | $2.000 | Cantidad × Precio |
 
-**`ordenes_compra`**
-- `numero` text (auto OC-0001 vía trigger)
-- `fecha` date (default hoy)
-- `proveedor_id` uuid → proveedores
-- `obra_id` uuid → obras (nullable)
-- `estado` text default `borrador` (`borrador` | `emitida` | `recibida` | `cancelada`)
-- `incluir_iva` boolean default true
-- `subtotal`, `iva`, `total` numeric
-- `condiciones_pago` text, `fecha_entrega_estimada` date, `observaciones` text
-- RLS: admin y capataz gestionan todo.
+### Cómo se calculan los campos
 
-**`orden_compra_items`**
-- `orden_id` uuid → ordenes_compra (ON DELETE CASCADE)
-- `descripcion` text, `unidad` text, `cantidad` numeric, `precio_unitario` numeric, `subtotal` numeric
-- `orden` integer (para ordenamiento manual)
-- RLS: igual que la orden.
+Para cada remito coincidente actualizo:
+- `precio_unitario` = el valor de la regla
+- `precio_calc_mode` = `'cantidad'` o `'viajes'` según corresponda
+- `precio_total` = `precio_unitario × cantidad` (modo cantidad) o `precio_unitario × cantidad_viajes` (modo viajes)
 
-Trigger `BEFORE INSERT` en `ordenes_compra` para auto-numerar (OC-0001, OC-0002, …).
+### Ejecución
 
-### 2. Página Proveedores con tabs
+Una sola operación SQL con varios `UPDATE` (uno por regla) sobre la tabla `remitos`, filtrando por `desde` y `hasta` exactos en cada caso, y un `UPDATE` final por `tipo_material = 'Movimiento interno'`. Sin cambios de esquema ni de código — solo datos.
 
-Convertir `src/pages/Proveedores.tsx` en página con dos pestañas (sincronizadas con URL):
-- **Proveedores** (lo actual)
-- **Órdenes de Compra** (nuevo)
+### Verificación
 
-### 3. Módulo Órdenes de Compra
-
-Archivos nuevos:
-
-- `src/hooks/useOrdenesCompra.ts` — CRUD react-query con items anidados.
-- `src/components/proveedores/OrdenesCompraTab.tsx` — listado con filtros (proveedor, obra, estado, búsqueda por número), badges de estado.
-- `src/components/proveedores/OrdenCompraFormDialog.tsx`:
-  - Combobox proveedor, combobox obra (opcional), fecha, fecha entrega, condiciones de pago, estado.
-  - Switch "Incluye IVA 21%".
-  - Tabla de ítems editable (descripción, unidad, cantidad, precio unit., subtotal calculado, botón eliminar).
-  - Botón "Agregar ítem".
-  - Totales: subtotal, IVA (si corresponde), total — recalculados automáticamente.
-- `src/components/proveedores/OrdenCompraDetailDialog.tsx` — vista de detalle con botones "Editar", "Cambiar estado" y "Generar PDF".
-- `src/utils/generateOrdenCompraPDF.ts` — PDF jsPDF/autoTable con:
-  - Logo + encabezado "Orden de Compra N° OC-XXXX"
-  - Datos del proveedor (nombre, CUIT, dirección, contacto)
-  - Datos de la empresa emisora
-  - Obra destino (si aplica)
-  - Tabla de ítems
-  - Subtotal, IVA 21% (si incluir_iva), Total
-  - Condiciones de pago, fecha de entrega, observaciones
-  - Estilo coherente con cotizaciones.
-
-## Resumen de archivos
-
-```text
-supabase migration                                  → 2 tablas + RLS + trigger numeración
-src/pages/Proveedores.tsx                           → tabs Proveedores / Órdenes de Compra
-src/hooks/useOrdenesCompra.ts                       → CRUD órdenes + items
-src/components/proveedores/OrdenesCompraTab.tsx     → listado + filtros
-src/components/proveedores/OrdenCompraFormDialog.tsx
-src/components/proveedores/OrdenCompraDetailDialog.tsx
-src/utils/generateOrdenCompraPDF.ts                 → PDF para enviar al proveedor
-```
+Después de aplicar los cambios, hago un `SELECT` resumen agrupado por DESDE/HASTA mostrando cantidad de remitos actualizados y suma de `precio_total` para confirmar.
