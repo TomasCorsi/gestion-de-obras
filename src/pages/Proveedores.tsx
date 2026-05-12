@@ -4,7 +4,7 @@ import { useProveedores, ProveedorDB, ProveedorForm } from "@/hooks/useProveedor
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
@@ -13,8 +13,11 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Eye, Pencil, Trash2, Truck } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Plus, Search, Eye, Pencil, Trash2, Truck, FileText } from "lucide-react";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
+import { OrdenesCompraTab } from "@/components/proveedores/OrdenesCompraTab";
+import { useUrlTab } from "@/hooks/useUrlState";
 
 const emptyForm: ProveedorForm = {
   nombre: "",
