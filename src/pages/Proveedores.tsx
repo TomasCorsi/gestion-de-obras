@@ -111,7 +111,10 @@ export default function Proveedores() {
     }
   };
 
-  const [tab, setTab] = useTabState();
+  const [tab, setTab] = useUrlTab("proveedores");
+
+  if (loading) return <MainLayout title="Proveedores"><LoadingScreen /></MainLayout>;
+
 
   return (
     <MainLayout title="Proveedores">
