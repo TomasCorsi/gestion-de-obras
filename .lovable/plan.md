@@ -1,54 +1,74 @@
 ## Objetivo
 
-Agregar un botón en la vista de parte diario de **SERGIO GARCIA** (capataz, legajo 178, user_id `c92028bd-dd42-416d-8892-f00b5ef90f8f`) que lo lleve a la sección de Remitos, donde solo verá y podrá editar los remitos que él mismo cargue. Arranca con lista vacía (los remitos viejos no son suyos).
+Agregar un módulo de **Órdenes de Compra** dentro de la sección de Proveedores para registrar compras a proveedores destinadas a obras, con generación de PDF para enviar al proveedor.
+
+## Decisiones acordadas
+
+- **IVA**: separado, con switch "Incluye IVA 21%" (igual que cotizaciones/certificados).
+- **Estado**: solo a nivel orden general (`borrador`, `emitida`, `recibida`, `cancelada`). Sin recepción parcial por ítem.
+- **Stock**: no se integra ahora (se evalúa más adelante).
+- **PDF**: imprimible y enviable al proveedor (logo, datos del proveedor, ítems, totales, condiciones).
 
 ## Cambios
 
-### 1. Base de datos — columna `created_by` y RLS específica
+### 1. Base de datos
 
-- Agregar columna `created_by uuid` a `public.remitos` (nullable, indexada).
-- Trigger `BEFORE INSERT` que setee `created_by = auth.uid()` cuando viene null.
-- **Backfill**: dejar todos los existentes en `null` → Sergio arranca con lista vacía.
+**`ordenes_compra`**
+- `numero` text (auto OC-0001 vía trigger)
+- `fecha` date (default hoy)
+- `proveedor_id` uuid → proveedores
+- `obra_id` uuid → obras (nullable)
+- `estado` text default `borrador` (`borrador` | `emitida` | `recibida` | `cancelada`)
+- `incluir_iva` boolean default true
+- `subtotal`, `iva`, `total` numeric
+- `condiciones_pago` text, `fecha_entrega_estimada` date, `observaciones` text
+- RLS: admin y capataz gestionan todo.
 
-### 2. Políticas RLS de `remitos`
+**`orden_compra_items`**
+- `orden_id` uuid → ordenes_compra (ON DELETE CASCADE)
+- `descripcion` text, `unidad` text, `cantidad` numeric, `precio_unitario` numeric, `subtotal` numeric
+- `orden` integer (para ordenamiento manual)
+- RLS: igual que la orden.
 
-Mantener todas las políticas actuales (admin/capataz/maquinista global SELECT/remitero) sin cambios, y **agregar** políticas específicas solo para el user_id de Sergio:
+Trigger `BEFORE INSERT` en `ordenes_compra` para auto-numerar (OC-0001, OC-0002, …).
 
-- `Sergio can manage own remitos` (ALL): `USING (auth.uid() = 'c92028bd-dd42-416d-8892-f00b5ef90f8f' AND created_by = auth.uid())`.
-- `Sergio can insert remitos` (INSERT): `WITH CHECK (auth.uid() = 'c92028bd-dd42-416d-8892-f00b5ef90f8f')`.
+### 2. Página Proveedores con tabs
 
-Esto le da permiso de cargar/editar/borrar sus propios remitos sin afectar a los demás maquinistas (que siguen con SELECT global).
+Convertir `src/pages/Proveedores.tsx` en página con dos pestañas (sincronizadas con URL):
+- **Proveedores** (lo actual)
+- **Órdenes de Compra** (nuevo)
 
-### 3. Botón en el parte diario
+### 3. Módulo Órdenes de Compra
 
-`src/components/parte-diario/ParteDiarioHomeView.tsx`
+Archivos nuevos:
 
-- Agregar props `showRemitosButton?: boolean` y `onIrRemitos?: () => void`.
-- Renderizar tarjeta destacada "Cargar Remitos" (icono `Receipt`, color primario) cuando esté activa.
-
-`src/pages/ParteDiario.tsx`
-
-- Constante `SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f"`.
-- `const showRemitosButton = user?.id === SERGIO_USER_ID;`
-- `onIrRemitos = () => navigate('/remitos')`.
-
-### 4. Filtrado en la vista de Remitos para Sergio
-
-`src/hooks/useRemitos.ts`
-
-- Si el `auth.uid()` es el de Sergio (chequeo client-side por UX), filtrar el query con `.eq("created_by", user.id)`. La RLS de todos modos lo enforza.
-- En `createMutation` y `batchSave.created`, incluir `created_by: user.id` defensivo.
-
-`src/pages/Remitos.tsx`
-
-- Si el user es Sergio, ocultar acciones administrativas (importación CSV, asignación masiva de precios, liquidación cliente). Mantener: agregar / editar / borrar fila.
+- `src/hooks/useOrdenesCompra.ts` — CRUD react-query con items anidados.
+- `src/components/proveedores/OrdenesCompraTab.tsx` — listado con filtros (proveedor, obra, estado, búsqueda por número), badges de estado.
+- `src/components/proveedores/OrdenCompraFormDialog.tsx`:
+  - Combobox proveedor, combobox obra (opcional), fecha, fecha entrega, condiciones de pago, estado.
+  - Switch "Incluye IVA 21%".
+  - Tabla de ítems editable (descripción, unidad, cantidad, precio unit., subtotal calculado, botón eliminar).
+  - Botón "Agregar ítem".
+  - Totales: subtotal, IVA (si corresponde), total — recalculados automáticamente.
+- `src/components/proveedores/OrdenCompraDetailDialog.tsx` — vista de detalle con botones "Editar", "Cambiar estado" y "Generar PDF".
+- `src/utils/generateOrdenCompraPDF.ts` — PDF jsPDF/autoTable con:
+  - Logo + encabezado "Orden de Compra N° OC-XXXX"
+  - Datos del proveedor (nombre, CUIT, dirección, contacto)
+  - Datos de la empresa emisora
+  - Obra destino (si aplica)
+  - Tabla de ítems
+  - Subtotal, IVA 21% (si incluir_iva), Total
+  - Condiciones de pago, fecha de entrega, observaciones
+  - Estilo coherente con cotizaciones.
 
 ## Resumen de archivos
 
 ```text
-supabase migration                                  → columna + trigger + 2 policies
-src/pages/ParteDiario.tsx                           → detectar Sergio + handler navegación
-src/components/parte-diario/ParteDiarioHomeView.tsx → botón "Cargar Remitos"
-src/hooks/useRemitos.ts                             → filtro por created_by + insert con created_by
-src/pages/Remitos.tsx                               → ocultar acciones admin para Sergio
+supabase migration                                  → 2 tablas + RLS + trigger numeración
+src/pages/Proveedores.tsx                           → tabs Proveedores / Órdenes de Compra
+src/hooks/useOrdenesCompra.ts                       → CRUD órdenes + items
+src/components/proveedores/OrdenesCompraTab.tsx     → listado + filtros
+src/components/proveedores/OrdenCompraFormDialog.tsx
+src/components/proveedores/OrdenCompraDetailDialog.tsx
+src/utils/generateOrdenCompraPDF.ts                 → PDF para enviar al proveedor
 ```

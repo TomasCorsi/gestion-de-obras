@@ -1325,6 +1325,119 @@ export type Database = {
           },
         ]
       }
+      orden_compra_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          descripcion: string
+          id: string
+          orden: number
+          orden_id: string
+          precio_unitario: number
+          subtotal: number
+          unidad: string
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string
+          descripcion: string
+          id?: string
+          orden?: number
+          orden_id: string
+          precio_unitario?: number
+          subtotal?: number
+          unidad?: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          descripcion?: string
+          id?: string
+          orden?: number
+          orden_id?: string
+          precio_unitario?: number
+          subtotal?: number
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orden_compra_items_orden_id_fkey"
+            columns: ["orden_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_compra"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ordenes_compra: {
+        Row: {
+          condiciones_pago: string | null
+          created_at: string
+          estado: string
+          fecha: string
+          fecha_entrega_estimada: string | null
+          id: string
+          incluir_iva: boolean
+          iva: number
+          numero: string
+          obra_id: string | null
+          observaciones: string | null
+          proveedor_id: string | null
+          subtotal: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          condiciones_pago?: string | null
+          created_at?: string
+          estado?: string
+          fecha?: string
+          fecha_entrega_estimada?: string | null
+          id?: string
+          incluir_iva?: boolean
+          iva?: number
+          numero: string
+          obra_id?: string | null
+          observaciones?: string | null
+          proveedor_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          condiciones_pago?: string | null
+          created_at?: string
+          estado?: string
+          fecha?: string
+          fecha_entrega_estimada?: string | null
+          id?: string
+          incluir_iva?: boolean
+          iva?: number
+          numero?: string
+          obra_id?: string | null
+          observaciones?: string | null
+          proveedor_id?: string | null
+          subtotal?: number
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ordenes_compra_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ordenes_compra_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       otros_gastos: {
         Row: {
           categoria: string
