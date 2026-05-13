@@ -105,6 +105,8 @@ export function RemitoQuickFormDialog({
   onSubmit,
   editingRemito,
 }: RemitoQuickFormDialogProps) {
+  const { user } = useAuth();
+  const isFranco = user?.id === FRANCO_USER_ID;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
