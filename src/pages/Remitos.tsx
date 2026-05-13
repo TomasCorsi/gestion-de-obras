@@ -207,6 +207,7 @@ export default function Remitos() {
       precio_calc_mode: r.precio_calc_mode || "viajes",
       proveedor: r.proveedor || "",
       observaciones: r.observaciones || "",
+      forma_pago: (r as any).forma_pago || "",
     });
     setFormOpen(true);
   };
