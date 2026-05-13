@@ -72,6 +72,7 @@ export interface RemitoForm {
   cantidad_uni?: number | null;
   precio_unitario?: number | null;
   precio_calc_mode?: string | null;
+  forma_pago?: string | null;
   row_color?: string | null;
 }
 
