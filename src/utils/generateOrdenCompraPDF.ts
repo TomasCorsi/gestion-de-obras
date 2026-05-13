@@ -13,12 +13,9 @@ const EMPRESA_INFO = {
   email: "calamimasur@hotmail.com",
 };
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("es-AR", {
-    style: "currency",
-    currency: "ARS",
-    maximumFractionDigits: 2,
-  }).format(value || 0);
+function formatCurrency(value: number, moneda: string = "ARS"): string {
+  const sym = moneda === "USD" ? "US$" : "$";
+  return `${sym} ${(value || 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 function loadImageAsBase64(url: string): Promise<{ base64: string; width: number; height: number }> {
@@ -41,6 +38,12 @@ function loadImageAsBase64(url: string): Promise<{ base64: string; width: number
 }
 
 export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): Promise<void> {
+  const moneda = (orden.moneda as string) || "ARS";
+  const monedaLabel = moneda === "USD" ? "Dólares (USD)" : "Pesos (ARS)";
+  const ivaPct = Number(orden.iva_porcentaje ?? 21);
+  const percIva = Number(orden.percepcion_iva ?? 0);
+  const percIibb = Number(orden.percepcion_iibb ?? 0);
+
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 12;
@@ -87,7 +90,11 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(`Fecha: ${formatDate(orden.fecha)}`, pageWidth - margin, yPos, { align: "right" });
-  yPos += 7;
+  yPos += 5;
+  doc.setFont("helvetica", "bold");
+  doc.text(`Moneda: ${monedaLabel}`, pageWidth - margin, yPos, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  yPos += 5;
 
   // Proveedor block
   doc.setFillColor(245, 245, 245);
@@ -119,8 +126,8 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
     it.descripcion,
     it.unidad,
     Number(it.cantidad).toLocaleString("es-AR", { maximumFractionDigits: 2 }),
-    formatCurrency(it.precio_unitario),
-    formatCurrency((it.cantidad || 0) * (it.precio_unitario || 0)),
+    formatCurrency(it.precio_unitario, moneda),
+    formatCurrency((it.cantidad || 0) * (it.precio_unitario || 0), moneda),
   ]);
 
   autoTable(doc, {
@@ -154,12 +161,24 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text("Subtotal:", totalsX, yPos);
-  doc.text(formatCurrency(orden.subtotal), pageWidth - margin, yPos, { align: "right" });
+  doc.text(formatCurrency(orden.subtotal, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 5;
 
-  if (orden.incluir_iva) {
-    doc.text("IVA 21%:", totalsX, yPos);
-    doc.text(formatCurrency(orden.iva), pageWidth - margin, yPos, { align: "right" });
+  if (orden.incluir_iva && Number(orden.iva) > 0) {
+    doc.text(`IVA ${ivaPct}%:`, totalsX, yPos);
+    doc.text(formatCurrency(orden.iva, moneda), pageWidth - margin, yPos, { align: "right" });
+    yPos += 5;
+  }
+
+  if (percIva > 0) {
+    doc.text("Percepción IVA:", totalsX, yPos);
+    doc.text(formatCurrency(percIva, moneda), pageWidth - margin, yPos, { align: "right" });
+    yPos += 5;
+  }
+
+  if (percIibb > 0) {
+    doc.text("Percepción IIBB:", totalsX, yPos);
+    doc.text(formatCurrency(percIibb, moneda), pageWidth - margin, yPos, { align: "right" });
     yPos += 5;
   }
 
@@ -169,7 +188,7 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.text("TOTAL:", totalsX, yPos + 1);
-  doc.text(formatCurrency(orden.total), pageWidth - margin, yPos + 1, { align: "right" });
+  doc.text(formatCurrency(orden.total, moneda), pageWidth - margin, yPos + 1, { align: "right" });
   doc.setTextColor(0, 0, 0);
   yPos += 12;
 

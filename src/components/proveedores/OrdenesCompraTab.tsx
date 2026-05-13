@@ -148,7 +148,8 @@ export function OrdenesCompraTab() {
                     <TableCell>{o.proveedor?.nombre || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{o.obra?.nombre || "—"}</TableCell>
                     <TableCell className="text-right font-semibold">
-                      {Number(o.total).toLocaleString("es-AR", { style: "currency", currency: "ARS" })}
+                      {`${(o.moneda === "USD" ? "US$" : "$")} ${Number(o.total).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                      {o.moneda === "USD" && <Badge variant="outline" className="ml-2 text-xs">USD</Badge>}
                     </TableCell>
                     <TableCell>
                       <Select
