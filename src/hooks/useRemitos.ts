@@ -146,9 +146,8 @@ export function useRemitos() {
     });
   }, []);
 
-  const isSergio = currentUserId === SERGIO_USER_ID;
-  const filterUserId = isSergio ? currentUserId : null;
-
+  const isOwnOnly = currentUserId === SERGIO_USER_ID || currentUserId === FRANCO_USER_ID;
+  const filterUserId = isOwnOnly ? currentUserId : null;
   const { 
     data: remitos = [], 
     isLoading: loading,
