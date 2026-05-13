@@ -26,6 +26,9 @@ import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
 import { ProveedorDB } from "@/hooks/useProveedores";
+import { useAuth } from "@/hooks/useAuth";
+
+const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 const TIPO_MATERIAL_OPTIONS = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
