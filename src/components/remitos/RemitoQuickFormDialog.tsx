@@ -305,6 +305,7 @@ export function RemitoQuickFormDialog({
         precio_calc_mode: form.precio_calc_mode,
         proveedor: form.proveedor || undefined,
         observaciones: form.observaciones || undefined,
+        forma_pago: form.forma_pago || null,
       };
       if (editingRemito) {
         remito.id = editingRemito.id;
