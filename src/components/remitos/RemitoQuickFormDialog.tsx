@@ -68,6 +68,7 @@ export interface RemitoEditData {
   precio_calc_mode: string;
   proveedor: string;
   observaciones: string;
+  forma_pago: string;
 }
 
 interface RemitoQuickFormDialogProps {
