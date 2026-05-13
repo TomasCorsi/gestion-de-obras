@@ -1379,9 +1379,13 @@ export type Database = {
           id: string
           incluir_iva: boolean
           iva: number
+          iva_porcentaje: number
+          moneda: string
           numero: string
           obra_id: string | null
           observaciones: string | null
+          percepcion_iibb: number
+          percepcion_iva: number
           proveedor_id: string | null
           subtotal: number
           total: number
@@ -1396,9 +1400,13 @@ export type Database = {
           id?: string
           incluir_iva?: boolean
           iva?: number
+          iva_porcentaje?: number
+          moneda?: string
           numero: string
           obra_id?: string | null
           observaciones?: string | null
+          percepcion_iibb?: number
+          percepcion_iva?: number
           proveedor_id?: string | null
           subtotal?: number
           total?: number
@@ -1413,9 +1421,13 @@ export type Database = {
           id?: string
           incluir_iva?: boolean
           iva?: number
+          iva_porcentaje?: number
+          moneda?: string
           numero?: string
           obra_id?: string | null
           observaciones?: string | null
+          percepcion_iibb?: number
+          percepcion_iva?: number
           proveedor_id?: string | null
           subtotal?: number
           total?: number
