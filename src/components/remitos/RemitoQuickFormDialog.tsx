@@ -465,6 +465,20 @@ export function RemitoQuickFormDialog({
           </div>
           <div />
 
+          {/* === FORMA DE PAGO === */}
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Forma de Pago</Label>
+            <Select value={form.forma_pago || "__none__"} onValueChange={(v) => set("forma_pago", v === "__none__" ? "" : v)}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin especificar</SelectItem>
+                <SelectItem value="efectivo">Efectivo</SelectItem>
+                <SelectItem value="transferencia">Transferencia</SelectItem>
+                <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* === OBSERVACIONES === */}
           <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
             <Label className="text-xs truncate block">Observaciones</Label>
