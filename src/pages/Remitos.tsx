@@ -399,7 +399,7 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
-        {!isSergio && (
+        {!isOwnOnly && (
           <>
             <Button
               variant="outline"
