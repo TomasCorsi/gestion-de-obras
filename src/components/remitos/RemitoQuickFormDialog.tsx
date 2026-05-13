@@ -129,9 +129,9 @@ export function RemitoQuickFormDialog({
       fecha: today(),
       remito_tercero: "",
       remito_local: "",
-      desde: "",
+      desde: isFranco ? "Cantera San Vicente" : "",
       hasta: "",
-      tipo_material: "",
+      tipo_material: isFranco ? "Tosca" : "",
       tipo_transporte: "",
       maquinaria_id: "",
       patente_tercero: "",
@@ -143,9 +143,10 @@ export function RemitoQuickFormDialog({
       unidad: "M3",
       precio_unitario: 0,
       precio_total: 0,
-      precio_calc_mode: "viajes",
+      precio_calc_mode: isFranco ? "cantidad" : "viajes",
       proveedor: "",
       observaciones: "",
+      forma_pago: "",
     };
   }
 
