@@ -75,6 +75,7 @@ export interface RemitoForm {
 }
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<RemitoWithRelations[]> => {
   const PAGE_SIZE = 1000;
