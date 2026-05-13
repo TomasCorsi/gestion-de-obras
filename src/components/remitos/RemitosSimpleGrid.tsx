@@ -100,6 +100,12 @@ export function RemitosSimpleGrid({
                   <TableCell className="py-2 text-right">{r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-"}</TableCell>
                   <TableCell className="py-2 text-right">${(r.precio_total || 0).toLocaleString("es-AR")}</TableCell>
                   <TableCell className="py-2">{r.proveedor || "-"}</TableCell>
+                  <TableCell className="py-2">{(() => {
+                    const fp = (r as any).forma_pago;
+                    if (!fp) return "-";
+                    if (fp === "cuenta_corriente") return "Cta. Corriente";
+                    return fp.charAt(0).toUpperCase() + fp.slice(1);
+                  })()}</TableCell>
                   <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
                   <TableCell className="py-2">
                     <div className="flex items-center gap-1 justify-center">
