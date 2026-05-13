@@ -67,6 +67,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[70px] text-right">P. Unit.</TableHead>
               <TableHead className="text-xs min-w-[80px] text-right">P. Total</TableHead>
               <TableHead className="text-xs min-w-[100px]">Proveedor</TableHead>
+              <TableHead className="text-xs min-w-[110px]">Forma Pago</TableHead>
               <TableHead className="text-xs min-w-[130px]">Observaciones</TableHead>
               <TableHead className="text-xs w-[80px] text-center">Acciones</TableHead>
             </TableRow>
@@ -74,7 +75,7 @@ export function RemitosSimpleGrid({
           <TableBody>
             {remitos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={20} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={21} className="text-center text-muted-foreground py-8">
                   No hay remitos para mostrar
                 </TableCell>
               </TableRow>
@@ -99,6 +100,12 @@ export function RemitosSimpleGrid({
                   <TableCell className="py-2 text-right">{r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-"}</TableCell>
                   <TableCell className="py-2 text-right">${(r.precio_total || 0).toLocaleString("es-AR")}</TableCell>
                   <TableCell className="py-2">{r.proveedor || "-"}</TableCell>
+                  <TableCell className="py-2">{(() => {
+                    const fp = (r as any).forma_pago;
+                    if (!fp) return "-";
+                    if (fp === "cuenta_corriente") return "Cta. Corriente";
+                    return fp.charAt(0).toUpperCase() + fp.slice(1);
+                  })()}</TableCell>
                   <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
                   <TableCell className="py-2">
                     <div className="flex items-center gap-1 justify-center">

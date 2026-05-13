@@ -26,6 +26,9 @@ import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
 import { ProveedorDB } from "@/hooks/useProveedores";
+import { useAuth } from "@/hooks/useAuth";
+
+const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 const TIPO_MATERIAL_OPTIONS = [
   "Residuos", "Desmonte", "Cascote", "Escombro", "Tierra", "Piedra",
@@ -65,6 +68,7 @@ export interface RemitoEditData {
   precio_calc_mode: string;
   proveedor: string;
   observaciones: string;
+  forma_pago: string;
 }
 
 interface RemitoQuickFormDialogProps {
@@ -101,6 +105,8 @@ export function RemitoQuickFormDialog({
   onSubmit,
   editingRemito,
 }: RemitoQuickFormDialogProps) {
+  const { user } = useAuth();
+  const isFranco = user?.id === FRANCO_USER_ID;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
@@ -123,9 +129,9 @@ export function RemitoQuickFormDialog({
       fecha: today(),
       remito_tercero: "",
       remito_local: "",
-      desde: "",
+      desde: isFranco ? "Cantera San Vicente" : "",
       hasta: "",
-      tipo_material: "",
+      tipo_material: isFranco ? "Tosca" : "",
       tipo_transporte: "",
       maquinaria_id: "",
       patente_tercero: "",
@@ -137,9 +143,10 @@ export function RemitoQuickFormDialog({
       unidad: "M3",
       precio_unitario: 0,
       precio_total: 0,
-      precio_calc_mode: "viajes",
+      precio_calc_mode: isFranco ? "cantidad" : "viajes",
       proveedor: "",
       observaciones: "",
+      forma_pago: "",
     };
   }
 
@@ -167,6 +174,7 @@ export function RemitoQuickFormDialog({
           precio_calc_mode: editingRemito.precio_calc_mode || "viajes",
           proveedor: editingRemito.proveedor || "",
           observaciones: editingRemito.observaciones || "",
+          forma_pago: editingRemito.forma_pago || "",
         });
       } else {
         setForm(getInitialForm());
@@ -297,6 +305,7 @@ export function RemitoQuickFormDialog({
         precio_calc_mode: form.precio_calc_mode,
         proveedor: form.proveedor || undefined,
         observaciones: form.observaciones || undefined,
+        forma_pago: form.forma_pago || null,
       };
       if (editingRemito) {
         remito.id = editingRemito.id;
@@ -455,6 +464,20 @@ export function RemitoQuickFormDialog({
             <Input type="number" value={form.precio_total} readOnly className="h-9 text-sm bg-muted" />
           </div>
           <div />
+
+          {/* === FORMA DE PAGO === */}
+          <div className="space-y-1.5">
+            <Label className="text-xs truncate block">Forma de Pago</Label>
+            <Select value={form.forma_pago || "__none__"} onValueChange={(v) => set("forma_pago", v === "__none__" ? "" : v)}>
+              <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">Sin especificar</SelectItem>
+                <SelectItem value="efectivo">Efectivo</SelectItem>
+                <SelectItem value="transferencia">Transferencia</SelectItem>
+                <SelectItem value="cuenta_corriente">Cuenta Corriente</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
           {/* === OBSERVACIONES === */}
           <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">

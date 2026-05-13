@@ -35,6 +35,7 @@ export interface RemitoDB {
   cantidad_uni: number | null;
   precio_unitario: number | null;
   precio_calc_mode: string | null;
+  forma_pago: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -71,10 +72,12 @@ export interface RemitoForm {
   cantidad_uni?: number | null;
   precio_unitario?: number | null;
   precio_calc_mode?: string | null;
+  forma_pago?: string | null;
   row_color?: string | null;
 }
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<RemitoWithRelations[]> => {
   const PAGE_SIZE = 1000;
@@ -145,9 +148,8 @@ export function useRemitos() {
     });
   }, []);
 
-  const isSergio = currentUserId === SERGIO_USER_ID;
-  const filterUserId = isSergio ? currentUserId : null;
-
+  const isOwnOnly = currentUserId === SERGIO_USER_ID || currentUserId === FRANCO_USER_ID;
+  const filterUserId = isOwnOnly ? currentUserId : null;
   const { 
     data: remitos = [], 
     isLoading: loading,

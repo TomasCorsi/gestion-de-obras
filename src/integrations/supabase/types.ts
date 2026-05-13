@@ -1923,6 +1923,7 @@ export type Database = {
           evidencia_url: string | null
           fecha: string
           firmado: boolean
+          forma_pago: string | null
           hasta: string | null
           id: string
           maquinaria_id: string | null
@@ -1957,6 +1958,7 @@ export type Database = {
           evidencia_url?: string | null
           fecha: string
           firmado?: boolean
+          forma_pago?: string | null
           hasta?: string | null
           id?: string
           maquinaria_id?: string | null
@@ -1991,6 +1993,7 @@ export type Database = {
           evidencia_url?: string | null
           fecha?: string
           firmado?: boolean
+          forma_pago?: string | null
           hasta?: string | null
           id?: string
           maquinaria_id?: string | null

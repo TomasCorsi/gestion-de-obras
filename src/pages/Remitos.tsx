@@ -41,10 +41,13 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
+const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 export default function Remitos() {
   const { user } = useAuth();
   const isSergio = user?.id === SERGIO_USER_ID;
+  const isFranco = user?.id === FRANCO_USER_ID;
+  const isOwnOnly = isSergio || isFranco;
   const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
@@ -204,6 +207,7 @@ export default function Remitos() {
       precio_calc_mode: r.precio_calc_mode || "viajes",
       proveedor: r.proveedor || "",
       observaciones: r.observaciones || "",
+      forma_pago: (r as any).forma_pago || "",
     });
     setFormOpen(true);
   };
@@ -396,7 +400,7 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
-        {!isSergio && (
+        {!isOwnOnly && (
           <>
             <Button
               variant="outline"
