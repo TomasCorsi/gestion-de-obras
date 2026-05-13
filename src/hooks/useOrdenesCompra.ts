@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export type EstadoOrdenCompra = "borrador" | "emitida" | "recibida" | "cancelada";
+export type MonedaOrdenCompra = "ARS" | "USD";
 
 export interface OrdenCompraItemDB {
   id: string;
@@ -34,6 +35,10 @@ export interface OrdenCompraDB {
   obra_id: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
+  iva_porcentaje: number;
+  percepcion_iva: number;
+  percepcion_iibb: number;
+  moneda: MonedaOrdenCompra;
   subtotal: number;
   iva: number;
   total: number;
@@ -65,6 +70,10 @@ export interface OrdenCompraForm {
   obra_id?: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
+  iva_porcentaje: number;
+  percepcion_iva: number;
+  percepcion_iibb: number;
+  moneda: MonedaOrdenCompra;
   condiciones_pago?: string;
   fecha_entrega_estimada?: string;
   observaciones?: string;
@@ -87,11 +96,47 @@ const fetchOrdenes = async (): Promise<OrdenCompraWithRelations[]> => {
   return (data as any) || [];
 };
 
-function calcTotales(items: OrdenCompraItemForm[], incluirIva: boolean) {
-  const subtotal = items.reduce((sum, it) => sum + (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0), 0);
-  const iva = incluirIva ? subtotal * 0.21 : 0;
-  const total = subtotal + iva;
+function calcTotales(
+  items: OrdenCompraItemForm[],
+  incluirIva: boolean,
+  ivaPct: number,
+  percIva: number,
+  percIibb: number,
+) {
+  const subtotal = items.reduce(
+    (sum, it) => sum + (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0),
+    0,
+  );
+  const iva = incluirIva ? subtotal * ((Number(ivaPct) || 0) / 100) : 0;
+  const total = subtotal + iva + (Number(percIva) || 0) + (Number(percIibb) || 0);
   return { subtotal, iva, total };
+}
+
+function buildPayload(form: OrdenCompraForm) {
+  const { subtotal, iva, total } = calcTotales(
+    form.items,
+    form.incluir_iva,
+    form.iva_porcentaje,
+    form.percepcion_iva,
+    form.percepcion_iibb,
+  );
+  return {
+    fecha: form.fecha,
+    proveedor_id: form.proveedor_id || null,
+    obra_id: form.obra_id || null,
+    estado: form.estado,
+    incluir_iva: form.incluir_iva,
+    iva_porcentaje: Number(form.iva_porcentaje) || 0,
+    percepcion_iva: Number(form.percepcion_iva) || 0,
+    percepcion_iibb: Number(form.percepcion_iibb) || 0,
+    moneda: form.moneda || "ARS",
+    subtotal,
+    iva,
+    total,
+    condiciones_pago: form.condiciones_pago?.trim() || null,
+    fecha_entrega_estimada: form.fecha_entrega_estimada || null,
+    observaciones: form.observaciones?.trim() || null,
+  };
 }
 
 export function useOrdenesCompra() {
@@ -104,23 +149,9 @@ export function useOrdenesCompra() {
 
   const createMutation = useMutation({
     mutationFn: async (form: OrdenCompraForm) => {
-      const { subtotal, iva, total } = calcTotales(form.items, form.incluir_iva);
       const { data: orden, error } = await supabase
         .from("ordenes_compra")
-        .insert([{
-          numero: "",
-          fecha: form.fecha,
-          proveedor_id: form.proveedor_id || null,
-          obra_id: form.obra_id || null,
-          estado: form.estado,
-          incluir_iva: form.incluir_iva,
-          subtotal,
-          iva,
-          total,
-          condiciones_pago: form.condiciones_pago?.trim() || null,
-          fecha_entrega_estimada: form.fecha_entrega_estimada || null,
-          observaciones: form.observaciones?.trim() || null,
-        }])
+        .insert([{ numero: "", ...buildPayload(form) }])
         .select()
         .single();
       if (error) throw error;
@@ -152,26 +183,12 @@ export function useOrdenesCompra() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, form }: { id: string; form: OrdenCompraForm }) => {
-      const { subtotal, iva, total } = calcTotales(form.items, form.incluir_iva);
       const { error } = await supabase
         .from("ordenes_compra")
-        .update({
-          fecha: form.fecha,
-          proveedor_id: form.proveedor_id || null,
-          obra_id: form.obra_id || null,
-          estado: form.estado,
-          incluir_iva: form.incluir_iva,
-          subtotal,
-          iva,
-          total,
-          condiciones_pago: form.condiciones_pago?.trim() || null,
-          fecha_entrega_estimada: form.fecha_entrega_estimada || null,
-          observaciones: form.observaciones?.trim() || null,
-        })
+        .update(buildPayload(form))
         .eq("id", id);
       if (error) throw error;
 
-      // Replace items: delete existing then insert
       const { error: delErr } = await supabase.from("orden_compra_items").delete().eq("orden_id", id);
       if (delErr) throw delErr;
 

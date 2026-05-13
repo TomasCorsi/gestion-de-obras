@@ -1,44 +1,41 @@
-## Actualización masiva de precios en remitos
+## Agregar percepciones y moneda a Órdenes de Compra
 
-Aplico los precios del Excel sobre **todos los remitos existentes** que coincidan con cada par DESDE/HASTA (mapeando los números de obra a sus nombres exactos), más una regla por tipo de material para "Movimiento interno".
+### 1. Base de datos — `ordenes_compra`
+Agregar columnas:
+- `percepcion_iva` numeric default 0 — monto en moneda de la orden
+- `percepcion_iibb` numeric default 0 — monto en moneda de la orden
+- `iva_porcentaje` numeric default 21 — alícuota IVA editable
+- `moneda` text default 'ARS' — valores `ARS` o `USD`
 
-### Mapeo de obras (número → nombre)
+El `total` se recalcula como: `subtotal + iva + percepcion_iva + percepcion_iibb`.
 
-| Número | Nombre |
-|---|---|
-| 200 | La Alameda |
-| 201 | Sky Center |
-| 202 | Campo el Tatu |
-| 304 | Pride Center |
-| 321 | Talud Ceamse Tristan Suarez |
-| 331 | CANCHAS DE PADEL (GUERNICA) |
-| 337 | LOTE 306 - POLO EZEIZA |
+### 2. Formulario (`OrdenCompraFormDialog.tsx`)
+- **Selector de moneda** arriba (al lado de la fecha): `Pesos (ARS)` / `Dólares (USD)`. Cambia el símbolo mostrado en todos los inputs/labels de monto.
+- En la sección de totales:
+  - Switch "Incluir IVA" (existente) + input "% IVA" (default 21, editable, solo si está activo)
+  - Input **"Percepción IVA"** — monto absoluto en la moneda elegida (default 0)
+  - Input **"Percepción IIBB"** — monto absoluto en la moneda elegida (default 0, lo carga el usuario según lo que indique el proveedor)
+  - Resumen en vivo: Subtotal / IVA X% / Perc. IVA / Perc. IIBB / **TOTAL** — todo con el símbolo de la moneda elegida.
 
-### Reglas a aplicar
+### 3. Hook (`useOrdenesCompra.ts`)
+- Tipos: agregar `moneda`, `iva_porcentaje`, `percepcion_iva`, `percepcion_iibb` en `OrdenCompraDB` y `OrdenCompraForm`.
+- `calcTotales()`: recibe `iva_porcentaje`, `percepcion_iva`, `percepcion_iibb`; devuelve subtotal, iva, total con todo sumado.
+- `createOrden` / `updateOrden`: persistir los nuevos campos.
 
-| DESDE | HASTA | Precio unit. | Modo |
-|---|---|---|---|
-| Campo el Tatu (202) | La Alameda (200) | $4.000 | Cantidad × Precio |
-| LOTE 306 - POLO EZEIZA (337) | Campo el Tatu (202) | $2.500 | Cantidad × Precio |
-| Campo el Tatu (202) | CANCHAS DE PADEL (GUERNICA) (331) | $5.000 | Cantidad × Precio |
-| Campo el Tatu (202) | Campo el Tatu (202) | $2.500 | Cantidad × Precio |
-| Pride Center (304) | Campo el Tatu (202) | $120.000 | Viajes × Precio |
-| Campo el Tatu (202) | Talud Ceamse Tristan Suarez (321) | $2.000 | Cantidad × Precio |
-| Campo el Tatu (202) | Sky Center (201) | $4.000 | Cantidad × Precio |
-| Sky Center (201) | Campo el Tatu (202) | $4.000 | Cantidad × Precio |
-| Cualquier remito con `tipo_material = 'Movimiento interno'` | — | $2.000 | Cantidad × Precio |
+### 4. Listado (`OrdenesCompraTab.tsx`)
+- Mostrar el total formateado según la moneda de la orden (US$ o $) en lugar de forzar ARS.
+- (Opcional pequeño) badge "USD" al lado del número cuando la moneda es dólares para identificar visualmente.
 
-### Cómo se calculan los campos
+### 5. PDF (`generateOrdenCompraPDF.ts`)
+- `formatCurrency()` recibe la moneda y muestra `$` (ARS) o `US$` (USD).
+- En el bloque de totales mostrar (solo si > 0):
+  - Subtotal
+  - IVA X%
+  - Percepción IVA
+  - Percepción IIBB
+  - **TOTAL** (en rojo, como ya está)
+- Indicar la moneda en el encabezado del PDF (ej: "Moneda: Dólares (USD)") para que el proveedor lo vea claro.
 
-Para cada remito coincidente actualizo:
-- `precio_unitario` = el valor de la regla
-- `precio_calc_mode` = `'cantidad'` o `'viajes'` según corresponda
-- `precio_total` = `precio_unitario × cantidad` (modo cantidad) o `precio_unitario × cantidad_viajes` (modo viajes)
-
-### Ejecución
-
-Una sola operación SQL con varios `UPDATE` (uno por regla) sobre la tabla `remitos`, filtrando por `desde` y `hasta` exactos en cada caso, y un `UPDATE` final por `tipo_material = 'Movimiento interno'`. Sin cambios de esquema ni de código — solo datos.
-
-### Verificación
-
-Después de aplicar los cambios, hago un `SELECT` resumen agrupado por DESDE/HASTA mostrando cantidad de remitos actualizados y suma de `precio_total` para confirmar.
+### Comportamiento
+- Si `incluir_iva = false`, el % IVA se ignora pero las percepciones siguen siendo editables.
+- La moneda no convierte montos: solo cambia el símbolo y el rótulo. Los valores se cargan ya en la moneda elegida.
