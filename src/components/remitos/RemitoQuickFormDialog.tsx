@@ -174,6 +174,7 @@ export function RemitoQuickFormDialog({
           precio_calc_mode: editingRemito.precio_calc_mode || "viajes",
           proveedor: editingRemito.proveedor || "",
           observaciones: editingRemito.observaciones || "",
+          forma_pago: editingRemito.forma_pago || "",
         });
       } else {
         setForm(getInitialForm());
