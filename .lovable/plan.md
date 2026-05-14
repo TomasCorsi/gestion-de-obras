@@ -1,42 +1,31 @@
-## Actualizar plantilla de importación de remitos
+El panel "Vehículos activos" (en Maquinarias → Gastos) hoy solo deja elegir el mes completo. Vamos a sumar un selector de **rango de fechas** (Desde / Hasta) que se pueda combinar con el selector de mes.
 
-Voy a actualizar la función `downloadTemplate` en `src/components/remitos/CSVImportDialog.tsx` (líneas 567-587) para que la plantilla refleje exactamente los campos que hoy se usan en la importación.
+## Cambios en `src/components/maquinarias/VehiculosActivosMesPanel.tsx`
 
-### Cambios en las columnas
+1. **Agregar dos `DatePicker` (Popover + Calendar)** al lado del selector de mes:
+   - **Desde** (date) y **Hasta** (date), opcionales.
+   - Si están vacíos: se sigue usando el rango del mes seleccionado (comportamiento actual, no cambia nada para quien no los use).
+   - Si hay solo "Desde" o solo "Hasta": se usa ese día como límite y el otro extremo se toma del mes seleccionado.
+   - Si hay ambos: manda el rango Desde/Hasta y el selector de mes pasa a ser informativo (se muestra el rango en el título en vez de "agosto 2026").
+   - Botón pequeño "X" para limpiar las fechas y volver al mes.
 
-**Quitar:**
-- `Cliente` — se asigna automáticamente desde el remitero, no se carga por CSV.
-- `Proveedor` — campo legado, ya no se usa en la carga de remitos.
+2. **Recalcular `desdeStr` / `hastaStr`** a partir de ese rango efectivo. Todo lo demás (`partesMes` query, `inMonth`, agrupado de cargas/remitos/mantenimientos, totales) ya usa esas dos variables, así que no hay que tocar la lógica de cálculo.
 
-**Mantener (en este orden, alineado con el grid de remitos):**
-1. Rem. Tercero
-2. Rem. Local
-3. Fecha (dd/mm/yyyy)
-4. Desde
-5. Hasta
-6. Viajes
-7. Cantidad Uni.
-8. Cantidad total
-9. Unidad (TN, M3, KG, M2, U)
-10. Tipo (material)
-11. Calc. Precio (`viajes` o `cantidad`) — **nuevo en la plantilla**, ya se importa pero no figuraba como columna ejemplo
-12. Precio Uni.
-13. Precio Total
-14. Transporte
-15. Patente Local
-16. Patente Tercero
-17. Descripcion
+3. **Actualizar `queryKey`** para que incluya el rango efectivo (ya lo hace porque depende de `desdeStr`/`hastaStr`).
 
-### Filas de ejemplo
+4. **Título del panel**: si hay rango custom, mostrar `"Vehículos activos · 01/05/2026 → 14/05/2026"` en formato `dd/MM/yyyy`. Si no, dejar el `mesLabel` actual.
 
-Reemplazar la única fila por **3 ejemplos** que cubran los casos típicos:
-- Remito interno con transporte propio, modo `viajes` (precio = precio_uni × viajes).
-- Remito de tercero (Rem. Tercero cargado, Patente Tercero), modo `cantidad` (precio = precio_uni × cantidad_uni × viajes).
-- Remito de movimiento interno sin precio (cantera → obra), para mostrar campos opcionales vacíos.
+5. **`onSelect(id, mesYYYYMM)`**: se mantiene mandando el `mesSeleccionado` actual para no romper la integración con `GastosMaquinaria` (que llama `seleccionarMes(mes)`).
 
-### Archivos modificados
-- `src/components/remitos/CSVImportDialog.tsx` — solo la función `downloadTemplate` (headers + ejemplos). Sin cambios en el parser ni en la base de datos.
+## Notas
 
-### Verificación
-- Descargar la plantilla desde el diálogo de importación y abrirla en Excel/Sheets.
-- Re-importarla tal cual y confirmar que las 3 filas se procesan sin errores y los campos se mapean correctamente.
+- Cambio acotado a `VehiculosActivosMesPanel.tsx`, no toca `GastosMaquinaria.tsx` ni queries de otros componentes.
+- Respeta el formato `dd/mm/yyyy` global vía `format(date, "dd/MM/yyyy")`.
+- Validación simple: si `Desde > Hasta`, se ignora el rango y se vuelve a usar el mes (con un toast de aviso opcional).
+
+## Verificación
+
+- Abrir Maquinarias → tab Gastos.
+- Sin fechas: ver que el panel sigue funcionando igual mes a mes.
+- Elegir Desde = hoy y Hasta = hoy: confirmar que sólo aparecen los vehículos con parte diario en ese día y los costos coinciden.
+- Limpiar fechas: vuelve al mes completo.
