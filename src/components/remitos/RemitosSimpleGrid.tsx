@@ -1,4 +1,4 @@
-import { useMemo, useRef, useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   Table,
   TableHeader,
@@ -203,47 +203,6 @@ export function RemitosSimpleGrid({
     await onReorder(String(active.id), newOrden);
   };
 
-  const bodyScrollRef = useRef<HTMLDivElement>(null);
-  const topScrollRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLTableElement>(null);
-  const syncingRef = useRef<"top" | "body" | null>(null);
-  const [tableWidth, setTableWidth] = useState(0);
-
-  useEffect(() => {
-    const table = tableRef.current;
-    const body = bodyScrollRef.current;
-    if (!table || !body) return;
-
-    const update = () => setTableWidth(table.scrollWidth);
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(table);
-    ro.observe(body);
-    return () => ro.disconnect();
-  }, [remitos.length]);
-
-  const handleTopScroll = () => {
-    if (syncingRef.current === "body") {
-      syncingRef.current = null;
-      return;
-    }
-    if (topScrollRef.current && bodyScrollRef.current) {
-      syncingRef.current = "top";
-      bodyScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
-    }
-  };
-
-  const handleBodyScroll = () => {
-    if (syncingRef.current === "top") {
-      syncingRef.current = null;
-      return;
-    }
-    if (topScrollRef.current && bodyScrollRef.current) {
-      syncingRef.current = "body";
-      topScrollRef.current.scrollLeft = bodyScrollRef.current.scrollLeft;
-    }
-  };
-
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted-foreground">
@@ -256,26 +215,15 @@ export function RemitosSimpleGrid({
       </div>
 
       <div
-        ref={topScrollRef}
-        onScroll={handleTopScroll}
-        className="overflow-x-auto overflow-y-hidden border rounded-md"
-        style={{ height: 14 }}
-      >
-        <div style={{ width: tableWidth, height: 1 }} />
-      </div>
-
-      <div
-        ref={bodyScrollRef}
-        onScroll={handleBodyScroll}
         className="overflow-auto border rounded-md"
-        style={{ height: "calc(100vh - 380px)", minHeight: "400px" }}
+        style={{ height: "calc(100vh - 360px)", minHeight: "400px" }}
       >
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <Table ref={tableRef}>
+          <Table>
             <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
               <TableRow className="bg-muted/95 hover:bg-muted/95">
                 <TableHead className="text-xs w-[30px] px-1"></TableHead>
