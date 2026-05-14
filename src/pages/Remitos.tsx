@@ -69,9 +69,17 @@ export default function Remitos() {
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
+  const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
+
+  // Distinct created_by ids in remitos
+  const creadorIds = useMemo(
+    () => [...new Set(remitos.map(r => (r as any).created_by).filter(Boolean) as string[])],
+    [remitos]
+  );
+  const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
   // Unique tipo_material values for filter
   const tiposUnicos = useMemo(() => {
