@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  Table,
   TableHeader,
   TableBody,
   TableRow,
