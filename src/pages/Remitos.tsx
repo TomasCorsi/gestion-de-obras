@@ -159,6 +159,11 @@ export default function Remitos() {
       result = result.filter(r => r.tipo_material === tipoFilter);
     }
 
+    // Filter by creator (admin/capataz only)
+    if (creadorFilter && creadorFilter !== "__all__") {
+      result = result.filter(r => (r as any).created_by === creadorFilter);
+    }
+
     if (!searchTerm) return result;
 
     const term = searchTerm.toLowerCase();
