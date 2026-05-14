@@ -387,6 +387,21 @@ export default function Remitos() {
             ))}
           </SelectContent>
         </Select>
+        {isAdminOrCapataz && (
+          <Select value={creadorFilter} onValueChange={setCreadorFilter}>
+            <SelectTrigger className="w-[220px] bg-card">
+              <SelectValue placeholder="Cargado por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos los usuarios</SelectItem>
+              {creadorIds.map((uid) => (
+                <SelectItem key={uid} value={uid}>
+                  {creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Actions Bar */}
