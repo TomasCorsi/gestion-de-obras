@@ -78,7 +78,7 @@ export function RemitosSimpleGrid({
           <TableBody>
             {remitos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={21} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={creadoresMap ? 22 : 21} className="text-center text-muted-foreground py-8">
                   No hay remitos para mostrar
                 </TableCell>
               </TableRow>
