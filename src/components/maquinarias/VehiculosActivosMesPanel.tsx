@@ -64,12 +64,21 @@ export function VehiculosActivosMesPanel({
     });
   }, []);
   const [mesSeleccionado, setMesSeleccionado] = useState<string>(mesesDisponibles[0].value);
+  const [desdeCustom, setDesdeCustom] = useState<Date | undefined>(undefined);
+  const [hastaCustom, setHastaCustom] = useState<Date | undefined>(undefined);
   const mesDate = useMemo(() => parseISO(mesSeleccionado + "-01"), [mesSeleccionado]);
-  const desde = startOfMonth(mesDate);
-  const hasta = endOfMonth(mesDate);
+  const mesDesde = startOfMonth(mesDate);
+  const mesHasta = endOfMonth(mesDate);
+  // Rango efectivo: si Desde > Hasta, ignorar custom y volver al mes
+  const rangoInvalido = !!(desdeCustom && hastaCustom && desdeCustom > hastaCustom);
+  const desde = !rangoInvalido && desdeCustom ? desdeCustom : mesDesde;
+  const hasta = !rangoInvalido && hastaCustom ? hastaCustom : mesHasta;
   const desdeStr = format(desde, "yyyy-MM-dd");
   const hastaStr = format(hasta, "yyyy-MM-dd");
-  const mesLabel = format(mesDate, "MMMM yyyy", { locale: es });
+  const hayRangoCustom = !rangoInvalido && (!!desdeCustom || !!hastaCustom);
+  const mesLabel = hayRangoCustom
+    ? `${format(desde, "dd/MM/yyyy")} → ${format(hasta, "dd/MM/yyyy")}`
+    : format(mesDate, "MMMM yyyy", { locale: es });
 
   // Active vehicles this month from partes_diarios
   const { data: partesMes = [], isLoading } = useQuery({
