@@ -180,9 +180,37 @@ export function VehiculosActivosMesPanel({
     );
   }
 
-  if (vehiculosActivos.length === 0) {
+  if (vehiculosActivos.length === 0 && !hayRangoCustom) {
     return null;
   }
+
+  const datePickerBtn = (label: string, value: Date | undefined, onChange: (d: Date | undefined) => void) => (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className={cn(
+            "h-8 px-2 gap-1 text-xs bg-background",
+            !value && "text-muted-foreground",
+            rangoInvalido && value && "border-destructive text-destructive"
+          )}
+        >
+          <CalendarIcon className="w-3.5 h-3.5" />
+          {value ? format(value, "dd/MM/yyyy") : label}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0 bg-background z-50" align="start">
+        <Calendar
+          mode="single"
+          selected={value}
+          onSelect={onChange}
+          initialFocus
+          className={cn("p-3 pointer-events-auto")}
+        />
+      </PopoverContent>
+    </Popover>
+  );
 
   return (
     <div className="space-y-3">
@@ -190,13 +218,16 @@ export function VehiculosActivosMesPanel({
         <div className="flex items-center gap-2">
           <Truck className="w-4 h-4 text-primary" />
           <h3 className="text-sm font-semibold text-foreground">
-            Vehículos activos · <span className="capitalize">{mesLabel}</span>
+            Vehículos activos · <span className={cn(!hayRangoCustom && "capitalize")}>{mesLabel}</span>
           </h3>
           <Badge variant="outline" className="text-xs">
             {vehiculosActivos.length}
           </Badge>
+          {rangoInvalido && (
+            <span className="text-[11px] text-destructive">Rango inválido</span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Select value={mesSeleccionado} onValueChange={setMesSeleccionado}>
             <SelectTrigger className="h-8 w-44 bg-background text-xs">
               <SelectValue />
@@ -209,11 +240,32 @@ export function VehiculosActivosMesPanel({
               ))}
             </SelectContent>
           </Select>
+          {datePickerBtn("Desde", desdeCustom, setDesdeCustom)}
+          {datePickerBtn("Hasta", hastaCustom, setHastaCustom)}
+          {(desdeCustom || hastaCustom) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setDesdeCustom(undefined); setHastaCustom(undefined); }}
+              className="h-8 px-2 text-muted-foreground"
+              title="Limpiar fechas"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => setCollapsed((v) => !v)} className="text-muted-foreground gap-1">
             {collapsed ? <><ChevronDown className="w-4 h-4" /> Mostrar</> : <><ChevronUp className="w-4 h-4" /> Ocultar</>}
           </Button>
         </div>
       </div>
+
+      {!collapsed && vehiculosActivos.length === 0 && (
+        <Card className="card-industrial">
+          <CardContent className="p-6 text-center text-sm text-muted-foreground">
+            Sin vehículos activos en el rango seleccionado.
+          </CardContent>
+        </Card>
+      )}
 
       {!collapsed && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
