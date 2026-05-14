@@ -36,6 +36,7 @@ export interface RemitoDB {
   precio_unitario: number | null;
   precio_calc_mode: string | null;
   forma_pago: string | null;
+  created_by: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
