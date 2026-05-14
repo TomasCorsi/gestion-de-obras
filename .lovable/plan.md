@@ -1,31 +1,28 @@
-El panel "Vehículos activos" (en Maquinarias → Gastos) hoy solo deja elegir el mes completo. Vamos a sumar un selector de **rango de fechas** (Desde / Hasta) que se pueda combinar con el selector de mes.
+## Problema
 
-## Cambios en `src/components/maquinarias/VehiculosActivosMesPanel.tsx`
+El `<thead>` de la grilla de remitos (`RemitosSimpleGrid.tsx`) tiene `sticky top-0`, pero no se queda fijo al hacer scroll porque el componente `<Table>` de shadcn envuelve la tabla en su propio `<div className="relative w-full overflow-auto">`. Eso crea un segundo contenedor de scroll **dentro** del contenedor externo (`height: calc(100vh - 360px); overflow:auto`), y el sticky se ancla al wrapper interno (que no scrollea verticalmente) en lugar del externo.
 
-1. **Agregar dos `DatePicker` (Popover + Calendar)** al lado del selector de mes:
-   - **Desde** (date) y **Hasta** (date), opcionales.
-   - Si están vacíos: se sigue usando el rango del mes seleccionado (comportamiento actual, no cambia nada para quien no los use).
-   - Si hay solo "Desde" o solo "Hasta": se usa ese día como límite y el otro extremo se toma del mes seleccionado.
-   - Si hay ambos: manda el rango Desde/Hasta y el selector de mes pasa a ser informativo (se muestra el rango en el título en vez de "agosto 2026").
-   - Botón pequeño "X" para limpiar las fechas y volver al mes.
+## Solución
 
-2. **Recalcular `desdeStr` / `hastaStr`** a partir de ese rango efectivo. Todo lo demás (`partesMes` query, `inMonth`, agrupado de cargas/remitos/mantenimientos, totales) ya usa esas dos variables, así que no hay que tocar la lógica de cálculo.
+En `src/components/remitos/RemitosSimpleGrid.tsx`, reemplazar el componente `<Table>` de shadcn por una `<table>` HTML nativa para que el `sticky top-0` del `<TableHeader>` se ancle al contenedor externo con `overflow-auto` que sí scrollea.
 
-3. **Actualizar `queryKey`** para que incluya el rango efectivo (ya lo hace porque depende de `desdeStr`/`hastaStr`).
+### Cambios
 
-4. **Título del panel**: si hay rango custom, mostrar `"Vehículos activos · 01/05/2026 → 14/05/2026"` en formato `dd/MM/yyyy`. Si no, dejar el `mesLabel` actual.
+1. Quitar el import de `Table` (mantener `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`).
+2. Dentro del div con `overflow-auto` y altura calculada, reemplazar:
+   ```tsx
+   <Table>...</Table>
+   ```
+   por:
+   ```tsx
+   <table className="w-full caption-bottom text-sm border-collapse">...</table>
+   ```
+3. Reforzar el `TableHeader` con clases que aseguren el sticky correctamente:
+   - `sticky top-0 z-20 bg-muted` (ya existe)
+   - Agregar fondo opaco a cada `<TableHead>` (`bg-muted`) para evitar que se transparente sobre las filas que pasan por debajo durante el scroll.
 
-5. **`onSelect(id, mesYYYYMM)`**: se mantiene mandando el `mesSeleccionado` actual para no romper la integración con `GastosMaquinaria` (que llama `seleccionarMes(mes)`).
+### Verificación
 
-## Notas
-
-- Cambio acotado a `VehiculosActivosMesPanel.tsx`, no toca `GastosMaquinaria.tsx` ni queries de otros componentes.
-- Respeta el formato `dd/mm/yyyy` global vía `format(date, "dd/MM/yyyy")`.
-- Validación simple: si `Desde > Hasta`, se ignora el rango y se vuelve a usar el mes (con un toast de aviso opcional).
-
-## Verificación
-
-- Abrir Maquinarias → tab Gastos.
-- Sin fechas: ver que el panel sigue funcionando igual mes a mes.
-- Elegir Desde = hoy y Hasta = hoy: confirmar que sólo aparecen los vehículos con parte diario en ese día y los costos coinciden.
-- Limpiar fechas: vuelve al mes completo.
+- En el viewport actual (1311×861), scrollear hacia abajo en la grilla de remitos: el encabezado debe permanecer visible en la parte superior del contenedor.
+- El drag & drop, totales y resto del comportamiento siguen igual (no se toca lógica).
+- No afecta otras grillas: el cambio es local a `RemitosSimpleGrid.tsx`.

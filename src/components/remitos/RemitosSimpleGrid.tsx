@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import {
-  Table,
   TableHeader,
   TableBody,
   TableRow,
@@ -223,32 +222,32 @@ export function RemitosSimpleGrid({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <Table>
+          <table className="w-full caption-bottom text-sm border-collapse">
             <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
               <TableRow className="bg-muted/95 hover:bg-muted/95">
-                <TableHead className="text-xs w-[30px] px-1"></TableHead>
-                <TableHead className="text-xs min-w-[90px]">Fecha</TableHead>
-                <TableHead className="text-xs min-w-[90px]">Rem. Tercero</TableHead>
-                <TableHead className="text-xs min-w-[90px]">Rem. Local</TableHead>
-                <TableHead className="text-xs min-w-[140px]">Desde</TableHead>
-                <TableHead className="text-xs min-w-[140px]">Hasta</TableHead>
-                <TableHead className="text-xs min-w-[100px]">Tipo</TableHead>
-                <TableHead className="text-xs min-w-[100px]">Transporte</TableHead>
-                <TableHead className="text-xs min-w-[130px]">Vehículo</TableHead>
-                <TableHead className="text-xs min-w-[90px]">Pat. Tercero</TableHead>
-                <TableHead className="text-xs min-w-[120px]">Cli. Origen</TableHead>
-                <TableHead className="text-xs min-w-[120px]">Cli. Destino</TableHead>
-                <TableHead className="text-xs min-w-[55px] text-right">Viajes</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right">C. Uni.</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right">C. Total</TableHead>
-                <TableHead className="text-xs min-w-[55px]">Unidad</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right">P. Unit.</TableHead>
-                <TableHead className="text-xs min-w-[80px] text-right">P. Total</TableHead>
-                <TableHead className="text-xs min-w-[100px]">Proveedor</TableHead>
-                <TableHead className="text-xs min-w-[110px]">Forma Pago</TableHead>
-                <TableHead className="text-xs min-w-[130px]">Observaciones</TableHead>
-                {creadoresMap && <TableHead className="text-xs min-w-[140px]">Cargado por</TableHead>}
-                <TableHead className="text-xs w-[80px] text-center">Acciones</TableHead>
+                <TableHead className="text-xs w-[30px] px-1 bg-muted"></TableHead>
+                <TableHead className="text-xs min-w-[90px] bg-muted">Fecha</TableHead>
+                <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>
+                <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Local</TableHead>
+                <TableHead className="text-xs min-w-[140px] bg-muted">Desde</TableHead>
+                <TableHead className="text-xs min-w-[140px] bg-muted">Hasta</TableHead>
+                <TableHead className="text-xs min-w-[100px] bg-muted">Tipo</TableHead>
+                <TableHead className="text-xs min-w-[100px] bg-muted">Transporte</TableHead>
+                <TableHead className="text-xs min-w-[130px] bg-muted">Vehículo</TableHead>
+                <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
+                <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>
+                <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>
+                <TableHead className="text-xs min-w-[55px] text-right bg-muted">Viajes</TableHead>
+                <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Uni.</TableHead>
+                <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Total</TableHead>
+                <TableHead className="text-xs min-w-[55px] bg-muted">Unidad</TableHead>
+                <TableHead className="text-xs min-w-[70px] text-right bg-muted">P. Unit.</TableHead>
+                <TableHead className="text-xs min-w-[80px] text-right bg-muted">P. Total</TableHead>
+                <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>
+                <TableHead className="text-xs min-w-[110px] bg-muted">Forma Pago</TableHead>
+                <TableHead className="text-xs min-w-[130px] bg-muted">Observaciones</TableHead>
+                {creadoresMap && <TableHead className="text-xs min-w-[140px] bg-muted">Cargado por</TableHead>}
+                <TableHead className="text-xs w-[80px] text-center bg-muted">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -274,7 +273,7 @@ export function RemitosSimpleGrid({
                 </SortableContext>
               )}
             </TableBody>
-          </Table>
+          </table>
         </DndContext>
       </div>
     </div>
