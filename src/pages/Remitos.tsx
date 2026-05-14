@@ -513,6 +513,7 @@ export default function Remitos() {
           obras={obras}
           onEdit={handleEdit}
           onDelete={(id) => setDeleteId(id)}
+          creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
         />
       </div>
 
