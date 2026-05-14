@@ -26,6 +26,7 @@ import {
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import { useRemitosCreators } from "@/hooks/useRemitosCreators";
 import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -44,10 +45,11 @@ const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
 export default function Remitos() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const isSergio = user?.id === SERGIO_USER_ID;
   const isFranco = user?.id === FRANCO_USER_ID;
   const isOwnOnly = isSergio || isFranco;
+  const isAdminOrCapataz = role === "admin" || role === "capataz";
   const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
@@ -67,9 +69,17 @@ export default function Remitos() {
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
+  const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
+
+  // Distinct created_by ids in remitos
+  const creadorIds = useMemo(
+    () => [...new Set(remitos.map(r => (r as any).created_by).filter(Boolean) as string[])],
+    [remitos]
+  );
+  const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
   // Unique tipo_material values for filter
   const tiposUnicos = useMemo(() => {
@@ -149,6 +159,11 @@ export default function Remitos() {
       result = result.filter(r => r.tipo_material === tipoFilter);
     }
 
+    // Filter by creator (admin/capataz only)
+    if (creadorFilter && creadorFilter !== "__all__") {
+      result = result.filter(r => (r as any).created_by === creadorFilter);
+    }
+
     if (!searchTerm) return result;
 
     const term = searchTerm.toLowerCase();
@@ -176,7 +191,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter, obras]);
+  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter, creadorFilter, obras]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -317,6 +332,7 @@ export default function Remitos() {
       "Precio Total": r.precio_total || 0,
       "Proveedor": r.proveedor || "",
       "Observaciones": r.observaciones || "",
+      ...(isAdminOrCapataz ? { "Cargado por": (r as any).created_by ? (creadoresMap[(r as any).created_by] || "") : "" } : {}),
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
@@ -372,6 +388,21 @@ export default function Remitos() {
             ))}
           </SelectContent>
         </Select>
+        {isAdminOrCapataz && (
+          <Select value={creadorFilter} onValueChange={setCreadorFilter}>
+            <SelectTrigger className="w-[220px] bg-card">
+              <SelectValue placeholder="Cargado por" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos los usuarios</SelectItem>
+              {creadorIds.map((uid) => (
+                <SelectItem key={uid} value={uid}>
+                  {creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Actions Bar */}
@@ -483,6 +514,7 @@ export default function Remitos() {
           obras={obras}
           onEdit={handleEdit}
           onDelete={(id) => setDeleteId(id)}
+          creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
         />
       </div>
 

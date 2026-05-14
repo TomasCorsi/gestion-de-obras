@@ -19,6 +19,7 @@ interface RemitosSimpleGridProps {
   maquinarias: MaquinariaWithRelations[];
   onEdit: (remito: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
+  creadoresMap?: Record<string, string>;
 }
 
 export function RemitosSimpleGrid({
@@ -27,6 +28,7 @@ export function RemitosSimpleGrid({
   maquinarias,
   onEdit,
   onDelete,
+  creadoresMap,
 }: RemitosSimpleGridProps) {
   const maqMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -69,13 +71,14 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[100px]">Proveedor</TableHead>
               <TableHead className="text-xs min-w-[110px]">Forma Pago</TableHead>
               <TableHead className="text-xs min-w-[130px]">Observaciones</TableHead>
+              {creadoresMap && <TableHead className="text-xs min-w-[140px]">Cargado por</TableHead>}
               <TableHead className="text-xs w-[80px] text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {remitos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={21} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={creadoresMap ? 22 : 21} className="text-center text-muted-foreground py-8">
                   No hay remitos para mostrar
                 </TableCell>
               </TableRow>
@@ -107,6 +110,11 @@ export function RemitosSimpleGrid({
                     return fp.charAt(0).toUpperCase() + fp.slice(1);
                   })()}</TableCell>
                   <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
+                  {creadoresMap && (
+                    <TableCell className="py-2">
+                      {(r as any).created_by ? (creadoresMap[(r as any).created_by] || "-") : "-"}
+                    </TableCell>
+                  )}
                   <TableCell className="py-2">
                     <div className="flex items-center gap-1 justify-center">
                       <Button
