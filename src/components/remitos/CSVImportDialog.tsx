@@ -566,16 +566,29 @@ export function RemitosCSVImportDialog({ open, onOpenChange, onImport, maquinari
 
   const downloadTemplate = () => {
     const headers = [
-      "Rem. Tercero", "Rem. Local", "Fecha", "Proveedor", "Desde", "Hasta", "Cliente",
+      "Rem. Tercero", "Rem. Local", "Fecha", "Desde", "Hasta",
       "Viajes", "Cantidad Uni.", "Cantidad total", "Unidad", "Tipo",
-      "Precio Uni.", "Precio Total", "Transporte", "Patente Local", "Patente Tercero", "Descripcion"
+      "Calc. Precio", "Precio Uni.", "Precio Total",
+      "Transporte", "Patente Local", "Patente Tercero", "Descripcion"
     ].join(";");
-    const example = [
-      "00123", "REM-2026-001", "26/01/2026", "Proveedor SA", "Cantera", "Obra Centro", "Cliente SRL",
-      "3", "10", "30", "TN", "Tosca",
-      "5000", "150000", "Calamina Sur", "ABC-123", "XY-456", "Observaciones"
-    ].join(";");
-    const content = `${headers}\n${example}`;
+    const examples = [
+      // Remito interno, transporte propio, modo viajes (precio = precio_uni * viajes)
+      ["", "REM-2026-001", "26/01/2026", "Cantera San Vicente", "Obra Centro",
+        "3", "10", "30", "M3", "Tosca",
+        "viajes", "5000", "15000",
+        "Calamina Sur", "ABC-123", "", "Carga de tosca"].join(";"),
+      // Remito de tercero, modo cantidad (precio = precio_uni * cantidad_uni * viajes)
+      ["00123", "REM-2026-002", "26/01/2026", "Cantera San Vicente", "Obra Norte",
+        "2", "8", "16", "TN", "Piedra",
+        "cantidad", "1500", "24000",
+        "Geo hermanos", "", "XY-456", "Flete tercero"].join(";"),
+      // Movimiento interno sin precio
+      ["", "REM-2026-003", "27/01/2026", "Obra Norte", "Obra Sur",
+        "1", "5", "5", "M3", "Movimiento interno",
+        "viajes", "", "",
+        "Calamina Sur", "ABC-123", "", ""].join(";"),
+    ];
+    const content = `${headers}\n${examples.join("\n")}`;
     const bom = "\uFEFF";
     const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
