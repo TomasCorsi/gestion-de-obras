@@ -275,7 +275,7 @@ export function RemitosSimpleGrid({
           collisionDetection={closestCenter}
           onDragEnd={handleDragEnd}
         >
-          <Table>
+          <Table ref={tableRef}>
             <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
               <TableRow className="bg-muted/95 hover:bg-muted/95">
                 <TableHead className="text-xs w-[30px] px-1"></TableHead>
