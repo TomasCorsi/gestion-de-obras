@@ -332,6 +332,7 @@ export default function Remitos() {
       "Precio Total": r.precio_total || 0,
       "Proveedor": r.proveedor || "",
       "Observaciones": r.observaciones || "",
+      ...(isAdminOrCapataz ? { "Cargado por": (r as any).created_by ? (creadoresMap[(r as any).created_by] || "") : "" } : {}),
     }));
 
     const ws = XLSX.utils.json_to_sheet(data);
