@@ -110,6 +110,11 @@ export function RemitosSimpleGrid({
                     return fp.charAt(0).toUpperCase() + fp.slice(1);
                   })()}</TableCell>
                   <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
+                  {creadoresMap && (
+                    <TableCell className="py-2">
+                      {(r as any).created_by ? (creadoresMap[(r as any).created_by] || "-") : "-"}
+                    </TableCell>
+                  )}
                   <TableCell className="py-2">
                     <div className="flex items-center gap-1 justify-center">
                       <Button
