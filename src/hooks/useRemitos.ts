@@ -37,6 +37,7 @@ export interface RemitoDB {
   precio_calc_mode: string | null;
   forma_pago: string | null;
   created_by: string | null;
+  orden: number | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -94,6 +95,7 @@ const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<Remito
         viaje:viajes(origen, destino),
         maquinaria:maquinarias(codigo, patente)
       `)
+      .order("orden", { ascending: false, nullsFirst: false })
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -327,6 +329,19 @@ export function useRemitos() {
       deleted: string[];
     }) => {
       return await batchSaveMutation.mutateAsync(changes);
+    },
+    reorderRemito: async (id: string, newOrden: number) => {
+      const { error } = await supabase
+        .from("remitos")
+        .update({ orden: newOrden } as Record<string, unknown>)
+        .eq("id", id);
+      if (error) {
+        console.error("Error reordering remito:", error);
+        toast.error("Error al reordenar");
+        return false;
+      }
+      queryClient.invalidateQueries({ queryKey: ['remitos'] });
+      return true;
     },
     updateRowColor: async (id: string, color: string | null) => {
       const { error } = await supabase
