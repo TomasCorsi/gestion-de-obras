@@ -19,6 +19,7 @@ interface RemitosSimpleGridProps {
   maquinarias: MaquinariaWithRelations[];
   onEdit: (remito: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
+  creadoresMap?: Record<string, string>;
 }
 
 export function RemitosSimpleGrid({
@@ -27,6 +28,7 @@ export function RemitosSimpleGrid({
   maquinarias,
   onEdit,
   onDelete,
+  creadoresMap,
 }: RemitosSimpleGridProps) {
   const maqMap = useMemo(() => {
     const m: Record<string, string> = {};
