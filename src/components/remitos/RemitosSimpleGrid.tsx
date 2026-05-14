@@ -71,6 +71,7 @@ export function RemitosSimpleGrid({
               <TableHead className="text-xs min-w-[100px]">Proveedor</TableHead>
               <TableHead className="text-xs min-w-[110px]">Forma Pago</TableHead>
               <TableHead className="text-xs min-w-[130px]">Observaciones</TableHead>
+              {creadoresMap && <TableHead className="text-xs min-w-[140px]">Cargado por</TableHead>}
               <TableHead className="text-xs w-[80px] text-center">Acciones</TableHead>
             </TableRow>
           </TableHeader>
