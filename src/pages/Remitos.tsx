@@ -50,7 +50,7 @@ export default function Remitos() {
   const isFranco = user?.id === FRANCO_USER_ID;
   const isOwnOnly = isSergio || isFranco;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
-  const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos, reorderRemito } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -515,6 +515,17 @@ export default function Remitos() {
           onEdit={handleEdit}
           onDelete={(id) => setDeleteId(id)}
           creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
+          reorderEnabled={
+            !searchTerm &&
+            (tipoFilter === "__all__") &&
+            (creadorFilter === "__all__") &&
+            !filters.fechaDesde &&
+            !filters.fechaHasta &&
+            !filters.mes &&
+            !filters.obraId &&
+            !filters.maquinariaId
+          }
+          onReorder={reorderRemito}
         />
       </div>
 
