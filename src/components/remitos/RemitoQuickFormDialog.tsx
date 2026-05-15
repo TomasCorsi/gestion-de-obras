@@ -337,10 +337,12 @@ export function RemitoQuickFormDialog({
             <Label className="text-xs truncate block">Fecha</Label>
             <Input type="date" value={form.fecha} onChange={(e) => set("fecha", e.target.value)} className="h-9 text-sm" />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs truncate block">Remito Tercero</Label>
-            <Input value={form.remito_tercero} onChange={(e) => set("remito_tercero", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
-          </div>
+          {!isFranco && (
+            <div className="space-y-1.5">
+              <Label className="text-xs truncate block">Remito Tercero</Label>
+              <Input value={form.remito_tercero} onChange={(e) => set("remito_tercero", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Remito Local</Label>
             <Input value={form.remito_local} onChange={(e) => set("remito_local", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
