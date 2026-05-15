@@ -346,6 +346,22 @@ export function RemitoQuickFormDialog({
             <Input value={form.remito_local} onChange={(e) => set("remito_local", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
           </div>
 
+          {/* === CLIENTE CANTERA (solo Franco) === */}
+          {isFranco && (
+            <>
+              <SectionTitle>Cliente Cantera</SectionTitle>
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
+                <Label className="text-xs truncate block">Cliente</Label>
+                <Combobox
+                  options={clientes.filter((c) => c.activo).map((c) => ({ value: c.nombre, label: c.nombre }))}
+                  value={form.cliente_cantera}
+                  onValueChange={(v) => set("cliente_cantera", v)}
+                  placeholder="Seleccionar cliente..."
+                />
+              </div>
+            </>
+          )}
+
           {/* === LOGÍSTICA === */}
           <SectionTitle>Logística</SectionTitle>
           <div className="space-y-1.5">
