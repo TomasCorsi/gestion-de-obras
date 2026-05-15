@@ -238,7 +238,7 @@ export function RemitosSimpleGrid({
               <TableRow className="bg-muted/95 hover:bg-muted/95">
                 <TableHead className="text-xs w-[30px] px-1 bg-muted"></TableHead>
                 <TableHead className="text-xs min-w-[90px] bg-muted">Fecha</TableHead>
-                <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>
+                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>}
                 <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Local</TableHead>
                 <TableHead className="text-xs min-w-[140px] bg-muted">Desde</TableHead>
                 <TableHead className="text-xs min-w-[140px] bg-muted">Hasta</TableHead>
