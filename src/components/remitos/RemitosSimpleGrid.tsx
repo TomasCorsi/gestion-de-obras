@@ -57,7 +57,7 @@ interface RowProps {
   reorderEnabled: boolean;
 }
 
-function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, onEdit, onDelete, reorderEnabled }: RowProps) {
+function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasForFranco, onEdit, onDelete, reorderEnabled }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: r.id,
     disabled: !reorderEnabled,
