@@ -151,6 +151,7 @@ export function RemitosSimpleGrid({
   onEdit,
   onDelete,
   creadoresMap,
+  showClienteCantera = false,
   reorderEnabled = false,
   onReorder,
 }: RemitosSimpleGridProps) {
