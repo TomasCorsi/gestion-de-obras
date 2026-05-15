@@ -176,6 +176,7 @@ export function RemitoQuickFormDialog({
           proveedor: editingRemito.proveedor || "",
           observaciones: editingRemito.observaciones || "",
           forma_pago: editingRemito.forma_pago || "",
+          cliente_cantera: (editingRemito as any).cliente_cantera || "",
         });
       } else {
         setForm(getInitialForm());
