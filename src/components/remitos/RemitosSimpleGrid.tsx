@@ -246,8 +246,8 @@ export function RemitosSimpleGrid({
                 <TableHead className="text-xs min-w-[100px] bg-muted">Transporte</TableHead>
                 <TableHead className="text-xs min-w-[130px] bg-muted">Vehículo</TableHead>
                 <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
-                <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>
-                <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>
+                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>}
+                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>}
                 {showClienteCantera && (
                   <TableHead className="text-xs min-w-[140px] bg-muted">Cli. Cantera</TableHead>
                 )}
