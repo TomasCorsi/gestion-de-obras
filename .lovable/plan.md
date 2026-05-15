@@ -1,28 +1,20 @@
-## Problema
+## Plan: Apartado "CLIENTE CANTERA" exclusivo para Franco
 
-El `<thead>` de la grilla de remitos (`RemitosSimpleGrid.tsx`) tiene `sticky top-0`, pero no se queda fijo al hacer scroll porque el componente `<Table>` de shadcn envuelve la tabla en su propio `<div className="relative w-full overflow-auto">`. Eso crea un segundo contenedor de scroll **dentro** del contenedor externo (`height: calc(100vh - 360px); overflow:auto`), y el sticky se ancla al wrapper interno (que no scrollea verticalmente) en lugar del externo.
+### 1. Migración DB
+Agregar columna nueva a la tabla `remitos`:
+- `cliente_cantera text NULL` — guarda el cliente seleccionado por Franco desde el catálogo de clientes.
 
-## Solución
+### 2. Hook `useRemitos.ts`
+- Agregar `cliente_cantera?: string | null` al tipo `RemitoForm` y al mapeo de inserción/actualización (sanitizar `""` → `null`).
 
-En `src/components/remitos/RemitosSimpleGrid.tsx`, reemplazar el componente `<Table>` de shadcn por una `<table>` HTML nativa para que el `sticky top-0` del `<TableHeader>` se ancle al contenedor externo con `overflow-auto` que sí scrollea.
+### 3. Formulario `RemitoQuickFormDialog.tsx`
+- Agregar `cliente_cantera: ""` al `getInitialForm()` y al `useEffect` de edición.
+- Cuando `isFranco === true`, renderizar una nueva sección **"CLIENTE CANTERA"** (usando el componente `SectionTitle`) con un `Combobox` que lista todos los `clientes` activos (`clientes.filter(c => c.activo).map(c => ({ value: c.nombre, label: c.nombre }))`), con búsqueda.
+- Incluir el campo en el payload de `handleSubmit`.
+- Para usuarios no-Franco la sección no se renderiza, manteniendo la UI actual intacta.
 
-### Cambios
+### 4. Grilla `RemitosSimpleGrid.tsx` (opcional, sólo para Franco)
+- Mostrar la columna "Cliente Cantera" en la grilla únicamente cuando el usuario logueado sea Franco, para que pueda ver lo que cargó. Resto de usuarios no la ven.
 
-1. Quitar el import de `Table` (mantener `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`).
-2. Dentro del div con `overflow-auto` y altura calculada, reemplazar:
-   ```tsx
-   <Table>...</Table>
-   ```
-   por:
-   ```tsx
-   <table className="w-full caption-bottom text-sm border-collapse">...</table>
-   ```
-3. Reforzar el `TableHeader` con clases que aseguren el sticky correctamente:
-   - `sticky top-0 z-20 bg-muted` (ya existe)
-   - Agregar fondo opaco a cada `<TableHead>` (`bg-muted`) para evitar que se transparente sobre las filas que pasan por debajo durante el scroll.
-
-### Verificación
-
-- En el viewport actual (1311×861), scrollear hacia abajo en la grilla de remitos: el encabezado debe permanecer visible en la parte superior del contenedor.
-- El drag & drop, totales y resto del comportamiento siguen igual (no se toca lógica).
-- No afecta otras grillas: el cambio es local a `RemitosSimpleGrid.tsx`.
+### Resumen
+Sólo Franco verá un apartado nuevo "CLIENTE CANTERA" en el formulario de remito con un selector de todos los clientes de la base. El dato queda guardado en una columna nueva `cliente_cantera` sin afectar `cliente` ni `cliente_destino`.
