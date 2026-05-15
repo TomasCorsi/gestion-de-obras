@@ -257,7 +257,7 @@ export function RemitosSimpleGrid({
                 <TableHead className="text-xs min-w-[55px] bg-muted">Unidad</TableHead>
                 <TableHead className="text-xs min-w-[70px] text-right bg-muted">P. Unit.</TableHead>
                 <TableHead className="text-xs min-w-[80px] text-right bg-muted">P. Total</TableHead>
-                <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>
+                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>}
                 <TableHead className="text-xs min-w-[110px] bg-muted">Forma Pago</TableHead>
                 <TableHead className="text-xs min-w-[130px] bg-muted">Observaciones</TableHead>
                 {creadoresMap && <TableHead className="text-xs min-w-[140px] bg-muted">Cargado por</TableHead>}
