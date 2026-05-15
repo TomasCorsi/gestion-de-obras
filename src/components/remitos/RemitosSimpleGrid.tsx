@@ -38,6 +38,8 @@ interface RemitosSimpleGridProps {
   creadoresMap?: Record<string, string>;
   /** Mostrar columna Cliente Cantera (sólo Franco). */
   showClienteCantera?: boolean;
+  /** Ocultar columnas Rem. Tercero, Cli. Origen, Cli. Destino y Proveedor (sólo Franco). */
+  hideExtrasForFranco?: boolean;
   /** Si true, habilita drag & drop. */
   reorderEnabled?: boolean;
   /** Reasignar orden persistido en DB. */
@@ -49,6 +51,7 @@ interface RowProps {
   maqMap: Record<string, string>;
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
+  hideExtrasForFranco?: boolean;
   onEdit: (r: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   reorderEnabled: boolean;
