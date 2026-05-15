@@ -99,8 +99,8 @@ function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasFo
       <TableCell className="py-2">{r.tipo_transporte || "-"}</TableCell>
       <TableCell className="py-2">{r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-"}</TableCell>
       <TableCell className="py-2">{r.patente_tercero || "-"}</TableCell>
-      <TableCell className="py-2">{r.cliente || "-"}</TableCell>
-      <TableCell className="py-2">{(r as any).cliente_destino || "-"}</TableCell>
+      {!hideExtrasForFranco && <TableCell className="py-2">{r.cliente || "-"}</TableCell>}
+      {!hideExtrasForFranco && <TableCell className="py-2">{(r as any).cliente_destino || "-"}</TableCell>}
       {showClienteCantera && (
         <TableCell className="py-2">{(r as any).cliente_cantera || "-"}</TableCell>
       )}
