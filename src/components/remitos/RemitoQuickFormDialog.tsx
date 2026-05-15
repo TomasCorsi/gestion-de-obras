@@ -419,15 +419,17 @@ export function RemitoQuickFormDialog({
             <Label className="text-xs truncate block">Patente Tercero</Label>
             <Input value={form.patente_tercero} onChange={(e) => set("patente_tercero", e.target.value)} className="h-9 text-sm" placeholder="Patente..." />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs truncate block">Proveedor</Label>
-            <Combobox
-              options={proveedores.filter(p => p.activo).map(p => ({ value: p.nombre, label: p.nombre }))}
-              value={form.proveedor}
-              onValueChange={(v) => set("proveedor", v)}
-              placeholder="Proveedor..."
-            />
-          </div>
+          {!isFranco && (
+            <div className="space-y-1.5">
+              <Label className="text-xs truncate block">Proveedor</Label>
+              <Combobox
+                options={proveedores.filter(p => p.activo).map(p => ({ value: p.nombre, label: p.nombre }))}
+                value={form.proveedor}
+                onValueChange={(v) => set("proveedor", v)}
+                placeholder="Proveedor..."
+              />
+            </div>
+          )}
 
           {/* === CANTIDADES Y PRECIOS === */}
           <SectionTitle>Cantidades y Precios</SectionTitle>
