@@ -147,6 +147,7 @@ export function RemitoQuickFormDialog({
       proveedor: "",
       observaciones: "",
       forma_pago: "",
+      cliente_cantera: "",
     };
   }
 
