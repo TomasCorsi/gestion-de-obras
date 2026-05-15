@@ -280,6 +280,7 @@ export function RemitosSimpleGrid({
                       maqMap={maqMap}
                       creadoresMap={creadoresMap}
                       showClienteCantera={showClienteCantera}
+                      hideExtrasForFranco={hideExtrasForFranco}
                       onEdit={onEdit}
                       onDelete={onDelete}
                       reorderEnabled={reorderEnabled}
