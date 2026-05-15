@@ -98,6 +98,9 @@ function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, onEdit, onDe
       <TableCell className="py-2">{r.patente_tercero || "-"}</TableCell>
       <TableCell className="py-2">{r.cliente || "-"}</TableCell>
       <TableCell className="py-2">{(r as any).cliente_destino || "-"}</TableCell>
+      {showClienteCantera && (
+        <TableCell className="py-2">{(r as any).cliente_cantera || "-"}</TableCell>
+      )}
       <TableCell className="py-2 text-right">{r.cantidad_viajes || 0}</TableCell>
       <TableCell className="py-2 text-right">{r.cantidad_uni ?? "-"}</TableCell>
       <TableCell className="py-2 text-right">{r.cantidad || 0}</TableCell>
