@@ -147,6 +147,7 @@ export function RemitoQuickFormDialog({
       proveedor: "",
       observaciones: "",
       forma_pago: "",
+      cliente_cantera: "",
     };
   }
 
@@ -175,6 +176,7 @@ export function RemitoQuickFormDialog({
           proveedor: editingRemito.proveedor || "",
           observaciones: editingRemito.observaciones || "",
           forma_pago: editingRemito.forma_pago || "",
+          cliente_cantera: (editingRemito as any).cliente_cantera || "",
         });
       } else {
         setForm(getInitialForm());
@@ -306,6 +308,7 @@ export function RemitoQuickFormDialog({
         proveedor: form.proveedor || undefined,
         observaciones: form.observaciones || undefined,
         forma_pago: form.forma_pago || null,
+        cliente_cantera: form.cliente_cantera || null,
       };
       if (editingRemito) {
         remito.id = editingRemito.id;
@@ -342,6 +345,22 @@ export function RemitoQuickFormDialog({
             <Label className="text-xs truncate block">Remito Local</Label>
             <Input value={form.remito_local} onChange={(e) => set("remito_local", e.target.value)} className="h-9 text-sm" placeholder="Nro..." />
           </div>
+
+          {/* === CLIENTE CANTERA (solo Franco) === */}
+          {isFranco && (
+            <>
+              <SectionTitle>Cliente Cantera</SectionTitle>
+              <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
+                <Label className="text-xs truncate block">Cliente</Label>
+                <Combobox
+                  options={clientes.filter((c) => c.activo).map((c) => ({ value: c.nombre, label: c.nombre }))}
+                  value={form.cliente_cantera}
+                  onValueChange={(v) => set("cliente_cantera", v)}
+                  placeholder="Seleccionar cliente..."
+                />
+              </div>
+            </>
+          )}
 
           {/* === LOGÍSTICA === */}
           <SectionTitle>Logística</SectionTitle>

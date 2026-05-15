@@ -38,6 +38,7 @@ export interface RemitoDB {
   forma_pago: string | null;
   created_by: string | null;
   orden: number | null;
+  cliente_cantera: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
@@ -76,6 +77,7 @@ export interface RemitoForm {
   precio_calc_mode?: string | null;
   forma_pago?: string | null;
   row_color?: string | null;
+  cliente_cantera?: string | null;
 }
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
