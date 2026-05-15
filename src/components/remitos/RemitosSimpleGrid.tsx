@@ -91,7 +91,7 @@ function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasFo
         </button>
       </TableCell>
       <TableCell className="py-2">{r.fecha}</TableCell>
-      <TableCell className="py-2">{r.remito_tercero || "-"}</TableCell>
+      {!hideExtrasForFranco && <TableCell className="py-2">{r.remito_tercero || "-"}</TableCell>}
       <TableCell className="py-2">{r.remito_local || r.numero || "-"}</TableCell>
       <TableCell className="py-2">{r.desde || "-"}</TableCell>
       <TableCell className="py-2">{r.hasta || "-"}</TableCell>
