@@ -38,6 +38,7 @@ export interface RemitoDB {
   forma_pago: string | null;
   created_by: string | null;
   orden: number | null;
+  cliente_cantera: string | null;
 }
 
 export interface RemitoWithRelations extends RemitoDB {
