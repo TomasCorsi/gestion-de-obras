@@ -36,6 +36,8 @@ interface RemitosSimpleGridProps {
   onEdit: (remito: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   creadoresMap?: Record<string, string>;
+  /** Mostrar columna Cliente Cantera (sólo Franco). */
+  showClienteCantera?: boolean;
   /** Si true, habilita drag & drop. */
   reorderEnabled?: boolean;
   /** Reasignar orden persistido en DB. */
@@ -46,6 +48,7 @@ interface RowProps {
   r: RemitoWithRelations;
   maqMap: Record<string, string>;
   creadoresMap?: Record<string, string>;
+  showClienteCantera?: boolean;
   onEdit: (r: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   reorderEnabled: boolean;
