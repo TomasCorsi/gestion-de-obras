@@ -275,6 +275,7 @@ export function RemitosSimpleGrid({
                       r={r}
                       maqMap={maqMap}
                       creadoresMap={creadoresMap}
+                      showClienteCantera={showClienteCantera}
                       onEdit={onEdit}
                       onDelete={onDelete}
                       reorderEnabled={reorderEnabled}
