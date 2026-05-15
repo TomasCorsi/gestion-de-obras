@@ -374,14 +374,18 @@ export function RemitoQuickFormDialog({
             <Label className="text-xs truncate block">Hasta (Obra)</Label>
             <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => set("hasta", v)} placeholder="Obra destino..." />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs truncate block">Cliente Origen</Label>
-            <Input value={form.cliente} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs truncate block">Cliente Destino</Label>
-            <Input value={form.cliente_destino} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
-          </div>
+          {!isFranco && (
+            <div className="space-y-1.5">
+              <Label className="text-xs truncate block">Cliente Origen</Label>
+              <Input value={form.cliente} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
+            </div>
+          )}
+          {!isFranco && (
+            <div className="space-y-1.5">
+              <Label className="text-xs truncate block">Cliente Destino</Label>
+              <Input value={form.cliente_destino} readOnly className="h-9 text-sm bg-muted" placeholder="Auto" />
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Tipo Material</Label>
             <Combobox
