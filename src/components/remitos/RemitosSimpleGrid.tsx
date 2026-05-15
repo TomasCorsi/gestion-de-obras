@@ -36,6 +36,8 @@ interface RemitosSimpleGridProps {
   onEdit: (remito: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   creadoresMap?: Record<string, string>;
+  /** Mostrar columna Cliente Cantera (sólo Franco). */
+  showClienteCantera?: boolean;
   /** Si true, habilita drag & drop. */
   reorderEnabled?: boolean;
   /** Reasignar orden persistido en DB. */
@@ -46,12 +48,13 @@ interface RowProps {
   r: RemitoWithRelations;
   maqMap: Record<string, string>;
   creadoresMap?: Record<string, string>;
+  showClienteCantera?: boolean;
   onEdit: (r: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   reorderEnabled: boolean;
 }
 
-function SortableRow({ r, maqMap, creadoresMap, onEdit, onDelete, reorderEnabled }: RowProps) {
+function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, onEdit, onDelete, reorderEnabled }: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: r.id,
     disabled: !reorderEnabled,
@@ -95,6 +98,9 @@ function SortableRow({ r, maqMap, creadoresMap, onEdit, onDelete, reorderEnabled
       <TableCell className="py-2">{r.patente_tercero || "-"}</TableCell>
       <TableCell className="py-2">{r.cliente || "-"}</TableCell>
       <TableCell className="py-2">{(r as any).cliente_destino || "-"}</TableCell>
+      {showClienteCantera && (
+        <TableCell className="py-2">{(r as any).cliente_cantera || "-"}</TableCell>
+      )}
       <TableCell className="py-2 text-right">{r.cantidad_viajes || 0}</TableCell>
       <TableCell className="py-2 text-right">{r.cantidad_uni ?? "-"}</TableCell>
       <TableCell className="py-2 text-right">{r.cantidad || 0}</TableCell>
@@ -145,6 +151,7 @@ export function RemitosSimpleGrid({
   onEdit,
   onDelete,
   creadoresMap,
+  showClienteCantera = false,
   reorderEnabled = false,
   onReorder,
 }: RemitosSimpleGridProps) {
@@ -237,6 +244,9 @@ export function RemitosSimpleGrid({
                 <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
                 <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>
                 <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>
+                {showClienteCantera && (
+                  <TableHead className="text-xs min-w-[140px] bg-muted">Cli. Cantera</TableHead>
+                )}
                 <TableHead className="text-xs min-w-[55px] text-right bg-muted">Viajes</TableHead>
                 <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Uni.</TableHead>
                 <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Total</TableHead>
@@ -253,7 +263,7 @@ export function RemitosSimpleGrid({
             <TableBody>
               {remitos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={creadoresMap ? 23 : 22} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={(creadoresMap ? 23 : 22) + (showClienteCantera ? 1 : 0)} className="text-center text-muted-foreground py-8">
                     No hay remitos para mostrar
                   </TableCell>
                 </TableRow>
@@ -265,6 +275,7 @@ export function RemitosSimpleGrid({
                       r={r}
                       maqMap={maqMap}
                       creadoresMap={creadoresMap}
+                      showClienteCantera={showClienteCantera}
                       onEdit={onEdit}
                       onDelete={onDelete}
                       reorderEnabled={reorderEnabled}
