@@ -38,7 +38,7 @@ import {
   Upload,
   Download,
   HardHat,
-  Receipt,
+  HardHat,
   LayoutGrid,
   List,
   X,
