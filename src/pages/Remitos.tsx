@@ -517,7 +517,7 @@ export default function Remitos() {
           onEdit={handleEdit}
           onDelete={(id) => setDeleteId(id)}
           creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
-          showClienteCantera={isFranco}
+          showClienteCantera={isFranco || isAdminOrCapataz}
           hideExtrasForFranco={isFranco}
           reorderEnabled={
             !searchTerm &&
