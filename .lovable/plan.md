@@ -1,21 +1,63 @@
-## Problema
+## Objetivo
 
-En la cuenta de Franco, la grilla de remitos muestra correctamente la columna **Cli. Cantera** (lee `r.cliente_cantera` directo del registro), pero al abrir el formulario de edición el campo "Cliente" de la sección Cliente Cantera aparece vacío.
+Re-sincronizar `horas_acumuladas` y `km_acumulados` de cada maquinaria buscando el **último parte diario con un valor razonable**, ignorando outliers (ej: 303 con 116.550h cuando el resto ronda 11.000h).
 
-## Causa
+## Estrategia
 
-En `src/pages/Remitos.tsx`, la función `handleEdit` (líneas 202-226) construye el objeto `editingRemito` campo por campo y **omite `cliente_cantera`**. El formulario (`RemitoQuickFormDialog.tsx` línea 179) intenta leer `editingRemito.cliente_cantera`, pero como nunca se pasó, queda como `""`.
+Para cada maquinaria, en lugar de tomar simplemente el último parte:
 
-## Fix
+1. Calcular el **percentil 90** de los `horometro_fin > 0` (y de `km_camion > 0`) en todos sus partes `completado`.
+2. Definir un **tope razonable** = `percentil_90 * 1.15` (15% de margen sobre lo normal).
+3. Tomar el **último parte (por fecha y created_at)** cuyo valor esté entre 0 y ese tope.
+4. Actualizar `maquinarias` con ese valor.
 
-Una sola línea en `src/pages/Remitos.tsx`, dentro del objeto que pasa `setEditingRemito` en `handleEdit`:
+Esto filtra automáticamente valores escritos por error (un dígito de más, errores de tipeo) y se queda con el último valor "creíble".
 
-```ts
-cliente_cantera: (r as any).cliente_cantera || "",
+Si una maquinaria tiene muy pocos partes (<5), se usa el `MAX` como tope (no hay base estadística para detectar outlier).
+
+## Cambios
+
+### 1. Migración de datos (UPDATE)
+
+Dos `UPDATE` sobre `maquinarias` usando CTEs:
+
+```sql
+WITH stats AS (
+  SELECT maquinaria_id,
+         percentile_cont(0.9) WITHIN GROUP (ORDER BY horometro_fin) AS p90,
+         COUNT(*) AS n
+  FROM partes_diarios
+  WHERE estado='completado' AND maquinaria_id IS NOT NULL AND horometro_fin > 0
+  GROUP BY maquinaria_id
+),
+ultimos AS (
+  SELECT DISTINCT ON (p.maquinaria_id)
+    p.maquinaria_id, p.horometro_fin
+  FROM partes_diarios p
+  JOIN stats s ON s.maquinaria_id = p.maquinaria_id
+  WHERE p.estado='completado'
+    AND p.horometro_fin > 0
+    AND (s.n < 5 OR p.horometro_fin <= s.p90 * 1.15)
+  ORDER BY p.maquinaria_id, p.fecha DESC, p.created_at DESC
+)
+UPDATE maquinarias m
+SET horas_acumuladas = u.horometro_fin
+FROM ultimos u
+WHERE m.id = u.maquinaria_id;
 ```
 
-Adicionalmente, verificar el tipo `RemitoEditData` (definido en el mismo archivo o importado) para agregar el campo opcional `cliente_cantera?: string` y evitar el cast `as any`.
+Misma lógica para `km_camion` → `km_acumulados`.
 
-## Validación
+### 2. Trigger `sync_horas_km_from_parte`
 
-Entrar como Franco → editar un remito que muestre "PARTICULAR" o "MARCELO GOÑI" en la columna Cli. Cantera → el combobox del formulario debe aparecer precargado con ese valor.
+Modificar para que al insertar/actualizar un parte:
+- Si el nuevo valor es 0 → no tocar.
+- Si la maquinaria tiene `horas_acumuladas` previo y el nuevo valor es **>1.5x** ese valor → no sobrescribir (probable typo). El parte se guarda igual, pero el acumulado queda intacto.
+- Caso contrario → sobrescribir normalmente.
+
+Esto previene que un nuevo error tipográfico vuelva a romper el acumulado.
+
+## Resultado esperado
+
+- 303, 506, 401, etc. quedan con valores acordes al historial real.
+- Futuros partes con valores absurdos no afectan el acumulado (pero quedan registrados para auditoría).
