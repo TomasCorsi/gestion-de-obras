@@ -38,7 +38,6 @@ import {
   Upload,
   Download,
   HardHat,
-  Receipt,
   LayoutGrid,
   List,
   X,
@@ -55,7 +54,6 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
-import { useOtrosGastos, OtroGastoWithRelations, OtroGastoForm, categoriasGasto, CategoriaGasto } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal, RolPersonal } from "@/hooks/usePersonal";
@@ -91,7 +89,6 @@ function formatCurrency(value: number): string {
 
 export default function Gastos() {
   const { cargas, loading: loadingCombustible, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave } = useCombustible();
-  const { gastos, loading: loadingOtros, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
@@ -117,21 +114,6 @@ export default function Gastos() {
   const [isEditingComb, setIsEditingComb] = useState(false);
   const [isSubmittingComb, setIsSubmittingComb] = useState(false);
   
-  // Otros Gastos state
-  const [searchTermOtros, setSearchTermOtros] = useState("");
-  const [filtersOtros, setFiltersOtros] = useState<FilterState>({
-    fechaDesde: undefined,
-    fechaHasta: undefined,
-    mes: undefined,
-    obraId: undefined,
-  });
-  const [formOpenOtros, setFormOpenOtros] = useState(false);
-  const [detailOpenOtros, setDetailOpenOtros] = useState(false);
-  const [deleteOpenOtros, setDeleteOpenOtros] = useState(false);
-  const [selectedGasto, setSelectedGasto] = useState<OtroGastoWithRelations | null>(null);
-  const [isEditingOtros, setIsEditingOtros] = useState(false);
-  const [isSubmittingOtros, setIsSubmittingOtros] = useState(false);
-  
   // Form data
   const [formDataComb, setFormDataComb] = useState<CargaCombustibleForm>({
     fecha: new Date().toISOString().split("T")[0],
@@ -144,17 +126,6 @@ export default function Gastos() {
     estacion: "",
     operador: "",
     comprobante: "",
-  });
-  
-  const [formDataOtros, setFormDataOtros] = useState<OtroGastoForm>({
-    fecha: new Date().toISOString().split("T")[0],
-    obra_id: null,
-    categoria: "varios",
-    descripcion: "",
-    monto: 0,
-    comprobante: "",
-    proveedor: "",
-    observaciones: "",
   });
 
   const activeObras = obras.filter(o => o.estado !== "finalizada");
@@ -220,24 +191,9 @@ export default function Gastos() {
     );
   }, [cargas, filtersComb, searchTermComb]);
 
-  // Filter otros gastos
-  const filteredGastos = useMemo(() => {
-    const dateFiltered = filterByDateAndObra(
-      gastos.map(g => ({ ...g, fecha: g.fecha, obra_id: g.obra_id })),
-      filtersOtros
-    );
-    
-    return dateFiltered.filter((g) =>
-      g.descripcion?.toLowerCase().includes(searchTermOtros.toLowerCase()) ||
-      g.proveedor?.toLowerCase().includes(searchTermOtros.toLowerCase()) ||
-      g.obra?.nombre?.toLowerCase().includes(searchTermOtros.toLowerCase())
-    );
-  }, [gastos, filtersOtros, searchTermOtros]);
-
   // Stats
   const totalLitros = filteredCargas.reduce((sum, c) => sum + c.litros, 0);
   const totalCostoComb = filteredCargas.reduce((sum, c) => sum + c.costo_total, 0);
-  const totalCostoOtros = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
 
   // Combustible handlers
   const handleNewComb = () => {
@@ -375,81 +331,7 @@ export default function Gastos() {
     }
   };
 
-  // Otros Gastos handlers
-  const handleNewOtros = () => {
-    setIsEditingOtros(false);
-    setFormDataOtros({
-      fecha: new Date().toISOString().split("T")[0],
-      obra_id: null,
-      categoria: "varios",
-      descripcion: "",
-      monto: 0,
-      comprobante: "",
-      proveedor: "",
-      observaciones: "",
-    });
-    setFormOpenOtros(true);
-  };
-
-  const handleEditOtros = (gasto: OtroGastoWithRelations) => {
-    setIsEditingOtros(true);
-    setSelectedGasto(gasto);
-    setFormDataOtros({
-      fecha: gasto.fecha,
-      obra_id: gasto.obra_id,
-      categoria: gasto.categoria,
-      descripcion: gasto.descripcion,
-      monto: gasto.monto,
-      comprobante: gasto.comprobante || "",
-      proveedor: gasto.proveedor || "",
-      observaciones: gasto.observaciones || "",
-    });
-    setFormOpenOtros(true);
-  };
-
-  const handleViewOtros = (gasto: OtroGastoWithRelations) => {
-    setSelectedGasto(gasto);
-    setDetailOpenOtros(true);
-  };
-
-  const handleDeleteOtros = (gasto: OtroGastoWithRelations) => {
-    setSelectedGasto(gasto);
-    setDeleteOpenOtros(true);
-  };
-
-  const confirmDeleteOtros = async () => {
-    if (selectedGasto) {
-      await deleteGasto(selectedGasto.id);
-    }
-    setDeleteOpenOtros(false);
-  };
-
-  const handleSubmitOtros = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingOtros(true);
-    
-    const gastoData = {
-      fecha: formDataOtros.fecha || null,
-      obra_id: formDataOtros.obra_id || null,
-      categoria: formDataOtros.categoria || "varios",
-      descripcion: formDataOtros.descripcion || "",
-      monto: formDataOtros.monto || 0,
-      comprobante: formDataOtros.comprobante || null,
-      proveedor: formDataOtros.proveedor || null,
-      observaciones: formDataOtros.observaciones || null,
-    };
-
-    if (isEditingOtros && selectedGasto) {
-      await updateGasto(selectedGasto.id, gastoData);
-    } else {
-      await createGasto(gastoData);
-    }
-    
-    setIsSubmittingOtros(false);
-    setFormOpenOtros(false);
-  };
-
-  const loading = loadingCombustible || loadingOtros;
+  const loading = loadingCombustible;
 
   if (loading) {
     return (
@@ -553,10 +435,6 @@ export default function Gastos() {
           <TabsTrigger value="repartidor" className="flex items-center gap-2">
             <Droplets className="w-4 h-4" />
             Repartidor
-          </TabsTrigger>
-          <TabsTrigger value="otros" className="flex items-center gap-2">
-            <Receipt className="w-4 h-4" />
-            Otros
           </TabsTrigger>
         </TabsList>
 
@@ -781,138 +659,6 @@ export default function Gastos() {
           <CombustibleRepartidorTab />
         </TabsContent>
 
-        {/* Tab: Otros Gastos */}
-        <TabsContent value="otros">
-          <div className="mb-4">
-            <FilterBar obras={obras} onFilterChange={setFiltersOtros} />
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por descripción, proveedor u obra..."
-                value={searchTermOtros}
-                onChange={(e) => setSearchTermOtros(e.target.value)}
-                className="pl-9 bg-card border-border"
-              />
-            </div>
-            <Button
-              onClick={handleNewOtros}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground btn-industrial"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nuevo Gasto
-            </Button>
-          </div>
-
-          {/* Stats by category */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-            {Object.entries(categoriasGasto).map(([key, config]) => {
-              const total = filteredGastos
-                .filter((g) => g.categoria === key)
-                .reduce((sum, g) => sum + g.monto, 0);
-              return (
-                <div key={key} className="card-industrial p-3 text-center">
-                  <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-                  <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
-                    {config.label}
-                  </Badge>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Total */}
-          <div className="card-industrial p-4 flex items-center justify-between mb-6">
-            <div>
-              <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCostoOtros)}</p>
-              <p className="text-sm text-muted-foreground">Total Otros Gastos</p>
-            </div>
-            <DollarSign className="w-8 h-8 text-warning" />
-          </div>
-
-          {/* Table */}
-          <div className="card-industrial overflow-hidden">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Categoría</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Descripción</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Proveedor</TableHead>
-                  <TableHead className="text-muted-foreground font-medium">Monto</TableHead>
-                  <TableHead className="text-muted-foreground font-medium w-12"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredGastos.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No hay gastos registrados
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredGastos.map((gasto, index) => (
-                    <TableRow
-                      key={gasto.id}
-                      className="border-border table-row-hover animate-fade-in"
-                      style={{ animationDelay: `${index * 30}ms` }}
-                    >
-                      <TableCell>
-                        <span className="flex items-center gap-1 text-foreground">
-                          <Calendar className="w-3 h-3 text-muted-foreground" />
-                          {formatDate(gasto.fecha)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-foreground font-medium">
-                        {gasto.obra?.nombre || "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={cn("status-badge", categoriasGasto[gasto.categoria as CategoriaGasto]?.color)}>
-                          {categoriasGasto[gasto.categoria as CategoriaGasto]?.label || gasto.categoria}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-foreground">
-                        {gasto.descripcion}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {gasto.proveedor || "-"}
-                      </TableCell>
-                      <TableCell className="font-mono font-medium text-foreground">
-                        {formatCurrency(gasto.monto)}
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="bg-popover border-border">
-                            <DropdownMenuItem onClick={() => handleViewOtros(gasto)} className="cursor-pointer">
-                              <Eye className="w-4 h-4 mr-2" />
-                              Ver detalle
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditOtros(gasto)} className="cursor-pointer">
-                              <Edit className="w-4 h-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDeleteOtros(gasto)} className="text-destructive cursor-pointer">
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </TabsContent>
       </Tabs>
 
       {/* ===== COMBUSTIBLE DIALOGS ===== */}
@@ -1105,154 +851,6 @@ export default function Gastos() {
         maquinariasMap={maquinariasMap}
         patentesMap={patentesMap}
         nombresMap={nombresMap}
-      />
-
-      {/* ===== OTROS GASTOS DIALOGS ===== */}
-      <FormDialog
-        isDirty
-        open={formOpenOtros}
-        onOpenChange={setFormOpenOtros}
-        title={isEditingOtros ? "Editar Gasto" : "Nuevo Gasto"}
-        size="lg"
-      >
-        <form onSubmit={handleSubmitOtros} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fecha_otros">Fecha</Label>
-              <Input
-                id="fecha_otros"
-                type="date"
-                value={formDataOtros.fecha}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, fecha: e.target.value })}
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="obra_id_otros">Obra</Label>
-              <Select
-                value={formDataOtros.obra_id || "none"}
-                onValueChange={(value) => setFormDataOtros({ ...formDataOtros, obra_id: value === "none" ? null : value })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar obra" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  <SelectItem value="none">Sin asignar</SelectItem>
-                  {activeObras.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="categoria">Categoría</Label>
-              <Select
-                value={formDataOtros.categoria}
-                onValueChange={(value) => setFormDataOtros({ ...formDataOtros, categoria: value })}
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue placeholder="Seleccionar categoría" />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  {Object.entries(categoriasGasto).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="monto">Monto</Label>
-              <Input
-                id="monto"
-                type="number"
-                min="0"
-                step="0.01"
-                value={formDataOtros.monto}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, monto: parseFloat(e.target.value) || 0 })}
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="descripcion">Descripción</Label>
-              <Input
-                id="descripcion"
-                value={formDataOtros.descripcion}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, descripcion: e.target.value })}
-                placeholder="Descripción del gasto..."
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="proveedor">Proveedor</Label>
-              <Input
-                id="proveedor"
-                value={formDataOtros.proveedor}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, proveedor: e.target.value })}
-                placeholder="Nombre del proveedor"
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="comprobante_otros">Comprobante</Label>
-              <Input
-                id="comprobante_otros"
-                value={formDataOtros.comprobante}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, comprobante: e.target.value })}
-                placeholder="Nº de factura/recibo"
-                className="bg-muted border-border"
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="observaciones_otros">Observaciones</Label>
-              <Input
-                id="observaciones_otros"
-                value={formDataOtros.observaciones}
-                onChange={(e) => setFormDataOtros({ ...formDataOtros, observaciones: e.target.value })}
-                placeholder="Notas adicionales..."
-                className="bg-muted border-border"
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setFormOpenOtros(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isSubmittingOtros}>
-              {isSubmittingOtros ? "Guardando..." : isEditingOtros ? "Actualizar" : "Registrar"}
-            </Button>
-          </div>
-        </form>
-      </FormDialog>
-
-      <DetailDialog
-        open={detailOpenOtros}
-        onOpenChange={setDetailOpenOtros}
-        title="Detalle del Gasto"
-      >
-        {selectedGasto && (
-          <div className="space-y-4">
-            <DetailSection title="Información General">
-              <DetailRow label="Fecha" value={formatDate(selectedGasto.fecha)} />
-              <DetailRow label="Obra" value={selectedGasto.obra?.nombre || "-"} />
-              <DetailRow label="Categoría" value={categoriasGasto[selectedGasto.categoria as CategoriaGasto]?.label || selectedGasto.categoria} />
-              <DetailRow label="Descripción" value={selectedGasto.descripcion} />
-            </DetailSection>
-            <DetailSection title="Detalle Financiero">
-              <DetailRow label="Monto" value={formatCurrency(selectedGasto.monto)} />
-              <DetailRow label="Proveedor" value={selectedGasto.proveedor || "-"} />
-              <DetailRow label="Comprobante" value={selectedGasto.comprobante || "-"} />
-              <DetailRow label="Observaciones" value={selectedGasto.observaciones || "-"} />
-            </DetailSection>
-          </div>
-        )}
-      </DetailDialog>
-
-      <DeleteConfirmDialog
-        open={deleteOpenOtros}
-        onOpenChange={setDeleteOpenOtros}
-        onConfirm={confirmDeleteOtros}
-        title="Eliminar Gasto"
-        description="¿Estás seguro de eliminar este gasto? Esta acción no se puede deshacer."
       />
     </MainLayout>
   );

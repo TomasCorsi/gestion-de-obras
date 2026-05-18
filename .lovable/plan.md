@@ -1,63 +1,46 @@
 ## Objetivo
 
-Re-sincronizar `horas_acumuladas` y `km_acumulados` de cada maquinaria buscando el **último parte diario con un valor razonable**, ignorando outliers (ej: 303 con 116.550h cuando el resto ronda 11.000h).
+Mover **Gastos Generales** (la pestaña "otros" actualmente en `/gastos`) dentro de la sección **Proveedores**, como nueva tab al lado de **Órdenes de Compra**.
 
-## Estrategia
-
-Para cada maquinaria, en lugar de tomar simplemente el último parte:
-
-1. Calcular el **percentil 90** de los `horometro_fin > 0` (y de `km_camion > 0`) en todos sus partes `completado`.
-2. Definir un **tope razonable** = `percentil_90 * 1.15` (15% de margen sobre lo normal).
-3. Tomar el **último parte (por fecha y created_at)** cuyo valor esté entre 0 y ese tope.
-4. Actualizar `maquinarias` con ese valor.
-
-Esto filtra automáticamente valores escritos por error (un dígito de más, errores de tipeo) y se queda con el último valor "creíble".
-
-Si una maquinaria tiene muy pocos partes (<5), se usa el `MAX` como tope (no hay base estadística para detectar outlier).
+Reposicionamiento conceptual:
+- **Órdenes de Compra** → compras en blanco (proveedor formal, IVA, OC numerada).
+- **Gastos Generales** → gastos en negro / informales (proveedor texto opcional, sin IVA, sin OC).
 
 ## Cambios
 
-### 1. Migración de datos (UPDATE)
+### 1. Nuevo componente `src/components/proveedores/GastosGeneralesTab.tsx`
+Extraer de `src/pages/Gastos.tsx` toda la lógica del tab `"otros"`:
+- Estado (`searchTermOtros`, `filtersOtros`, `formOpenOtros`, `selectedGasto`, `formDataOtros`, etc.).
+- Handlers (`handleNewOtros`, `handleEditOtros`, `handleViewOtros`, `handleDeleteOtros`, `handleSubmitOtros`, `confirmDeleteOtros`).
+- Hook `useOtrosGastos`, `useObras`.
+- UI: filtros + tabla + FormDialog + DetailDialog + DeleteConfirmDialog (las mismas que ya están en Gastos.tsx para el tab "otros").
 
-Dos `UPDATE` sobre `maquinarias` usando CTEs:
+Componente autocontenido, sin props.
 
-```sql
-WITH stats AS (
-  SELECT maquinaria_id,
-         percentile_cont(0.9) WITHIN GROUP (ORDER BY horometro_fin) AS p90,
-         COUNT(*) AS n
-  FROM partes_diarios
-  WHERE estado='completado' AND maquinaria_id IS NOT NULL AND horometro_fin > 0
-  GROUP BY maquinaria_id
-),
-ultimos AS (
-  SELECT DISTINCT ON (p.maquinaria_id)
-    p.maquinaria_id, p.horometro_fin
-  FROM partes_diarios p
-  JOIN stats s ON s.maquinaria_id = p.maquinaria_id
-  WHERE p.estado='completado'
-    AND p.horometro_fin > 0
-    AND (s.n < 5 OR p.horometro_fin <= s.p90 * 1.15)
-  ORDER BY p.maquinaria_id, p.fecha DESC, p.created_at DESC
-)
-UPDATE maquinarias m
-SET horas_acumuladas = u.horometro_fin
-FROM ultimos u
-WHERE m.id = u.maquinaria_id;
+### 2. `src/pages/Proveedores.tsx`
+Agregar tercer tab:
 ```
+Proveedores | Órdenes de Compra | Gastos Generales
+```
+- Import `GastosGeneralesTab` + ícono `Receipt` o `Wallet`.
+- Nuevo `<TabsTrigger value="gastos">` y `<TabsContent value="gastos"><GastosGeneralesTab /></TabsContent>`.
 
-Misma lógica para `km_camion` → `km_acumulados`.
+### 3. `src/pages/Gastos.tsx`
+- Eliminar el `TabsTrigger value="otros"` y el `TabsContent value="otros"` (líneas 557-560 y 785+).
+- Eliminar todo el estado/handlers/form data relacionados con "otros gastos".
+- Eliminar import de `useOtrosGastos` y tipos asociados.
+- `loading` deja de incluir `loadingOtros`.
+- KPI `totalCostoOtros` removido si solo se usa allí.
 
-### 2. Trigger `sync_horas_km_from_parte`
+### 4. AppLauncher / navegación
+Sin cambios — Gastos sigue existiendo con sus otros tabs (maquinarias, personal, combustible, repartidor). Solo se traslada el subtab "otros".
 
-Modificar para que al insertar/actualizar un parte:
-- Si el nuevo valor es 0 → no tocar.
-- Si la maquinaria tiene `horas_acumuladas` previo y el nuevo valor es **>1.5x** ese valor → no sobrescribir (probable typo). El parte se guarda igual, pero el acumulado queda intacto.
-- Caso contrario → sobrescribir normalmente.
+### 5. Memoria
+Actualizar `mem://business-rules/core-logic` o crear nota corta: regla "OC = blanco / Gastos Generales = negro, ambos viven en Proveedores".
 
-Esto previene que un nuevo error tipográfico vuelva a romper el acumulado.
+## Notas técnicas
 
-## Resultado esperado
-
-- 303, 506, 401, etc. quedan con valores acordes al historial real.
-- Futuros partes con valores absurdos no afectan el acumulado (pero quedan registrados para auditoría).
+- No hay cambios de DB: la tabla `otros_gastos` queda igual.
+- RLS ya permite admin/capataz/ayudante manejarla.
+- El reporte financiero de obra sigue consumiendo `otros_gastos` por hook; no se rompe.
+- URL state: usar `useUrlTab` ya existente en Proveedores para que `?tab=gastos` funcione.

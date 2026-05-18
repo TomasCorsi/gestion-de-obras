@@ -14,9 +14,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Search, Eye, Pencil, Trash2, Truck, FileText } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Truck, FileText, Receipt } from "lucide-react";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 import { OrdenesCompraTab } from "@/components/proveedores/OrdenesCompraTab";
+import { GastosGeneralesTab } from "@/components/proveedores/GastosGeneralesTab";
 import { useUrlTab } from "@/hooks/useUrlState";
 
 const emptyForm: ProveedorForm = {
@@ -126,6 +127,9 @@ export default function Proveedores() {
           <TabsTrigger value="ordenes" className="gap-2">
             <FileText className="w-4 h-4" /> Órdenes de Compra
           </TabsTrigger>
+          <TabsTrigger value="gastos" className="gap-2">
+            <Receipt className="w-4 h-4" /> Gastos Generales
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proveedores" className="space-y-6 mt-0">
@@ -216,6 +220,10 @@ export default function Proveedores() {
 
         <TabsContent value="ordenes" className="mt-0">
           <OrdenesCompraTab />
+        </TabsContent>
+
+        <TabsContent value="gastos" className="mt-0">
+          <GastosGeneralesTab />
         </TabsContent>
       </Tabs>
 
