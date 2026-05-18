@@ -554,10 +554,6 @@ export default function Gastos() {
             <Droplets className="w-4 h-4" />
             Repartidor
           </TabsTrigger>
-          <TabsTrigger value="otros" className="flex items-center gap-2">
-            <Receipt className="w-4 h-4" />
-            Otros
-          </TabsTrigger>
         </TabsList>
 
         {/* Tab: Maquinarias */}
