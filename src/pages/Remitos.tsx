@@ -223,6 +223,7 @@ export default function Remitos() {
       proveedor: r.proveedor || "",
       observaciones: r.observaciones || "",
       forma_pago: (r as any).forma_pago || "",
+      cliente_cantera: (r as any).cliente_cantera || "",
     });
     setFormOpen(true);
   };

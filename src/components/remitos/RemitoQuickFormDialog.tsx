@@ -69,6 +69,7 @@ export interface RemitoEditData {
   proveedor: string;
   observaciones: string;
   forma_pago: string;
+  cliente_cantera?: string;
 }
 
 interface RemitoQuickFormDialogProps {
