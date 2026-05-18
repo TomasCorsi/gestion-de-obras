@@ -127,6 +127,9 @@ export default function Proveedores() {
           <TabsTrigger value="ordenes" className="gap-2">
             <FileText className="w-4 h-4" /> Órdenes de Compra
           </TabsTrigger>
+          <TabsTrigger value="gastos" className="gap-2">
+            <Receipt className="w-4 h-4" /> Gastos Generales
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="proveedores" className="space-y-6 mt-0">
