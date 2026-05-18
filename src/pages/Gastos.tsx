@@ -90,7 +90,6 @@ function formatCurrency(value: number): string {
 
 export default function Gastos() {
   const { cargas, loading: loadingCombustible, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave } = useCombustible();
-  const { gastos, loading: loadingOtros, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
@@ -116,21 +115,6 @@ export default function Gastos() {
   const [isEditingComb, setIsEditingComb] = useState(false);
   const [isSubmittingComb, setIsSubmittingComb] = useState(false);
   
-  // Otros Gastos state
-  const [searchTermOtros, setSearchTermOtros] = useState("");
-  const [filtersOtros, setFiltersOtros] = useState<FilterState>({
-    fechaDesde: undefined,
-    fechaHasta: undefined,
-    mes: undefined,
-    obraId: undefined,
-  });
-  const [formOpenOtros, setFormOpenOtros] = useState(false);
-  const [detailOpenOtros, setDetailOpenOtros] = useState(false);
-  const [deleteOpenOtros, setDeleteOpenOtros] = useState(false);
-  const [selectedGasto, setSelectedGasto] = useState<OtroGastoWithRelations | null>(null);
-  const [isEditingOtros, setIsEditingOtros] = useState(false);
-  const [isSubmittingOtros, setIsSubmittingOtros] = useState(false);
-  
   // Form data
   const [formDataComb, setFormDataComb] = useState<CargaCombustibleForm>({
     fecha: new Date().toISOString().split("T")[0],
@@ -143,17 +127,6 @@ export default function Gastos() {
     estacion: "",
     operador: "",
     comprobante: "",
-  });
-  
-  const [formDataOtros, setFormDataOtros] = useState<OtroGastoForm>({
-    fecha: new Date().toISOString().split("T")[0],
-    obra_id: null,
-    categoria: "varios",
-    descripcion: "",
-    monto: 0,
-    comprobante: "",
-    proveedor: "",
-    observaciones: "",
   });
 
   const activeObras = obras.filter(o => o.estado !== "finalizada");
