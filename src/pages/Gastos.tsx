@@ -192,24 +192,9 @@ export default function Gastos() {
     );
   }, [cargas, filtersComb, searchTermComb]);
 
-  // Filter otros gastos
-  const filteredGastos = useMemo(() => {
-    const dateFiltered = filterByDateAndObra(
-      gastos.map(g => ({ ...g, fecha: g.fecha, obra_id: g.obra_id })),
-      filtersOtros
-    );
-    
-    return dateFiltered.filter((g) =>
-      g.descripcion?.toLowerCase().includes(searchTermOtros.toLowerCase()) ||
-      g.proveedor?.toLowerCase().includes(searchTermOtros.toLowerCase()) ||
-      g.obra?.nombre?.toLowerCase().includes(searchTermOtros.toLowerCase())
-    );
-  }, [gastos, filtersOtros, searchTermOtros]);
-
   // Stats
   const totalLitros = filteredCargas.reduce((sum, c) => sum + c.litros, 0);
   const totalCostoComb = filteredCargas.reduce((sum, c) => sum + c.costo_total, 0);
-  const totalCostoOtros = filteredGastos.reduce((sum, g) => sum + g.monto, 0);
 
   // Combustible handlers
   const handleNewComb = () => {
