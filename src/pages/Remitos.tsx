@@ -324,6 +324,7 @@ export default function Remitos() {
       "Pat. Tercero": r.patente_tercero || "",
       "Cliente Origen": r.cliente || "",
       "Cliente Destino": r.cliente_destino || "",
+      "Cliente Cantera": (r as any).cliente_cantera || "",
       "Cant. Viajes": r.cantidad_viajes || 1,
       "Cant. Unitaria": r.cantidad_uni || "",
       "Cantidad Total": r.cantidad || 0,
