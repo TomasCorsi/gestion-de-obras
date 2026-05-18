@@ -1,26 +1,21 @@
-## Plan: Ocultar columnas y campos para Franco en Remitos
+## Problema
 
-### 1. Grilla `RemitosSimpleGrid.tsx`
-Agregar prop `hideExtrasForFranco?: boolean`. Cuando es `true`, NO renderizar (header + celda) las columnas:
-- **Rem. Tercero**
-- **Cli. Origen**
-- **Cli. Destino**
-- **Proveedor**
-- **Cargado por** (ya oculto: `creadoresMap` sólo se pasa a admin/capataz, sin cambios)
+En la cuenta de Franco, la grilla de remitos muestra correctamente la columna **Cli. Cantera** (lee `r.cliente_cantera` directo del registro), pero al abrir el formulario de edición el campo "Cliente" de la sección Cliente Cantera aparece vacío.
 
-Ajustar `colSpan` del estado vacío restando las columnas ocultas.
+## Causa
 
-### 2. Página `Remitos.tsx`
-Pasar `hideExtrasForFranco={isFranco}` al `RemitosSimpleGrid`.
+En `src/pages/Remitos.tsx`, la función `handleEdit` (líneas 202-226) construye el objeto `editingRemito` campo por campo y **omite `cliente_cantera`**. El formulario (`RemitoQuickFormDialog.tsx` línea 179) intenta leer `editingRemito.cliente_cantera`, pero como nunca se pasó, queda como `""`.
 
-### 3. Formulario `RemitoQuickFormDialog.tsx`
-Cuando `isFranco === true`, NO renderizar los campos:
-- **Remito Tercero** (`remito_tercero`)
-- **Cliente Origen** (`cliente`)
-- **Cliente Destino** (`cliente_destino`)
-- **Proveedor** (`proveedor`)
+## Fix
 
-Los valores correspondientes en el payload de `handleSubmit` se envían como `null` / vacío para Franco. El resto del form (incluida la sección "CLIENTE CANTERA" exclusiva de Franco) queda igual.
+Una sola línea en `src/pages/Remitos.tsx`, dentro del objeto que pasa `setEditingRemito` en `handleEdit`:
 
-### Resumen
-Franco verá la grilla y el formulario de carga de remitos sin las columnas/campos Rem. Tercero, Cli. Origen, Cli. Destino y Proveedor. El resto de usuarios mantiene la vista actual sin cambios.
+```ts
+cliente_cantera: (r as any).cliente_cantera || "",
+```
+
+Adicionalmente, verificar el tipo `RemitoEditData` (definido en el mismo archivo o importado) para agregar el campo opcional `cliente_cantera?: string` y evitar el cast `as any`.
+
+## Validación
+
+Entrar como Franco → editar un remito que muestre "PARTICULAR" o "MARCELO GOÑI" en la columna Cli. Cantera → el combobox del formulario debe aparecer precargado con ese valor.
