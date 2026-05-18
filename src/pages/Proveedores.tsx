@@ -221,6 +221,10 @@ export default function Proveedores() {
         <TabsContent value="ordenes" className="mt-0">
           <OrdenesCompraTab />
         </TabsContent>
+
+        <TabsContent value="gastos" className="mt-0">
+          <GastosGeneralesTab />
+        </TabsContent>
       </Tabs>
 
       {/* Form Dialog */}
