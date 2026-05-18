@@ -55,7 +55,6 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { useCombustible, CargaCombustibleWithRelations, CargaCombustibleForm } from "@/hooks/useCombustible";
-import { useOtrosGastos, OtroGastoWithRelations, OtroGastoForm, categoriasGasto, CategoriaGasto } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { usePersonal, RolPersonal } from "@/hooks/usePersonal";
