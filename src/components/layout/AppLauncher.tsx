@@ -101,14 +101,21 @@ export function AppLauncher({ className }: AppLauncherProps) {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const location = useLocation();
-  const { hasRole } = useAuth();
+  const { hasRole, user } = useAuth();
   const isMobile = useIsMobile();
+
+  // Excepciones por UUID para mostrar tiles puntuales (mismo patrón que ProtectedRoute)
+  const PATH_EXCEPTIONS: Record<string, string[]> = {
+    '/remitos': ['c92028bd-dd42-416d-8892-f00b5ef90f8f'], // Sergio
+  };
 
   // Filter apps based on user role
   const filteredCategories = appCategories
     .map((category) => ({
       ...category,
       apps: category.apps.filter((app) => {
+        const exceptions = PATH_EXCEPTIONS[app.path] ?? [];
+        if (user && exceptions.includes(user.id)) return true;
         if (!app.roles) return true;
         return app.roles.some((role) => hasRole(role));
       }),
