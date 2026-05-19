@@ -42,6 +42,12 @@ export function ProtectedRoute({ children, requiredRoles }: ProtectedRouteProps)
   }
 
   if (requiredRoles && requiredRoles.length > 0) {
+    // Excepción por UUID antes del chequeo de rol
+    const exceptions = ROUTE_EXCEPTIONS[location.pathname] ?? [];
+    if (user && exceptions.includes(user.id)) {
+      return <>{children}</>;
+    }
+
     const hasRequiredRole = requiredRoles.some(r => hasRole(r));
     if (!hasRequiredRole) {
       return <Navigate to="/sin-acceso" replace />;
