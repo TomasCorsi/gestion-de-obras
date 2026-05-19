@@ -4,6 +4,12 @@ import { Loader2 } from 'lucide-react';
 
 type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
 
+// Excepciones puntuales por UUID (mismo patrón que las RLS de Sergio/Franco).
+// Permite acceso a rutas específicas sin tocar la lógica de roles general.
+const ROUTE_EXCEPTIONS: Record<string, string[]> = {
+  '/remitos': ['c92028bd-dd42-416d-8892-f00b5ef90f8f'], // Sergio
+};
+
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRoles?: AppRole[];
