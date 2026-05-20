@@ -1,32 +1,25 @@
-# Remitero calaminasur@hotmail.com: ver solo sus propios remitos
+# Eliminar ordenamiento manual de remitos
 
-## Objetivo
-El usuario `calaminasur@hotmail.com` (id `73236f17-0602-41aa-8959-ee14be48f477`), con rol **remitero**, debe ver únicamente los remitos que él mismo cargó — igual que ya ocurre con Sergio y Franco.
-
-## Comportamiento actual
-- El hook `useRemitos` filtra por `created_by = currentUserId` sólo si el usuario es Sergio o Franco (`isOwnOnly`). El remitero Calaminasur ve **todos** los remitos de la base.
-- La RLS actual permite a cualquier usuario con rol `remitero` (excepto Franco) gestionar todos los remitos, sin restricción por `created_by`.
+## Resumen
+Quitar la funcionalidad de drag-and-drop para ordenar remitos manualmente (campo `orden`) y dejar que se ordenen unicamente por fecha de creacion (`fecha DESC, created_at DESC`).
 
 ## Cambios
 
-### 1. Frontend (`src/hooks/useRemitos.ts`)
-- Agregar la constante `CALAMINASUR_USER_ID = "73236f17-0602-41aa-8959-ee14be48f477"`.
-- Incluirla en el flag `isOwnOnly` para que la consulta filtre por `created_by = currentUserId` también para este usuario.
+### 1. Hook `src/hooks/useRemitos.ts`
+- Remover columna `orden` de la interface `RemitoDB`.
+- Remover ` .order("orden", { ascending: false, nullsFirst: true })` de la query.
+- Eliminar la funcion `reorderRemito` del objeto retornado.
 
-### 2. Frontend (`src/pages/Remitos.tsx`)
-- Tratar al usuario Calaminasur igual que Sergio/Franco: ocultar botones de Importar, Liquidar, Asignar Precios y Recalcular Clientes (`isOwnOnly` ya cubre eso si se agrega la misma constante).
+### 2. Grid `src/components/remitos/RemitosSimpleGrid.tsx`
+- Eliminar todo el codigo de `@dnd-kit/core` y `@dnd-kit/sortable` (sensores, DndContext, SortableContext, SortableRow).
+- Reemplazar `SortableRow` por un `TableRow` estático simple.
+- Eliminar la columna con el icono `GripVertical` de drag.
+- Eliminar las props `reorderEnabled` y `onReorder`.
+- Eliminar el mensaje "Quitá los filtros..." debajo del contador.
 
-### 3. Base de datos (RLS sobre `remitos`)
-- Reemplazar la policy `Remiteros can manage remitos` para que, además de excluir a Franco, **también restrinja a cualquier remitero a filas con `created_by = auth.uid()`**. Así, aunque alguien intente saltarse el filtro de UI, no podrá ver/modificar remitos ajenos.
-- Nueva expresión: `has_role(auth.uid(), 'remitero') AND auth.uid() <> '<franco>' AND created_by = auth.uid()` (tanto en USING como en WITH CHECK).
+### 3. Pagina `src/pages/Remitos.tsx`
+- Eliminar `reorderRemito` del destructuring de `useRemitos()`.
+- Eliminar las props `reorderEnabled` y `onReorder` de `<RemitosSimpleGrid />`.
 
-## Fuera de alcance
-- No se cambian roles ni se agregan nuevos.
-- No se modifica el comportamiento para admin/capataz (siguen viendo todo).
-- Sergio y Franco mantienen sus policies actuales.
-
-## Verificación
-- Login con `calaminasur@hotmail.com`: la grilla de Remitos sólo muestra los remitos creados por él.
-- Cargar un remito nuevo: aparece arriba en su vista.
-- Otro usuario remitero (si existiera) tampoco vería los remitos de Calaminasur.
-- Admin/capataz siguen viendo todos los remitos.
+## Resultado
+La tabla de remitos se renderiza como tabla estática, ordenada automaticamente por `fecha` descendente y luego `created_at` descendente, sin posibilidad de reordenar manualmente.
