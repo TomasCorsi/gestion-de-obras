@@ -1,36 +1,32 @@
-# Remitero: ver los últimos remitos cargados
+# Remitero calaminasur@hotmail.com: ver solo sus propios remitos
 
-## Problema
-Cuando el remitero (u otro usuario) carga un nuevo remito, este se guarda con `orden = null`. La consulta actual en `useRemitos` ordena así:
+## Objetivo
+El usuario `calaminasur@hotmail.com` (id `73236f17-0602-41aa-8959-ee14be48f477`), con rol **remitero**, debe ver únicamente los remitos que él mismo cargó — igual que ya ocurre con Sergio y Franco.
 
-```
-.order("orden", { ascending: false, nullsFirst: false })
-.order("fecha", { ascending: false })
-.order("created_at", { ascending: false })
-```
+## Comportamiento actual
+- El hook `useRemitos` filtra por `created_by = currentUserId` sólo si el usuario es Sergio o Franco (`isOwnOnly`). El remitero Calaminasur ve **todos** los remitos de la base.
+- La RLS actual permite a cualquier usuario con rol `remitero` (excepto Franco) gestionar todos los remitos, sin restricción por `created_by`.
 
-Como `nullsFirst: false` en orden descendente manda los `null` al **final**, todos los remitos nuevos (sin `orden` asignado) quedan al fondo de la grilla, después de los miles de remitos antiguos que sí tienen `orden`. El remitero no los ve.
+## Cambios
 
-## Solución
-Cambiar el criterio de orden para que los remitos sin `orden` manual aparezcan **arriba**, ordenados por fecha y creación más recientes primero. Los que sí tienen `orden` (reordenados manualmente) se mantienen en su posición relativa.
+### 1. Frontend (`src/hooks/useRemitos.ts`)
+- Agregar la constante `CALAMINASUR_USER_ID = "73236f17-0602-41aa-8959-ee14be48f477"`.
+- Incluirla en el flag `isOwnOnly` para que la consulta filtre por `created_by = currentUserId` también para este usuario.
 
-Nuevo orden:
-```
-.order("orden", { ascending: false, nullsFirst: true })
-.order("fecha", { ascending: false })
-.order("created_at", { ascending: false })
-```
+### 2. Frontend (`src/pages/Remitos.tsx`)
+- Tratar al usuario Calaminasur igual que Sergio/Franco: ocultar botones de Importar, Liquidar, Asignar Precios y Recalcular Clientes (`isOwnOnly` ya cubre eso si se agrega la misma constante).
 
-Con `nullsFirst: true`, los remitos nuevos (orden = null) se muestran primero, ordenados por fecha desc y created_at desc — es decir, el último cargado aparece arriba del todo.
-
-## Archivos a tocar
-- `src/hooks/useRemitos.ts` — cambiar `nullsFirst: false` por `nullsFirst: true` en el `.order("orden", ...)` dentro de `fetchRemitosFromDB`.
+### 3. Base de datos (RLS sobre `remitos`)
+- Reemplazar la policy `Remiteros can manage remitos` para que, además de excluir a Franco, **también restrinja a cualquier remitero a filas con `created_by = auth.uid()`**. Así, aunque alguien intente saltarse el filtro de UI, no podrá ver/modificar remitos ajenos.
+- Nueva expresión: `has_role(auth.uid(), 'remitero') AND auth.uid() <> '<franco>' AND created_by = auth.uid()` (tanto en USING como en WITH CHECK).
 
 ## Fuera de alcance
-- No se cambia el esquema de la base.
-- No se toca el drag & drop de reordenamiento (sigue funcionando para los remitos que el usuario reordene manualmente).
-- No se modifican permisos ni RLS.
+- No se cambian roles ni se agregan nuevos.
+- No se modifica el comportamiento para admin/capataz (siguen viendo todo).
+- Sergio y Franco mantienen sus policies actuales.
 
 ## Verificación
-- Como remitero, cargar un nuevo remito → debe aparecer en la primera fila de la grilla.
-- Los remitos previamente reordenados manualmente (con `orden` asignado) siguen apareciendo en el orden definido, debajo de los recién creados.
+- Login con `calaminasur@hotmail.com`: la grilla de Remitos sólo muestra los remitos creados por él.
+- Cargar un remito nuevo: aparece arriba en su vista.
+- Otro usuario remitero (si existiera) tampoco vería los remitos de Calaminasur.
+- Admin/capataz siguen viendo todos los remitos.
