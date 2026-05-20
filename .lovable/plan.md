@@ -1,32 +1,29 @@
-# Fix: Error al descargar PDF de cotización
+# Selector de Proveedores en Gastos Generales
 
-## Causa
+## Objetivo
+Al crear/editar un Gasto General (pestaña Gastos Generales en Proveedores), el campo **Proveedor** debe mostrar la lista de proveedores ya cargados en el sistema, en lugar de ser un input de texto libre.
 
-La cotización `2026-049` (la del screenshot) tiene el campo `responsable` vacío en la base de datos. El generador de PDF (`src/utils/generateCotizacionPDF.ts`) lo pasa directamente a jsPDF:
+## Comportamiento propuesto
+- Reemplazar el `<Input>` de Proveedor por un **Combobox con búsqueda** (mismo patrón que se usa en otras partes de la app, ej. `GridSelectCell` / Comando shadcn).
+- Lista las opciones desde `useProveedores()` filtradas por `activo = true`, ordenadas alfabéticamente.
+- Opción **"Sin proveedor"** al inicio (deja el campo en `null`).
+- Se guarda el **nombre** del proveedor en `otros_gastos.proveedor` (la columna es texto), para no romper datos históricos ni cambiar el esquema.
+- Permite escribir para filtrar; si no hay coincidencias, mostrar texto "No se encontraron proveedores".
+- En edición, precargar el proveedor actual si coincide con uno de la lista (por nombre). Si el gasto tiene un nombre antiguo que no existe en la tabla, igualmente mostrarlo seleccionado como valor libre.
 
-```ts
-doc.text(cotizacion.responsable, margin + 102, yPos + 3);
-```
+## Archivos a tocar
+- `src/components/proveedores/GastosGeneralesTab.tsx`:
+  - Importar `useProveedores`.
+  - Reemplazar el bloque del input `proveedor_gg` por un Combobox (Popover + Command de shadcn).
+  - Mantener el resto del formulario igual.
 
-`jsPDF.text()` lanza una excepción cuando recibe `null` o `undefined`, lo que dispara el `catch` en `Cotizaciones.tsx` y muestra el toast "Error al generar el PDF".
-
-Otros campos opcionales tienen el mismo riesgo latente (`cotizacion.descripcion`, `cat.nombre`, `item.unidad`, `item.numero`, fechas, etc.) — basta que cualquiera sea `null` para romper la descarga.
-
-## Cambio
-
-Editar **solo** `src/utils/generateCotizacionPDF.ts`:
-
-1. Agregar un helper `safeText(v) => String(v ?? "")` y usarlo en todas las llamadas `doc.text(...)` que reciban un campo de la cotización (responsable, descripcion, obraNombre, fechas, número).
-2. Defaultear los campos de items/categorías antes de armar la tabla:
-   - `cat.nombre ?? ""` antes de `.toUpperCase()`
-   - `item.unidad ?? ""` antes de `.toUpperCase()`
-   - `item.numero ?? ""`
-   - `item.total ?? item.subtotal ?? 0` (evita `NaN` en subtotales).
-3. Mostrar `"-"` cuando `responsable` esté vacío, en lugar de string vacío, para que el PDF quede prolijo.
-
-No se tocan datos, hooks ni RLS. No hay migración.
+## Fuera de alcance
+- No se modifica la base de datos.
+- No se cambia el flujo de Órdenes de Compra ni otros módulos.
+- No se agregan permisos ni RLS.
 
 ## Verificación
-
-- Descargar PDF de la cotización 2026-049 (sin responsable) → debe funcionar.
-- Descargar PDF de una cotización completa (ej. 2026-010) → sigue funcionando igual que antes.
+- Abrir Proveedores → Gastos Generales → "Nuevo Gasto": el desplegable lista los proveedores activos.
+- Buscar por texto filtra la lista.
+- Seleccionar uno y registrar guarda el nombre en `proveedor`.
+- Editar un gasto existente muestra el proveedor previamente cargado.
