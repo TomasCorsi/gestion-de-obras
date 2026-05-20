@@ -416,12 +416,15 @@ export function GastosGeneralesTab() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="proveedor_gg">Proveedor</Label>
-              <Input
-                id="proveedor_gg"
-                value={formData.proveedor}
-                onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-                placeholder="Nombre del proveedor (opcional)"
-                className="bg-muted border-border"
+              <Combobox
+                options={proveedorOptions}
+                value={formData.proveedor || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, proveedor: v === "__none__" ? "" : v })
+                }
+                placeholder="Seleccionar proveedor (opcional)"
+                searchPlaceholder="Buscar proveedor..."
+                emptyText="No se encontraron proveedores"
               />
             </div>
             <div className="space-y-2">
