@@ -43,12 +43,14 @@ import * as XLSX from "xlsx";
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
+const CALAMINASUR_USER_ID = "73236f17-0602-41aa-8959-ee14be48f477";
 
 export default function Remitos() {
   const { user, role } = useAuth();
   const isSergio = user?.id === SERGIO_USER_ID;
   const isFranco = user?.id === FRANCO_USER_ID;
-  const isOwnOnly = isSergio || isFranco;
+  const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
+  const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
   const { remitos, loading, batchSave, fetchRemitos, reorderRemito } = useRemitos();
   const { obras } = useObras();
