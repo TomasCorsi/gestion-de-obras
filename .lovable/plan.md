@@ -1,29 +1,36 @@
-# Selector de Proveedores en Gastos Generales
+# Remitero: ver los últimos remitos cargados
 
-## Objetivo
-Al crear/editar un Gasto General (pestaña Gastos Generales en Proveedores), el campo **Proveedor** debe mostrar la lista de proveedores ya cargados en el sistema, en lugar de ser un input de texto libre.
+## Problema
+Cuando el remitero (u otro usuario) carga un nuevo remito, este se guarda con `orden = null`. La consulta actual en `useRemitos` ordena así:
 
-## Comportamiento propuesto
-- Reemplazar el `<Input>` de Proveedor por un **Combobox con búsqueda** (mismo patrón que se usa en otras partes de la app, ej. `GridSelectCell` / Comando shadcn).
-- Lista las opciones desde `useProveedores()` filtradas por `activo = true`, ordenadas alfabéticamente.
-- Opción **"Sin proveedor"** al inicio (deja el campo en `null`).
-- Se guarda el **nombre** del proveedor en `otros_gastos.proveedor` (la columna es texto), para no romper datos históricos ni cambiar el esquema.
-- Permite escribir para filtrar; si no hay coincidencias, mostrar texto "No se encontraron proveedores".
-- En edición, precargar el proveedor actual si coincide con uno de la lista (por nombre). Si el gasto tiene un nombre antiguo que no existe en la tabla, igualmente mostrarlo seleccionado como valor libre.
+```
+.order("orden", { ascending: false, nullsFirst: false })
+.order("fecha", { ascending: false })
+.order("created_at", { ascending: false })
+```
+
+Como `nullsFirst: false` en orden descendente manda los `null` al **final**, todos los remitos nuevos (sin `orden` asignado) quedan al fondo de la grilla, después de los miles de remitos antiguos que sí tienen `orden`. El remitero no los ve.
+
+## Solución
+Cambiar el criterio de orden para que los remitos sin `orden` manual aparezcan **arriba**, ordenados por fecha y creación más recientes primero. Los que sí tienen `orden` (reordenados manualmente) se mantienen en su posición relativa.
+
+Nuevo orden:
+```
+.order("orden", { ascending: false, nullsFirst: true })
+.order("fecha", { ascending: false })
+.order("created_at", { ascending: false })
+```
+
+Con `nullsFirst: true`, los remitos nuevos (orden = null) se muestran primero, ordenados por fecha desc y created_at desc — es decir, el último cargado aparece arriba del todo.
 
 ## Archivos a tocar
-- `src/components/proveedores/GastosGeneralesTab.tsx`:
-  - Importar `useProveedores`.
-  - Reemplazar el bloque del input `proveedor_gg` por un Combobox (Popover + Command de shadcn).
-  - Mantener el resto del formulario igual.
+- `src/hooks/useRemitos.ts` — cambiar `nullsFirst: false` por `nullsFirst: true` en el `.order("orden", ...)` dentro de `fetchRemitosFromDB`.
 
 ## Fuera de alcance
-- No se modifica la base de datos.
-- No se cambia el flujo de Órdenes de Compra ni otros módulos.
-- No se agregan permisos ni RLS.
+- No se cambia el esquema de la base.
+- No se toca el drag & drop de reordenamiento (sigue funcionando para los remitos que el usuario reordene manualmente).
+- No se modifican permisos ni RLS.
 
 ## Verificación
-- Abrir Proveedores → Gastos Generales → "Nuevo Gasto": el desplegable lista los proveedores activos.
-- Buscar por texto filtra la lista.
-- Seleccionar uno y registrar guarda el nombre en `proveedor`.
-- Editar un gasto existente muestra el proveedor previamente cargado.
+- Como remitero, cargar un nuevo remito → debe aparecer en la primera fila de la grilla.
+- Los remitos previamente reordenados manualmente (con `orden` asignado) siguen apareciendo en el orden definido, debajo de los recién creados.
