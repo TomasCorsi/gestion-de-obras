@@ -97,7 +97,7 @@ const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<Remito
         viaje:viajes(origen, destino),
         maquinaria:maquinarias(codigo, patente)
       `)
-      .order("orden", { ascending: false, nullsFirst: false })
+      .order("orden", { ascending: false, nullsFirst: true })
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
