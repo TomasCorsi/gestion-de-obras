@@ -203,8 +203,8 @@ export async function generateCotizacionPDF(
     // Category header row
     categoryRows.push(rowIndex);
     tableData.push([
-      { content: `${cat.numero}`, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
-      { content: cat.nombre.toUpperCase(), colSpan: 7, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
+      { content: safeText(cat.numero), styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
+      { content: safeText(cat.nombre).toUpperCase(), colSpan: 7, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
     ]);
     rowIndex++;
 
@@ -213,17 +213,17 @@ export async function generateCotizacionPDF(
     let categorySubtotal = 0;
     
     catItems.forEach((item) => {
-      const itemTotal = item.total || item.subtotal;
+      const itemTotal = item.total ?? item.subtotal ?? 0;
       categorySubtotal += itemTotal;
       
       tableData.push([
-        item.numero || "",
-        item.descripcion,
-        item.unidad.toUpperCase(),
+        safeText(item.numero),
+        safeText(item.descripcion),
+        safeText(item.unidad).toUpperCase(),
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(item.precio_unitario || 0, moneda),
         formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
@@ -234,7 +234,7 @@ export async function generateCotizacionPDF(
       subtotalRows.push(rowIndex);
       tableData.push([
         { content: "", colSpan: 6 },
-        { content: `Subtotal ${cat.nombre}:`, styles: { fontStyle: "bold", halign: "right" } },
+        { content: `Subtotal ${safeText(cat.nombre)}:`, styles: { fontStyle: "bold", halign: "right" } },
         { content: formatCurrency(categorySubtotal, moneda), styles: { fontStyle: "bold" } },
       ]);
       rowIndex++;
