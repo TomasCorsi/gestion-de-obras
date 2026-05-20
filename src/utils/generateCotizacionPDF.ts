@@ -245,15 +245,15 @@ export async function generateCotizacionPDF(
   const uncategorizedItems = itemsByCategory.get(null) || [];
   if (uncategorizedItems.length > 0) {
     uncategorizedItems.forEach((item) => {
-      const itemTotal = item.total || item.subtotal;
+      const itemTotal = item.total ?? item.subtotal ?? 0;
       tableData.push([
-        item.numero || "",
-        item.descripcion,
-        item.unidad.toUpperCase(),
+        safeText(item.numero),
+        safeText(item.descripcion),
+        safeText(item.unidad).toUpperCase(),
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(item.precio_unitario || 0, moneda),
         formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
