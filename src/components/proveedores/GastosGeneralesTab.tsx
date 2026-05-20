@@ -63,6 +63,15 @@ function formatCurrency(value: number): string {
 export function GastosGeneralesTab() {
   const { gastos, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
+  const { proveedores } = useProveedores();
+
+  const proveedorOptions = useMemo(() => {
+    const activos = proveedores.filter((p) => p.activo).map((p) => ({
+      value: p.nombre,
+      label: p.nombre,
+    }));
+    return [{ value: "__none__", label: "Sin proveedor" }, ...activos];
+  }, [proveedores]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<FilterState>({
