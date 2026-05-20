@@ -48,6 +48,8 @@ import {
   CategoriaGasto,
 } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
+import { useProveedores } from "@/hooks/useProveedores";
+import { Combobox } from "@/components/ui/combobox";
 import { cn, formatDate } from "@/lib/utils";
 
 function formatCurrency(value: number): string {
