@@ -48,6 +48,8 @@ import {
   CategoriaGasto,
 } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
+import { useProveedores } from "@/hooks/useProveedores";
+import { Combobox } from "@/components/ui/combobox";
 import { cn, formatDate } from "@/lib/utils";
 
 function formatCurrency(value: number): string {
@@ -61,6 +63,15 @@ function formatCurrency(value: number): string {
 export function GastosGeneralesTab() {
   const { gastos, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
+  const { proveedores } = useProveedores();
+
+  const proveedorOptions = useMemo(() => {
+    const activos = proveedores.filter((p) => p.activo).map((p) => ({
+      value: p.nombre,
+      label: p.nombre,
+    }));
+    return [{ value: "__none__", label: "Sin proveedor" }, ...activos];
+  }, [proveedores]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<FilterState>({
@@ -405,12 +416,15 @@ export function GastosGeneralesTab() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="proveedor_gg">Proveedor</Label>
-              <Input
-                id="proveedor_gg"
-                value={formData.proveedor}
-                onChange={(e) => setFormData({ ...formData, proveedor: e.target.value })}
-                placeholder="Nombre del proveedor (opcional)"
-                className="bg-muted border-border"
+              <Combobox
+                options={proveedorOptions}
+                value={formData.proveedor || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, proveedor: v === "__none__" ? "" : v })
+                }
+                placeholder="Seleccionar proveedor (opcional)"
+                searchPlaceholder="Buscar proveedor..."
+                emptyText="No se encontraron proveedores"
               />
             </div>
             <div className="space-y-2">
