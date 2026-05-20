@@ -1,53 +1,32 @@
-## Objetivo
+# Fix: Error al descargar PDF de cotización
 
-Darle acceso a `/remitos` a **Sergio** sin tocar el flujo de auth ni los permisos de ningún otro usuario (remiteros, maquinistas, capataces, etc.).
+## Causa
 
-## Enfoque: excepción puntual por UUID
+La cotización `2026-049` (la del screenshot) tiene el campo `responsable` vacío en la base de datos. El generador de PDF (`src/utils/generateCotizacionPDF.ts`) lo pasa directamente a jsPDF:
 
-Replicamos exactamente el patrón que ya existe en la RLS de Postgres (`"Sergio can manage own remitos"` con su UUID hardcodeado). Lo trasladamos al frontend en `ProtectedRoute` para que pueda entrar a la pantalla.
-
-**Nada cambia para:**
-- Otros remiteros (siguen entrando por su rol)
-- Otros capataces / maquinistas (siguen sin acceso a `/remitos`)
-- `useAuth`, hooks, App Launcher, navbar (sin cambios)
-- Permisos RLS (ya están correctos: la policy de Sergio existe)
-
-## Cambios
-
-### 1. `src/components/auth/ProtectedRoute.tsx`
-Agregar una lista chica de **excepciones por UUID** para rutas específicas. Si el `user.id` del usuario está en la excepción de la ruta actual, se le permite el acceso aunque su rol no esté en `requiredRoles`.
-
-```tsx
-// UUIDs con acceso especial a rutas puntuales (mismo patrón que las RLS de Sergio/Franco)
-const ROUTE_EXCEPTIONS: Record<string, string[]> = {
-  '/remitos': ['c92028bd-dd42-416d-8892-f00b5ef90f8f'], // Sergio
-};
-
-// dentro del componente, antes del check de rol:
-const exceptions = ROUTE_EXCEPTIONS[location.pathname] ?? [];
-if (user && exceptions.includes(user.id)) {
-  return <>{children}</>;
-}
+```ts
+doc.text(cotizacion.responsable, margin + 102, yPos + 3);
 ```
 
-### 2. App Launcher (opcional)
-Si Sergio no ve el tile de "Remitos" en el launcher por filtro de rol, agregar la misma excepción ahí. Hay que revisar `src/components/layout/AppLauncher.tsx` para confirmar. Si no filtra por rol, no se toca nada.
+`jsPDF.text()` lanza una excepción cuando recibe `null` o `undefined`, lo que dispara el `catch` en `Cotizaciones.tsx` y muestra el toast "Error al generar el PDF".
 
-### 3. Base de datos
-**Sin migración.** El rol actual de Sergio (`maquinista`) se respeta, la RLS ya lo deja gestionar sus propios remitos. No agregamos filas a `user_roles`.
+Otros campos opcionales tienen el mismo riesgo latente (`cotizacion.descripcion`, `cat.nombre`, `item.unidad`, `item.numero`, fechas, etc.) — basta que cualquiera sea `null` para romper la descarga.
 
-## Detalles técnicos
+## Cambio
 
-- El cambio es ~6 líneas en un solo archivo (`ProtectedRoute.tsx`), más quizá 2-3 líneas en `AppLauncher.tsx`.
-- Cero impacto en otros usuarios: la lógica de roles existente no se modifica, solo se agrega un short-circuit previo basado en UUID.
-- Trazable y reversible: borrar el UUID de `ROUTE_EXCEPTIONS` revoca el acceso al instante.
-- Consistente con el patrón ya usado en RLS (`Sergio can manage own remitos`, `Franco can manage own remitos`).
+Editar **solo** `src/utils/generateCotizacionPDF.ts`:
+
+1. Agregar un helper `safeText(v) => String(v ?? "")` y usarlo en todas las llamadas `doc.text(...)` que reciban un campo de la cotización (responsable, descripcion, obraNombre, fechas, número).
+2. Defaultear los campos de items/categorías antes de armar la tabla:
+   - `cat.nombre ?? ""` antes de `.toUpperCase()`
+   - `item.unidad ?? ""` antes de `.toUpperCase()`
+   - `item.numero ?? ""`
+   - `item.total ?? item.subtotal ?? 0` (evita `NaN` en subtotales).
+3. Mostrar `"-"` cuando `responsable` esté vacío, en lugar de string vacío, para que el PDF quede prolijo.
+
+No se tocan datos, hooks ni RLS. No hay migración.
 
 ## Verificación
 
-- Sergio entra a `/remitos` ✅ y sigue pudiendo entrar a `/parte-diario` ✅ (su rol `maquinista` ya lo habilita).
-- Otros maquinistas siguen siendo redirigidos a `/sin-acceso` al ir a `/remitos`.
-- Remiteros existentes y Franco siguen funcionando idéntico.
-
-## Si en el futuro hay más casos
-Cuando aparezca el 3er o 4to usuario "multi-rol", conviene migrar a un sistema real de múltiples roles en `useAuth`. Por ahora, con 2 excepciones (Sergio + Franco ya hardcodeado en RLS), el patrón de UUID es el menos invasivo.
+- Descargar PDF de la cotización 2026-049 (sin responsable) → debe funcionar.
+- Descargar PDF de una cotización completa (ej. 2026-010) → sigue funcionando igual que antes.
