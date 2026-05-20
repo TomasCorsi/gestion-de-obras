@@ -142,12 +142,12 @@ export async function generateCotizacionPDF(
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(180, 0, 0);
-  doc.text(`COTIZACIÓN Nº: ${cotizacion.numero}`, margin, yPos);
+  doc.text(`COTIZACIÓN Nº: ${safeText(cotizacion.numero)}`, margin, yPos);
   doc.setTextColor(0, 0, 0);
   
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Fecha: ${cotizacion.fecha_creacion}  |  Vence: ${cotizacion.fecha_vencimiento}`, margin + 55, yPos);
+  doc.text(`Fecha: ${safeText(cotizacion.fecha_creacion)}  |  Vence: ${safeText(cotizacion.fecha_vencimiento)}`, margin + 55, yPos);
   yPos += 5;
 
   // ============== OBRA INFO ==============
@@ -158,12 +158,12 @@ export async function generateCotizacionPDF(
   doc.setFont("helvetica", "bold");
   doc.text("Obra:", margin + 2, yPos + 3);
   doc.setFont("helvetica", "normal");
-  doc.text(obraNombre || cotizacion.obra?.nombre || "Sin asignar", margin + 14, yPos + 3);
+  doc.text(safeText(obraNombre || cotizacion.obra?.nombre || "Sin asignar"), margin + 14, yPos + 3);
   
   doc.setFont("helvetica", "bold");
   doc.text("Resp:", margin + 90, yPos + 3);
   doc.setFont("helvetica", "normal");
-  doc.text(cotizacion.responsable, margin + 102, yPos + 3);
+  doc.text(safeText(cotizacion.responsable) || "-", margin + 102, yPos + 3);
   yPos += 10;
 
   // ============== DESCRIPCIÓN ==============
