@@ -52,7 +52,7 @@ export default function Remitos() {
   const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
-  const { remitos, loading, batchSave, fetchRemitos, reorderRemito } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -521,17 +521,6 @@ export default function Remitos() {
           creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
           showClienteCantera={isFranco || isAdminOrCapataz}
           hideExtrasForFranco={isFranco}
-          reorderEnabled={
-            !searchTerm &&
-            (tipoFilter === "__all__") &&
-            (creadorFilter === "__all__") &&
-            !filters.fechaDesde &&
-            !filters.fechaHasta &&
-            !filters.mes &&
-            !filters.obraId &&
-            !filters.maquinariaId
-          }
-          onReorder={reorderRemito}
         />
       </div>
 

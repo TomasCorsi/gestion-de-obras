@@ -7,27 +7,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, GripVertical } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
-import {
-  DndContext,
-  PointerSensor,
-  TouchSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-  sortableKeyboardCoordinates,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 
 interface RemitosSimpleGridProps {
   remitos: RemitoWithRelations[];
@@ -40,10 +23,6 @@ interface RemitosSimpleGridProps {
   showClienteCantera?: boolean;
   /** Ocultar columnas Rem. Tercero, Cli. Origen, Cli. Destino y Proveedor (sólo Franco). */
   hideExtrasForFranco?: boolean;
-  /** Si true, habilita drag & drop. */
-  reorderEnabled?: boolean;
-  /** Reasignar orden persistido en DB. */
-  onReorder?: (id: string, newOrden: number) => Promise<boolean> | void;
 }
 
 interface RowProps {
@@ -54,42 +33,11 @@ interface RowProps {
   hideExtrasForFranco?: boolean;
   onEdit: (r: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
-  reorderEnabled: boolean;
 }
 
-function SortableRow({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasForFranco, onEdit, onDelete, reorderEnabled }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: r.id,
-    disabled: !reorderEnabled,
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    position: isDragging ? "relative" : undefined,
-    zIndex: isDragging ? 30 : undefined,
-  };
-
+function Row({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasForFranco, onEdit, onDelete }: RowProps) {
   return (
-    <TableRow ref={setNodeRef} style={style} className="text-xs">
-      <TableCell className="py-2 w-[30px] px-1">
-        <button
-          type="button"
-          {...attributes}
-          {...listeners}
-          disabled={!reorderEnabled}
-          className={`flex items-center justify-center h-7 w-6 rounded ${
-            reorderEnabled
-              ? "cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground hover:bg-muted"
-              : "cursor-not-allowed text-muted-foreground/30"
-          }`}
-          title={reorderEnabled ? "Arrastrar para reordenar" : "Quitá los filtros y la búsqueda para reordenar"}
-          aria-label="Reordenar fila"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      </TableCell>
+    <TableRow className="text-xs">
       <TableCell className="py-2">{r.fecha}</TableCell>
       {!hideExtrasForFranco && <TableCell className="py-2">{r.remito_tercero || "-"}</TableCell>}
       <TableCell className="py-2">{r.remito_local || r.numero || "-"}</TableCell>
@@ -156,8 +104,6 @@ export function RemitosSimpleGrid({
   creadoresMap,
   showClienteCantera = false,
   hideExtrasForFranco = false,
-  reorderEnabled = false,
-  onReorder,
 }: RemitosSimpleGridProps) {
   const maqMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -170,127 +116,69 @@ export function RemitosSimpleGrid({
   const totalPrecio = remitos.reduce((s, r) => s + (r.precio_total || 0), 0);
   const totalViajes = remitos.reduce((s, r) => s + (r.cantidad_viajes || 0), 0);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-  );
-
-  const itemIds = useMemo(() => remitos.map((r) => r.id), [remitos]);
-
-  const handleDragEnd = async (event: DragEndEvent) => {
-    if (!reorderEnabled || !onReorder) return;
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
-    const oldIndex = remitos.findIndex((r) => r.id === active.id);
-    const newIndex = remitos.findIndex((r) => r.id === over.id);
-    if (oldIndex < 0 || newIndex < 0) return;
-
-    // Build new array order to find neighbours of the dropped item
-    const reordered = [...remitos];
-    const [moved] = reordered.splice(oldIndex, 1);
-    reordered.splice(newIndex, 0, moved);
-
-    // List is sorted DESC by `orden`, so neighbour above has HIGHER orden, below has LOWER
-    const above = reordered[newIndex - 1];
-    const below = reordered[newIndex + 1];
-
-    const fallbackOrden = (r?: RemitoWithRelations) =>
-      r?.orden != null ? Number(r.orden) : new Date(r?.created_at || Date.now()).getTime() / 1000;
-
-    let newOrden: number;
-    if (above && below) {
-      newOrden = (fallbackOrden(above) + fallbackOrden(below)) / 2;
-    } else if (above) {
-      newOrden = fallbackOrden(above) - 1;
-    } else if (below) {
-      newOrden = fallbackOrden(below) + 1;
-    } else {
-      newOrden = Date.now() / 1000;
-    }
-
-    await onReorder(String(active.id), newOrden);
-  };
-
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted-foreground">
         {remitos.length} remitos · {totalViajes} viajes · ${totalPrecio.toLocaleString("es-AR")}
-        {!reorderEnabled && onReorder && (
-          <span className="ml-2 italic">
-            (Quitá los filtros y la búsqueda para poder reordenar arrastrando)
-          </span>
-        )}
       </div>
 
       <div
         className="overflow-auto border rounded-md"
         style={{ height: "calc(100vh - 360px)", minHeight: "400px" }}
       >
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <table className="w-full caption-bottom text-sm border-collapse">
-            <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
-              <TableRow className="bg-muted/95 hover:bg-muted/95">
-                <TableHead className="text-xs w-[30px] px-1 bg-muted"></TableHead>
-                <TableHead className="text-xs min-w-[90px] bg-muted">Fecha</TableHead>
-                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>}
-                <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Local</TableHead>
-                <TableHead className="text-xs min-w-[140px] bg-muted">Desde</TableHead>
-                <TableHead className="text-xs min-w-[140px] bg-muted">Hasta</TableHead>
-                <TableHead className="text-xs min-w-[100px] bg-muted">Tipo</TableHead>
-                <TableHead className="text-xs min-w-[100px] bg-muted">Transporte</TableHead>
-                <TableHead className="text-xs min-w-[130px] bg-muted">Vehículo</TableHead>
-                <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
-                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>}
-                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>}
-                {showClienteCantera && (
-                  <TableHead className="text-xs min-w-[140px] bg-muted">Cli. Cantera</TableHead>
-                )}
-                <TableHead className="text-xs min-w-[55px] text-right bg-muted">Viajes</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Uni.</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Total</TableHead>
-                <TableHead className="text-xs min-w-[55px] bg-muted">Unidad</TableHead>
-                <TableHead className="text-xs min-w-[70px] text-right bg-muted">P. Unit.</TableHead>
-                <TableHead className="text-xs min-w-[80px] text-right bg-muted">P. Total</TableHead>
-                {!hideExtrasForFranco && <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>}
-                <TableHead className="text-xs min-w-[110px] bg-muted">Forma Pago</TableHead>
-                <TableHead className="text-xs min-w-[130px] bg-muted">Observaciones</TableHead>
-                {creadoresMap && <TableHead className="text-xs min-w-[140px] bg-muted">Cargado por</TableHead>}
-                <TableHead className="text-xs w-[80px] text-center bg-muted">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {remitos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={(creadoresMap ? 23 : 22) + (showClienteCantera ? 1 : 0) - (hideExtrasForFranco ? 4 : 0)} className="text-center text-muted-foreground py-8">
-                    No hay remitos para mostrar
-                  </TableCell>
-                </TableRow>
-              ) : (
-                <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
-                  {remitos.map((r) => (
-                    <SortableRow
-                      key={r.id}
-                      r={r}
-                      maqMap={maqMap}
-                      creadoresMap={creadoresMap}
-                      showClienteCantera={showClienteCantera}
-                      hideExtrasForFranco={hideExtrasForFranco}
-                      onEdit={onEdit}
-                      onDelete={onDelete}
-                      reorderEnabled={reorderEnabled}
-                    />
-                  ))}
-                </SortableContext>
+        <table className="w-full caption-bottom text-sm border-collapse">
+          <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
+            <TableRow className="bg-muted/95 hover:bg-muted/95">
+              <TableHead className="text-xs min-w-[90px] bg-muted">Fecha</TableHead>
+              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>}
+              <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Local</TableHead>
+              <TableHead className="text-xs min-w-[140px] bg-muted">Desde</TableHead>
+              <TableHead className="text-xs min-w-[140px] bg-muted">Hasta</TableHead>
+              <TableHead className="text-xs min-w-[100px] bg-muted">Tipo</TableHead>
+              <TableHead className="text-xs min-w-[100px] bg-muted">Transporte</TableHead>
+              <TableHead className="text-xs min-w-[130px] bg-muted">Vehículo</TableHead>
+              <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
+              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>}
+              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>}
+              {showClienteCantera && (
+                <TableHead className="text-xs min-w-[140px] bg-muted">Cli. Cantera</TableHead>
               )}
-            </TableBody>
-          </table>
-        </DndContext>
+              <TableHead className="text-xs min-w-[55px] text-right bg-muted">Viajes</TableHead>
+              <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Uni.</TableHead>
+              <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Total</TableHead>
+              <TableHead className="text-xs min-w-[55px] bg-muted">Unidad</TableHead>
+              <TableHead className="text-xs min-w-[70px] text-right bg-muted">P. Unit.</TableHead>
+              <TableHead className="text-xs min-w-[80px] text-right bg-muted">P. Total</TableHead>
+              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>}
+              <TableHead className="text-xs min-w-[110px] bg-muted">Forma Pago</TableHead>
+              <TableHead className="text-xs min-w-[130px] bg-muted">Observaciones</TableHead>
+              {creadoresMap && <TableHead className="text-xs min-w-[140px] bg-muted">Cargado por</TableHead>}
+              <TableHead className="text-xs w-[80px] text-center bg-muted">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {remitos.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={(creadoresMap ? 22 : 21) + (showClienteCantera ? 1 : 0) - (hideExtrasForFranco ? 4 : 0)} className="text-center text-muted-foreground py-8">
+                  No hay remitos para mostrar
+                </TableCell>
+              </TableRow>
+            ) : (
+              remitos.map((r) => (
+                <Row
+                  key={r.id}
+                  r={r}
+                  maqMap={maqMap}
+                  creadoresMap={creadoresMap}
+                  showClienteCantera={showClienteCantera}
+                  hideExtrasForFranco={hideExtrasForFranco}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                />
+              ))
+            )}
+          </TableBody>
+        </table>
       </div>
     </div>
   );
