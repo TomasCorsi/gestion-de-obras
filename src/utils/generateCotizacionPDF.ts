@@ -170,7 +170,7 @@ export async function generateCotizacionPDF(
   if (cotizacion.descripcion) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
-    const descripcionLines = doc.splitTextToSize(cotizacion.descripcion, pageWidth - margin * 2);
+    const descripcionLines = doc.splitTextToSize(safeText(cotizacion.descripcion), pageWidth - margin * 2);
     doc.text(descripcionLines, margin, yPos);
     yPos += descripcionLines.length * 3 + 2;
   }
