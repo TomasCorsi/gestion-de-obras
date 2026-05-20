@@ -50,6 +50,10 @@ function formatNumber(value: number, decimals = 2): string {
   });
 }
 
+function safeText(v: any): string {
+  return v === null || v === undefined ? "" : String(v);
+}
+
 interface ImageData {
   base64: string;
   width: number;
@@ -138,12 +142,12 @@ export async function generateCotizacionPDF(
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(180, 0, 0);
-  doc.text(`COTIZACIÓN Nº: ${cotizacion.numero}`, margin, yPos);
+  doc.text(`COTIZACIÓN Nº: ${safeText(cotizacion.numero)}`, margin, yPos);
   doc.setTextColor(0, 0, 0);
   
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Fecha: ${cotizacion.fecha_creacion}  |  Vence: ${cotizacion.fecha_vencimiento}`, margin + 55, yPos);
+  doc.text(`Fecha: ${safeText(cotizacion.fecha_creacion)}  |  Vence: ${safeText(cotizacion.fecha_vencimiento)}`, margin + 55, yPos);
   yPos += 5;
 
   // ============== OBRA INFO ==============
@@ -154,19 +158,19 @@ export async function generateCotizacionPDF(
   doc.setFont("helvetica", "bold");
   doc.text("Obra:", margin + 2, yPos + 3);
   doc.setFont("helvetica", "normal");
-  doc.text(obraNombre || cotizacion.obra?.nombre || "Sin asignar", margin + 14, yPos + 3);
+  doc.text(safeText(obraNombre || cotizacion.obra?.nombre || "Sin asignar"), margin + 14, yPos + 3);
   
   doc.setFont("helvetica", "bold");
   doc.text("Resp:", margin + 90, yPos + 3);
   doc.setFont("helvetica", "normal");
-  doc.text(cotizacion.responsable, margin + 102, yPos + 3);
+  doc.text(safeText(cotizacion.responsable) || "-", margin + 102, yPos + 3);
   yPos += 10;
 
   // ============== DESCRIPCIÓN ==============
   if (cotizacion.descripcion) {
     doc.setFontSize(7);
     doc.setFont("helvetica", "italic");
-    const descripcionLines = doc.splitTextToSize(cotizacion.descripcion, pageWidth - margin * 2);
+    const descripcionLines = doc.splitTextToSize(safeText(cotizacion.descripcion), pageWidth - margin * 2);
     doc.text(descripcionLines, margin, yPos);
     yPos += descripcionLines.length * 3 + 2;
   }
@@ -199,8 +203,8 @@ export async function generateCotizacionPDF(
     // Category header row
     categoryRows.push(rowIndex);
     tableData.push([
-      { content: `${cat.numero}`, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
-      { content: cat.nombre.toUpperCase(), colSpan: 7, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
+      { content: safeText(cat.numero), styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
+      { content: safeText(cat.nombre).toUpperCase(), colSpan: 7, styles: { fontStyle: "bold", fillColor: [230, 230, 230] } },
     ]);
     rowIndex++;
 
@@ -209,17 +213,17 @@ export async function generateCotizacionPDF(
     let categorySubtotal = 0;
     
     catItems.forEach((item) => {
-      const itemTotal = item.total || item.subtotal;
+      const itemTotal = item.total ?? item.subtotal ?? 0;
       categorySubtotal += itemTotal;
       
       tableData.push([
-        item.numero || "",
-        item.descripcion,
-        item.unidad.toUpperCase(),
+        safeText(item.numero),
+        safeText(item.descripcion),
+        safeText(item.unidad).toUpperCase(),
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(item.precio_unitario || 0, moneda),
         formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
@@ -230,7 +234,7 @@ export async function generateCotizacionPDF(
       subtotalRows.push(rowIndex);
       tableData.push([
         { content: "", colSpan: 6 },
-        { content: `Subtotal ${cat.nombre}:`, styles: { fontStyle: "bold", halign: "right" } },
+        { content: `Subtotal ${safeText(cat.nombre)}:`, styles: { fontStyle: "bold", halign: "right" } },
         { content: formatCurrency(categorySubtotal, moneda), styles: { fontStyle: "bold" } },
       ]);
       rowIndex++;
@@ -241,15 +245,15 @@ export async function generateCotizacionPDF(
   const uncategorizedItems = itemsByCategory.get(null) || [];
   if (uncategorizedItems.length > 0) {
     uncategorizedItems.forEach((item) => {
-      const itemTotal = item.total || item.subtotal;
+      const itemTotal = item.total ?? item.subtotal ?? 0;
       tableData.push([
-        item.numero || "",
-        item.descripcion,
-        item.unidad.toUpperCase(),
+        safeText(item.numero),
+        safeText(item.descripcion),
+        safeText(item.unidad).toUpperCase(),
         formatNumber(item.cantidad_m2 || 0),
         formatNumber(item.altura_promedio || 0),
         formatNumber(item.cantidad_m3 || 0),
-        formatCurrency(item.precio_unitario, moneda),
+        formatCurrency(item.precio_unitario || 0, moneda),
         formatCurrency(itemTotal, moneda),
       ]);
       rowIndex++;
