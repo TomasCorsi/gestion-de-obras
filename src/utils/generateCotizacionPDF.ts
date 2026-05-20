@@ -50,6 +50,10 @@ function formatNumber(value: number, decimals = 2): string {
   });
 }
 
+function safeText(v: any): string {
+  return v === null || v === undefined ? "" : String(v);
+}
+
 interface ImageData {
   base64: string;
   width: number;
