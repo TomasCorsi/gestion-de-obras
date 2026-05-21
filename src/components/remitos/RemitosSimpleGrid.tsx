@@ -11,6 +11,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
+import { formatDate } from "@/lib/utils";
 
 interface RemitosSimpleGridProps {
   remitos: RemitoWithRelations[];
