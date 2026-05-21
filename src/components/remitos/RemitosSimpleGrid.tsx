@@ -11,6 +11,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
+import { formatDate } from "@/lib/utils";
 
 interface RemitosSimpleGridProps {
   remitos: RemitoWithRelations[];
@@ -38,7 +39,7 @@ interface RowProps {
 function Row({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasForFranco, onEdit, onDelete }: RowProps) {
   return (
     <TableRow className="text-xs">
-      <TableCell className="py-2">{r.fecha}</TableCell>
+      <TableCell className="py-2">{formatDate(r.fecha)}</TableCell>
       {!hideExtrasForFranco && <TableCell className="py-2">{r.remito_tercero || "-"}</TableCell>}
       <TableCell className="py-2">{r.remito_local || r.numero || "-"}</TableCell>
       <TableCell className="py-2">{r.desde || "-"}</TableCell>
