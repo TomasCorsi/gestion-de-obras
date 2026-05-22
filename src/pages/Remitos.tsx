@@ -352,10 +352,10 @@ export default function Remitos() {
   };
 
   // Stats calculations
-  const totalRemitos = remitos.length;
-  const totalViajes = remitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
-  const totalCantidad = remitos.reduce((sum, r) => sum + r.cantidad, 0);
-  const totalPrecio = remitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
+  const totalRemitos = filteredRemitos.length;
+  const totalViajes = filteredRemitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
+  const totalCantidad = filteredRemitos.reduce((sum, r) => sum + r.cantidad, 0);
+  const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
 
   if (loading) {
     return (
