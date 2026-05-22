@@ -37,6 +37,7 @@ import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
+import { LiquidacionObraDialog } from "@/components/remitos/LiquidacionObraDialog";
 import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPreciosMasivosDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -73,6 +74,7 @@ export default function Remitos() {
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
   const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+  const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
 
@@ -354,7 +356,12 @@ export default function Remitos() {
   // Stats calculations
   const totalRemitos = filteredRemitos.length;
   const totalViajes = filteredRemitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
-  const totalCantidad = filteredRemitos.reduce((sum, r) => sum + r.cantidad, 0);
+  const cantidadPorUnidad = filteredRemitos.reduce<Record<string, number>>((acc, r) => {
+    const u = (r.unidad || "M3").toUpperCase();
+    acc[u] = (acc[u] || 0) + (r.cantidad || 0);
+    return acc;
+  }, {});
+  const cantidadUnidadEntries = Object.entries(cantidadPorUnidad).sort(([a], [b]) => a.localeCompare(b));
   const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
 
   if (loading) {
@@ -451,7 +458,15 @@ export default function Remitos() {
               className="gap-2"
             >
               <FileText className="w-4 h-4" />
-              Liquidar
+              Liquidar Cliente
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLiquidacionObraOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Liquidar Obra
             </Button>
             <Button
               variant="outline"
@@ -491,13 +506,21 @@ export default function Remitos() {
           <Truck className="w-8 h-8 text-success" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {totalCantidad.toLocaleString("es-AR")}
-            </p>
-            <p className="text-sm text-muted-foreground">Cantidad Total</p>
+          <div className="min-w-0">
+            {cantidadUnidadEntries.length === 0 ? (
+              <p className="text-2xl font-bold text-foreground">0</p>
+            ) : (
+              <div className="space-y-0.5">
+                {cantidadUnidadEntries.map(([unidad, total]) => (
+                  <p key={unidad} className="text-lg font-bold text-foreground leading-tight">
+                    {total.toLocaleString("es-AR")} <span className="text-sm text-muted-foreground">{unidad}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">Cantidad Total</p>
           </div>
-          <Package className="w-8 h-8 text-warning" />
+          <Package className="w-8 h-8 text-warning shrink-0" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
@@ -570,6 +593,12 @@ export default function Remitos() {
       <LiquidacionClienteDialog
         open={liquidacionOpen}
         onOpenChange={setLiquidacionOpen}
+        remitos={filteredRemitos}
+      />
+
+      <LiquidacionObraDialog
+        open={liquidacionObraOpen}
+        onOpenChange={setLiquidacionObraOpen}
         remitos={filteredRemitos}
       />
 
