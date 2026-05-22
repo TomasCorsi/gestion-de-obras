@@ -74,6 +74,7 @@ export default function Remitos() {
   const [tipoFilter, setTipoFilter] = useState<string>("__all__");
   const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+  const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
 
