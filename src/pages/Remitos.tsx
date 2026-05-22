@@ -498,13 +498,21 @@ export default function Remitos() {
           <Truck className="w-8 h-8 text-success" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
-          <div>
-            <p className="text-2xl font-bold text-foreground">
-              {totalCantidad.toLocaleString("es-AR")}
-            </p>
-            <p className="text-sm text-muted-foreground">Cantidad Total</p>
+          <div className="min-w-0">
+            {cantidadUnidadEntries.length === 0 ? (
+              <p className="text-2xl font-bold text-foreground">0</p>
+            ) : (
+              <div className="space-y-0.5">
+                {cantidadUnidadEntries.map(([unidad, total]) => (
+                  <p key={unidad} className="text-lg font-bold text-foreground leading-tight">
+                    {total.toLocaleString("es-AR")} <span className="text-sm text-muted-foreground">{unidad}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+            <p className="text-sm text-muted-foreground mt-1">Cantidad Total</p>
           </div>
-          <Package className="w-8 h-8 text-warning" />
+          <Package className="w-8 h-8 text-warning shrink-0" />
         </div>
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
