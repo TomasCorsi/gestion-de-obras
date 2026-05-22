@@ -9,12 +9,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -48,6 +56,7 @@ export function LiquidacionObraDialog({
   remitos,
 }: LiquidacionObraDialogProps) {
   const [selectedObra, setSelectedObra] = useState<string>("");
+  const [obraOpen, setObraOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
@@ -169,18 +178,49 @@ export function LiquidacionObraDialog({
             <label className="text-sm font-medium text-foreground mb-1 block">
               Obra
             </label>
-            <Select value={selectedObra} onValueChange={handleObraChange}>
-              <SelectTrigger className="bg-card">
-                <SelectValue placeholder="Seleccionar obra..." />
-              </SelectTrigger>
-              <SelectContent>
-                {obrasUnicas.map((o) => (
-                  <SelectItem key={o} value={o}>
-                    {o}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={obraOpen} onOpenChange={setObraOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-full justify-between bg-card font-normal",
+                    !selectedObra && "text-muted-foreground"
+                  )}
+                >
+                  {selectedObra || "Seleccionar obra..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar obra..." />
+                  <CommandList>
+                    <CommandEmpty>Sin resultados.</CommandEmpty>
+                    <CommandGroup>
+                      {obrasUnicas.map((o) => (
+                        <CommandItem
+                          key={o}
+                          value={o}
+                          onSelect={() => {
+                            handleObraChange(o);
+                            setObraOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedObra === o ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {o}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {selectedObra && tiposUnicos.length > 0 && (
