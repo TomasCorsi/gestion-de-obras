@@ -178,18 +178,49 @@ export function LiquidacionObraDialog({
             <label className="text-sm font-medium text-foreground mb-1 block">
               Obra
             </label>
-            <Select value={selectedObra} onValueChange={handleObraChange}>
-              <SelectTrigger className="bg-card">
-                <SelectValue placeholder="Seleccionar obra..." />
-              </SelectTrigger>
-              <SelectContent>
-                {obrasUnicas.map((o) => (
-                  <SelectItem key={o} value={o}>
-                    {o}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={obraOpen} onOpenChange={setObraOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  className={cn(
+                    "w-full justify-between bg-card font-normal",
+                    !selectedObra && "text-muted-foreground"
+                  )}
+                >
+                  {selectedObra || "Seleccionar obra..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar obra..." />
+                  <CommandList>
+                    <CommandEmpty>Sin resultados.</CommandEmpty>
+                    <CommandGroup>
+                      {obrasUnicas.map((o) => (
+                        <CommandItem
+                          key={o}
+                          value={o}
+                          onSelect={() => {
+                            handleObraChange(o);
+                            setObraOpen(false);
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              selectedObra === o ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {o}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {selectedObra && tiposUnicos.length > 0 && (
