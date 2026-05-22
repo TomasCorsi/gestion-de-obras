@@ -462,14 +462,6 @@ export default function Remitos() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setLiquidacionObraOpen(true)}
-              className="gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              Liquidar Obra
-            </Button>
-            <Button
-              variant="outline"
               onClick={() => setPreciosOpen(true)}
               className="gap-2"
             >
@@ -487,6 +479,14 @@ export default function Remitos() {
             </Button>
           </>
         )}
+        <Button
+          variant="outline"
+          onClick={() => setLiquidacionObraOpen(true)}
+          className="gap-2"
+        >
+          <FileText className="w-4 h-4" />
+          Liquidar Obra
+        </Button>
       </div>
 
       {/* Stats */}
