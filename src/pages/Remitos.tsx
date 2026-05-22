@@ -596,6 +596,12 @@ export default function Remitos() {
         remitos={filteredRemitos}
       />
 
+      <LiquidacionObraDialog
+        open={liquidacionObraOpen}
+        onOpenChange={setLiquidacionObraOpen}
+        remitos={filteredRemitos}
+      />
+
       {/* Asignar Precios Masivos Dialog */}
       <AsignarPreciosMasivosDialog
         open={preciosOpen}
