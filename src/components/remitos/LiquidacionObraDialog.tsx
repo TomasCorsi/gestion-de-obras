@@ -56,6 +56,7 @@ export function LiquidacionObraDialog({
   remitos,
 }: LiquidacionObraDialogProps) {
   const [selectedObra, setSelectedObra] = useState<string>("");
+  const [obraOpen, setObraOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
