@@ -1,19 +1,28 @@
-## Objetivo
-Que las tarjetas de totales (Total Remitos, Viajes, Cantidad, Precio) muestren los valores correspondientes al filtro activo — incluyendo el filtro por obra — en lugar de todos los remitos.
+## 1. Botón "Liquidar Obra"
+Crear nuevo componente `src/components/remitos/LiquidacionObraDialog.tsx` (basado en `LiquidacionClienteDialog`) con estos cambios:
+- Selector de **Obra** (en lugar de Cliente). Lista las obras únicas que aparecen en `desde` o `hasta` de los remitos filtrados.
+- Filtra remitos donde `r.desde === obra || r.hasta === obra`.
+- El resto (checkboxes por tipo de material, tabla resumen agrupada, totales, exportar Excel) se mantiene idéntico.
+- Nombre de archivo Excel: `Liquidacion_Obra_<nombre>_<fecha>.xlsx`.
 
-## Cambio
-Archivo: `src/pages/Remitos.tsx` (líneas 355-358)
+En `src/pages/Remitos.tsx`:
+- Agregar estado `liquidacionObraOpen`.
+- Añadir botón **"Liquidar Obra"** junto al botón "Liquidar" existente (dentro del bloque `!isOwnOnly`), con ícono `FileText`.
+- Renderizar `<LiquidacionObraDialog>` pasando `remitos={filteredRemitos}` y `obras={obras}`.
 
-Reemplazar el cálculo de stats para que use `filteredRemitos` en vez de `remitos`:
+## 2. Card "Cantidad Total" desglosada por unidad
+Reemplazar el cálculo único `totalCantidad` por un agrupado por `unidad` (TN, M2, M3, etc.) sobre `filteredRemitos`:
 
 ```ts
-const totalRemitos = filteredRemitos.length;
-const totalViajes = filteredRemitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
-const totalCantidad = filteredRemitos.reduce((sum, r) => sum + r.cantidad, 0);
-const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
+const cantidadPorUnidad = filteredRemitos.reduce<Record<string, number>>((acc, r) => {
+  const u = (r.unidad || "M3").toUpperCase();
+  acc[u] = (acc[u] || 0) + (r.cantidad || 0);
+  return acc;
+}, {});
 ```
 
-Con esto los totales se actualizan automáticamente al filtrar por obra, fecha, mes, tipo de material, creador o búsqueda.
+En la card "Cantidad Total" mostrar una lista compacta de líneas tipo `1.234 M3`, `560 TN`, `89 M2`, etc., ordenadas alfabéticamente. Si no hay datos, mostrar `0`. El ícono `Package` se mantiene.
 
 ## Fuera de alcance
-No se modifica la lógica de filtros existentes ni la grilla; el resumen interno de la grilla ya usa los remitos filtrados.
+- No se toca la lógica de filtros, RLS, ni el diálogo de Liquidación por Cliente existente.
+- No se cambia el comportamiento de exportar Excel general ni del PDF.
