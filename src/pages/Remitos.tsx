@@ -356,7 +356,12 @@ export default function Remitos() {
   // Stats calculations
   const totalRemitos = filteredRemitos.length;
   const totalViajes = filteredRemitos.reduce((sum, r) => sum + (r.cantidad_viajes || 1), 0);
-  const totalCantidad = filteredRemitos.reduce((sum, r) => sum + r.cantidad, 0);
+  const cantidadPorUnidad = filteredRemitos.reduce<Record<string, number>>((acc, r) => {
+    const u = (r.unidad || "M3").toUpperCase();
+    acc[u] = (acc[u] || 0) + (r.cantidad || 0);
+    return acc;
+  }, {});
+  const cantidadUnidadEntries = Object.entries(cantidadPorUnidad).sort(([a], [b]) => a.localeCompare(b));
   const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
 
   if (loading) {
