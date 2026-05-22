@@ -37,6 +37,7 @@ import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
 import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
+import { LiquidacionObraDialog } from "@/components/remitos/LiquidacionObraDialog";
 import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPreciosMasivosDialog";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
