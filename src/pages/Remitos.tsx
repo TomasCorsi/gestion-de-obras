@@ -458,7 +458,15 @@ export default function Remitos() {
               className="gap-2"
             >
               <FileText className="w-4 h-4" />
-              Liquidar
+              Liquidar Cliente
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setLiquidacionObraOpen(true)}
+              className="gap-2"
+            >
+              <FileText className="w-4 h-4" />
+              Liquidar Obra
             </Button>
             <Button
               variant="outline"
