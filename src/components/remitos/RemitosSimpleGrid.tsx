@@ -1,11 +1,5 @@
-import { useMemo } from "react";
-import {
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table";
+import { memo, useMemo, useRef } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
@@ -20,9 +14,7 @@ interface RemitosSimpleGridProps {
   onEdit: (remito: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
   creadoresMap?: Record<string, string>;
-  /** Mostrar columna Cliente Cantera (sólo Franco). */
   showClienteCantera?: boolean;
-  /** Ocultar columnas Rem. Tercero, Cli. Origen, Cli. Destino y Proveedor (sólo Franco). */
   hideExtrasForFranco?: boolean;
 }
 
@@ -34,71 +26,111 @@ interface RowProps {
   hideExtrasForFranco?: boolean;
   onEdit: (r: RemitoWithRelations) => void;
   onDelete: (id: string) => void;
+  style: React.CSSProperties;
+  columns: { key: string; width: number; align?: "right" | "center" }[];
 }
 
-function Row({ r, maqMap, creadoresMap, showClienteCantera, hideExtrasForFranco, onEdit, onDelete }: RowProps) {
-  return (
-    <TableRow className="text-xs">
-      <TableCell className="py-2">{formatDate(r.fecha)}</TableCell>
-      {!hideExtrasForFranco && <TableCell className="py-2">{r.remito_tercero || "-"}</TableCell>}
-      <TableCell className="py-2">{r.remito_local || r.numero || "-"}</TableCell>
-      <TableCell className="py-2">{r.desde || "-"}</TableCell>
-      <TableCell className="py-2">{r.hasta || "-"}</TableCell>
-      <TableCell className="py-2">{r.tipo_material || r.material || "-"}</TableCell>
-      <TableCell className="py-2">{r.tipo_transporte || "-"}</TableCell>
-      <TableCell className="py-2">{r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-"}</TableCell>
-      <TableCell className="py-2">{r.patente_tercero || "-"}</TableCell>
-      {!hideExtrasForFranco && <TableCell className="py-2">{r.cliente || "-"}</TableCell>}
-      {!hideExtrasForFranco && <TableCell className="py-2">{(r as any).cliente_destino || "-"}</TableCell>}
-      {showClienteCantera && (
-        <TableCell className="py-2">{(r as any).cliente_cantera || "-"}</TableCell>
-      )}
-      <TableCell className="py-2 text-right">{r.cantidad_viajes || 0}</TableCell>
-      <TableCell className="py-2 text-right">{r.cantidad_uni ?? "-"}</TableCell>
-      <TableCell className="py-2 text-right">{r.cantidad || 0}</TableCell>
-      <TableCell className="py-2">{r.unidad || "M3"}</TableCell>
-      <TableCell className="py-2 text-right">{r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-"}</TableCell>
-      <TableCell className="py-2 text-right">${(r.precio_total || 0).toLocaleString("es-AR")}</TableCell>
-      {!hideExtrasForFranco && <TableCell className="py-2">{r.proveedor || "-"}</TableCell>}
-      <TableCell className="py-2">{(() => {
-        const fp = (r as any).forma_pago;
-        if (!fp) return "-";
-        if (fp === "cuenta_corriente") return "Cta. Corriente";
-        return fp.charAt(0).toUpperCase() + fp.slice(1);
-      })()}</TableCell>
-      <TableCell className="py-2 truncate max-w-[130px]">{r.observaciones || "-"}</TableCell>
-      {creadoresMap && (
-        <TableCell className="py-2">
-          {(r as any).created_by ? (creadoresMap[(r as any).created_by] || "-") : "-"}
-        </TableCell>
-      )}
-      <TableCell className="py-2">
-        <div className="flex items-center gap-1 justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={() => onEdit(r)}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 text-destructive hover:text-destructive"
-            onClick={() => onDelete(r.id)}
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
-  );
+const ROW_HEIGHT = 34;
+
+function formatFormaPago(fp?: string | null) {
+  if (!fp) return "-";
+  if (fp === "cuenta_corriente") return "Cta. Corriente";
+  return fp.charAt(0).toUpperCase() + fp.slice(1);
 }
+
+const Row = memo(function Row({
+  r,
+  maqMap,
+  creadoresMap,
+  showClienteCantera,
+  hideExtrasForFranco,
+  onEdit,
+  onDelete,
+  style,
+  columns,
+}: RowProps) {
+  const cellBase = "px-3 py-2 border-b border-border text-xs truncate";
+  const valByKey: Record<string, React.ReactNode> = {
+    fecha: formatDate(r.fecha),
+    remito_tercero: r.remito_tercero || "-",
+    remito_local: r.remito_local || r.numero || "-",
+    desde: r.desde || "-",
+    hasta: r.hasta || "-",
+    tipo: r.tipo_material || r.material || "-",
+    transporte: r.tipo_transporte || "-",
+    vehiculo: r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-",
+    pat_tercero: r.patente_tercero || "-",
+    cli_origen: r.cliente || "-",
+    cli_destino: (r as any).cliente_destino || "-",
+    cli_cantera: (r as any).cliente_cantera || "-",
+    viajes: r.cantidad_viajes || 0,
+    c_uni: r.cantidad_uni ?? "-",
+    c_total: r.cantidad || 0,
+    unidad: r.unidad || "M3",
+    p_unit: r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-",
+    p_total: `$${(r.precio_total || 0).toLocaleString("es-AR")}`,
+    proveedor: r.proveedor || "-",
+    forma_pago: formatFormaPago((r as any).forma_pago),
+    observaciones: r.observaciones || "-",
+    cargado_por: (r as any).created_by ? (creadoresMap?.[(r as any).created_by] || "-") : "-",
+  };
+
+  return (
+    <div
+      style={style}
+      className="flex hover:bg-muted/40"
+    >
+      {columns.map((c) => {
+        if (c.key === "acciones") {
+          return (
+            <div
+              key={c.key}
+              className={`${cellBase} flex items-center justify-center gap-1`}
+              style={{ width: c.width, minWidth: c.width }}
+            >
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(r)}>
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-destructive hover:text-destructive"
+                onClick={() => onDelete(r.id)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          );
+        }
+        const alignClass =
+          c.align === "right" ? "justify-end text-right" : c.align === "center" ? "justify-center text-center" : "";
+        return (
+          <div
+            key={c.key}
+            className={`${cellBase} flex items-center ${alignClass}`}
+            style={{ width: c.width, minWidth: c.width }}
+            title={typeof valByKey[c.key] === "string" ? (valByKey[c.key] as string) : undefined}
+          >
+            {valByKey[c.key]}
+          </div>
+        );
+      })}
+    </div>
+  );
+}, (prev, next) => {
+  return (
+    prev.r.id === next.r.id &&
+    (prev.r as any).updated_at === (next.r as any).updated_at &&
+    prev.creadoresMap === next.creadoresMap &&
+    prev.maqMap === next.maqMap &&
+    prev.showClienteCantera === next.showClienteCantera &&
+    prev.hideExtrasForFranco === next.hideExtrasForFranco &&
+    prev.style.transform === next.style.transform
+  );
+});
 
 export function RemitosSimpleGrid({
   remitos,
-  obras: _obras,
   maquinarias,
   onEdit,
   onDelete,
@@ -114,72 +146,125 @@ export function RemitosSimpleGrid({
     return m;
   }, [maquinarias]);
 
-  const totalPrecio = remitos.reduce((s, r) => s + (r.precio_total || 0), 0);
-  const totalViajes = remitos.reduce((s, r) => s + (r.cantidad_viajes || 0), 0);
+  const columns = useMemo(() => {
+    const cols: { key: string; label: string; width: number; align?: "right" | "center" }[] = [];
+    cols.push({ key: "fecha", label: "Fecha", width: 95 });
+    if (!hideExtrasForFranco) cols.push({ key: "remito_tercero", label: "Rem. Tercero", width: 100 });
+    cols.push({ key: "remito_local", label: "Rem. Local", width: 100 });
+    cols.push({ key: "desde", label: "Desde", width: 150 });
+    cols.push({ key: "hasta", label: "Hasta", width: 150 });
+    cols.push({ key: "tipo", label: "Tipo", width: 110 });
+    cols.push({ key: "transporte", label: "Transporte", width: 110 });
+    cols.push({ key: "vehiculo", label: "Vehículo", width: 140 });
+    cols.push({ key: "pat_tercero", label: "Pat. Tercero", width: 100 });
+    if (!hideExtrasForFranco) cols.push({ key: "cli_origen", label: "Cli. Origen", width: 130 });
+    if (!hideExtrasForFranco) cols.push({ key: "cli_destino", label: "Cli. Destino", width: 130 });
+    if (showClienteCantera) cols.push({ key: "cli_cantera", label: "Cli. Cantera", width: 150 });
+    cols.push({ key: "viajes", label: "Viajes", width: 65, align: "right" });
+    cols.push({ key: "c_uni", label: "C. Uni.", width: 75, align: "right" });
+    cols.push({ key: "c_total", label: "C. Total", width: 80, align: "right" });
+    cols.push({ key: "unidad", label: "Unidad", width: 65 });
+    cols.push({ key: "p_unit", label: "P. Unit.", width: 90, align: "right" });
+    cols.push({ key: "p_total", label: "P. Total", width: 100, align: "right" });
+    if (!hideExtrasForFranco) cols.push({ key: "proveedor", label: "Proveedor", width: 110 });
+    cols.push({ key: "forma_pago", label: "Forma Pago", width: 110 });
+    cols.push({ key: "observaciones", label: "Observaciones", width: 140 });
+    if (creadoresMap) cols.push({ key: "cargado_por", label: "Cargado por", width: 150 });
+    cols.push({ key: "acciones", label: "Acciones", width: 90, align: "center" });
+    return cols;
+  }, [hideExtrasForFranco, showClienteCantera, creadoresMap]);
+
+  const totalWidth = useMemo(() => columns.reduce((s, c) => s + c.width, 0), [columns]);
+
+  const totals = useMemo(() => {
+    let precio = 0;
+    let viajes = 0;
+    for (const r of remitos) {
+      precio += r.precio_total || 0;
+      viajes += r.cantidad_viajes || 0;
+    }
+    return { precio, viajes };
+  }, [remitos]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: remitos.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 12,
+  });
 
   return (
     <div className="flex flex-col gap-3">
       <div className="text-xs text-muted-foreground">
-        {remitos.length} remitos · {totalViajes} viajes · ${totalPrecio.toLocaleString("es-AR")}
+        {remitos.length} remitos · {totals.viajes} viajes · ${totals.precio.toLocaleString("es-AR")}
       </div>
 
       <div
-        className="overflow-auto border rounded-md"
+        ref={scrollRef}
+        className="overflow-auto border rounded-md relative"
         style={{ height: "calc(100vh - 360px)", minHeight: "400px" }}
       >
-        <table className="w-full caption-bottom text-sm border-collapse">
-          <TableHeader className="sticky top-0 z-20 bg-muted shadow-sm">
-            <TableRow className="bg-muted/95 hover:bg-muted/95">
-              <TableHead className="text-xs min-w-[90px] bg-muted">Fecha</TableHead>
-              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Tercero</TableHead>}
-              <TableHead className="text-xs min-w-[90px] bg-muted">Rem. Local</TableHead>
-              <TableHead className="text-xs min-w-[140px] bg-muted">Desde</TableHead>
-              <TableHead className="text-xs min-w-[140px] bg-muted">Hasta</TableHead>
-              <TableHead className="text-xs min-w-[100px] bg-muted">Tipo</TableHead>
-              <TableHead className="text-xs min-w-[100px] bg-muted">Transporte</TableHead>
-              <TableHead className="text-xs min-w-[130px] bg-muted">Vehículo</TableHead>
-              <TableHead className="text-xs min-w-[90px] bg-muted">Pat. Tercero</TableHead>
-              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Origen</TableHead>}
-              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[120px] bg-muted">Cli. Destino</TableHead>}
-              {showClienteCantera && (
-                <TableHead className="text-xs min-w-[140px] bg-muted">Cli. Cantera</TableHead>
-              )}
-              <TableHead className="text-xs min-w-[55px] text-right bg-muted">Viajes</TableHead>
-              <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Uni.</TableHead>
-              <TableHead className="text-xs min-w-[70px] text-right bg-muted">C. Total</TableHead>
-              <TableHead className="text-xs min-w-[55px] bg-muted">Unidad</TableHead>
-              <TableHead className="text-xs min-w-[70px] text-right bg-muted">P. Unit.</TableHead>
-              <TableHead className="text-xs min-w-[80px] text-right bg-muted">P. Total</TableHead>
-              {!hideExtrasForFranco && <TableHead className="text-xs min-w-[100px] bg-muted">Proveedor</TableHead>}
-              <TableHead className="text-xs min-w-[110px] bg-muted">Forma Pago</TableHead>
-              <TableHead className="text-xs min-w-[130px] bg-muted">Observaciones</TableHead>
-              {creadoresMap && <TableHead className="text-xs min-w-[140px] bg-muted">Cargado por</TableHead>}
-              <TableHead className="text-xs w-[80px] text-center bg-muted">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {remitos.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={(creadoresMap ? 22 : 21) + (showClienteCantera ? 1 : 0) - (hideExtrasForFranco ? 4 : 0)} className="text-center text-muted-foreground py-8">
-                  No hay remitos para mostrar
-                </TableCell>
-              </TableRow>
-            ) : (
-              remitos.map((r) => (
-                <Row
-                  key={r.id}
-                  r={r}
-                  maqMap={maqMap}
-                  creadoresMap={creadoresMap}
-                  showClienteCantera={showClienteCantera}
-                  hideExtrasForFranco={hideExtrasForFranco}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                />
-              ))
-            )}
-          </TableBody>
-        </table>
+        <div style={{ width: totalWidth, minWidth: "100%" }}>
+          {/* Sticky header */}
+          <div
+            className="flex sticky top-0 z-20 bg-muted shadow-sm"
+            style={{ width: totalWidth }}
+          >
+            {columns.map((c) => {
+              const alignClass =
+                c.align === "right" ? "justify-end text-right" : c.align === "center" ? "justify-center text-center" : "";
+              return (
+                <div
+                  key={c.key}
+                  className={`px-3 py-2 text-xs font-medium border-b border-border flex items-center ${alignClass}`}
+                  style={{ width: c.width, minWidth: c.width }}
+                >
+                  {c.label}
+                </div>
+              );
+            })}
+          </div>
+
+          {remitos.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8 text-sm">
+              No hay remitos para mostrar
+            </div>
+          ) : (
+            <div
+              style={{
+                height: rowVirtualizer.getTotalSize(),
+                position: "relative",
+                width: totalWidth,
+              }}
+            >
+              {rowVirtualizer.getVirtualItems().map((vi) => {
+                const r = remitos[vi.index];
+                return (
+                  <Row
+                    key={r.id}
+                    r={r}
+                    maqMap={maqMap}
+                    creadoresMap={creadoresMap}
+                    showClienteCantera={showClienteCantera}
+                    hideExtrasForFranco={hideExtrasForFranco}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    columns={columns}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: totalWidth,
+                      height: ROW_HEIGHT,
+                      transform: `translateY(${vi.start}px)`,
+                    }}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
