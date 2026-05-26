@@ -569,67 +569,76 @@ export default function Remitos() {
         />
       </div>
 
-      {/* CSV Import Dialog */}
-      <RemitosCSVImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImport={async (remitosToImport) => {
-          const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
-          if (results.errors > 0) {
-            throw new Error(`${results.errors} errores durante la importación`);
-          }
-          setTimeout(() => fetchRemitos(), 500);
-        }}
-        maquinariasMap={maquinariasMap}
-        patentesMap={patentesMap}
-        obrasMap={obrasMap}
-        clientesMap={clientesMap}
-      />
+      {/* Lazy-loaded dialogs: only mount when opened to keep first paint fast */}
+      <Suspense fallback={null}>
+        {importOpen && (
+          <RemitosCSVImportDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            onImport={async (remitosToImport) => {
+              const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+              if (results.errors > 0) {
+                throw new Error(`${results.errors} errores durante la importación`);
+              }
+              setTimeout(() => fetchRemitos(), 500);
+            }}
+            maquinariasMap={maquinariasMap}
+            patentesMap={patentesMap}
+            obrasMap={obrasMap}
+            clientesMap={clientesMap}
+          />
+        )}
 
-      {/* Quick Form Dialog */}
-      <RemitoQuickFormDialog
-        open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) setEditingRemito(null);
-        }}
-        obras={obras}
-        maquinarias={maquinarias}
-        clientes={clientes}
-        proveedores={proveedores}
-        generateNumero={generateNumero}
-        onSubmit={handleFormSubmit}
-        editingRemito={editingRemito}
-      />
+        {(formOpen || editingRemito) && (
+          <RemitoQuickFormDialog
+            open={formOpen}
+            onOpenChange={(open) => {
+              setFormOpen(open);
+              if (!open) setEditingRemito(null);
+            }}
+            obras={obras}
+            maquinarias={maquinarias}
+            clientes={clientes}
+            proveedores={proveedores}
+            generateNumero={generateNumero}
+            onSubmit={handleFormSubmit}
+            editingRemito={editingRemito}
+          />
+        )}
 
-      {/* Delete Confirm Dialog */}
+        {liquidacionOpen && (
+          <LiquidacionClienteDialog
+            open={liquidacionOpen}
+            onOpenChange={setLiquidacionOpen}
+            remitos={filteredRemitos}
+          />
+        )}
+
+        {liquidacionObraOpen && (
+          <LiquidacionObraDialog
+            open={liquidacionObraOpen}
+            onOpenChange={setLiquidacionObraOpen}
+            remitos={filteredRemitos}
+          />
+        )}
+
+        {preciosOpen && (
+          <AsignarPreciosMasivosDialog
+            open={preciosOpen}
+            onOpenChange={setPreciosOpen}
+            remitos={filteredRemitos}
+            batchSave={batchSave}
+          />
+        )}
+      </Suspense>
+
+      {/* Delete Confirm Dialog (lightweight, stays eager) */}
       <DeleteConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
         onConfirm={handleDelete}
         title="¿Eliminar remito?"
         description="Esta acción no se puede deshacer. Se eliminará permanentemente este remito."
-      />
-
-      {/* Liquidacion Dialog */}
-      <LiquidacionClienteDialog
-        open={liquidacionOpen}
-        onOpenChange={setLiquidacionOpen}
-        remitos={filteredRemitos}
-      />
-
-      <LiquidacionObraDialog
-        open={liquidacionObraOpen}
-        onOpenChange={setLiquidacionObraOpen}
-        remitos={filteredRemitos}
-      />
-
-      {/* Asignar Precios Masivos Dialog */}
-      <AsignarPreciosMasivosDialog
-        open={preciosOpen}
-        onOpenChange={setPreciosOpen}
-        remitos={filteredRemitos}
-        batchSave={batchSave}
       />
     </MainLayout>
   );
