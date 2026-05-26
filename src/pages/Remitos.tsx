@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { format, parseISO } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -33,14 +33,28 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
 import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
-import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
-import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
-import { LiquidacionObraDialog } from "@/components/remitos/LiquidacionObraDialog";
-import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPreciosMasivosDialog";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+
+// Lazy-load heavy dialogs to keep initial Remitos render snappy
+const RemitosCSVImportDialog = lazy(() =>
+  import("@/components/remitos/CSVImportDialog").then(m => ({ default: m.RemitosCSVImportDialog }))
+);
+const RemitoQuickFormDialog = lazy(() =>
+  import("@/components/remitos/RemitoQuickFormDialog").then(m => ({ default: m.RemitoQuickFormDialog }))
+);
+const LiquidacionClienteDialog = lazy(() =>
+  import("@/components/remitos/LiquidacionClienteDialog").then(m => ({ default: m.LiquidacionClienteDialog }))
+);
+const LiquidacionObraDialog = lazy(() =>
+  import("@/components/remitos/LiquidacionObraDialog").then(m => ({ default: m.LiquidacionObraDialog }))
+);
+const AsignarPreciosMasivosDialog = lazy(() =>
+  import("@/components/remitos/AsignarPreciosMasivosDialog").then(m => ({ default: m.AsignarPreciosMasivosDialog }))
+);
+
+// Re-export type for local usage
+type RemitoEditData = import("@/components/remitos/RemitoQuickFormDialog").RemitoEditData;
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
