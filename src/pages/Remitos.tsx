@@ -188,9 +188,9 @@ export default function Remitos() {
       result = result.filter(r => (r as any).created_by === creadorFilter);
     }
 
-    if (!searchTerm) return result;
+    if (!debouncedSearch) return result;
 
-    const term = searchTerm.toLowerCase();
+    const term = debouncedSearch.toLowerCase();
     return result.filter((r) => {
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
