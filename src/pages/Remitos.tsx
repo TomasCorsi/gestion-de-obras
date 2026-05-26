@@ -323,12 +323,14 @@ export default function Remitos() {
     }
   };
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (filteredRemitos.length === 0) {
       toast.error("No hay remitos para exportar");
       return;
     }
 
+    // Lazy-load xlsx to keep the initial bundle small
+    const XLSX = await import("xlsx");
     const workbook = XLSX.utils.book_new();
 
     const getMaquinariaLabel = (maqId: string | null) => {
