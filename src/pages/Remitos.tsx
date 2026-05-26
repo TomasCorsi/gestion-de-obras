@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { format, parseISO } from "date-fns";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -33,14 +33,28 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
 import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
-import { RemitosCSVImportDialog } from "@/components/remitos/CSVImportDialog";
-import { RemitoQuickFormDialog, RemitoEditData } from "@/components/remitos/RemitoQuickFormDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
-import { LiquidacionClienteDialog } from "@/components/remitos/LiquidacionClienteDialog";
-import { LiquidacionObraDialog } from "@/components/remitos/LiquidacionObraDialog";
-import { AsignarPreciosMasivosDialog } from "@/components/remitos/AsignarPreciosMasivosDialog";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+
+// Lazy-load heavy dialogs to keep initial Remitos render snappy
+const RemitosCSVImportDialog = lazy(() =>
+  import("@/components/remitos/CSVImportDialog").then(m => ({ default: m.RemitosCSVImportDialog }))
+);
+const RemitoQuickFormDialog = lazy(() =>
+  import("@/components/remitos/RemitoQuickFormDialog").then(m => ({ default: m.RemitoQuickFormDialog }))
+);
+const LiquidacionClienteDialog = lazy(() =>
+  import("@/components/remitos/LiquidacionClienteDialog").then(m => ({ default: m.LiquidacionClienteDialog }))
+);
+const LiquidacionObraDialog = lazy(() =>
+  import("@/components/remitos/LiquidacionObraDialog").then(m => ({ default: m.LiquidacionObraDialog }))
+);
+const AsignarPreciosMasivosDialog = lazy(() =>
+  import("@/components/remitos/AsignarPreciosMasivosDialog").then(m => ({ default: m.AsignarPreciosMasivosDialog }))
+);
+
+// Re-export type for local usage
+type RemitoEditData = import("@/components/remitos/RemitoQuickFormDialog").RemitoEditData;
 
 const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
@@ -60,6 +74,12 @@ export default function Remitos() {
   const { proveedores } = useProveedores();
 
   const [searchTerm, setSearchTerm] = useUrlSearch("");
+  // Debounced version used by the heavy filter computation
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 250);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -168,9 +188,9 @@ export default function Remitos() {
       result = result.filter(r => (r as any).created_by === creadorFilter);
     }
 
-    if (!searchTerm) return result;
+    if (!debouncedSearch) return result;
 
-    const term = searchTerm.toLowerCase();
+    const term = debouncedSearch.toLowerCase();
     return result.filter((r) => {
       if (
         (r.remito_tercero?.toLowerCase() || "").includes(term) ||
@@ -195,7 +215,7 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, searchTerm, maquinariasById, tipoFilter, creadorFilter, obras]);
+  }, [remitos, filters, debouncedSearch, maquinariasById, tipoFilter, creadorFilter, obras]);
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -303,12 +323,14 @@ export default function Remitos() {
     }
   };
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (filteredRemitos.length === 0) {
       toast.error("No hay remitos para exportar");
       return;
     }
 
+    // Lazy-load xlsx to keep the initial bundle small
+    const XLSX = await import("xlsx");
     const workbook = XLSX.utils.book_new();
 
     const getMaquinariaLabel = (maqId: string | null) => {
@@ -547,67 +569,76 @@ export default function Remitos() {
         />
       </div>
 
-      {/* CSV Import Dialog */}
-      <RemitosCSVImportDialog
-        open={importOpen}
-        onOpenChange={setImportOpen}
-        onImport={async (remitosToImport) => {
-          const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
-          if (results.errors > 0) {
-            throw new Error(`${results.errors} errores durante la importación`);
-          }
-          setTimeout(() => fetchRemitos(), 500);
-        }}
-        maquinariasMap={maquinariasMap}
-        patentesMap={patentesMap}
-        obrasMap={obrasMap}
-        clientesMap={clientesMap}
-      />
+      {/* Lazy-loaded dialogs: only mount when opened to keep first paint fast */}
+      <Suspense fallback={null}>
+        {importOpen && (
+          <RemitosCSVImportDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            onImport={async (remitosToImport) => {
+              const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+              if (results.errors > 0) {
+                throw new Error(`${results.errors} errores durante la importación`);
+              }
+              setTimeout(() => fetchRemitos(), 500);
+            }}
+            maquinariasMap={maquinariasMap}
+            patentesMap={patentesMap}
+            obrasMap={obrasMap}
+            clientesMap={clientesMap}
+          />
+        )}
 
-      {/* Quick Form Dialog */}
-      <RemitoQuickFormDialog
-        open={formOpen}
-        onOpenChange={(open) => {
-          setFormOpen(open);
-          if (!open) setEditingRemito(null);
-        }}
-        obras={obras}
-        maquinarias={maquinarias}
-        clientes={clientes}
-        proveedores={proveedores}
-        generateNumero={generateNumero}
-        onSubmit={handleFormSubmit}
-        editingRemito={editingRemito}
-      />
+        {(formOpen || editingRemito) && (
+          <RemitoQuickFormDialog
+            open={formOpen}
+            onOpenChange={(open) => {
+              setFormOpen(open);
+              if (!open) setEditingRemito(null);
+            }}
+            obras={obras}
+            maquinarias={maquinarias}
+            clientes={clientes}
+            proveedores={proveedores}
+            generateNumero={generateNumero}
+            onSubmit={handleFormSubmit}
+            editingRemito={editingRemito}
+          />
+        )}
 
-      {/* Delete Confirm Dialog */}
+        {liquidacionOpen && (
+          <LiquidacionClienteDialog
+            open={liquidacionOpen}
+            onOpenChange={setLiquidacionOpen}
+            remitos={filteredRemitos}
+          />
+        )}
+
+        {liquidacionObraOpen && (
+          <LiquidacionObraDialog
+            open={liquidacionObraOpen}
+            onOpenChange={setLiquidacionObraOpen}
+            remitos={filteredRemitos}
+          />
+        )}
+
+        {preciosOpen && (
+          <AsignarPreciosMasivosDialog
+            open={preciosOpen}
+            onOpenChange={setPreciosOpen}
+            remitos={filteredRemitos}
+            batchSave={batchSave}
+          />
+        )}
+      </Suspense>
+
+      {/* Delete Confirm Dialog (lightweight, stays eager) */}
       <DeleteConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => { if (!open) setDeleteId(null); }}
         onConfirm={handleDelete}
         title="¿Eliminar remito?"
         description="Esta acción no se puede deshacer. Se eliminará permanentemente este remito."
-      />
-
-      {/* Liquidacion Dialog */}
-      <LiquidacionClienteDialog
-        open={liquidacionOpen}
-        onOpenChange={setLiquidacionOpen}
-        remitos={filteredRemitos}
-      />
-
-      <LiquidacionObraDialog
-        open={liquidacionObraOpen}
-        onOpenChange={setLiquidacionObraOpen}
-        remitos={filteredRemitos}
-      />
-
-      {/* Asignar Precios Masivos Dialog */}
-      <AsignarPreciosMasivosDialog
-        open={preciosOpen}
-        onOpenChange={setPreciosOpen}
-        remitos={filteredRemitos}
-        batchSave={batchSave}
       />
     </MainLayout>
   );
