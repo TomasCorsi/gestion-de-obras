@@ -74,6 +74,12 @@ export default function Remitos() {
   const { proveedores } = useProveedores();
 
   const [searchTerm, setSearchTerm] = useUrlSearch("");
+  // Debounced version used by the heavy filter computation
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm);
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchTerm), 250);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
