@@ -130,13 +130,24 @@ export function GastosGeneralesTab() {
       gastos.map((g) => ({ ...g, fecha: g.fecha, obra_id: g.obra_id })),
       filters
     );
-    return dateFiltered.filter(
-      (g) =>
-        g.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.proveedor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [gastos, filters, searchTerm]);
+    const q = searchTerm.toLowerCase();
+    return dateFiltered.filter((g) => {
+      if (maquinariaFiltro !== "__all__") {
+        if (maquinariaFiltro === "__none__" ? !!g.maquinaria_id : g.maquinaria_id !== maquinariaFiltro) {
+          return false;
+        }
+      }
+      if (!q) return true;
+      return (
+        g.descripcion?.toLowerCase().includes(q) ||
+        g.proveedor?.toLowerCase().includes(q) ||
+        g.obra?.nombre?.toLowerCase().includes(q) ||
+        g.maquinaria?.codigo?.toLowerCase().includes(q) ||
+        g.maquinaria?.patente?.toLowerCase().includes(q) ||
+        g.maquinaria?.nombre?.toLowerCase().includes(q)
+      );
+    });
+  }, [gastos, filters, searchTerm, maquinariaFiltro]);
 
   const totalCosto = filtered.reduce((sum, g) => sum + g.monto, 0);
 
@@ -145,6 +156,7 @@ export function GastosGeneralesTab() {
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
       obra_id: null,
+      maquinaria_id: null,
       categoria: "varios",
       descripcion: "",
       monto: 0,
@@ -161,6 +173,7 @@ export function GastosGeneralesTab() {
     setFormData({
       fecha: g.fecha,
       obra_id: g.obra_id,
+      maquinaria_id: g.maquinaria_id,
       categoria: g.categoria,
       descripcion: g.descripcion,
       monto: g.monto,
@@ -192,6 +205,7 @@ export function GastosGeneralesTab() {
     const data = {
       fecha: formData.fecha || null,
       obra_id: formData.obra_id || null,
+      maquinaria_id: formData.maquinaria_id || null,
       categoria: formData.categoria || "varios",
       descripcion: formData.descripcion || "",
       monto: formData.monto || 0,
@@ -207,6 +221,7 @@ export function GastosGeneralesTab() {
     setIsSubmitting(false);
     setFormOpen(false);
   };
+
 
   return (
     <div>
