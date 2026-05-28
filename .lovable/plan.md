@@ -1,72 +1,49 @@
-# Importar Orden de Compra desde Cotización/Factura con IA
+# Agregar columna "Artículo" en Órdenes de Compra
 
-Agregar un botón "Importar con IA" en el formulario de Orden de Compra que permita subir una cotización o factura de proveedor (PDF prioritariamente, también imagen y Excel) y prellenar automáticamente los ítems y datos generales.
+Sumar una columna **Artículo** (código/nombre corto del ítem) antes de la Descripción en la grilla de ítems de Órdenes de Compra. Queda como campo opcional de texto libre para identificar el material (ej: "HC-200", "Cemento Loma Negra 50kg").
 
-## 1. Edge Function nueva: `parse-orden-compra`
-Modelada a partir de `parse-computo`. Usa `google/gemini-2.5-flash` vía Lovable AI Gateway con **tool calling** para devolver JSON estructurado.
+## 1. Base de datos
+Agregar columna `articulo TEXT` (nullable) en `orden_compra_items`. No requiere backfill ni cambios de RLS/grants.
 
-Recibe:
-- `content`: data URL base64 (PDF/imagen) o texto plano (Excel).
-- `type`: `"pdf" | "image" | "text"`.
-- `instrucciones` (opcional).
+## 2. Tipos y hook (`useOrdenesCompra.ts`)
+- Agregar `articulo?: string | null` a `OrdenCompraItem` y `OrdenCompraItemForm`.
+- Incluir `articulo` en los inserts/updates de items (create y update de OC).
 
-Para `type: "pdf"`, mandar el PDF como `image_url` con data URL `data:application/pdf;base64,...` — Gemini multimodal lo procesa nativamente (igual que imágenes).
+## 3. Formulario (`OrdenCompraFormDialog.tsx`)
+Nueva grilla de items con 7 columnas en `grid-cols-12`:
 
-Estructura devuelta:
-```
-{
-  proveedor_nombre?: string,
-  fecha?: "YYYY-MM-DD",
-  moneda?: "ARS" | "USD",
-  incluir_iva?: boolean,
-  iva_porcentaje?: number,
-  condiciones_pago?: string,
-  observaciones?: string,
-  items: [{ descripcion, unidad, cantidad, precio_unitario }]
-}
+```text
+Artículo (2) | Descripción (4) | Unidad (1) | Cantidad (2) | P.Unit (2) | Subtotal (1) | × (—)
 ```
 
-System prompt: experto en cotizaciones/facturas de proveedores en Argentina. Reglas: detectar IVA discriminado vs incluido, moneda (US$/USD vs $/ARS), unidades válidas (un, kg, m, m², m³, tn, hr, lt, gl, ml), normalizar números con coma decimal argentina.
+- Header con la etiqueta nueva "Artículo".
+- Input de texto para `articulo` antes del de descripción.
+- `emptyItem()` incluye `articulo: ""`.
+- Carga al editar mapea `articulo`.
+- Importación con IA (`handleImport`) mapea `it.articulo` si viene.
+- Botón eliminar mantiene su tamaño; ajustar `col-span` para que sume 12 (eliminar fila como icon button absoluto al final o reducir descripción a 4).
 
-Manejo de 429/402 con mensaje claro. CORS estándar.
+## 4. PDF (`generateOrdenCompraPDF.ts`)
+Agregar columna "Artículo" en `autoTable`:
+- Head: `["#", "Artículo", "Descripción", "Unidad", "Cantidad", "P. Unitario", "Subtotal"]`.
+- Body incluye `it.articulo || "-"`.
+- Ajustar `columnStyles` (ancho de artículo ~22mm, reducir descripción).
 
-## 2. Nuevo componente `ImportFacturaProveedorDialog.tsx`
-Modelado a partir de `ImportComputoDialog`. Acepta:
-- **PDF** (.pdf) → base64 → `type: "pdf"`. **Foco principal.**
-- **Imagen** (.jpg/.png/.webp) → base64 → `type: "image"`.
-- **Excel/CSV** (.xlsx/.xls/.csv) → parseo con SheetJS → texto → `type: "text"`.
-
-UI:
-- Drop zone + file input (acepta `.pdf,.jpg,.jpeg,.png,.webp,.xlsx,.xls,.csv`, prioriza PDF en el copy).
-- Textarea de instrucciones opcionales ("ignorá flete", "el IVA está incluido", etc.).
-- Botón "Procesar con IA" con loader.
-- Vista previa: proveedor detectado + tabla editable mínima de items para que el usuario confirme/corrija antes de importar.
-- Botón "Usar estos datos" → callback `onImport(parsed)`.
-
-Validar tamaño máximo (~10 MB) antes de mandar para no reventar la edge function.
-
-## 3. Integración en `OrdenCompraFormDialog.tsx`
-- Botón **"Importar con IA"** (icono `Sparkles`) en el header del dialog, al lado del título.
-- Handler `onImport(parsed)`:
-  - Match difuso de `proveedor_nombre` contra `proveedores` (normalizado, case-insensitive). Si matchea → setea `proveedor_id`. Si no → toast "Proveedor no encontrado, seleccionalo manualmente".
-  - Setea `fecha`, `moneda`, `incluir_iva`, `iva_porcentaje`, `condiciones_pago`, `observaciones` **solo si el campo del form está vacío** (no pisa lo cargado).
-  - **Reemplaza** la lista de items con los importados, recalculando `subtotal = cantidad * precio_unitario`.
-- No toca `numero`, `estado` (queda `borrador`) ni `obra_id`.
-
-## 4. UX y errores
-- Loader durante procesamiento, botón deshabilitado.
-- Errores específicos: 402 ("créditos de IA agotados"), 429 ("límite alcanzado, intentá en un momento"), archivo no soportado, archivo muy grande.
-- Toast de éxito: "Se importaron N ítems desde la cotización".
-
-## Archivos
-**Crear:**
-- `supabase/functions/parse-orden-compra/index.ts`
-- `src/components/proveedores/ImportFacturaProveedorDialog.tsx`
-
-**Modificar:**
-- `src/components/proveedores/OrdenCompraFormDialog.tsx` (botón + handler de importación)
+## 5. Importación con IA (`parse-orden-compra/index.ts` + dialog)
+- Extender el JSON schema del tool calling con `articulo` (string, opcional) en cada item.
+- Actualizar system prompt: "si el documento trae código/SKU/N° de artículo del proveedor, mapealo a `articulo`; el nombre largo va en `descripcion`".
+- Tipar `ParsedOrdenCompra.items[].articulo?: string` en `ImportFacturaProveedorDialog.tsx` y propagar.
 
 ## Fuera de alcance
-- Lógica de numeración, estados, RLS, PDF de OC.
-- Módulo de cotizaciones (flujo análogo pero independiente).
-- Crear proveedor nuevo si no matchea (queda manual en v1).
+- Catálogo de artículos / autocomplete contra una tabla maestra.
+- Validaciones de unicidad de código.
+- Cambios en cotizaciones, remitos, certificados.
+
+## Archivos
+**Migración:** nueva (`ALTER TABLE orden_compra_items ADD COLUMN articulo TEXT`).
+**Modificar:**
+- `src/hooks/useOrdenesCompra.ts`
+- `src/components/proveedores/OrdenCompraFormDialog.tsx`
+- `src/components/proveedores/ImportFacturaProveedorDialog.tsx`
+- `src/utils/generateOrdenCompraPDF.ts`
+- `supabase/functions/parse-orden-compra/index.ts`
