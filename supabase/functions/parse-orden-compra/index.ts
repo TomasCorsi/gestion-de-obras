@@ -76,6 +76,7 @@ Reglas:
                   items: {
                     type: "object",
                     properties: {
+                      articulo: { type: "string", description: "Código, SKU o N° de artículo del proveedor (opcional)" },
                       descripcion: { type: "string" },
                       unidad: { type: "string", enum: ["un", "kg", "m", "m²", "m³", "tn", "hr", "lt", "gl", "ml"] },
                       cantidad: { type: "number" },
