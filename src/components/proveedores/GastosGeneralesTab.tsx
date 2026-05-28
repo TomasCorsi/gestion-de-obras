@@ -245,10 +245,20 @@ export function GastosGeneralesTab() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por descripción, proveedor u obra..."
+            placeholder="Buscar por descripción, proveedor, obra o maquinaria (código/patente)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
+          />
+        </div>
+        <div className="w-full md:w-72">
+          <Combobox
+            options={[{ value: "__all__", label: "Todas las maquinarias" }, ...maquinariaOptions]}
+            value={maquinariaFiltro}
+            onValueChange={setMaquinariaFiltro}
+            placeholder="Filtrar por maquinaria"
+            searchPlaceholder="Buscar por código o patente..."
+            emptyText="Sin resultados"
           />
         </div>
         <Button onClick={handleNew} className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -256,6 +266,7 @@ export function GastosGeneralesTab() {
           Nuevo Gasto
         </Button>
       </div>
+
 
       {/* Stats by category */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
