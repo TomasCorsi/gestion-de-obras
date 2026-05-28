@@ -57,13 +57,15 @@ const fetchGastosFromDB = async (): Promise<OtroGastoWithRelations[]> => {
     .from("otros_gastos")
     .select(`
       *,
-      obra:obras(nombre)
+      obra:obras(nombre),
+      maquinaria:maquinarias(id, codigo, nombre, patente, tipo)
     `)
     .order("fecha", { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as any;
 };
+
 
 export function useOtrosGastos() {
   const queryClient = useQueryClient();
