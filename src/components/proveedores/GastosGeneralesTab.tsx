@@ -86,7 +86,7 @@ export function GastosGeneralesTab() {
 
   const maquinariaOptions = useMemo(() => {
     const activas = maquinarias
-      .filter((m) => m.estado !== "baja")
+      .filter((m) => m.estado !== "inactiva")
       .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || ""))
       .map((m) => ({
         value: m.id,
