@@ -199,6 +199,13 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
       size="2xl"
     >
       <div className="space-y-4">
+        {!editing && (
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1">
+              <Sparkles className="w-4 h-4 text-primary" /> Importar con IA
+            </Button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
             <Label>Proveedor *</Label>
