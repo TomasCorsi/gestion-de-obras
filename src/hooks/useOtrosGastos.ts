@@ -14,6 +14,7 @@ export interface OtroGastoDB {
   id: string;
   fecha: string;
   obra_id: string | null;
+  maquinaria_id: string | null;
   categoria: string;
   descripcion: string;
   monto: number;
@@ -25,12 +26,14 @@ export interface OtroGastoDB {
 }
 
 export interface OtroGastoWithRelations extends OtroGastoDB {
-  obra?: { nombre: string };
+  obra?: { nombre: string } | null;
+  maquinaria?: { id: string; codigo: string | null; nombre: string | null; patente: string | null; tipo: string } | null;
 }
 
 export interface OtroGastoForm {
   fecha: string;
   obra_id?: string | null;
+  maquinaria_id?: string | null;
   categoria: string;
   descripcion: string;
   monto?: number;
@@ -38,6 +41,7 @@ export interface OtroGastoForm {
   proveedor?: string;
   observaciones?: string;
 }
+
 
 export const categoriasGasto: Record<CategoriaGasto, { label: string; color: string }> = {
   alquiler: { label: "Alquiler", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" },
