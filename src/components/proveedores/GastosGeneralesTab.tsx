@@ -436,6 +436,20 @@ export function GastosGeneralesTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="maquinaria_gg">Maquinaria (opcional)</Label>
+              <Combobox
+                options={maquinariaOptions}
+                value={formData.maquinaria_id || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, maquinaria_id: v === "__none__" ? null : v })
+                }
+                placeholder="Seleccionar por código o patente..."
+                searchPlaceholder="Buscar por código, patente o nombre..."
+                emptyText="No se encontraron maquinarias"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="categoria_gg">Categoría</Label>
               <Select
