@@ -1458,6 +1458,7 @@ export type Database = {
           descripcion: string
           fecha: string
           id: string
+          maquinaria_id: string | null
           monto: number
           obra_id: string | null
           observaciones: string | null
@@ -1471,6 +1472,7 @@ export type Database = {
           descripcion: string
           fecha: string
           id?: string
+          maquinaria_id?: string | null
           monto?: number
           obra_id?: string | null
           observaciones?: string | null
@@ -1484,6 +1486,7 @@ export type Database = {
           descripcion?: string
           fecha?: string
           id?: string
+          maquinaria_id?: string | null
           monto?: number
           obra_id?: string | null
           observaciones?: string | null

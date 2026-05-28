@@ -49,8 +49,10 @@ import {
 } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { Combobox } from "@/components/ui/combobox";
 import { cn, formatDate } from "@/lib/utils";
+
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -64,6 +66,7 @@ export function GastosGeneralesTab() {
   const { gastos, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
   const { proveedores } = useProveedores();
+  const { maquinarias } = useMaquinarias();
 
   const proveedorOptions = useMemo(() => {
     const activos = proveedores.filter((p) => p.activo).map((p) => ({
@@ -73,7 +76,27 @@ export function GastosGeneralesTab() {
     return [{ value: "__none__", label: "Sin proveedor" }, ...activos];
   }, [proveedores]);
 
+  const maquinariaLabel = (m: { codigo?: string | null; nombre?: string | null; patente?: string | null }) => {
+    const parts: string[] = [];
+    if (m.codigo) parts.push(m.codigo);
+    if (m.patente) parts.push(m.patente);
+    if (m.nombre) parts.push(m.nombre);
+    return parts.length ? parts.join(" · ") : "Sin identificar";
+  };
+
+  const maquinariaOptions = useMemo(() => {
+    const activas = maquinarias
+      .filter((m) => m.estado !== "inactiva")
+      .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || ""))
+      .map((m) => ({
+        value: m.id,
+        label: maquinariaLabel(m),
+      }));
+    return [{ value: "__none__", label: "Sin maquinaria" }, ...activas];
+  }, [maquinarias]);
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [maquinariaFiltro, setMaquinariaFiltro] = useState<string>("__all__");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -90,6 +113,7 @@ export function GastosGeneralesTab() {
   const [formData, setFormData] = useState<OtroGastoForm>({
     fecha: new Date().toISOString().split("T")[0],
     obra_id: null,
+    maquinaria_id: null,
     categoria: "varios",
     descripcion: "",
     monto: 0,
@@ -98,6 +122,7 @@ export function GastosGeneralesTab() {
     observaciones: "",
   });
 
+
   const activeObras = obras.filter((o) => o.estado !== "finalizada");
 
   const filtered = useMemo(() => {
@@ -105,13 +130,24 @@ export function GastosGeneralesTab() {
       gastos.map((g) => ({ ...g, fecha: g.fecha, obra_id: g.obra_id })),
       filters
     );
-    return dateFiltered.filter(
-      (g) =>
-        g.descripcion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.proveedor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        g.obra?.nombre?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [gastos, filters, searchTerm]);
+    const q = searchTerm.toLowerCase();
+    return dateFiltered.filter((g) => {
+      if (maquinariaFiltro !== "__all__") {
+        if (maquinariaFiltro === "__none__" ? !!g.maquinaria_id : g.maquinaria_id !== maquinariaFiltro) {
+          return false;
+        }
+      }
+      if (!q) return true;
+      return (
+        g.descripcion?.toLowerCase().includes(q) ||
+        g.proveedor?.toLowerCase().includes(q) ||
+        g.obra?.nombre?.toLowerCase().includes(q) ||
+        g.maquinaria?.codigo?.toLowerCase().includes(q) ||
+        g.maquinaria?.patente?.toLowerCase().includes(q) ||
+        g.maquinaria?.nombre?.toLowerCase().includes(q)
+      );
+    });
+  }, [gastos, filters, searchTerm, maquinariaFiltro]);
 
   const totalCosto = filtered.reduce((sum, g) => sum + g.monto, 0);
 
@@ -120,6 +156,7 @@ export function GastosGeneralesTab() {
     setFormData({
       fecha: new Date().toISOString().split("T")[0],
       obra_id: null,
+      maquinaria_id: null,
       categoria: "varios",
       descripcion: "",
       monto: 0,
@@ -136,6 +173,7 @@ export function GastosGeneralesTab() {
     setFormData({
       fecha: g.fecha,
       obra_id: g.obra_id,
+      maquinaria_id: g.maquinaria_id,
       categoria: g.categoria,
       descripcion: g.descripcion,
       monto: g.monto,
@@ -167,6 +205,7 @@ export function GastosGeneralesTab() {
     const data = {
       fecha: formData.fecha || null,
       obra_id: formData.obra_id || null,
+      maquinaria_id: formData.maquinaria_id || null,
       categoria: formData.categoria || "varios",
       descripcion: formData.descripcion || "",
       monto: formData.monto || 0,
@@ -182,6 +221,7 @@ export function GastosGeneralesTab() {
     setIsSubmitting(false);
     setFormOpen(false);
   };
+
 
   return (
     <div>
@@ -205,10 +245,20 @@ export function GastosGeneralesTab() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por descripción, proveedor u obra..."
+            placeholder="Buscar por descripción, proveedor, obra o maquinaria (código/patente)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-9 bg-card border-border"
+          />
+        </div>
+        <div className="w-full md:w-72">
+          <Combobox
+            options={[{ value: "__all__", label: "Todas las maquinarias" }, ...maquinariaOptions]}
+            value={maquinariaFiltro}
+            onValueChange={setMaquinariaFiltro}
+            placeholder="Filtrar por maquinaria"
+            searchPlaceholder="Buscar por código o patente..."
+            emptyText="Sin resultados"
           />
         </div>
         <Button onClick={handleNew} className="bg-primary hover:bg-primary/90 text-primary-foreground">
@@ -216,6 +266,7 @@ export function GastosGeneralesTab() {
           Nuevo Gasto
         </Button>
       </div>
+
 
       {/* Stats by category */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
@@ -250,6 +301,7 @@ export function GastosGeneralesTab() {
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
               <TableHead className="text-muted-foreground font-medium">Categoría</TableHead>
               <TableHead className="text-muted-foreground font-medium">Descripción</TableHead>
               <TableHead className="text-muted-foreground font-medium">Proveedor</TableHead>
@@ -260,10 +312,11 @@ export function GastosGeneralesTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No hay gastos registrados
                 </TableCell>
               </TableRow>
+
             ) : (
               filtered.map((gasto, index) => (
                 <TableRow
@@ -280,7 +333,18 @@ export function GastosGeneralesTab() {
                   <TableCell className="text-foreground font-medium">
                     {gasto.obra?.nombre || "-"}
                   </TableCell>
+                  <TableCell className="text-foreground">
+                    {gasto.maquinaria ? (
+                      <span className="font-mono text-xs">
+                        {gasto.maquinaria.codigo || gasto.maquinaria.nombre || "—"}
+                        {gasto.maquinaria.patente ? ` · ${gasto.maquinaria.patente}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
+
                     <Badge
                       className={cn(
                         "status-badge",
@@ -372,6 +436,20 @@ export function GastosGeneralesTab() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="maquinaria_gg">Maquinaria (opcional)</Label>
+              <Combobox
+                options={maquinariaOptions}
+                value={formData.maquinaria_id || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, maquinaria_id: v === "__none__" ? null : v })
+                }
+                placeholder="Seleccionar por código o patente..."
+                searchPlaceholder="Buscar por código, patente o nombre..."
+                emptyText="No se encontraron maquinarias"
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="categoria_gg">Categoría</Label>
               <Select
@@ -465,6 +543,15 @@ export function GastosGeneralesTab() {
             <DetailSection title="Información General">
               <DetailRow label="Fecha" value={formatDate(selected.fecha)} />
               <DetailRow label="Obra" value={selected.obra?.nombre || "-"} />
+              <DetailRow
+                label="Maquinaria"
+                value={
+                  selected.maquinaria
+                    ? `${selected.maquinaria.codigo || selected.maquinaria.nombre || "—"}${selected.maquinaria.patente ? ` · ${selected.maquinaria.patente}` : ""}${selected.maquinaria.tipo ? ` (${selected.maquinaria.tipo})` : ""}`
+                    : "-"
+                }
+              />
+
               <DetailRow
                 label="Categoría"
                 value={
