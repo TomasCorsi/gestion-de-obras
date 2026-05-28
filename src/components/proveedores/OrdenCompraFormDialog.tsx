@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles } from "lucide-react";
 import {
   OrdenCompraForm,
   OrdenCompraItemForm,
@@ -18,6 +18,8 @@ import {
 import { useProveedores } from "@/hooks/useProveedores";
 import { useObras } from "@/hooks/useObras";
 import { format } from "date-fns";
+import { ImportFacturaProveedorDialog, ParsedOrdenCompra } from "./ImportFacturaProveedorDialog";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -62,6 +64,53 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
   const { proveedores } = useProveedores();
   const { obras } = useObras();
   const [form, setForm] = useState<OrdenCompraForm>(emptyForm());
+  const [importOpen, setImportOpen] = useState(false);
+
+  const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+
+  const handleImport = (parsed: ParsedOrdenCompra) => {
+    setForm((f) => {
+      const next: OrdenCompraForm = { ...f };
+
+      if (parsed.proveedor_nombre) {
+        const target = normalize(parsed.proveedor_nombre);
+        const match = proveedores.find((p) => {
+          const n = normalize(p.nombre);
+          return n === target || n.includes(target) || target.includes(n);
+        });
+        if (match) {
+          next.proveedor_id = match.id;
+        } else {
+          toast.warning(`Proveedor "${parsed.proveedor_nombre}" no encontrado, seleccionalo manualmente`);
+        }
+      }
+
+      if (parsed.fecha && /^\d{4}-\d{2}-\d{2}$/.test(parsed.fecha)) next.fecha = parsed.fecha;
+      if (parsed.moneda) next.moneda = parsed.moneda;
+      if (typeof parsed.incluir_iva === "boolean") next.incluir_iva = parsed.incluir_iva;
+      if (typeof parsed.iva_porcentaje === "number" && parsed.iva_porcentaje > 0) next.iva_porcentaje = parsed.iva_porcentaje;
+      if (parsed.condiciones_pago && !f.condiciones_pago) next.condiciones_pago = parsed.condiciones_pago;
+      if (parsed.observaciones && !f.observaciones) next.observaciones = parsed.observaciones;
+
+      if (parsed.items && parsed.items.length > 0) {
+        next.items = parsed.items.map((it, i) => {
+          const cantidad = Number(it.cantidad) || 0;
+          const precio = Number(it.precio_unitario) || 0;
+          return {
+            descripcion: it.descripcion || "",
+            unidad: it.unidad || "un",
+            cantidad,
+            precio_unitario: precio,
+            subtotal: cantidad * precio,
+            orden: i,
+          };
+        });
+      }
+
+      return next;
+    });
+    toast.success(`Se importaron ${parsed.items?.length || 0} ítems desde la cotización`);
+  };
 
   useEffect(() => {
     if (open) {
@@ -150,6 +199,13 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
       size="2xl"
     >
       <div className="space-y-4">
+        {!editing && (
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1">
+              <Sparkles className="w-4 h-4 text-primary" /> Importar con IA
+            </Button>
+          </div>
+        )}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="md:col-span-2">
             <Label>Proveedor *</Label>
@@ -367,6 +423,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           </div>
         </div>
       </div>
+      <ImportFacturaProveedorDialog open={importOpen} onOpenChange={setImportOpen} onImport={handleImport} />
     </FormDialog>
   );
 }
