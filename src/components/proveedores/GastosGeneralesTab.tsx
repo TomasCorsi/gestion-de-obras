@@ -333,7 +333,18 @@ export function GastosGeneralesTab() {
                   <TableCell className="text-foreground font-medium">
                     {gasto.obra?.nombre || "-"}
                   </TableCell>
+                  <TableCell className="text-foreground">
+                    {gasto.maquinaria ? (
+                      <span className="font-mono text-xs">
+                        {gasto.maquinaria.codigo || gasto.maquinaria.nombre || "—"}
+                        {gasto.maquinaria.patente ? ` · ${gasto.maquinaria.patente}` : ""}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
+
                     <Badge
                       className={cn(
                         "status-badge",
