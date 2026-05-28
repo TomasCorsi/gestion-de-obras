@@ -67,7 +67,7 @@ export default function Remitos() {
   const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
-  const { remitos, loading, batchSave, fetchRemitos } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -97,6 +97,19 @@ export default function Remitos() {
   const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
+
+  // Auto-extender: si el usuario filtra por una fecha anterior al rango cargado (~90 días),
+  // disparar la carga del histórico completo para no mostrar datos vacíos.
+  useEffect(() => {
+    if (loadAll) return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    const desde = filters.fechaDesde ? new Date(filters.fechaDesde) : null;
+    const mes = filters.mes ? new Date(filters.mes + "-01") : null;
+    if ((desde && desde < cutoff) || (mes && mes < cutoff)) {
+      cargarHistorico();
+    }
+  }, [filters.fechaDesde, filters.mes, loadAll, cargarHistorico]);
 
   // Distinct created_by ids in remitos
   const creadorIds = useMemo(
@@ -464,6 +477,17 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
+        {!loadAll && (
+          <Button
+            variant="outline"
+            onClick={cargarHistorico}
+            className="gap-2"
+            title="Por defecto se cargan sólo los últimos 90 días para mayor velocidad"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Cargar histórico
+          </Button>
+        )}
         {!isOwnOnly && (
           <>
             <Button
