@@ -26,6 +26,7 @@ Reglas:
 - fecha: en formato YYYY-MM-DD. Si solo hay mes/año, usá el primer día.
 - proveedor_nombre: razón social o nombre comercial del que EMITE la cotización/factura (no el cliente/destinatario).
 - items: una fila por producto/servicio cotizado. Ignorá filas de subtotal, IVA, total, descuento global.
+- articulo: si la fila trae código/SKU/N° de artículo/referencia del proveedor (ej: "HC-200", "ART-12345", "Cod. 7788"), mapealo a "articulo". El nombre o detalle largo va en "descripcion". Si no hay código, dejá articulo vacío o no lo incluyas.
 - precio_unitario: precio por unidad sin IVA si está discriminado; si solo hay precio final con IVA, usá ese y marcá incluir_iva=false.
 - cantidad y precio_unitario deben ser números (no strings).`;
 
