@@ -1327,6 +1327,7 @@ export type Database = {
       }
       orden_compra_items: {
         Row: {
+          articulo: string | null
           cantidad: number
           created_at: string
           descripcion: string
@@ -1338,6 +1339,7 @@ export type Database = {
           unidad: string
         }
         Insert: {
+          articulo?: string | null
           cantidad?: number
           created_at?: string
           descripcion: string
@@ -1349,6 +1351,7 @@ export type Database = {
           unidad?: string
         }
         Update: {
+          articulo?: string | null
           cantidad?: number
           created_at?: string
           descripcion?: string

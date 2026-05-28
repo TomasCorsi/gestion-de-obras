@@ -29,6 +29,7 @@ interface Props {
 }
 
 const emptyItem = (): OrdenCompraItemForm => ({
+  articulo: "",
   descripcion: "",
   unidad: "un",
   cantidad: 1,
@@ -97,6 +98,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           const cantidad = Number(it.cantidad) || 0;
           const precio = Number(it.precio_unitario) || 0;
           return {
+            articulo: it.articulo || "",
             descripcion: it.descripcion || "",
             unidad: it.unidad || "un",
             cantidad,
@@ -133,6 +135,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
             .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
             .map((it, idx) => ({
               id: it.id,
+              articulo: it.articulo || "",
               descripcion: it.descripcion,
               unidad: it.unidad,
               cantidad: Number(it.cantidad),
@@ -278,7 +281,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           </div>
 
           <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground px-1">
-            <div className="col-span-5">Descripción</div>
+            <div className="col-span-2">Artículo</div>
+            <div className="col-span-3">Descripción</div>
             <div className="col-span-1">Unidad</div>
             <div className="col-span-2 text-right">Cantidad</div>
             <div className="col-span-2 text-right">P. Unitario ({sym})</div>
@@ -289,7 +293,13 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           {form.items.map((it, idx) => (
             <div key={idx} className="grid grid-cols-12 gap-2 items-center">
               <Input
-                className="col-span-5"
+                className="col-span-2"
+                placeholder="Código / Art."
+                value={it.articulo || ""}
+                onChange={(e) => updateItem(idx, { articulo: e.target.value })}
+              />
+              <Input
+                className="col-span-3"
                 placeholder="Material o descripción"
                 value={it.descripcion}
                 onChange={(e) => updateItem(idx, { descripcion: e.target.value })}

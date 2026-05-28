@@ -121,8 +121,9 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
 
   // Items table
   const items = (orden.items || []).slice().sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
-  const body = items.map((it, i) => [
+  const body = items.map((it: any, i) => [
     String(i + 1),
+    it.articulo || "-",
     it.descripcion,
     it.unidad,
     Number(it.cantidad).toLocaleString("es-AR", { maximumFractionDigits: 2 }),
@@ -132,7 +133,7 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
 
   autoTable(doc, {
     startY: yPos,
-    head: [["#", "Descripción", "Unidad", "Cantidad", "P. Unitario", "Subtotal"]],
+    head: [["#", "Artículo", "Descripción", "Unidad", "Cantidad", "P. Unitario", "Subtotal"]],
     body,
     theme: "grid",
     headStyles: {
@@ -145,11 +146,12 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
     bodyStyles: { fontSize: 8, cellPadding: 2 },
     columnStyles: {
       0: { cellWidth: 8, halign: "center" },
-      1: { cellWidth: "auto" },
-      2: { cellWidth: 18, halign: "center" },
-      3: { cellWidth: 22, halign: "right" },
-      4: { cellWidth: 28, halign: "right" },
-      5: { cellWidth: 30, halign: "right" },
+      1: { cellWidth: 24 },
+      2: { cellWidth: "auto" },
+      3: { cellWidth: 16, halign: "center" },
+      4: { cellWidth: 20, halign: "right" },
+      5: { cellWidth: 26, halign: "right" },
+      6: { cellWidth: 28, halign: "right" },
     },
     margin: { left: margin, right: margin },
   });

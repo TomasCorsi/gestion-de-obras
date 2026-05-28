@@ -8,6 +8,7 @@ export type MonedaOrdenCompra = "ARS" | "USD";
 export interface OrdenCompraItemDB {
   id: string;
   orden_id: string;
+  articulo: string | null;
   descripcion: string;
   unidad: string;
   cantidad: number;
@@ -19,6 +20,7 @@ export interface OrdenCompraItemDB {
 
 export interface OrdenCompraItemForm {
   id?: string;
+  articulo?: string | null;
   descripcion: string;
   unidad: string;
   cantidad: number;
@@ -159,6 +161,7 @@ export function useOrdenesCompra() {
       if (form.items.length > 0) {
         const itemsToInsert = form.items.map((it, idx) => ({
           orden_id: orden.id,
+          articulo: it.articulo?.trim() || null,
           descripcion: it.descripcion,
           unidad: it.unidad || "un",
           cantidad: Number(it.cantidad) || 0,
@@ -195,6 +198,7 @@ export function useOrdenesCompra() {
       if (form.items.length > 0) {
         const itemsToInsert = form.items.map((it, idx) => ({
           orden_id: id,
+          articulo: it.articulo?.trim() || null,
           descripcion: it.descripcion,
           unidad: it.unidad || "un",
           cantidad: Number(it.cantidad) || 0,
