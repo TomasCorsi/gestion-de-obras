@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Sparkles } from "lucide-react";
 import {
   OrdenCompraForm,
   OrdenCompraItemForm,
@@ -18,6 +18,8 @@ import {
 import { useProveedores } from "@/hooks/useProveedores";
 import { useObras } from "@/hooks/useObras";
 import { format } from "date-fns";
+import { ImportFacturaProveedorDialog, ParsedOrdenCompra } from "./ImportFacturaProveedorDialog";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
