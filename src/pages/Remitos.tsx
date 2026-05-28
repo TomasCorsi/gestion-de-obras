@@ -477,6 +477,17 @@ export default function Remitos() {
           <Download className="w-4 h-4" />
           Exportar
         </Button>
+        {!loadAll && (
+          <Button
+            variant="outline"
+            onClick={cargarHistorico}
+            className="gap-2"
+            title="Por defecto se cargan sólo los últimos 90 días para mayor velocidad"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Cargar histórico
+          </Button>
+        )}
         {!isOwnOnly && (
           <>
             <Button
