@@ -301,6 +301,7 @@ export function GastosGeneralesTab() {
             <TableRow className="border-border hover:bg-transparent">
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
               <TableHead className="text-muted-foreground font-medium">Categoría</TableHead>
               <TableHead className="text-muted-foreground font-medium">Descripción</TableHead>
               <TableHead className="text-muted-foreground font-medium">Proveedor</TableHead>
@@ -311,10 +312,11 @@ export function GastosGeneralesTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   No hay gastos registrados
                 </TableCell>
               </TableRow>
+
             ) : (
               filtered.map((gasto, index) => (
                 <TableRow
