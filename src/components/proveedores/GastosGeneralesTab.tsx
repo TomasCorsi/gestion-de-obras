@@ -66,6 +66,7 @@ export function GastosGeneralesTab() {
   const { gastos, createGasto, updateGasto, deleteGasto } = useOtrosGastos();
   const { obras } = useObras();
   const { proveedores } = useProveedores();
+  const { maquinarias } = useMaquinarias();
 
   const proveedorOptions = useMemo(() => {
     const activos = proveedores.filter((p) => p.activo).map((p) => ({
@@ -75,7 +76,27 @@ export function GastosGeneralesTab() {
     return [{ value: "__none__", label: "Sin proveedor" }, ...activos];
   }, [proveedores]);
 
+  const maquinariaLabel = (m: { codigo?: string | null; nombre?: string | null; patente?: string | null }) => {
+    const parts: string[] = [];
+    if (m.codigo) parts.push(m.codigo);
+    if (m.patente) parts.push(m.patente);
+    if (m.nombre) parts.push(m.nombre);
+    return parts.length ? parts.join(" · ") : "Sin identificar";
+  };
+
+  const maquinariaOptions = useMemo(() => {
+    const activas = maquinarias
+      .filter((m) => m.estado !== "baja")
+      .sort((a, b) => (a.codigo || "").localeCompare(b.codigo || ""))
+      .map((m) => ({
+        value: m.id,
+        label: maquinariaLabel(m),
+      }));
+    return [{ value: "__none__", label: "Sin maquinaria" }, ...activas];
+  }, [maquinarias]);
+
   const [searchTerm, setSearchTerm] = useState("");
+  const [maquinariaFiltro, setMaquinariaFiltro] = useState<string>("__all__");
   const [filters, setFilters] = useState<FilterState>({
     fechaDesde: undefined,
     fechaHasta: undefined,
@@ -92,6 +113,7 @@ export function GastosGeneralesTab() {
   const [formData, setFormData] = useState<OtroGastoForm>({
     fecha: new Date().toISOString().split("T")[0],
     obra_id: null,
+    maquinaria_id: null,
     categoria: "varios",
     descripcion: "",
     monto: 0,
@@ -99,6 +121,7 @@ export function GastosGeneralesTab() {
     proveedor: "",
     observaciones: "",
   });
+
 
   const activeObras = obras.filter((o) => o.estado !== "finalizada");
 
