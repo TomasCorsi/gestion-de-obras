@@ -98,6 +98,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           const cantidad = Number(it.cantidad) || 0;
           const precio = Number(it.precio_unitario) || 0;
           return {
+            articulo: it.articulo || "",
             descripcion: it.descripcion || "",
             unidad: it.unidad || "un",
             cantidad,
