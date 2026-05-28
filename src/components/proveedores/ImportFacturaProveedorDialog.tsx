@@ -19,6 +19,7 @@ export interface ParsedOrdenCompra {
   condiciones_pago?: string;
   observaciones?: string;
   items: {
+    articulo?: string;
     descripcion: string;
     unidad: string;
     cantidad: number;
