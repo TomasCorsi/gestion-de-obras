@@ -135,6 +135,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
             .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
             .map((it, idx) => ({
               id: it.id,
+              articulo: it.articulo || "",
               descripcion: it.descripcion,
               unidad: it.unidad,
               cantidad: Number(it.cantidad),
