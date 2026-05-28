@@ -29,6 +29,7 @@ interface Props {
 }
 
 const emptyItem = (): OrdenCompraItemForm => ({
+  articulo: "",
   descripcion: "",
   unidad: "un",
   cantidad: 1,
