@@ -98,6 +98,19 @@ export default function Remitos() {
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
 
+  // Auto-extender: si el usuario filtra por una fecha anterior al rango cargado (~90 días),
+  // disparar la carga del histórico completo para no mostrar datos vacíos.
+  useEffect(() => {
+    if (loadAll) return;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    const desde = filters.fechaDesde ? new Date(filters.fechaDesde) : null;
+    const mes = filters.mes ? new Date(filters.mes + "-01") : null;
+    if ((desde && desde < cutoff) || (mes && mes < cutoff)) {
+      cargarHistorico();
+    }
+  }, [filters.fechaDesde, filters.mes, loadAll, cargarHistorico]);
+
   // Distinct created_by ids in remitos
   const creadorIds = useMemo(
     () => [...new Set(remitos.map(r => (r as any).created_by).filter(Boolean) as string[])],
