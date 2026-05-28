@@ -84,11 +84,19 @@ const SERGIO_USER_ID = "c92028bd-dd42-416d-8892-f00b5ef90f8f";
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 const CALAMINASUR_USER_ID = "73236f17-0602-41aa-8959-ee14be48f477";
 
-const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<RemitoWithRelations[]> => {
+// Default fetch window: last 90 days keeps initial load snappy.
+// Full history is opt-in via cargarHistorico() (persisted in sessionStorage).
+const DEFAULT_DAYS_BACK = 90;
+const LOAD_ALL_SESSION_KEY = "remitos:loadAll";
+
+const fetchRemitosFromDB = async (
+  filterByUserId: string | null,
+  fechaDesde: string | null
+): Promise<RemitoWithRelations[]> => {
   const PAGE_SIZE = 1000;
   let allData: RemitoWithRelations[] = [];
   let from = 0;
-  
+
   while (true) {
     let query = supabase
       .from("remitos")
@@ -98,7 +106,6 @@ const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<Remito
         viaje:viajes(origen, destino),
         maquinaria:maquinarias(codigo, patente)
       `)
-      
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
       .range(from, from + PAGE_SIZE - 1);
@@ -106,30 +113,33 @@ const fetchRemitosFromDB = async (filterByUserId: string | null): Promise<Remito
     if (filterByUserId) {
       query = query.eq("created_by", filterByUserId);
     }
+    if (fechaDesde) {
+      query = query.gte("fecha", fechaDesde);
+    }
 
     const { data, error } = await query;
 
     if (error) throw error;
     if (!data || data.length === 0) break;
-    
+
     allData = allData.concat(data);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
-  
+
   return allData;
 };
 
 export function useRemitos() {
   const queryClient = useQueryClient();
 
-  // Realtime subscription with debounce to avoid duplicates during batch saves
+  // Realtime subscription with longer debounce to avoid heavy refetches during batch saves
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedInvalidate = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       queryClient.invalidateQueries({ queryKey: ['remitos'] });
-    }, 500);
+    }, 1500);
   }, [queryClient]);
 
   useEffect(() => {
@@ -154,17 +164,39 @@ export function useRemitos() {
     });
   }, []);
 
+  // Load-all toggle persisted per session so navigating away/back doesn't reset it.
+  const [loadAll, setLoadAll] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(LOAD_ALL_SESSION_KEY) === "1";
+  });
+  const cargarHistorico = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(LOAD_ALL_SESSION_KEY, "1");
+    }
+    setLoadAll(true);
+  }, []);
+
   const isOwnOnly = currentUserId === SERGIO_USER_ID || currentUserId === FRANCO_USER_ID || currentUserId === CALAMINASUR_USER_ID;
   const filterUserId = isOwnOnly ? currentUserId : null;
-  const { 
-    data: remitos = [], 
+
+  // fechaDesde = null when loadAll; otherwise today - 90 days as YYYY-MM-DD
+  const fechaDesde = useMemo(() => {
+    if (loadAll) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - DEFAULT_DAYS_BACK);
+    return d.toISOString().slice(0, 10);
+  }, [loadAll]);
+
+  const {
+    data: remitos = [],
     isLoading: loading,
-    refetch: fetchRemitos 
+    refetch: fetchRemitos
   } = useQuery<RemitoWithRelations[]>({
-    queryKey: ['remitos', filterUserId],
-    queryFn: () => fetchRemitosFromDB(filterUserId),
+    queryKey: ['remitos', filterUserId, fechaDesde],
+    queryFn: () => fetchRemitosFromDB(filterUserId, fechaDesde),
     enabled: currentUserId !== null,
   });
+
 
   const createMutation = useMutation({
     mutationFn: async (remito: RemitoForm) => {
