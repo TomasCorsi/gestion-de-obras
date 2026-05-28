@@ -198,6 +198,7 @@ export function useOrdenesCompra() {
       if (form.items.length > 0) {
         const itemsToInsert = form.items.map((it, idx) => ({
           orden_id: id,
+          articulo: it.articulo?.trim() || null,
           descripcion: it.descripcion,
           unidad: it.unidad || "un",
           cantidad: Number(it.cantidad) || 0,
