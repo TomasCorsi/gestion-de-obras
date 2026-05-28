@@ -49,8 +49,10 @@ import {
 } from "@/hooks/useOtrosGastos";
 import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { Combobox } from "@/components/ui/combobox";
 import { cn, formatDate } from "@/lib/utils";
+
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
