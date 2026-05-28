@@ -544,6 +544,15 @@ export function GastosGeneralesTab() {
               <DetailRow label="Fecha" value={formatDate(selected.fecha)} />
               <DetailRow label="Obra" value={selected.obra?.nombre || "-"} />
               <DetailRow
+                label="Maquinaria"
+                value={
+                  selected.maquinaria
+                    ? `${selected.maquinaria.codigo || selected.maquinaria.nombre || "—"}${selected.maquinaria.patente ? ` · ${selected.maquinaria.patente}` : ""}${selected.maquinaria.tipo ? ` (${selected.maquinaria.tipo})` : ""}`
+                    : "-"
+                }
+              />
+
+              <DetailRow
                 label="Categoría"
                 value={
                   categoriasGasto[selected.categoria as CategoriaGasto]?.label ||
