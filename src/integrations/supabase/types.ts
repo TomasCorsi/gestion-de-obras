@@ -1498,6 +1498,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "otros_gastos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "otros_gastos_obra_id_fkey"
             columns: ["obra_id"]
             isOneToOne: false
