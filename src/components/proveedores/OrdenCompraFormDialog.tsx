@@ -423,6 +423,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           </div>
         </div>
       </div>
+      <ImportFacturaProveedorDialog open={importOpen} onOpenChange={setImportOpen} onImport={handleImport} />
     </FormDialog>
   );
 }
