@@ -271,17 +271,19 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
               </div>
               <div className="max-h-[320px] overflow-y-auto">
                 <div className="grid grid-cols-12 gap-1 text-xs font-semibold text-muted-foreground px-2 py-1 border-b">
-                  <span className="col-span-6">Descripción</span>
+                  <span className="col-span-2">Artículo</span>
+                  <span className="col-span-5">Descripción</span>
                   <span className="col-span-1">Un.</span>
                   <span className="col-span-2 text-right">Cant.</span>
-                  <span className="col-span-3 text-right">P. Unit.</span>
+                  <span className="col-span-2 text-right">P. Unit.</span>
                 </div>
                 {preview.items.map((item, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-1 text-xs px-2 py-1 border-b last:border-b-0">
-                    <span className="col-span-6 truncate">{item.descripcion}</span>
+                    <span className="col-span-2 truncate font-mono">{item.articulo || "—"}</span>
+                    <span className="col-span-5 truncate">{item.descripcion}</span>
                     <span className="col-span-1">{item.unidad}</span>
                     <span className="col-span-2 text-right font-mono">{item.cantidad?.toLocaleString("es-AR")}</span>
-                    <span className="col-span-3 text-right font-mono">
+                    <span className="col-span-2 text-right font-mono">
                       {item.precio_unitario?.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
