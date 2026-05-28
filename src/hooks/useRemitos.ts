@@ -335,6 +335,9 @@ export function useRemitos() {
     remitos,
     loading,
     fetchRemitos,
+    loadAll,
+    cargarHistorico,
+
     createRemito: async (remito: RemitoForm) => {
       try {
         return await createMutation.mutateAsync(remito);
