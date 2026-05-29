@@ -281,6 +281,18 @@ export function UserManagement() {
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Cambiar contraseña"
+                            onClick={() => {
+                              setSelectedUserForPassword({ id: user.user_id, name: user.nombre_completo });
+                              setPasswordDialogOpen(true);
+                            }}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
                           <Select
                             value={user.role}
                             onValueChange={(value: AppRole) => handleRoleChange(user.user_id, value)}
