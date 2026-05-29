@@ -1,24 +1,39 @@
-## Diagnóstico
+## Cambios
 
-Los gastos siguen guardados: hay 3 registros de 2026 en `otros_gastos`. La pantalla queda vacía porque la consulta del frontend intenta traer relaciones embebidas con `obras` y `maquinarias`, pero en la base no están declaradas las relaciones necesarias para `otros_gastos`.
+### 1. Base de datos (migración)
+- `ordenes_compra`: agregar `maquinaria_id` (uuid, opcional, FK → `maquinarias(id)` ON DELETE SET NULL) y `sector` (text, opcional).
+- `otros_gastos`: agregar `sector` (text, opcional).
 
-También detecté que `otros_gastos` fue creada sin permisos explícitos para la API de la app, así que conviene corregir eso en la misma intervención para evitar que se vuelva a ver vacío por permisos.
+### 2. Sector como desplegable
+Opciones fijas en un `Select`:
+- Taller
+- Obra
+- Oficina
+- Depósito
+- Vehículos
+- Otros
 
-## Plan de arreglo
+Se guarda como texto. Constante compartida en `src/components/proveedores/sectores.ts` para reutilizar en OC y Gastos Generales.
 
-1. **Migración de base de datos**
-   - Agregar la foreign key faltante:
-     - `otros_gastos.maquinaria_id` → `maquinarias.id`
-   - Confirmar/reponer la relación:
-     - `otros_gastos.obra_id` → `obras.id`
-   - Agregar permisos explícitos para que usuarios autenticados puedan acceder a `otros_gastos` desde la app.
-   - Mantener RLS existente: admin/capataz gestionan, maquinista/ayudante ven según las políticas actuales.
+### 3. Órdenes de compra
+- `OrdenCompraFormDialog`: agregar selector **Maquinaria** (combobox con código + patente + nombre, opcional, igual estilo que en Gastos Generales) y desplegable **Sector**.
+- `useOrdenesCompra`: incluir `maquinaria_id` y `sector` en tipos, payload y query (embed `maquinaria:maquinarias(id, codigo, nombre, patente, tipo)`).
+- `OrdenesCompraTab` / detalle: mostrar Maquinaria y Sector.
+- `generateOrdenCompraPDF`: agregar Maquinaria y Sector en el encabezado.
 
-2. **Ajuste defensivo en el hook**
-   - Mantener la consulta con relaciones cuando la base ya las resuelva correctamente.
-   - Agregar un fallback: si por alguna razón falla el embed, traer los gastos igual sin relaciones para que nunca desaparezcan de la grilla.
+### 4. Gastos Generales
+- `GastosGeneralesTab`: agregar desplegable **Sector** al lado del selector de Maquinaria, mostrar el sector en la grilla/detalle.
+- `useOtrosGastos`: incluir `sector` en tipos y payload.
 
-3. **Verificación**
-   - Confirmar que la base devuelve los 3 gastos.
-   - Confirmar que la consulta con `obra` y `maquinaria` ya no falla.
-   - La pestaña debe volver a mostrar: Fucionista, ELECTRICISTA y Extensión de Gas Natural.
+### 5. Sin filtros nuevos por ahora
+Solo carga y visualización; el filtro por sector se puede sumar luego si hace falta.
+
+## Archivos
+- Migración SQL nueva.
+- `src/components/proveedores/sectores.ts` (nuevo, lista compartida).
+- `src/hooks/useOrdenesCompra.ts`
+- `src/hooks/useOtrosGastos.ts`
+- `src/components/proveedores/OrdenCompraFormDialog.tsx`
+- `src/components/proveedores/OrdenesCompraTab.tsx`
+- `src/components/proveedores/GastosGeneralesTab.tsx`
+- `src/utils/generateOrdenCompraPDF.ts`
