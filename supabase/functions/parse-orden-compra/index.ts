@@ -67,6 +67,8 @@ Reglas:
               type: "object",
               properties: {
                 proveedor_nombre: { type: "string", description: "Razón social del proveedor que emite" },
+                proveedor_cuit: { type: "string", description: "CUIT del proveedor emisor, 11 dígitos sin separadores" },
+                numero_factura: { type: "string", description: "Número de comprobante/factura del proveedor, ideal formato PPPP-NNNNNNNN" },
                 fecha: { type: "string", description: "Fecha en formato YYYY-MM-DD" },
                 moneda: { type: "string", enum: ["ARS", "USD"] },
                 incluir_iva: { type: "boolean" },
