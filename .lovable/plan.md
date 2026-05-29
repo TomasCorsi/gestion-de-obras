@@ -1,39 +1,22 @@
-## Cambios
+## Cambio de contraseña por administrador
 
-### 1. Base de datos (migración)
-- `ordenes_compra`: agregar `maquinaria_id` (uuid, opcional, FK → `maquinarias(id)` ON DELETE SET NULL) y `sector` (text, opcional).
-- `otros_gastos`: agregar `sector` (text, opcional).
+**1. Edge Function** `supabase/functions/admin-update-user-password/index.ts`
+- Valida JWT del caller y que tenga rol `admin` vía `has_role`
+- Zod: `userId` (uuid), `newPassword` (min 6)
+- Usa `supabaseAdmin.auth.admin.updateUserById(userId, { password })`
+- CORS headers
 
-### 2. Sector como desplegable
-Opciones fijas en un `Select`:
-- Taller
-- Obra
-- Oficina
-- Depósito
-- Vehículos
-- Otros
+**2. Componente** `src/components/configuracion/ChangePasswordDialog.tsx`
+- Input de contraseña con toggle ver/ocultar
+- Botón "Generar contraseña segura" (10 chars alfanuméricos)
+- Botón "Copiar contraseña" (clipboard)
+- Muestra email del usuario para que el admin lo comparta
+- Llama a la edge function vía `supabase.functions.invoke`
 
-Se guarda como texto. Constante compartida en `src/components/proveedores/sectores.ts` para reutilizar en OC y Gastos Generales.
+**3. Integración** `src/components/configuracion/UserManagement.tsx`
+- Botón 🔑 (KeyRound) por fila junto a los existentes
+- Abre `ChangePasswordDialog` con `userId` y `email`
 
-### 3. Órdenes de compra
-- `OrdenCompraFormDialog`: agregar selector **Maquinaria** (combobox con código + patente + nombre, opcional, igual estilo que en Gastos Generales) y desplegable **Sector**.
-- `useOrdenesCompra`: incluir `maquinaria_id` y `sector` en tipos, payload y query (embed `maquinaria:maquinarias(id, codigo, nombre, patente, tipo)`).
-- `OrdenesCompraTab` / detalle: mostrar Maquinaria y Sector.
-- `generateOrdenCompraPDF`: agregar Maquinaria y Sector en el encabezado.
+**Seguridad:** la función solo ejecuta si el caller es admin. La contraseña no se persiste en logs.
 
-### 4. Gastos Generales
-- `GastosGeneralesTab`: agregar desplegable **Sector** al lado del selector de Maquinaria, mostrar el sector en la grilla/detalle.
-- `useOtrosGastos`: incluir `sector` en tipos y payload.
-
-### 5. Sin filtros nuevos por ahora
-Solo carga y visualización; el filtro por sector se puede sumar luego si hace falta.
-
-## Archivos
-- Migración SQL nueva.
-- `src/components/proveedores/sectores.ts` (nuevo, lista compartida).
-- `src/hooks/useOrdenesCompra.ts`
-- `src/hooks/useOtrosGastos.ts`
-- `src/components/proveedores/OrdenCompraFormDialog.tsx`
-- `src/components/proveedores/OrdenesCompraTab.tsx`
-- `src/components/proveedores/GastosGeneralesTab.tsx`
-- `src/utils/generateOrdenCompraPDF.ts`
+**Archivos:** nueva edge function, nuevo `ChangePasswordDialog.tsx`, edición de `UserManagement.tsx`.
