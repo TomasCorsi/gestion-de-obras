@@ -67,6 +67,10 @@ export function UserManagement() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState<{ id: string; name: string } | null>(null);
 
+  // Change password dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<{ id: string; name: string } | null>(null);
+
   const fetchData = async () => {
     try {
       // Fetch profiles and roles
