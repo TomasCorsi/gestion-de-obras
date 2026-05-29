@@ -84,8 +84,6 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
 
       // Matching de proveedor: CUIT exacto, luego similitud por nombre
       if (parsed.proveedor_nombre || parsed.proveedor_cuit) {
-        // import dinámico no es necesario; usamos helper
-        const { findBestProveedorMatch } = require("@/utils/stringSimilarity") as typeof import("@/utils/stringSimilarity");
         const result = findBestProveedorMatch(
           parsed.proveedor_nombre || "",
           parsed.proveedor_cuit,
