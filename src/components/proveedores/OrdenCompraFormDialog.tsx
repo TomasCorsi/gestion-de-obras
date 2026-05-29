@@ -261,6 +261,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
                 <SelectItem value="USD">Dólares (USD)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -282,7 +283,6 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
               placeholder="Ej: 0001-00012345"
             />
           </div>
-        </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
