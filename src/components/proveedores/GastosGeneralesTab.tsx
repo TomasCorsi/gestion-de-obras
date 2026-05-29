@@ -115,6 +115,7 @@ export function GastosGeneralesTab() {
     fecha: new Date().toISOString().split("T")[0],
     obra_id: null,
     maquinaria_id: null,
+    sector: null,
     categoria: "varios",
     descripcion: "",
     monto: 0,
