@@ -292,6 +292,35 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           </div>
         </div>
 
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label>Maquinaria (opcional)</Label>
+            <Combobox
+              options={maquinariaOptions}
+              value={form.maquinaria_id || "__none__"}
+              onValueChange={(v) => setForm({ ...form, maquinaria_id: v === "__none__" ? null : v })}
+              placeholder="Sin maquinaria"
+              searchPlaceholder="Buscar por código, patente o nombre..."
+              emptyText="No se encontraron maquinarias"
+            />
+          </div>
+          <div>
+            <Label>Sector (opcional)</Label>
+            <Select
+              value={form.sector || "__none__"}
+              onValueChange={(v) => setForm({ ...form, sector: v === "__none__" ? "" : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="Sin sector" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Sin sector —</SelectItem>
+                {SECTORES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         {/* Items */}
         <div className="border border-border rounded-md p-3 space-y-2">
           <div className="flex items-center justify-between">
