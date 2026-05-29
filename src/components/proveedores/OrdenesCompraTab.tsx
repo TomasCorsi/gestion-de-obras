@@ -149,6 +149,14 @@ export function OrdenesCompraTab() {
                     <TableCell>{formatDate(o.fecha)}</TableCell>
                     <TableCell>{o.proveedor?.nombre || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{o.obra?.nombre || "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell font-mono text-xs">
+                      {o.maquinaria
+                        ? `${o.maquinaria.codigo || o.maquinaria.nombre || "—"}${o.maquinaria.patente ? ` · ${o.maquinaria.patente}` : ""}`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {o.sector ? <Badge variant="outline" className="text-xs">{o.sector}</Badge> : "—"}
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
                       {`${(o.moneda === "USD" ? "US$" : "$")} ${Number(o.total).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       {o.moneda === "USD" && <Badge variant="outline" className="ml-2 text-xs">USD</Badge>}
