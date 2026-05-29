@@ -132,6 +132,8 @@ function buildPayload(form: OrdenCompraForm) {
     fecha: form.fecha,
     proveedor_id: form.proveedor_id || null,
     obra_id: form.obra_id || null,
+    maquinaria_id: form.maquinaria_id || null,
+    sector: form.sector?.trim() || null,
     estado: form.estado,
     incluir_iva: form.incluir_iva,
     iva_porcentaje: Number(form.iva_porcentaje) || 0,
