@@ -32,6 +32,7 @@ export interface OrdenCompraItemForm {
 export interface OrdenCompraDB {
   id: string;
   numero: string;
+  numero_factura: string | null;
   fecha: string;
   proveedor_id: string | null;
   obra_id: string | null;
