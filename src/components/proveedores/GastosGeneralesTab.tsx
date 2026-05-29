@@ -51,6 +51,7 @@ import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { Combobox } from "@/components/ui/combobox";
+import { SECTORES } from "./sectores";
 import { cn, formatDate } from "@/lib/utils";
 
 
