@@ -5,11 +5,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Loader2, Link2, Unlink, Mail } from "lucide-react";
+import { Users, Shield, Loader2, Link2, Unlink, Mail, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
 import { ChangeEmailDialog } from "./ChangeEmailDialog";
+import { ChangePasswordDialog } from "./ChangePasswordDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 
 type AppRole = "admin" | "capataz" | "maquinista" | "ayudante" | "remitero";
@@ -65,6 +66,10 @@ export function UserManagement() {
   // Change email dialog state
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
   const [selectedUserForEmail, setSelectedUserForEmail] = useState<{ id: string; name: string } | null>(null);
+
+  // Change password dialog state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState<{ id: string; name: string } | null>(null);
 
   const fetchData = async () => {
     try {
@@ -276,6 +281,18 @@ export function UserManagement() {
                           >
                             <Mail className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            title="Cambiar contraseña"
+                            onClick={() => {
+                              setSelectedUserForPassword({ id: user.user_id, name: user.nombre_completo });
+                              setPasswordDialogOpen(true);
+                            }}
+                          >
+                            <KeyRound className="h-4 w-4" />
+                          </Button>
                           <Select
                             value={user.role}
                             onValueChange={(value: AppRole) => handleRoleChange(user.user_id, value)}
@@ -336,6 +353,16 @@ export function UserManagement() {
           userId={selectedUserForEmail.id}
           userName={selectedUserForEmail.name}
           onSuccess={fetchData}
+        />
+      )}
+
+      {/* Change Password Dialog */}
+      {selectedUserForPassword && (
+        <ChangePasswordDialog
+          open={passwordDialogOpen}
+          onOpenChange={setPasswordDialogOpen}
+          userId={selectedUserForPassword.id}
+          userName={selectedUserForPassword.name}
         />
       )}
     </>
