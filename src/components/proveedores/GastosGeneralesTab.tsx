@@ -177,6 +177,7 @@ export function GastosGeneralesTab() {
       fecha: g.fecha,
       obra_id: g.obra_id,
       maquinaria_id: g.maquinaria_id,
+      sector: g.sector || null,
       categoria: g.categoria,
       descripcion: g.descripcion,
       monto: g.monto,
