@@ -43,6 +43,7 @@ export function OrdenesCompraTab() {
         const q = search.toLowerCase();
         return (
           o.numero.toLowerCase().includes(q) ||
+          ((o as any).numero_factura?.toLowerCase() || "").includes(q) ||
           (o.proveedor?.nombre?.toLowerCase() || "").includes(q) ||
           (o.obra?.nombre?.toLowerCase() || "").includes(q)
         );
@@ -119,6 +120,7 @@ export function OrdenesCompraTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Número</TableHead>
+                <TableHead>N° Factura</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Proveedor</TableHead>
                 <TableHead className="hidden md:table-cell">Obra</TableHead>
@@ -132,13 +134,13 @@ export function OrdenesCompraTab() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                     No hay órdenes de compra
                   </TableCell>
                 </TableRow>
@@ -146,6 +148,7 @@ export function OrdenesCompraTab() {
                 filtered.map((o) => (
                   <TableRow key={o.id}>
                     <TableCell className="font-mono font-medium">{o.numero}</TableCell>
+                    <TableCell className="font-mono text-xs">{(o as any).numero_factura || "—"}</TableCell>
                     <TableCell>{formatDate(o.fecha)}</TableCell>
                     <TableCell>{o.proveedor?.nombre || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{o.obra?.nombre || "—"}</TableCell>

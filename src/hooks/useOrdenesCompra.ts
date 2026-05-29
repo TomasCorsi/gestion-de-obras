@@ -32,6 +32,7 @@ export interface OrdenCompraItemForm {
 export interface OrdenCompraDB {
   id: string;
   numero: string;
+  numero_factura: string | null;
   fecha: string;
   proveedor_id: string | null;
   obra_id: string | null;
@@ -70,6 +71,8 @@ export interface OrdenCompraWithRelations extends OrdenCompraDB {
 }
 
 export interface OrdenCompraForm {
+  numero?: string;
+  numero_factura?: string;
   fecha: string;
   proveedor_id: string;
   obra_id?: string | null;
@@ -120,7 +123,7 @@ function calcTotales(
   return { subtotal, iva, total };
 }
 
-function buildPayload(form: OrdenCompraForm) {
+function buildPayload(form: OrdenCompraForm, includeNumero = false) {
   const { subtotal, iva, total } = calcTotales(
     form.items,
     form.incluir_iva,
@@ -128,7 +131,7 @@ function buildPayload(form: OrdenCompraForm) {
     form.percepcion_iva,
     form.percepcion_iibb,
   );
-  return {
+  const payload: any = {
     fecha: form.fecha,
     proveedor_id: form.proveedor_id || null,
     obra_id: form.obra_id || null,
@@ -146,7 +149,12 @@ function buildPayload(form: OrdenCompraForm) {
     condiciones_pago: form.condiciones_pago?.trim() || null,
     fecha_entrega_estimada: form.fecha_entrega_estimada || null,
     observaciones: form.observaciones?.trim() || null,
+    numero_factura: form.numero_factura?.trim() || null,
   };
+  if (includeNumero && form.numero?.trim()) {
+    payload.numero = form.numero.trim();
+  }
+  return payload;
 }
 
 export function useOrdenesCompra() {
@@ -196,9 +204,10 @@ export function useOrdenesCompra() {
     mutationFn: async ({ id, form }: { id: string; form: OrdenCompraForm }) => {
       const { error } = await supabase
         .from("ordenes_compra")
-        .update(buildPayload(form))
+        .update(buildPayload(form, true))
         .eq("id", id);
       if (error) throw error;
+
 
       const { error: delErr } = await supabase.from("orden_compra_items").delete().eq("orden_id", id);
       if (delErr) throw delErr;

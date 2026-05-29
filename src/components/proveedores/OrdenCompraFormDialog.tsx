@@ -42,6 +42,8 @@ const emptyItem = (): OrdenCompraItemForm => ({
 });
 
 const emptyForm = (): OrdenCompraForm => ({
+  numero: "",
+  numero_factura: "",
   fecha: format(new Date(), "yyyy-MM-dd"),
   proveedor_id: "",
   obra_id: "",
@@ -124,6 +126,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
     if (open) {
       if (editing) {
         setForm({
+          numero: editing.numero || "",
+          numero_factura: (editing as any).numero_factura || "",
           fecha: editing.fecha,
           proveedor_id: editing.proveedor_id || "",
           obra_id: editing.obra_id || "",
@@ -257,6 +261,27 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
                 <SelectItem value="USD">Dólares (USD)</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {editing && (
+            <div>
+              <Label>N° Orden de Compra</Label>
+              <Input
+                value={form.numero || ""}
+                onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                placeholder="OC-0001"
+              />
+            </div>
+          )}
+          <div className={editing ? "" : "md:col-span-2"}>
+            <Label>N° Factura Proveedor (opcional)</Label>
+            <Input
+              value={form.numero_factura || ""}
+              onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
+              placeholder="Ej: 0001-00012345"
+            />
           </div>
         </div>
 

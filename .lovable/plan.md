@@ -1,22 +1,22 @@
-## Cambio de contraseña por administrador
+## Número de factura del proveedor + edición de número de OC
 
-**1. Edge Function** `supabase/functions/admin-update-user-password/index.ts`
-- Valida JWT del caller y que tenga rol `admin` vía `has_role`
-- Zod: `userId` (uuid), `newPassword` (min 6)
-- Usa `supabaseAdmin.auth.admin.updateUserById(userId, { password })`
-- CORS headers
+**1. Migración:** Agregar columna `numero_factura` (TEXT, nullable) a `ordenes_compra` para registrar el número de la factura del proveedor asociada a la OC.
 
-**2. Componente** `src/components/configuracion/ChangePasswordDialog.tsx`
-- Input de contraseña con toggle ver/ocultar
-- Botón "Generar contraseña segura" (10 chars alfanuméricos)
-- Botón "Copiar contraseña" (clipboard)
-- Muestra email del usuario para que el admin lo comparta
-- Llama a la edge function vía `supabase.functions.invoke`
+**2. Hook `useOrdenesCompra.ts`:**
+- Agregar `numero_factura` a `OrdenCompraDB` y `OrdenCompraForm`.
+- Incluir `numero_factura` en `buildPayload` (sanitizado a `null` si vacío).
+- Agregar mutación `updateNumero(id, numero)` para editar el número de OC manualmente, exponerla en el return.
 
-**3. Integración** `src/components/configuracion/UserManagement.tsx`
-- Botón 🔑 (KeyRound) por fila junto a los existentes
-- Abre `ChangePasswordDialog` con `userId` y `email`
+**3. Form `OrdenCompraFormDialog.tsx`:**
+- Cuando se está editando, agregar un campo "N° Orden de Compra" editable (input texto) al inicio del formulario, junto a Proveedor/Fecha.
+- Agregar campo "N° Factura Proveedor" (input texto, opcional) visible siempre.
+- Pasar `numero` y `numero_factura` en `onSubmit` (extender props para que el componente padre maneje también el número manual de OC al guardar).
+- Persistir cambio de `numero` vía nueva mutación o incluirlo dentro de `buildPayload` (incluir solo si se proporcionó, para no sobreescribir el autogenerado al crear).
 
-**Seguridad:** la función solo ejecuta si el caller es admin. La contraseña no se persiste en logs.
+**4. UI `OrdenesCompraTab.tsx`:**
+- Mostrar columna `N° Factura` en la tabla (al lado de `N° OC`).
 
-**Archivos:** nueva edge function, nuevo `ChangePasswordDialog.tsx`, edición de `UserManagement.tsx`.
+**5. PDF `generateOrdenCompraPDF.ts`:**
+- Mostrar "N° Factura Proveedor" en el encabezado cuando esté presente.
+
+**Archivos:** migración SQL, `useOrdenesCompra.ts`, `OrdenCompraFormDialog.tsx`, `OrdenesCompraTab.tsx`, `generateOrdenCompraPDF.ts`.

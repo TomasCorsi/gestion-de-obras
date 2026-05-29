@@ -1386,6 +1386,7 @@ export type Database = {
           maquinaria_id: string | null
           moneda: string
           numero: string
+          numero_factura: string | null
           obra_id: string | null
           observaciones: string | null
           percepcion_iibb: number
@@ -1409,6 +1410,7 @@ export type Database = {
           maquinaria_id?: string | null
           moneda?: string
           numero: string
+          numero_factura?: string | null
           obra_id?: string | null
           observaciones?: string | null
           percepcion_iibb?: number
@@ -1432,6 +1434,7 @@ export type Database = {
           maquinaria_id?: string | null
           moneda?: string
           numero?: string
+          numero_factura?: string | null
           obra_id?: string | null
           observaciones?: string | null
           percepcion_iibb?: number
