@@ -210,6 +210,7 @@ export function GastosGeneralesTab() {
       fecha: formData.fecha || null,
       obra_id: formData.obra_id || null,
       maquinaria_id: formData.maquinaria_id || null,
+      sector: formData.sector || null,
       categoria: formData.categoria || "varios",
       descripcion: formData.descripcion || "",
       monto: formData.monto || 0,
