@@ -71,6 +71,8 @@ export interface OrdenCompraWithRelations extends OrdenCompraDB {
 }
 
 export interface OrdenCompraForm {
+  numero?: string;
+  numero_factura?: string;
   fecha: string;
   proveedor_id: string;
   obra_id?: string | null;
