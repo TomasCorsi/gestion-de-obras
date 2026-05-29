@@ -166,6 +166,19 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
     () => [{ value: "", label: "— Sin obra —" }, ...obras.map((o) => ({ value: o.id, label: `${o.numero ? `${o.numero} - ` : ""}${o.nombre}` }))],
     [obras]
   );
+  const maquinariaOptions = useMemo(() => {
+    const activas = maquinarias
+      .filter((m: any) => m.estado !== "inactiva")
+      .sort((a: any, b: any) => (a.codigo || "").localeCompare(b.codigo || ""))
+      .map((m: any) => {
+        const parts: string[] = [];
+        if (m.codigo) parts.push(m.codigo);
+        if (m.patente) parts.push(m.patente);
+        if (m.nombre) parts.push(m.nombre);
+        return { value: m.id, label: parts.length ? parts.join(" · ") : "Sin identificar" };
+      });
+    return [{ value: "__none__", label: "— Sin maquinaria —" }, ...activas];
+  }, [maquinarias]);
 
   const totales = useMemo(() => {
     const subtotal = form.items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0), 0);
