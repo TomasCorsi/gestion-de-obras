@@ -119,6 +119,7 @@ export function OrdenesCompraTab() {
             <TableHeader>
               <TableRow>
                 <TableHead>Número</TableHead>
+                <TableHead>N° Factura</TableHead>
                 <TableHead>Fecha</TableHead>
                 <TableHead>Proveedor</TableHead>
                 <TableHead className="hidden md:table-cell">Obra</TableHead>
