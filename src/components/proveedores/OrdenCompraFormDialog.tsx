@@ -126,6 +126,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
     if (open) {
       if (editing) {
         setForm({
+          numero: editing.numero || "",
+          numero_factura: (editing as any).numero_factura || "",
           fecha: editing.fecha,
           proveedor_id: editing.proveedor_id || "",
           obra_id: editing.obra_id || "",
