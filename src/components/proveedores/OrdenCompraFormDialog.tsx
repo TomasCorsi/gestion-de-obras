@@ -69,6 +69,7 @@ function fmtMoney(n: number, moneda: MonedaOrdenCompra) {
 export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }: Props) {
   const { proveedores } = useProveedores();
   const { obras } = useObras();
+  const { maquinarias } = useMaquinarias();
   const [form, setForm] = useState<OrdenCompraForm>(emptyForm());
   const [importOpen, setImportOpen] = useState(false);
 
