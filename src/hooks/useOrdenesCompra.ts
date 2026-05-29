@@ -123,7 +123,7 @@ function calcTotales(
   return { subtotal, iva, total };
 }
 
-function buildPayload(form: OrdenCompraForm) {
+function buildPayload(form: OrdenCompraForm, includeNumero = false) {
   const { subtotal, iva, total } = calcTotales(
     form.items,
     form.incluir_iva,
@@ -131,7 +131,7 @@ function buildPayload(form: OrdenCompraForm) {
     form.percepcion_iva,
     form.percepcion_iibb,
   );
-  return {
+  const payload: any = {
     fecha: form.fecha,
     proveedor_id: form.proveedor_id || null,
     obra_id: form.obra_id || null,
@@ -149,7 +149,12 @@ function buildPayload(form: OrdenCompraForm) {
     condiciones_pago: form.condiciones_pago?.trim() || null,
     fecha_entrega_estimada: form.fecha_entrega_estimada || null,
     observaciones: form.observaciones?.trim() || null,
+    numero_factura: form.numero_factura?.trim() || null,
   };
+  if (includeNumero && form.numero?.trim()) {
+    payload.numero = form.numero.trim();
+  }
+  return payload;
 }
 
 export function useOrdenesCompra() {
