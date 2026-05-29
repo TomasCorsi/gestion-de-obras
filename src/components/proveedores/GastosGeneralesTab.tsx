@@ -349,6 +349,13 @@ export function GastosGeneralesTab() {
                       <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
+                  <TableCell className="text-foreground">
+                    {gasto.sector ? (
+                      <Badge variant="outline" className="text-xs">{gasto.sector}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
                   <TableCell>
 
                     <Badge
