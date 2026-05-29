@@ -43,6 +43,7 @@ export function OrdenesCompraTab() {
         const q = search.toLowerCase();
         return (
           o.numero.toLowerCase().includes(q) ||
+          ((o as any).numero_factura?.toLowerCase() || "").includes(q) ||
           (o.proveedor?.nombre?.toLowerCase() || "").includes(q) ||
           (o.obra?.nombre?.toLowerCase() || "").includes(q)
         );
