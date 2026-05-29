@@ -204,9 +204,10 @@ export function useOrdenesCompra() {
     mutationFn: async ({ id, form }: { id: string; form: OrdenCompraForm }) => {
       const { error } = await supabase
         .from("ordenes_compra")
-        .update(buildPayload(form))
+        .update(buildPayload(form, true))
         .eq("id", id);
       if (error) throw error;
+
 
       const { error: delErr } = await supabase.from("orden_compra_items").delete().eq("orden_id", id);
       if (delErr) throw delErr;
