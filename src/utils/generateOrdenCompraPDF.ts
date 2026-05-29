@@ -94,6 +94,11 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
   doc.setFont("helvetica", "bold");
   doc.text(`Moneda: ${monedaLabel}`, pageWidth - margin, yPos, { align: "right" });
   doc.setFont("helvetica", "normal");
+  if ((orden as any).numero_factura) {
+    doc.setFont("helvetica", "bold");
+    doc.text(`N° Factura Prov.: ${(orden as any).numero_factura}`, margin, yPos, { align: "left" });
+    doc.setFont("helvetica", "normal");
+  }
   yPos += 5;
 
   // Proveedor block
