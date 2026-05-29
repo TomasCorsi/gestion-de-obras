@@ -23,6 +23,7 @@ import { SECTORES } from "./sectores";
 import { format } from "date-fns";
 import { ImportFacturaProveedorDialog, ParsedOrdenCompra } from "./ImportFacturaProveedorDialog";
 import { toast } from "sonner";
+import { findBestProveedorMatch } from "@/utils/stringSimilarity";
 
 interface Props {
   open: boolean;
