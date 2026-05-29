@@ -25,6 +25,8 @@ Reglas:
 - iva_porcentaje: por defecto 21 en Argentina, salvo que se indique otro (10.5, 27).
 - fecha: en formato YYYY-MM-DD. Si solo hay mes/año, usá el primer día.
 - proveedor_nombre: razón social o nombre comercial del que EMITE la cotización/factura (no el cliente/destinatario).
+- proveedor_cuit: CUIT del proveedor emisor, solo dígitos (11 dígitos sin guiones ni puntos). NO confundir con el CUIT del cliente/destinatario.
+- numero_factura: número de comprobante del proveedor. En facturas AFIP de Argentina suele tener el formato "0001-00012345" (punto de venta 4 dígitos + guion + número 8 dígitos). Buscá etiquetas como "Factura N°", "Comp. Nro", "Nº", "Comprobante", "Remito Nº" (solo si es remito), "Presupuesto N°". Normalizá a "PPPP-NNNNNNNN" si podés (rellenando con ceros a la izquierda). NO uses el CAE, ni el N° de pedido interno, ni el N° de cliente.
 - items: una fila por producto/servicio cotizado. Ignorá filas de subtotal, IVA, total, descuento global.
 - articulo: si la fila trae código/SKU/N° de artículo/referencia del proveedor (ej: "HC-200", "ART-12345", "Cod. 7788"), mapealo a "articulo". El nombre o detalle largo va en "descripcion". Si no hay código, dejá articulo vacío o no lo incluyas.
 - precio_unitario: precio por unidad sin IVA si está discriminado; si solo hay precio final con IVA, usá ese y marcá incluir_iva=false.
