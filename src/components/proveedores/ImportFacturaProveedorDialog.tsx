@@ -12,6 +12,8 @@ import * as XLSX from "xlsx";
 
 export interface ParsedOrdenCompra {
   proveedor_nombre?: string;
+  proveedor_cuit?: string;
+  numero_factura?: string;
   fecha?: string;
   moneda?: "ARS" | "USD";
   incluir_iva?: boolean;
