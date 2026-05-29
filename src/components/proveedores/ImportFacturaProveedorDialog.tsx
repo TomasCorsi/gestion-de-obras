@@ -12,6 +12,8 @@ import * as XLSX from "xlsx";
 
 export interface ParsedOrdenCompra {
   proveedor_nombre?: string;
+  proveedor_cuit?: string;
+  numero_factura?: string;
   fecha?: string;
   moneda?: "ARS" | "USD";
   incluir_iva?: boolean;
@@ -250,6 +252,12 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
             <div className="grid grid-cols-2 gap-3 text-sm">
               {preview.proveedor_nombre && (
                 <div><Label className="text-xs text-muted-foreground">Proveedor</Label><p>{preview.proveedor_nombre}</p></div>
+              )}
+              {preview.proveedor_cuit && (
+                <div><Label className="text-xs text-muted-foreground">CUIT</Label><p className="font-mono">{preview.proveedor_cuit}</p></div>
+              )}
+              {preview.numero_factura && (
+                <div><Label className="text-xs text-muted-foreground">N° Factura</Label><p className="font-mono">{preview.numero_factura}</p></div>
               )}
               {preview.fecha && (
                 <div><Label className="text-xs text-muted-foreground">Fecha</Label><p>{preview.fecha}</p></div>
