@@ -122,6 +122,8 @@ export function OrdenesCompraTab() {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Proveedor</TableHead>
                 <TableHead className="hidden md:table-cell">Obra</TableHead>
+                <TableHead className="hidden lg:table-cell">Maquinaria</TableHead>
+                <TableHead className="hidden lg:table-cell">Sector</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
