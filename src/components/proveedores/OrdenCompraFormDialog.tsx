@@ -45,6 +45,8 @@ const emptyForm = (): OrdenCompraForm => ({
   fecha: format(new Date(), "yyyy-MM-dd"),
   proveedor_id: "",
   obra_id: "",
+  maquinaria_id: null,
+  sector: "",
   estado: "borrador",
   incluir_iva: true,
   iva_porcentaje: 21,
