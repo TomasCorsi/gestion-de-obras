@@ -441,7 +441,7 @@ export function GastosGeneralesTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="maquinaria_gg">Maquinaria (opcional)</Label>
               <Combobox
                 options={maquinariaOptions}
@@ -453,6 +453,25 @@ export function GastosGeneralesTab() {
                 searchPlaceholder="Buscar por código, patente o nombre..."
                 emptyText="No se encontraron maquinarias"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sector_gg">Sector (opcional)</Label>
+              <Select
+                value={formData.sector || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, sector: v === "__none__" ? null : v })
+                }
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Sin sector" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="__none__">— Sin sector —</SelectItem>
+                  {SECTORES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
