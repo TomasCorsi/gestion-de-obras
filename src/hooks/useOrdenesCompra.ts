@@ -35,6 +35,8 @@ export interface OrdenCompraDB {
   fecha: string;
   proveedor_id: string | null;
   obra_id: string | null;
+  maquinaria_id: string | null;
+  sector: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
   iva_porcentaje: number;
@@ -63,6 +65,7 @@ export interface OrdenCompraWithRelations extends OrdenCompraDB {
     contacto: string | null;
   } | null;
   obra?: { id: string; nombre: string; numero: string | null } | null;
+  maquinaria?: { id: string; codigo: string | null; nombre: string | null; patente: string | null; tipo: string } | null;
   items?: OrdenCompraItemDB[];
 }
 
@@ -70,6 +73,8 @@ export interface OrdenCompraForm {
   fecha: string;
   proveedor_id: string;
   obra_id?: string | null;
+  maquinaria_id?: string | null;
+  sector?: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
   iva_porcentaje: number;
@@ -89,6 +94,7 @@ const fetchOrdenes = async (): Promise<OrdenCompraWithRelations[]> => {
       *,
       proveedor:proveedores(id, nombre, cuit, direccion, localidad, telefono, email, contacto),
       obra:obras(id, nombre, numero),
+      maquinaria:maquinarias(id, codigo, nombre, patente, tipo),
       items:orden_compra_items(*)
     `)
     .order("fecha", { ascending: false })
@@ -126,6 +132,8 @@ function buildPayload(form: OrdenCompraForm) {
     fecha: form.fecha,
     proveedor_id: form.proveedor_id || null,
     obra_id: form.obra_id || null,
+    maquinaria_id: form.maquinaria_id || null,
+    sector: form.sector?.trim() || null,
     estado: form.estado,
     incluir_iva: form.incluir_iva,
     iva_porcentaje: Number(form.iva_porcentaje) || 0,

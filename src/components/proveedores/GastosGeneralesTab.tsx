@@ -51,6 +51,7 @@ import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { Combobox } from "@/components/ui/combobox";
+import { SECTORES } from "./sectores";
 import { cn, formatDate } from "@/lib/utils";
 
 
@@ -114,6 +115,7 @@ export function GastosGeneralesTab() {
     fecha: new Date().toISOString().split("T")[0],
     obra_id: null,
     maquinaria_id: null,
+    sector: null,
     categoria: "varios",
     descripcion: "",
     monto: 0,
@@ -157,6 +159,7 @@ export function GastosGeneralesTab() {
       fecha: new Date().toISOString().split("T")[0],
       obra_id: null,
       maquinaria_id: null,
+      sector: null,
       categoria: "varios",
       descripcion: "",
       monto: 0,
@@ -174,6 +177,7 @@ export function GastosGeneralesTab() {
       fecha: g.fecha,
       obra_id: g.obra_id,
       maquinaria_id: g.maquinaria_id,
+      sector: g.sector || null,
       categoria: g.categoria,
       descripcion: g.descripcion,
       monto: g.monto,
@@ -206,6 +210,7 @@ export function GastosGeneralesTab() {
       fecha: formData.fecha || null,
       obra_id: formData.obra_id || null,
       maquinaria_id: formData.maquinaria_id || null,
+      sector: formData.sector || null,
       categoria: formData.categoria || "varios",
       descripcion: formData.descripcion || "",
       monto: formData.monto || 0,
@@ -302,6 +307,7 @@ export function GastosGeneralesTab() {
               <TableHead className="text-muted-foreground font-medium">Fecha</TableHead>
               <TableHead className="text-muted-foreground font-medium">Obra</TableHead>
               <TableHead className="text-muted-foreground font-medium">Maquinaria</TableHead>
+              <TableHead className="text-muted-foreground font-medium">Sector</TableHead>
               <TableHead className="text-muted-foreground font-medium">Categoría</TableHead>
               <TableHead className="text-muted-foreground font-medium">Descripción</TableHead>
               <TableHead className="text-muted-foreground font-medium">Proveedor</TableHead>
@@ -312,7 +318,7 @@ export function GastosGeneralesTab() {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                   No hay gastos registrados
                 </TableCell>
               </TableRow>
@@ -339,6 +345,13 @@ export function GastosGeneralesTab() {
                         {gasto.maquinaria.codigo || gasto.maquinaria.nombre || "—"}
                         {gasto.maquinaria.patente ? ` · ${gasto.maquinaria.patente}` : ""}
                       </span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-foreground">
+                    {gasto.sector ? (
+                      <Badge variant="outline" className="text-xs">{gasto.sector}</Badge>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -436,7 +449,7 @@ export function GastosGeneralesTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="maquinaria_gg">Maquinaria (opcional)</Label>
               <Combobox
                 options={maquinariaOptions}
@@ -448,6 +461,25 @@ export function GastosGeneralesTab() {
                 searchPlaceholder="Buscar por código, patente o nombre..."
                 emptyText="No se encontraron maquinarias"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sector_gg">Sector (opcional)</Label>
+              <Select
+                value={formData.sector || "__none__"}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, sector: v === "__none__" ? null : v })
+                }
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Sin sector" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border-border">
+                  <SelectItem value="__none__">— Sin sector —</SelectItem>
+                  {SECTORES.map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -551,6 +583,8 @@ export function GastosGeneralesTab() {
                     : "-"
                 }
               />
+              <DetailRow label="Sector" value={selected.sector || "-"} />
+
 
               <DetailRow
                 label="Categoría"

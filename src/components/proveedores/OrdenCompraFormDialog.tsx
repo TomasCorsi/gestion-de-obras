@@ -17,6 +17,9 @@ import {
 } from "@/hooks/useOrdenesCompra";
 import { useProveedores } from "@/hooks/useProveedores";
 import { useObras } from "@/hooks/useObras";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
+
+import { SECTORES } from "./sectores";
 import { format } from "date-fns";
 import { ImportFacturaProveedorDialog, ParsedOrdenCompra } from "./ImportFacturaProveedorDialog";
 import { toast } from "sonner";
@@ -42,6 +45,8 @@ const emptyForm = (): OrdenCompraForm => ({
   fecha: format(new Date(), "yyyy-MM-dd"),
   proveedor_id: "",
   obra_id: "",
+  maquinaria_id: null,
+  sector: "",
   estado: "borrador",
   incluir_iva: true,
   iva_porcentaje: 21,
@@ -64,6 +69,7 @@ function fmtMoney(n: number, moneda: MonedaOrdenCompra) {
 export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }: Props) {
   const { proveedores } = useProveedores();
   const { obras } = useObras();
+  const { maquinarias } = useMaquinarias();
   const [form, setForm] = useState<OrdenCompraForm>(emptyForm());
   const [importOpen, setImportOpen] = useState(false);
 
@@ -121,6 +127,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           fecha: editing.fecha,
           proveedor_id: editing.proveedor_id || "",
           obra_id: editing.obra_id || "",
+          maquinaria_id: editing.maquinaria_id || null,
+          sector: editing.sector || "",
           estado: editing.estado,
           incluir_iva: editing.incluir_iva,
           iva_porcentaje: Number(editing.iva_porcentaje ?? 21),
@@ -158,6 +166,19 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
     () => [{ value: "", label: "— Sin obra —" }, ...obras.map((o) => ({ value: o.id, label: `${o.numero ? `${o.numero} - ` : ""}${o.nombre}` }))],
     [obras]
   );
+  const maquinariaOptions = useMemo(() => {
+    const activas = maquinarias
+      .filter((m: any) => m.estado !== "inactiva")
+      .sort((a: any, b: any) => (a.codigo || "").localeCompare(b.codigo || ""))
+      .map((m: any) => {
+        const parts: string[] = [];
+        if (m.codigo) parts.push(m.codigo);
+        if (m.patente) parts.push(m.patente);
+        if (m.nombre) parts.push(m.nombre);
+        return { value: m.id, label: parts.length ? parts.join(" · ") : "Sin identificar" };
+      });
+    return [{ value: "__none__", label: "— Sin maquinaria —" }, ...activas];
+  }, [maquinarias]);
 
   const totales = useMemo(() => {
     const subtotal = form.items.reduce((s, it) => s + (Number(it.cantidad) || 0) * (Number(it.precio_unitario) || 0), 0);
@@ -268,6 +289,35 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
               value={form.fecha_entrega_estimada || ""}
               onChange={(e) => setForm({ ...form, fecha_entrega_estimada: e.target.value })}
             />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label>Maquinaria (opcional)</Label>
+            <Combobox
+              options={maquinariaOptions}
+              value={form.maquinaria_id || "__none__"}
+              onValueChange={(v) => setForm({ ...form, maquinaria_id: v === "__none__" ? null : v })}
+              placeholder="Sin maquinaria"
+              searchPlaceholder="Buscar por código, patente o nombre..."
+              emptyText="No se encontraron maquinarias"
+            />
+          </div>
+          <div>
+            <Label>Sector (opcional)</Label>
+            <Select
+              value={form.sector || "__none__"}
+              onValueChange={(v) => setForm({ ...form, sector: v === "__none__" ? "" : v })}
+            >
+              <SelectTrigger><SelectValue placeholder="Sin sector" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">— Sin sector —</SelectItem>
+                {SECTORES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

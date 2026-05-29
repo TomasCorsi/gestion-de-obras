@@ -15,6 +15,7 @@ export interface OtroGastoDB {
   fecha: string;
   obra_id: string | null;
   maquinaria_id: string | null;
+  sector: string | null;
   categoria: string;
   descripcion: string;
   monto: number;
@@ -34,6 +35,7 @@ export interface OtroGastoForm {
   fecha: string;
   obra_id?: string | null;
   maquinaria_id?: string | null;
+  sector?: string | null;
   categoria: string;
   descripcion: string;
   monto?: number;

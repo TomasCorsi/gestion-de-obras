@@ -122,6 +122,8 @@ export function OrdenesCompraTab() {
                 <TableHead>Fecha</TableHead>
                 <TableHead>Proveedor</TableHead>
                 <TableHead className="hidden md:table-cell">Obra</TableHead>
+                <TableHead className="hidden lg:table-cell">Maquinaria</TableHead>
+                <TableHead className="hidden lg:table-cell">Sector</TableHead>
                 <TableHead className="text-right">Total</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead className="text-right">Acciones</TableHead>
@@ -130,13 +132,13 @@ export function OrdenesCompraTab() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     Cargando...
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                     No hay órdenes de compra
                   </TableCell>
                 </TableRow>
@@ -147,6 +149,14 @@ export function OrdenesCompraTab() {
                     <TableCell>{formatDate(o.fecha)}</TableCell>
                     <TableCell>{o.proveedor?.nombre || "—"}</TableCell>
                     <TableCell className="hidden md:table-cell">{o.obra?.nombre || "—"}</TableCell>
+                    <TableCell className="hidden lg:table-cell font-mono text-xs">
+                      {o.maquinaria
+                        ? `${o.maquinaria.codigo || o.maquinaria.nombre || "—"}${o.maquinaria.patente ? ` · ${o.maquinaria.patente}` : ""}`
+                        : "—"}
+                    </TableCell>
+                    <TableCell className="hidden lg:table-cell">
+                      {o.sector ? <Badge variant="outline" className="text-xs">{o.sector}</Badge> : "—"}
+                    </TableCell>
                     <TableCell className="text-right font-semibold">
                       {`${(o.moneda === "USD" ? "US$" : "$")} ${Number(o.total).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       {o.moneda === "USD" && <Badge variant="outline" className="ml-2 text-xs">USD</Badge>}

@@ -1383,6 +1383,7 @@ export type Database = {
           incluir_iva: boolean
           iva: number
           iva_porcentaje: number
+          maquinaria_id: string | null
           moneda: string
           numero: string
           obra_id: string | null
@@ -1390,6 +1391,7 @@ export type Database = {
           percepcion_iibb: number
           percepcion_iva: number
           proveedor_id: string | null
+          sector: string | null
           subtotal: number
           total: number
           updated_at: string
@@ -1404,6 +1406,7 @@ export type Database = {
           incluir_iva?: boolean
           iva?: number
           iva_porcentaje?: number
+          maquinaria_id?: string | null
           moneda?: string
           numero: string
           obra_id?: string | null
@@ -1411,6 +1414,7 @@ export type Database = {
           percepcion_iibb?: number
           percepcion_iva?: number
           proveedor_id?: string | null
+          sector?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
@@ -1425,6 +1429,7 @@ export type Database = {
           incluir_iva?: boolean
           iva?: number
           iva_porcentaje?: number
+          maquinaria_id?: string | null
           moneda?: string
           numero?: string
           obra_id?: string | null
@@ -1432,11 +1437,19 @@ export type Database = {
           percepcion_iibb?: number
           percepcion_iva?: number
           proveedor_id?: string | null
+          sector?: string | null
           subtotal?: number
           total?: number
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ordenes_compra_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ordenes_compra_obra_id_fkey"
             columns: ["obra_id"]
@@ -1466,6 +1479,7 @@ export type Database = {
           obra_id: string | null
           observaciones: string | null
           proveedor: string | null
+          sector: string | null
           updated_at: string
         }
         Insert: {
@@ -1480,6 +1494,7 @@ export type Database = {
           obra_id?: string | null
           observaciones?: string | null
           proveedor?: string | null
+          sector?: string | null
           updated_at?: string
         }
         Update: {
@@ -1494,6 +1509,7 @@ export type Database = {
           obra_id?: string | null
           observaciones?: string | null
           proveedor?: string | null
+          sector?: string | null
           updated_at?: string
         }
         Relationships: [
