@@ -35,6 +35,8 @@ export interface OrdenCompraDB {
   fecha: string;
   proveedor_id: string | null;
   obra_id: string | null;
+  maquinaria_id: string | null;
+  sector: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
   iva_porcentaje: number;
@@ -63,6 +65,7 @@ export interface OrdenCompraWithRelations extends OrdenCompraDB {
     contacto: string | null;
   } | null;
   obra?: { id: string; nombre: string; numero: string | null } | null;
+  maquinaria?: { id: string; codigo: string | null; nombre: string | null; patente: string | null; tipo: string } | null;
   items?: OrdenCompraItemDB[];
 }
 
