@@ -73,6 +73,8 @@ export interface OrdenCompraForm {
   fecha: string;
   proveedor_id: string;
   obra_id?: string | null;
+  maquinaria_id?: string | null;
+  sector?: string | null;
   estado: EstadoOrdenCompra;
   incluir_iva: boolean;
   iva_porcentaje: number;
@@ -92,6 +94,7 @@ const fetchOrdenes = async (): Promise<OrdenCompraWithRelations[]> => {
       *,
       proveedor:proveedores(id, nombre, cuit, direccion, localidad, telefono, email, contacto),
       obra:obras(id, nombre, numero),
+      maquinaria:maquinarias(id, codigo, nombre, patente, tipo),
       items:orden_compra_items(*)
     `)
     .order("fecha", { ascending: false })
