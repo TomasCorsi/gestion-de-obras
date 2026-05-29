@@ -127,6 +127,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
           fecha: editing.fecha,
           proveedor_id: editing.proveedor_id || "",
           obra_id: editing.obra_id || "",
+          maquinaria_id: editing.maquinaria_id || null,
+          sector: editing.sector || "",
           estado: editing.estado,
           incluir_iva: editing.incluir_iva,
           iva_porcentaje: Number(editing.iva_porcentaje ?? 21),
