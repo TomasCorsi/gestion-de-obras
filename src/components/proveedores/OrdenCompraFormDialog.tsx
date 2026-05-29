@@ -42,6 +42,8 @@ const emptyItem = (): OrdenCompraItemForm => ({
 });
 
 const emptyForm = (): OrdenCompraForm => ({
+  numero: "",
+  numero_factura: "",
   fecha: format(new Date(), "yyyy-MM-dd"),
   proveedor_id: "",
   obra_id: "",
