@@ -355,6 +355,16 @@ export function UserManagement() {
           onSuccess={fetchData}
         />
       )}
+
+      {/* Change Password Dialog */}
+      {selectedUserForPassword && (
+        <ChangePasswordDialog
+          open={passwordDialogOpen}
+          onOpenChange={setPasswordDialogOpen}
+          userId={selectedUserForPassword.id}
+          userName={selectedUserForPassword.name}
+        />
+      )}
     </>
   );
 }
