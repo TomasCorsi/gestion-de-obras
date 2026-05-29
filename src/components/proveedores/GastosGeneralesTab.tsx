@@ -583,6 +583,8 @@ export function GastosGeneralesTab() {
                     : "-"
                 }
               />
+              <DetailRow label="Sector" value={selected.sector || "-"} />
+
 
               <DetailRow
                 label="Categoría"
