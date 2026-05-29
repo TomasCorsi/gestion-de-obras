@@ -98,7 +98,7 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
 
   // Proveedor block
   doc.setFillColor(245, 245, 245);
-  doc.rect(margin, yPos, pageWidth - margin * 2, 24, "F");
+  doc.rect(margin, yPos, pageWidth - margin * 2, 32, "F");
   doc.setFontSize(8);
   doc.setFont("helvetica", "bold");
   doc.text("PROVEEDOR", margin + 2, yPos + 4);
@@ -109,15 +109,32 @@ export async function generateOrdenCompraPDF(orden: OrdenCompraWithRelations): P
   if (prov?.direccion) doc.text(`${prov.direccion}${prov.localidad ? ", " + prov.localidad : ""}`, margin + 2, yPos + 17);
   if (prov?.telefono || prov?.email) doc.text(`${prov.telefono || ""}${prov.telefono && prov.email ? "  |  " : ""}${prov.email || ""}`, margin + 2, yPos + 21);
 
-  // Obra block (right side)
+  // Right column: obra / maquinaria / sector
+  let rightY = yPos + 4;
   if (orden.obra) {
     doc.setFont("helvetica", "bold");
-    doc.text("OBRA DESTINO", pageWidth / 2 + 4, yPos + 4);
+    doc.text("OBRA DESTINO", pageWidth / 2 + 4, rightY);
     doc.setFont("helvetica", "normal");
-    doc.text(orden.obra.nombre, pageWidth / 2 + 4, yPos + 9);
-    if (orden.obra.numero) doc.text(`N° ${orden.obra.numero}`, pageWidth / 2 + 4, yPos + 13);
+    doc.text(orden.obra.nombre, pageWidth / 2 + 4, rightY + 5);
+    if (orden.obra.numero) doc.text(`N° ${orden.obra.numero}`, pageWidth / 2 + 4, rightY + 9);
+    rightY += 13;
   }
-  yPos += 28;
+  if (orden.maquinaria) {
+    doc.setFont("helvetica", "bold");
+    doc.text("MAQUINARIA:", pageWidth / 2 + 4, rightY);
+    doc.setFont("helvetica", "normal");
+    const m = orden.maquinaria;
+    const label = `${m.codigo || m.nombre || "—"}${m.patente ? ` · ${m.patente}` : ""}`;
+    doc.text(label, pageWidth / 2 + 28, rightY);
+    rightY += 5;
+  }
+  if (orden.sector) {
+    doc.setFont("helvetica", "bold");
+    doc.text("SECTOR:", pageWidth / 2 + 4, rightY);
+    doc.setFont("helvetica", "normal");
+    doc.text(orden.sector, pageWidth / 2 + 22, rightY);
+  }
+  yPos += 36;
 
   // Items table
   const items = (orden.items || []).slice().sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
