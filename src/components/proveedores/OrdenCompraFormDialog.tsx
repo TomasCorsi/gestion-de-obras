@@ -261,7 +261,28 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
                 <SelectItem value="USD">Dólares (USD)</SelectItem>
               </SelectContent>
             </Select>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {editing && (
+            <div>
+              <Label>N° Orden de Compra</Label>
+              <Input
+                value={form.numero || ""}
+                onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                placeholder="OC-0001"
+              />
+            </div>
+          )}
+          <div className={editing ? "" : "md:col-span-2"}>
+            <Label>N° Factura Proveedor (opcional)</Label>
+            <Input
+              value={form.numero_factura || ""}
+              onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
+              placeholder="Ej: 0001-00012345"
+            />
           </div>
+        </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
