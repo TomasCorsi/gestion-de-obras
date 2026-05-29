@@ -81,17 +81,31 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
     setForm((f) => {
       const next: OrdenCompraForm = { ...f };
 
-      if (parsed.proveedor_nombre) {
-        const target = normalize(parsed.proveedor_nombre);
-        const match = proveedores.find((p) => {
-          const n = normalize(p.nombre);
-          return n === target || n.includes(target) || target.includes(n);
-        });
-        if (match) {
-          next.proveedor_id = match.id;
-        } else {
-          toast.warning(`Proveedor "${parsed.proveedor_nombre}" no encontrado, seleccionalo manualmente`);
+      // Matching de proveedor: CUIT exacto, luego similitud por nombre
+      if (parsed.proveedor_nombre || parsed.proveedor_cuit) {
+        // import dinámico no es necesario; usamos helper
+        const { findBestProveedorMatch } = require("@/utils/stringSimilarity") as typeof import("@/utils/stringSimilarity");
+        const result = findBestProveedorMatch(
+          parsed.proveedor_nombre || "",
+          parsed.proveedor_cuit,
+          proveedores.map((p) => ({ id: p.id, nombre: p.nombre, cuit: (p as any).cuit }))
+        );
+        if (result && (result.byCuit || result.score >= 0.5)) {
+          next.proveedor_id = result.proveedor.id;
+          if (result.byCuit) {
+            toast.success(`Proveedor identificado por CUIT: ${result.proveedor.nombre}`);
+          } else if (result.score >= 0.75) {
+            toast.success(`Proveedor detectado: ${result.proveedor.nombre}`);
+          } else {
+            toast.warning(`Proveedor sugerido: ${result.proveedor.nombre} (verificá que sea correcto)`);
+          }
+        } else if (parsed.proveedor_nombre) {
+          toast.warning(`No se encontró un proveedor similar a "${parsed.proveedor_nombre}", seleccionalo manualmente`);
         }
+      }
+
+      if (parsed.numero_factura && !f.numero_factura) {
+        next.numero_factura = parsed.numero_factura.trim();
       }
 
       if (parsed.fecha && /^\d{4}-\d{2}-\d{2}$/.test(parsed.fecha)) next.fecha = parsed.fecha;
