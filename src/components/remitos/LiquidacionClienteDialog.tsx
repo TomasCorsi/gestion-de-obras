@@ -42,11 +42,10 @@ interface TipoResumen {
   precioTotal: number;
 }
 
-type TipoCliente = "cliente" | "cliente_destino" | "cliente_cantera" | "cliente_o_destino";
+type TipoCliente = "cliente_destino" | "cliente_cantera" | "cliente_o_destino";
 
 const TIPO_LABELS: Record<TipoCliente, string> = {
   cliente_o_destino: "Cliente / Cliente destino",
-  cliente: "Cliente",
   cliente_destino: "Cliente destino",
   cliente_cantera: "Cliente cantera",
 };
@@ -68,8 +67,6 @@ export function LiquidacionClienteDialog({
       if (tipoCliente === "cliente_o_destino") {
         if (r.cliente) set.add(r.cliente);
         if (r.cliente_destino) set.add(r.cliente_destino);
-      } else if (tipoCliente === "cliente") {
-        if (r.cliente) set.add(r.cliente);
       } else if (tipoCliente === "cliente_destino") {
         if (r.cliente_destino) set.add(r.cliente_destino);
       } else if (tipoCliente === "cliente_cantera") {
@@ -86,7 +83,6 @@ export function LiquidacionClienteDialog({
       if (tipoCliente === "cliente_o_destino") {
         return r.cliente === selectedCliente || r.cliente_destino === selectedCliente;
       }
-      if (tipoCliente === "cliente") return r.cliente === selectedCliente;
       if (tipoCliente === "cliente_destino") return r.cliente_destino === selectedCliente;
       if (tipoCliente === "cliente_cantera") return r.cliente_cantera === selectedCliente;
       return false;
@@ -224,8 +220,7 @@ export function LiquidacionClienteDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
-                <SelectItem value="cliente">{TIPO_LABELS.cliente}</SelectItem>
+              <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
                 <SelectItem value="cliente_destino">{TIPO_LABELS.cliente_destino}</SelectItem>
                 <SelectItem value="cliente_cantera">{TIPO_LABELS.cliente_cantera}</SelectItem>
               </SelectContent>
