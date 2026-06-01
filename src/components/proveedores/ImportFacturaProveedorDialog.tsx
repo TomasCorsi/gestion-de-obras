@@ -18,6 +18,8 @@ export interface ParsedOrdenCompra {
   moneda?: "ARS" | "USD";
   incluir_iva?: boolean;
   iva_porcentaje?: number;
+  percepcion_iva?: number;
+  percepcion_iibb?: number;
   condiciones_pago?: string;
   observaciones?: string;
   items: {
