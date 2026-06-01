@@ -270,6 +270,12 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
               {typeof preview.incluir_iva === "boolean" && (
                 <div><Label className="text-xs text-muted-foreground">IVA</Label><p>{preview.incluir_iva ? `Discriminado ${preview.iva_porcentaje ?? 21}%` : "Incluido"}</p></div>
               )}
+              {typeof preview.percepcion_iva === "number" && preview.percepcion_iva > 0 && (
+                <div><Label className="text-xs text-muted-foreground">Percepción IVA</Label><p className="font-mono">{preview.percepcion_iva.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</p></div>
+              )}
+              {typeof preview.percepcion_iibb === "number" && preview.percepcion_iibb > 0 && (
+                <div><Label className="text-xs text-muted-foreground">Percepción IIBB</Label><p className="font-mono">{preview.percepcion_iibb.toLocaleString("es-AR", { minimumFractionDigits: 2 })}</p></div>
+              )}
               {preview.condiciones_pago && (
                 <div className="col-span-2"><Label className="text-xs text-muted-foreground">Condiciones de pago</Label><p>{preview.condiciones_pago}</p></div>
               )}
