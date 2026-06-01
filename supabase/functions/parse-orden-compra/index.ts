@@ -96,6 +96,8 @@ Reglas:
                 moneda: { type: "string", enum: ["ARS", "USD"] },
                 incluir_iva: { type: "boolean" },
                 iva_porcentaje: { type: "number" },
+                percepcion_iva: { type: "number", description: "Monto (no porcentaje) de Percepción de IVA, en la moneda de la factura. 0 si no aparece." },
+                percepcion_iibb: { type: "number", description: "Monto (no porcentaje) de Percepción de Ingresos Brutos, en la moneda de la factura. 0 si no aparece." },
                 condiciones_pago: { type: "string" },
                 observaciones: { type: "string" },
                 items: {
