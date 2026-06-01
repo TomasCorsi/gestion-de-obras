@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfDay, endOfDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+
 import { Calendar as CalendarIcon, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -94,7 +95,6 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   
   // Sincronizar estado inicial con el callback
   useEffect(() => {
-    // Solo al montar, sincronizar filtros persistidos
     if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
       onFilterChange({
         fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
@@ -103,18 +103,35 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         obraId: urlFilters.obraId,
         maquinariaId: urlFilters.maquinariaId,
       });
+    } else {
+      // Sin filtros persistidos: por defecto aplicar el año actual completo
+      const yearDate = new Date(selectedYear, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
     }
-  // Solo ejecutar al montar
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+
   const handleMesChange = (value: string) => {
     if (value === "none") {
+      // Sin mes: aplicar rango del año completo seleccionado
+      const yearDate = new Date(selectedYear, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
       setMes(undefined);
-      setFechaDesde(undefined);
-      setFechaHasta(undefined);
-      setUrlFilters({ mes: undefined, fechaDesde: undefined, fechaHasta: undefined });
-      onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId, maquinariaId });
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      setUrlFilters({
+        mes: undefined,
+        year: selectedYear,
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
+      });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     } else {
       setMes(value);
       const monthDate = parseISO(`${selectedYear}-${value}-01`);
@@ -125,8 +142,8 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       setUrlFilters({ 
         mes: value, 
         year: selectedYear,
-        fechaDesde: desde.toISOString().split("T")[0],
-        fechaHasta: hasta.toISOString().split("T")[0],
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
     }
@@ -135,7 +152,6 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   const handleYearChange = (value: string) => {
     const year = parseInt(value);
     setSelectedYear(year);
-    setUrlFilters({ year });
     if (mes) {
       const monthDate = parseISO(`${year}-${mes}-01`);
       const desde = startOfMonth(monthDate);
@@ -145,12 +161,26 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       setUrlFilters({ 
         year, 
         mes,
-        fechaDesde: desde.toISOString().split("T")[0],
-        fechaHasta: hasta.toISOString().split("T")[0],
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
+    } else {
+      // Sin mes: aplicar rango del año completo
+      const yearDate = new Date(year, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      setUrlFilters({
+        year,
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
+      });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     }
   };
+
 
   const handleFechaDesdeChange = (date: Date | undefined) => {
     setFechaDesde(date);
@@ -187,23 +217,28 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   };
 
   const clearFilters = () => {
-    setFechaDesde(undefined);
-    setFechaHasta(undefined);
+    const yearDate = new Date(currentYear, 0, 1);
+    const desde = startOfYear(yearDate);
+    const hasta = endOfYear(yearDate);
+    setFechaDesde(desde);
+    setFechaHasta(hasta);
     setMes(undefined);
     setObraId(undefined);
     setMaquinariaId(undefined);
-    setUrlFilters({ 
-      fechaDesde: undefined, 
-      fechaHasta: undefined, 
-      mes: undefined, 
+    setSelectedYear(currentYear);
+    setUrlFilters({
+      fechaDesde: format(desde, "yyyy-MM-dd"),
+      fechaHasta: format(hasta, "yyyy-MM-dd"),
+      mes: undefined,
       obraId: undefined,
       maquinariaId: undefined,
       year: currentYear,
     });
-    onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined, maquinariaId: undefined });
+    onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
   };
 
-  const hasActiveFilters = fechaDesde || fechaHasta || mes || obraId || maquinariaId;
+  const hasActiveFilters = mes || obraId || maquinariaId || selectedYear !== currentYear;
+
 
   // Build maquinaria options for the select
   const maquinariaOptions = useMemo(() => {
@@ -364,14 +399,15 @@ export function filterByDateAndObra<T extends { fecha?: string | null; obra_id?:
   filters: FilterState
 ): T[] {
   return data.filter((item) => {
-    // Filter by date range
+    // Filter by date range (parseISO + day-bound to avoid TZ shift)
     if (filters.fechaDesde || filters.fechaHasta) {
       if (!item.fecha) return false;
-      const itemDate = new Date(item.fecha);
-      
-      if (filters.fechaDesde && itemDate < filters.fechaDesde) return false;
-      if (filters.fechaHasta && itemDate > filters.fechaHasta) return false;
+      const itemDate = parseISO(item.fecha);
+
+      if (filters.fechaDesde && itemDate < startOfDay(filters.fechaDesde)) return false;
+      if (filters.fechaHasta && itemDate > endOfDay(filters.fechaHasta)) return false;
     }
+
 
     // Filter by obra
     if (filters.obraId && item.obra_id !== filters.obraId) {

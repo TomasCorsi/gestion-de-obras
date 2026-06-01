@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -110,6 +110,8 @@ export function GastosGeneralesTab() {
   const [selected, setSelected] = useState<OtroGastoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const [formData, setFormData] = useState<OtroGastoForm>({
     fecha: new Date().toISOString().split("T")[0],
@@ -125,7 +127,8 @@ export function GastosGeneralesTab() {
   });
 
 
-  const activeObras = obras.filter((o) => o.estado !== "finalizada");
+  const activeObras = useMemo(() => obras.filter((o) => o.estado !== "finalizada"), [obras]);
+
 
   const filtered = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
@@ -150,6 +153,20 @@ export function GastosGeneralesTab() {
       );
     });
   }, [gastos, filters, searchTerm, maquinariaFiltro]);
+
+  // Reset page when filters/search change
+  useEffect(() => {
+    setPage(0);
+  }, [filters, searchTerm, maquinariaFiltro]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paginated = useMemo(
+    () => filtered.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
+
 
   const totalCosto = filtered.reduce((sum, g) => sum + g.monto, 0);
 
@@ -324,12 +341,12 @@ export function GastosGeneralesTab() {
               </TableRow>
 
             ) : (
-              filtered.map((gasto, index) => (
+              paginated.map((gasto) => (
                 <TableRow
                   key={gasto.id}
-                  className="border-border table-row-hover animate-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="border-border table-row-hover"
                 >
+
                   <TableCell>
                     <span className="flex items-center gap-1 text-foreground">
                       <Calendar className="w-3 h-3 text-muted-foreground" />
@@ -407,6 +424,38 @@ export function GastosGeneralesTab() {
           </TableBody>
         </Table>
       </div>
+
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {currentPage * PAGE_SIZE + 1}-
+            {Math.min((currentPage + 1) * PAGE_SIZE, filtered.length)} de {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+            >
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
+
+
 
       {/* Form Dialog */}
       <FormDialog
