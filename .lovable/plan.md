@@ -1,47 +1,64 @@
-## Diagnóstico de "Gastos Generales"
+## Plan de remediación de seguridad
 
-Después de revisar `GastosGeneralesTab.tsx`, `FilterBar.tsx` y `useOtrosGastos.ts`, encontré 3 problemas que explican lo que ves (hoy 01/06/2026):
+### Decisiones confirmadas
+- **Sueldos**: solo admin.
+- **Chat IA de Reportes**: solo admin.
+- Selector de ausencias del capataz **se mantiene funcionando** (uso `has_role('capataz')`, elimino solo `is_personal_capataz()`).
 
-### 1. El filtro de **Año** no filtra nada
-En `FilterBar.tsx`, `handleYearChange` solo recalcula el rango de fechas si **además** hay un mes seleccionado. Si elegís "2026" + "Todos los meses", no se aplica ningún `fechaDesde/fechaHasta` → la tabla muestra gastos de cualquier año. El año funciona como un selector visual sin efecto.
+### 1. Edge function `chat-reportes`
+- Validar JWT vía `supabase.auth.getClaims(token)`; 401 si falta o es inválido.
+- Verificar `has_role(uid, 'admin')`; 403 si no.
+- Eliminar la conexión `postgres()` + `pg.unsafe()`.
+- Crear RPC `public.execute_readonly_query(sql text)` con `SECURITY INVOKER`, que valida `SELECT/WITH`, bloquea tokens peligrosos (`pg_`, `lo_`, `copy`, `;` múltiples, etc.), fuerza `LIMIT 100` y devuelve `jsonb`. Al ser INVOKER respeta RLS del usuario.
+- En `ChatReportesTab.tsx` enviar el token real de la sesión (`supabase.auth.getSession()`), no el publishable key.
 
-Además `filterByDateAndObra` no contempla el año por separado: solo mira `fechaDesde/fechaHasta`.
+### 2. Edge functions `parse-computo` y `parse-orden-compra`
+- Añadir validación de JWT al inicio (cualquier usuario autenticado).
 
-### 2. Lentitud al crear / tipear
-Dos causas combinadas:
+### 3. Migración SQL única
 
-- **Animación por fila**: cada `<TableRow>` tiene `style={{ animationDelay: ${index * 30}ms }}` + `animate-fade-in`. Con 100+ gastos son 100+ animaciones encoladas (la última arranca a los 3s) y el navegador repinta toda la tabla en cada render. Como `filtered` se recalcula al tipear en el buscador o al crear/editar un gasto (invalidación de React Query), **se reanima toda la tabla cada vez** → sensación de freeze.
-- **Sin paginación**: se renderizan todos los gastos del histórico en un solo `<Table>`. Al guardar un gasto nuevo, React vuelve a montar todas las filas + animaciones.
+**a) `personal_selector`:**
+- `REVOKE SELECT ... FROM anon`.
+- Recrear con `security_invoker = true`.
 
-### 3. Filtro de fechas con bug de zona horaria
-`filterByDateAndObra` hace `new Date(item.fecha)` sobre un string `YYYY-MM-DD`. Eso lo interpreta como UTC 00:00, así que un gasto del 01/05/2026 puede caer fuera del rango "01/05 → 31/05" en zona Argentina (UTC-3). Va contra el estándar del proyecto (`mem://tech/date-handling-standard-v2`: usar `parseISO` y comparar como local).
+**b) `personal` — alinear a `user_roles`:**
+- Recrear la policy SELECT quitando `is_personal_capataz(auth.uid())`. Queda: `has_role(uid,'admin') OR has_role(uid,'capataz')`.
+- Capataces siguen viendo `personal` (ausencias funciona). Usuarios con `personal.rol='capataz'` pero sin `app_role='capataz'` pierden acceso → comportamiento correcto.
 
----
+**c) `sueldos` — solo admin:**
+- DROP policy actual; CREATE policy `ALL` solo para `has_role(uid,'admin')`.
 
-## Plan de arreglos
+**d) `remitos` — quitar UUIDs hardcodeados:**
+- DROP "Franco can manage own remitos" y "Sergio can manage own remitos".
+- Asegurar que ambos usuarios tengan `app_role='remitero'` en `user_roles` (INSERT idempotente).
+- La policy "Remiteros can manage own remitos" ya cubre el caso vía `created_by = auth.uid()`.
 
-### A. `src/components/shared/FilterBar.tsx`
-- Hacer que el **Año filtre solo**: si hay año seleccionado y no hay mes, aplicar rango `01/01/Año → 31/12/Año` y emitirlo en `onFilterChange`. Ej.: elegir "2026" sin mes → muestra solo gastos del 01/01/2026 al 31/12/2026.
-- Hacer que al cambiar Año siempre se emita el rango actualizado (no solo cuando hay mes).
-- Al limpiar filtros, mantener el rango del año actual seleccionado en vez de quedar sin filtro.
+**e) Realtime con scope:**
+- Habilitar RLS en `realtime.messages`.
+- Policy de SELECT que limite la suscripción a admin/capataz/remitero.
 
-### B. `src/components/shared/FilterBar.tsx` → `filterByDateAndObra`
-- Reemplazar `new Date(item.fecha)` por `parseISO(item.fecha)` y comparar contra `startOfDay(fechaDesde)` / `endOfDay(fechaHasta)` para evitar corrimiento por TZ.
+**f) Scope `{public}` → `{authenticated}`:**
+- Recrear policies de `clientes` y `proveedores` con `TO authenticated` (sin cambio funcional).
 
-### C. `src/components/proveedores/GastosGeneralesTab.tsx`
-- **Quitar `animate-fade-in` + `animationDelay` por fila** (causa principal de la lentitud). Mantener hover.
-- **Agregar paginación simple** (50 filas por página) para no renderizar todo el histórico de golpe.
-- Memoizar `activeObras` con `useMemo`.
+### 4. Auth
+- Activar Leaked Password Protection (HIBP).
 
-### D. Verificación
-- Crear un gasto → el dialog debe cerrar al instante.
-- Año = 2026 sin mes → solo se ven gastos de 2026.
-- Año = 2025 → solo gastos de 2025.
-- Elegir mes Mayo 2026 → rango correcto sin corrimiento de día.
-- Tipear en el buscador → la tabla no debe "saltar" ni reanimarse.
+### Fuera de alcance (te aviso)
+- Bucket público `mantenimiento-adjuntos` → requiere migrar a URLs firmadas. Lo hago aparte si querés.
+- `is_personal_mecanico` → rediseño de roles, lo dejo.
+- Token-based registration y password mínimo 8 → cambios de UX, los dejo.
 
-### Archivos a modificar
-- `src/components/shared/FilterBar.tsx` (lógica de año + `filterByDateAndObra`)
-- `src/components/proveedores/GastosGeneralesTab.tsx` (quitar animación por fila, paginación, memo)
+### Archivos modificados
+- `supabase/functions/chat-reportes/index.ts`
+- `supabase/functions/parse-computo/index.ts`
+- `supabase/functions/parse-orden-compra/index.ts`
+- `src/components/reportes/ChatReportesTab.tsx`
+- 1 migración SQL (todo lo anterior)
+- Config de auth (HIBP)
 
-**Nota**: el cambio en `FilterBar` afecta a otros módulos que lo usan (Combustible, etc.). El efecto es positivo en todos: el filtro de año empieza a funcionar y se corrige el bug de TZ. Si preferís limitar el arreglo solo a Gastos Generales, decímelo y lo aíslo.
+### Verificación
+- Llamar `chat-reportes` sin token → 401. Con token de no-admin → 403. Con admin → responde, y queries respetan RLS.
+- Capataz entra al parte diario y ve el selector de ausencias completo.
+- Capataz no ve módulo de Sueldos.
+- Sergio y Franco siguen editando solo sus remitos (ahora vía rol `remitero`).
+- Maquinistas/remiteros no pueden suscribirse a Realtime de remitos.
