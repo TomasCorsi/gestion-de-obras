@@ -1,36 +1,32 @@
-## Problema
+## Objetivo
 
-Carlos Jerez tiene `rol = repartidor_calecita` en `personal` y `role = maquinista` en `user_roles`. El diálogo de cargas de combustible lee operadores desde la vista `public.personal_selector`, que actualmente está definida con `security_invoker = true`. Eso hace que se aplique la RLS de la tabla `personal` con el rol del usuario que consulta. Como `maquinista` (y tampoco `ayudante`, `remitero`, `repartidor`) no tiene policy `SELECT` sobre `personal`, la vista devuelve 0 filas → no aparecen nombres en el combobox de operador.
+En el diálogo "Liquidación por Cliente" (Remitos), agregar la posibilidad de liquidar también por **Cliente Cantera**, y que todos los totales (viajes, cantidad, precio total) se recalculen según el filtro elegido.
 
-La vista solo expone campos no sensibles (`id, nombre, apellido, rol, activo, legajo, user_id`), pensada justamente como selector público para autenticados. El `security_invoker = true` actual rompe ese propósito.
+## Cambios propuestos
 
-## Solución (1 migración SQL)
+Archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`
 
-Recrear la vista con `security_invoker = false` (security definer, el default) para que cualquier usuario autenticado pueda leer el listado mínimo de empleados, manteniendo la RLS estricta sobre la tabla `personal` (datos sensibles como sueldo, dni, banco, etc. siguen protegidos por la RLS de la tabla base).
+1. **Nuevo selector "Tipo de cliente"** arriba del selector de cliente, con tres opciones:
+   - Cliente (actual: campo `cliente`)
+   - Cliente destino (actual: campo `cliente_destino`)
+   - Cliente cantera (nuevo: campo `cliente_cantera`)
+   
+   Por defecto queda en "Cliente / Cliente destino" (comportamiento actual combinado) para no romper el flujo existente.
 
-```sql
-DROP VIEW IF EXISTS public.personal_selector;
+2. **Lista de clientes únicos** se arma desde el campo seleccionado (en vez de unir siempre `cliente` + `cliente_destino`).
 
-CREATE VIEW public.personal_selector
-WITH (security_invoker = false) AS
-SELECT id, nombre, apellido, rol, activo, legajo, user_id
-FROM public.personal;
+3. **Filtrado de remitos** del cliente elegido usa el campo seleccionado:
+   - Cliente → `r.cliente === selected`
+   - Cliente destino → `r.cliente_destino === selected`
+   - Cliente cantera → `r.cliente_cantera === selected`
 
-REVOKE ALL ON public.personal_selector FROM PUBLIC, anon;
-GRANT SELECT ON public.personal_selector TO authenticated;
-```
+4. **Resumen y totales** (viajes, cantidad, precio total) se recalculan automáticamente sobre el subconjunto filtrado, agrupado por `tipo_material`, igual que hoy.
 
-Resultado:
-- Capataz, admin, maquinista, ayudante, repartidor (todos autenticados) ven el listado mínimo de empleados en selectores → Carlos puede elegir operador. ✅
-- La tabla `personal` sigue protegida: solo admin/capataz/dueño del registro pueden leer datos sensibles directamente.
+5. **Export a Excel**: el nombre del archivo incluye el tipo de cliente, ej. `Liquidacion_Cantera_<nombre>_<fecha>.xlsx`.
 
-## Verificación
+6. Cambiar el título del diálogo a "Liquidación por Cliente" (se mantiene) y mostrar un subtítulo o badge con el tipo de cliente activo para claridad.
 
-1. Login como Carlos Jerez → Parte Diario → nueva entrega de combustible → el combobox "Operador" muestra la lista de empleados.
-2. Login como capataz/admin → sigue funcionando.
-3. Login como maquinista común → el selector de ausencias y operadores también funciona.
-4. Confirmar que la tabla `personal` no es accesible directamente para maquinistas (datos sensibles siguen ocultos).
+## Fuera de alcance
 
-## Archivos tocados
-
-- 1 migración SQL (la de arriba). Sin cambios de frontend.
+- No se tocan tablas, RLS ni hooks (`useRemitos`); el campo `cliente_cantera` ya viene en `RemitoDB`.
+- No se modifica la lógica de precios ni la generación de remitos.

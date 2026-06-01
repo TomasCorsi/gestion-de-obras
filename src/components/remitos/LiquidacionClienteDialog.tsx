@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -42,32 +42,56 @@ interface TipoResumen {
   precioTotal: number;
 }
 
+type TipoCliente = "cliente" | "cliente_destino" | "cliente_cantera" | "cliente_o_destino";
+
+const TIPO_LABELS: Record<TipoCliente, string> = {
+  cliente_o_destino: "Cliente / Cliente destino",
+  cliente: "Cliente",
+  cliente_destino: "Cliente destino",
+  cliente_cantera: "Cliente cantera",
+};
+
 export function LiquidacionClienteDialog({
   open,
   onOpenChange,
   remitos,
 }: LiquidacionClienteDialogProps) {
+  const [tipoCliente, setTipoCliente] = useState<TipoCliente>("cliente_o_destino");
   const [selectedCliente, setSelectedCliente] = useState<string>("");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
 
-  // Get unique clients from remitos (both cliente and cliente_destino)
+  // Get unique clients based on tipoCliente
   const clientesUnicos = useMemo(() => {
     const set = new Set<string>();
     remitos.forEach((r) => {
-      if (r.cliente) set.add(r.cliente);
-      if (r.cliente_destino) set.add(r.cliente_destino);
+      if (tipoCliente === "cliente_o_destino") {
+        if (r.cliente) set.add(r.cliente);
+        if (r.cliente_destino) set.add(r.cliente_destino);
+      } else if (tipoCliente === "cliente") {
+        if (r.cliente) set.add(r.cliente);
+      } else if (tipoCliente === "cliente_destino") {
+        if (r.cliente_destino) set.add(r.cliente_destino);
+      } else if (tipoCliente === "cliente_cantera") {
+        if (r.cliente_cantera) set.add(r.cliente_cantera);
+      }
     });
     return [...set].sort();
-  }, [remitos]);
+  }, [remitos, tipoCliente]);
 
-  // Get remitos for selected client
+  // Get remitos for selected client based on tipoCliente
   const remitosCliente = useMemo(() => {
     if (!selectedCliente) return [];
-    return remitos.filter(
-      (r) => r.cliente === selectedCliente || r.cliente_destino === selectedCliente
-    );
-  }, [remitos, selectedCliente]);
+    return remitos.filter((r) => {
+      if (tipoCliente === "cliente_o_destino") {
+        return r.cliente === selectedCliente || r.cliente_destino === selectedCliente;
+      }
+      if (tipoCliente === "cliente") return r.cliente === selectedCliente;
+      if (tipoCliente === "cliente_destino") return r.cliente_destino === selectedCliente;
+      if (tipoCliente === "cliente_cantera") return r.cliente_cantera === selectedCliente;
+      return false;
+    });
+  }, [remitos, selectedCliente, tipoCliente]);
 
   // Get unique types for this client
   const tiposUnicos = useMemo(() => {
@@ -86,20 +110,18 @@ export function LiquidacionClienteDialog({
     }
   }, [tiposUnicos, initialized]);
 
-  // Reset when client changes
+  const handleTipoClienteChange = (value: TipoCliente) => {
+    setTipoCliente(value);
+    setSelectedCliente("");
+    setInitialized(false);
+    setSelectedTypes(new Set());
+  };
+
   const handleClienteChange = (value: string) => {
     setSelectedCliente(value);
     setInitialized(false);
     setSelectedTypes(new Set());
   };
-
-  // When tipos change, auto-select all
-  useMemo(() => {
-    if (!initialized && tiposUnicos.length > 0) {
-      setSelectedTypes(new Set(tiposUnicos));
-      setInitialized(true);
-    }
-  }, [tiposUnicos, initialized]);
 
   const toggleType = (tipo: string) => {
     setSelectedTypes((prev) => {
@@ -170,7 +192,13 @@ export function LiquidacionClienteDialog({
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
-    const fileName = `Liquidacion_${selectedCliente.replace(/\s/g, "_")}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+    const prefijo =
+      tipoCliente === "cliente_cantera"
+        ? "Liquidacion_Cantera"
+        : tipoCliente === "cliente_destino"
+        ? "Liquidacion_Destino"
+        : "Liquidacion";
+    const fileName = `${prefijo}_${selectedCliente.replace(/\s/g, "_")}_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(wb, fileName);
     toast.success("Excel exportado");
   };
@@ -186,21 +214,45 @@ export function LiquidacionClienteDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Tipo de cliente selector */}
+          <div>
+            <label className="text-sm font-medium text-foreground mb-1 block">
+              Liquidar por
+            </label>
+            <Select value={tipoCliente} onValueChange={(v) => handleTipoClienteChange(v as TipoCliente)}>
+              <SelectTrigger className="bg-card">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
+                <SelectItem value="cliente">{TIPO_LABELS.cliente}</SelectItem>
+                <SelectItem value="cliente_destino">{TIPO_LABELS.cliente_destino}</SelectItem>
+                <SelectItem value="cliente_cantera">{TIPO_LABELS.cliente_cantera}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Client selector */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">
-              Cliente
+              {TIPO_LABELS[tipoCliente]}
             </label>
             <Select value={selectedCliente} onValueChange={handleClienteChange}>
               <SelectTrigger className="bg-card">
-                <SelectValue placeholder="Seleccionar cliente..." />
+                <SelectValue placeholder={`Seleccionar ${TIPO_LABELS[tipoCliente].toLowerCase()}...`} />
               </SelectTrigger>
               <SelectContent>
-                {clientesUnicos.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
+                {clientesUnicos.length === 0 ? (
+                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                    No hay datos
+                  </div>
+                ) : (
+                  clientesUnicos.map((c) => (
+                    <SelectItem key={c} value={c}>
+                      {c}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -292,7 +344,7 @@ export function LiquidacionClienteDialog({
 
           {selectedCliente && remitosCliente.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No hay remitos para este cliente en el período seleccionado.
+              No hay remitos para este {TIPO_LABELS[tipoCliente].toLowerCase()} en el período seleccionado.
             </p>
           )}
         </div>
