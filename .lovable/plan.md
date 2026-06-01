@@ -1,64 +1,25 @@
-## Plan de remediación de seguridad
+## Problema
 
-### Decisiones confirmadas
-- **Sueldos**: solo admin.
-- **Chat IA de Reportes**: solo admin.
-- Selector de ausencias del capataz **se mantiene funcionando** (uso `has_role('capataz')`, elimino solo `is_personal_capataz()`).
+En el Parte Diario, el rol **capataz** no ve la lista de empleados en la sección "Ausencias". El frontend consulta la vista `public.personal_selector`, pero esa vista **no tiene `GRANT SELECT` para el rol `authenticated`** (solo el rol interno de sandbox). Resultado: la query devuelve 0 filas para cualquier usuario autenticado (capataz, maquinista, etc. que la usaban en el selector).
 
-### 1. Edge function `chat-reportes`
-- Validar JWT vía `supabase.auth.getClaims(token)`; 401 si falta o es inválido.
-- Verificar `has_role(uid, 'admin')`; 403 si no.
-- Eliminar la conexión `postgres()` + `pg.unsafe()`.
-- Crear RPC `public.execute_readonly_query(sql text)` con `SECURITY INVOKER`, que valida `SELECT/WITH`, bloquea tokens peligrosos (`pg_`, `lo_`, `copy`, `;` múltiples, etc.), fuerza `LIMIT 100` y devuelve `jsonb`. Al ser INVOKER respeta RLS del usuario.
-- En `ChatReportesTab.tsx` enviar el token real de la sesión (`supabase.auth.getSession()`), no el publishable key.
+Esto es secuela de la migración de seguridad reciente, donde se recreó la vista con `security_invoker = true` y se revocó `anon`, pero no se restauró el grant a `authenticated`.
 
-### 2. Edge functions `parse-computo` y `parse-orden-compra`
-- Añadir validación de JWT al inicio (cualquier usuario autenticado).
+## Solución (1 migración SQL, mínima)
 
-### 3. Migración SQL única
+```sql
+GRANT SELECT ON public.personal_selector TO authenticated;
+```
 
-**a) `personal_selector`:**
-- `REVOKE SELECT ... FROM anon`.
-- Recrear con `security_invoker = true`.
+Con `security_invoker = true`, la RLS de `personal` se aplica al usuario que consulta:
+- **admin / capataz** → policy "Admins and capataces can view all personal" ⇒ ven todos los empleados activos. ✅
+- **maquinista / ayudante** → no tienen policy de SELECT sobre `personal`, así que seguirán sin ver datos por la vista (comportamiento intencional).
 
-**b) `personal` — alinear a `user_roles`:**
-- Recrear la policy SELECT quitando `is_personal_capataz(auth.uid())`. Queda: `has_role(uid,'admin') OR has_role(uid,'capataz')`.
-- Capataces siguen viendo `personal` (ausencias funciona). Usuarios con `personal.rol='capataz'` pero sin `app_role='capataz'` pierden acceso → comportamiento correcto.
+## Verificación
 
-**c) `sueldos` — solo admin:**
-- DROP policy actual; CREATE policy `ALL` solo para `has_role(uid,'admin')`.
+1. Login como capataz → ir a Parte Diario → sección Ausencias muestra la lista completa de empleados activos.
+2. Login como admin → sigue funcionando igual.
+3. Login como maquinista → su parte diario sigue funcionando (no usa el listado de ausencias).
 
-**d) `remitos` — quitar UUIDs hardcodeados:**
-- DROP "Franco can manage own remitos" y "Sergio can manage own remitos".
-- Asegurar que ambos usuarios tengan `app_role='remitero'` en `user_roles` (INSERT idempotente).
-- La policy "Remiteros can manage own remitos" ya cubre el caso vía `created_by = auth.uid()`.
+## Archivos tocados
 
-**e) Realtime con scope:**
-- Habilitar RLS en `realtime.messages`.
-- Policy de SELECT que limite la suscripción a admin/capataz/remitero.
-
-**f) Scope `{public}` → `{authenticated}`:**
-- Recrear policies de `clientes` y `proveedores` con `TO authenticated` (sin cambio funcional).
-
-### 4. Auth
-- Activar Leaked Password Protection (HIBP).
-
-### Fuera de alcance (te aviso)
-- Bucket público `mantenimiento-adjuntos` → requiere migrar a URLs firmadas. Lo hago aparte si querés.
-- `is_personal_mecanico` → rediseño de roles, lo dejo.
-- Token-based registration y password mínimo 8 → cambios de UX, los dejo.
-
-### Archivos modificados
-- `supabase/functions/chat-reportes/index.ts`
-- `supabase/functions/parse-computo/index.ts`
-- `supabase/functions/parse-orden-compra/index.ts`
-- `src/components/reportes/ChatReportesTab.tsx`
-- 1 migración SQL (todo lo anterior)
-- Config de auth (HIBP)
-
-### Verificación
-- Llamar `chat-reportes` sin token → 401. Con token de no-admin → 403. Con admin → responde, y queries respetan RLS.
-- Capataz entra al parte diario y ve el selector de ausencias completo.
-- Capataz no ve módulo de Sueldos.
-- Sergio y Franco siguen editando solo sus remitos (ahora vía rol `remitero`).
-- Maquinistas/remiteros no pueden suscribirse a Realtime de remitos.
+- 1 migración SQL (solo el `GRANT` de arriba). Sin cambios de código frontend.
