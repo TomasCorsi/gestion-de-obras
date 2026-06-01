@@ -214,6 +214,7 @@ export default function Remitos() {
         (r.proveedor?.toLowerCase() || "").includes(term) ||
         (r.cliente?.toLowerCase() || "").includes(term) ||
         ((r as any).cliente_destino?.toLowerCase() || "").includes(term) ||
+        ((r as any).cliente_cantera?.toLowerCase() || "").includes(term) ||
         (r.desde?.toLowerCase() || "").includes(term) ||
         (r.hasta?.toLowerCase() || "").includes(term)
       ) return true;
