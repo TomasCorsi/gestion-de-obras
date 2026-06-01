@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, startOfDay, endOfDay, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
+
 import { Calendar as CalendarIcon, X, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
