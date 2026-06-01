@@ -341,12 +341,12 @@ export function GastosGeneralesTab() {
               </TableRow>
 
             ) : (
-              filtered.map((gasto, index) => (
+              paginated.map((gasto) => (
                 <TableRow
                   key={gasto.id}
-                  className="border-border table-row-hover animate-fade-in"
-                  style={{ animationDelay: `${index * 30}ms` }}
+                  className="border-border table-row-hover"
                 >
+
                   <TableCell>
                     <span className="flex items-center gap-1 text-foreground">
                       <Calendar className="w-3 h-3 text-muted-foreground" />
