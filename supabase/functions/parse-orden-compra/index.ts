@@ -50,7 +50,10 @@ Reglas:
 - items: una fila por producto/servicio cotizado. Ignorá filas de subtotal, IVA, total, descuento global.
 - articulo: si la fila trae código/SKU/N° de artículo/referencia del proveedor (ej: "HC-200", "ART-12345", "Cod. 7788"), mapealo a "articulo". El nombre o detalle largo va en "descripcion". Si no hay código, dejá articulo vacío o no lo incluyas.
 - precio_unitario: precio por unidad sin IVA si está discriminado; si solo hay precio final con IVA, usá ese y marcá incluir_iva=false.
-- cantidad y precio_unitario deben ser números (no strings).`;
+- cantidad y precio_unitario deben ser números (no strings).
+- percepcion_iva: MONTO (no porcentaje) de la Percepción de IVA, en la moneda de la factura. Buscá etiquetas como "Percepción IVA", "Perc. IVA", "Percep. IVA", "IVA Percepción", "RG 3337". Si no aparece, devolvé 0. No confundir con el IVA general (21%/10.5%/27%).
+- percepcion_iibb: MONTO (no porcentaje) de la Percepción de Ingresos Brutos, en la moneda de la factura. Buscá "Percepción IIBB", "Perc. IIBB", "Percep. IIBB", "IIBB", "Ingresos Brutos", "ARBA", "AGIP", "Percepción IB". Si no aparece, devolvé 0.
+- Si en la factura figura el monto de IVA discriminado (ej: "IVA 21% $X"), poné incluir_iva=true y iva_porcentaje=21 (o la alícuota indicada: 10.5, 27).`;
 
     const instruccionesPrefix = instrucciones ? `Instrucciones del usuario: ${instrucciones}\n\n` : "";
 
@@ -93,6 +96,8 @@ Reglas:
                 moneda: { type: "string", enum: ["ARS", "USD"] },
                 incluir_iva: { type: "boolean" },
                 iva_porcentaje: { type: "number" },
+                percepcion_iva: { type: "number", description: "Monto (no porcentaje) de Percepción de IVA, en la moneda de la factura. 0 si no aparece." },
+                percepcion_iibb: { type: "number", description: "Monto (no porcentaje) de Percepción de Ingresos Brutos, en la moneda de la factura. 0 si no aparece." },
                 condiciones_pago: { type: "string" },
                 observaciones: { type: "string" },
                 items: {

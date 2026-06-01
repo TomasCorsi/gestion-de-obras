@@ -111,6 +111,8 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
       if (parsed.moneda) next.moneda = parsed.moneda;
       if (typeof parsed.incluir_iva === "boolean") next.incluir_iva = parsed.incluir_iva;
       if (typeof parsed.iva_porcentaje === "number" && parsed.iva_porcentaje > 0) next.iva_porcentaje = parsed.iva_porcentaje;
+      if (typeof parsed.percepcion_iva === "number" && parsed.percepcion_iva > 0) next.percepcion_iva = parsed.percepcion_iva;
+      if (typeof parsed.percepcion_iibb === "number" && parsed.percepcion_iibb > 0) next.percepcion_iibb = parsed.percepcion_iibb;
       if (parsed.condiciones_pago && !f.condiciones_pago) next.condiciones_pago = parsed.condiciones_pago;
       if (parsed.observaciones && !f.observaciones) next.observaciones = parsed.observaciones;
 

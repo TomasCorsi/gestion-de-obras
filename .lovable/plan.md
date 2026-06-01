@@ -1,32 +1,36 @@
 ## Objetivo
 
-En el diálogo "Liquidación por Cliente" (Remitos), agregar la posibilidad de liquidar también por **Cliente Cantera**, y que todos los totales (viajes, cantidad, precio total) se recalculen según el filtro elegido.
+Que el importador con IA de Órdenes de Compra (facturas PDF/imagen/texto de proveedor) detecte automáticamente, además de los datos actuales:
 
-## Cambios propuestos
+- **Percepción IVA** (monto en $)
+- **Percepción IIBB** (monto en $)
+- **IVA discriminado** (ya se detecta, se refuerza el prompt para que siempre marque `incluir_iva` y `iva_porcentaje` cuando figure el monto del IVA en la factura)
 
-Archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`
+Estos valores se precargan en los campos correspondientes del formulario de Orden de Compra.
 
-1. **Nuevo selector "Tipo de cliente"** arriba del selector de cliente, con tres opciones:
-   - Cliente (actual: campo `cliente`)
-   - Cliente destino (actual: campo `cliente_destino`)
-   - Cliente cantera (nuevo: campo `cliente_cantera`)
-   
-   Por defecto queda en "Cliente / Cliente destino" (comportamiento actual combinado) para no romper el flujo existente.
+## Cambios
 
-2. **Lista de clientes únicos** se arma desde el campo seleccionado (en vez de unir siempre `cliente` + `cliente_destino`).
+### 1. `supabase/functions/parse-orden-compra/index.ts`
+- Ampliar el **system prompt** con reglas para reconocer:
+  - "Percepción IVA", "Perc. IVA", "Percep. IVA", "RG 3337", etiquetas tipo "IVA Percepción".
+  - "Percepción IIBB", "Perc. IIBB", "IIBB", "Ingresos Brutos", percepciones provinciales (ARBA, AGIP, etc.). Tomar el monto, no la alícuota.
+  - Aclarar que son **montos finales en la moneda de la factura**, normalizados a número (coma decimal AR → punto).
+  - Si una percepción no aparece, devolver `0` (no inventar).
+  - Reforzar detección de IVA: si en el comprobante figura "IVA 21%", "IVA Inscripto", monto de IVA discriminado → `incluir_iva = true` y `iva_porcentaje` = alícuota detectada (21, 10.5, 27).
+- Agregar al `tool` `extract_orden_compra` dos propiedades nuevas en `parameters.properties`:
+  - `percepcion_iva: { type: "number" }`
+  - `percepcion_iibb: { type: "number" }`
 
-3. **Filtrado de remitos** del cliente elegido usa el campo seleccionado:
-   - Cliente → `r.cliente === selected`
-   - Cliente destino → `r.cliente_destino === selected`
-   - Cliente cantera → `r.cliente_cantera === selected`
+### 2. `src/components/proveedores/ImportFacturaProveedorDialog.tsx`
+- Extender la interfaz `ParsedOrdenCompra` con `percepcion_iva?: number` y `percepcion_iibb?: number`.
+- En el bloque de preview (debajo de IVA), mostrar las percepciones cuando vienen > 0 (`Perc. IVA` y `Perc. IIBB` con `fmtMoney`).
 
-4. **Resumen y totales** (viajes, cantidad, precio total) se recalculan automáticamente sobre el subconjunto filtrado, agrupado por `tipo_material`, igual que hoy.
-
-5. **Export a Excel**: el nombre del archivo incluye el tipo de cliente, ej. `Liquidacion_Cantera_<nombre>_<fecha>.xlsx`.
-
-6. Cambiar el título del diálogo a "Liquidación por Cliente" (se mantiene) y mostrar un subtítulo o badge con el tipo de cliente activo para claridad.
+### 3. `src/components/proveedores/OrdenCompraFormDialog.tsx`
+- En `handleImport` (alrededor de línea 112), tras los campos de IVA, copiar al form:
+  - `if (typeof parsed.percepcion_iva === "number" && parsed.percepcion_iva > 0) next.percepcion_iva = parsed.percepcion_iva;`
+  - `if (typeof parsed.percepcion_iibb === "number" && parsed.percepcion_iibb > 0) next.percepcion_iibb = parsed.percepcion_iibb;`
 
 ## Fuera de alcance
 
-- No se tocan tablas, RLS ni hooks (`useRemitos`); el campo `cliente_cantera` ya viene en `RemitoDB`.
-- No se modifica la lógica de precios ni la generación de remitos.
+- Cambios de UI en el formulario (los inputs Percepción IVA / IIBB ya existen).
+- Cambios en la base de datos (las columnas `percepcion_iva` y `percepcion_iibb` ya existen en `ordenes_compra`).
