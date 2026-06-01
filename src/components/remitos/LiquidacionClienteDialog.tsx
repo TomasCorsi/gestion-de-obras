@@ -83,7 +83,6 @@ export function LiquidacionClienteDialog({
       if (tipoCliente === "cliente_o_destino") {
         return r.cliente === selectedCliente || r.cliente_destino === selectedCliente;
       }
-      if (tipoCliente === "cliente") return r.cliente === selectedCliente;
       if (tipoCliente === "cliente_destino") return r.cliente_destino === selectedCliente;
       if (tipoCliente === "cliente_cantera") return r.cliente_cantera === selectedCliente;
       return false;
