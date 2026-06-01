@@ -154,6 +154,20 @@ export function GastosGeneralesTab() {
     });
   }, [gastos, filters, searchTerm, maquinariaFiltro]);
 
+  // Reset page when filters/search change
+  useEffect(() => {
+    setPage(0);
+  }, [filters, searchTerm, maquinariaFiltro]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages - 1);
+  const paginated = useMemo(
+    () => filtered.slice(currentPage * PAGE_SIZE, currentPage * PAGE_SIZE + PAGE_SIZE),
+    [filtered, currentPage]
+  );
+
+
+
   const totalCosto = filtered.reduce((sum, g) => sum + g.monto, 0);
 
   const handleNew = () => {
