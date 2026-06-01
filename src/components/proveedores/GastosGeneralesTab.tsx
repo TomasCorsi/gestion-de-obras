@@ -425,6 +425,38 @@ export function GastosGeneralesTab() {
         </Table>
       </div>
 
+      {filtered.length > PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-sm text-muted-foreground">
+            Mostrando {currentPage * PAGE_SIZE + 1}-
+            {Math.min((currentPage + 1) * PAGE_SIZE, filtered.length)} de {filtered.length}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={currentPage === 0}
+            >
+              Anterior
+            </Button>
+            <span className="text-sm text-muted-foreground">
+              Página {currentPage + 1} de {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={currentPage >= totalPages - 1}
+            >
+              Siguiente
+            </Button>
+          </div>
+        </div>
+      )}
+
+
+
       {/* Form Dialog */}
       <FormDialog
         isDirty
