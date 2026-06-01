@@ -399,14 +399,15 @@ export function filterByDateAndObra<T extends { fecha?: string | null; obra_id?:
   filters: FilterState
 ): T[] {
   return data.filter((item) => {
-    // Filter by date range
+    // Filter by date range (parseISO + day-bound to avoid TZ shift)
     if (filters.fechaDesde || filters.fechaHasta) {
       if (!item.fecha) return false;
-      const itemDate = new Date(item.fecha);
-      
-      if (filters.fechaDesde && itemDate < filters.fechaDesde) return false;
-      if (filters.fechaHasta && itemDate > filters.fechaHasta) return false;
+      const itemDate = parseISO(item.fecha);
+
+      if (filters.fechaDesde && itemDate < startOfDay(filters.fechaDesde)) return false;
+      if (filters.fechaHasta && itemDate > endOfDay(filters.fechaHasta)) return false;
     }
+
 
     // Filter by obra
     if (filters.obraId && item.obra_id !== filters.obraId) {
