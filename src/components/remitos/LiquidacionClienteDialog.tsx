@@ -67,8 +67,6 @@ export function LiquidacionClienteDialog({
       if (tipoCliente === "cliente_o_destino") {
         if (r.cliente) set.add(r.cliente);
         if (r.cliente_destino) set.add(r.cliente_destino);
-      } else if (tipoCliente === "cliente") {
-        if (r.cliente) set.add(r.cliente);
       } else if (tipoCliente === "cliente_destino") {
         if (r.cliente_destino) set.add(r.cliente_destino);
       } else if (tipoCliente === "cliente_cantera") {
