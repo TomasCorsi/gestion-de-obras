@@ -210,23 +210,28 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   };
 
   const clearFilters = () => {
-    setFechaDesde(undefined);
-    setFechaHasta(undefined);
+    const yearDate = new Date(currentYear, 0, 1);
+    const desde = startOfYear(yearDate);
+    const hasta = endOfYear(yearDate);
+    setFechaDesde(desde);
+    setFechaHasta(hasta);
     setMes(undefined);
     setObraId(undefined);
     setMaquinariaId(undefined);
-    setUrlFilters({ 
-      fechaDesde: undefined, 
-      fechaHasta: undefined, 
-      mes: undefined, 
+    setSelectedYear(currentYear);
+    setUrlFilters({
+      fechaDesde: format(desde, "yyyy-MM-dd"),
+      fechaHasta: format(hasta, "yyyy-MM-dd"),
+      mes: undefined,
       obraId: undefined,
       maquinariaId: undefined,
       year: currentYear,
     });
-    onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined, maquinariaId: undefined });
+    onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
   };
 
-  const hasActiveFilters = fechaDesde || fechaHasta || mes || obraId || maquinariaId;
+  const hasActiveFilters = mes || obraId || maquinariaId || selectedYear !== currentYear;
+
 
   // Build maquinaria options for the select
   const maquinariaOptions = useMemo(() => {
