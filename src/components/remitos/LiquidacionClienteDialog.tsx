@@ -42,11 +42,10 @@ interface TipoResumen {
   precioTotal: number;
 }
 
-type TipoCliente = "cliente" | "cliente_destino" | "cliente_cantera" | "cliente_o_destino";
+type TipoCliente = "cliente_destino" | "cliente_cantera" | "cliente_o_destino";
 
 const TIPO_LABELS: Record<TipoCliente, string> = {
   cliente_o_destino: "Cliente / Cliente destino",
-  cliente: "Cliente",
   cliente_destino: "Cliente destino",
   cliente_cantera: "Cliente cantera",
 };
