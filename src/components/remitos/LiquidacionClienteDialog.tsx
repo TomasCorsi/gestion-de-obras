@@ -220,8 +220,7 @@ export function LiquidacionClienteDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
-                <SelectItem value="cliente">{TIPO_LABELS.cliente}</SelectItem>
+              <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
                 <SelectItem value="cliente_destino">{TIPO_LABELS.cliente_destino}</SelectItem>
                 <SelectItem value="cliente_cantera">{TIPO_LABELS.cliente_cantera}</SelectItem>
               </SelectContent>
