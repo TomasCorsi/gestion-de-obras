@@ -110,6 +110,8 @@ export function GastosGeneralesTab() {
   const [selected, setSelected] = useState<OtroGastoWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 50;
 
   const [formData, setFormData] = useState<OtroGastoForm>({
     fecha: new Date().toISOString().split("T")[0],
@@ -125,7 +127,8 @@ export function GastosGeneralesTab() {
   });
 
 
-  const activeObras = obras.filter((o) => o.estado !== "finalizada");
+  const activeObras = useMemo(() => obras.filter((o) => o.estado !== "finalizada"), [obras]);
+
 
   const filtered = useMemo(() => {
     const dateFiltered = filterByDateAndObra(
