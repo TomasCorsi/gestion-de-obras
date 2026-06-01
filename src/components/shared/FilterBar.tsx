@@ -95,7 +95,6 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   
   // Sincronizar estado inicial con el callback
   useEffect(() => {
-    // Solo al montar, sincronizar filtros persistidos
     if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
       onFilterChange({
         fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
@@ -104,10 +103,18 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         obraId: urlFilters.obraId,
         maquinariaId: urlFilters.maquinariaId,
       });
+    } else {
+      // Sin filtros persistidos: por defecto aplicar el año actual completo
+      const yearDate = new Date(selectedYear, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
     }
-  // Solo ejecutar al montar
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   const handleMesChange = (value: string) => {
     if (value === "none") {
