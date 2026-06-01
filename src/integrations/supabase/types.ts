@@ -2430,6 +2430,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      map_personal_rol_to_app_role: {
+        Args: { _rol: Database["public"]["Enums"]["rol_personal"] }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
       app_role: "admin" | "capataz" | "maquinista" | "ayudante" | "remitero"
