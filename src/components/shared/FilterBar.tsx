@@ -111,11 +111,20 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
 
   const handleMesChange = (value: string) => {
     if (value === "none") {
+      // Sin mes: aplicar rango del año completo seleccionado
+      const yearDate = new Date(selectedYear, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
       setMes(undefined);
-      setFechaDesde(undefined);
-      setFechaHasta(undefined);
-      setUrlFilters({ mes: undefined, fechaDesde: undefined, fechaHasta: undefined });
-      onFilterChange({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId, maquinariaId });
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      setUrlFilters({
+        mes: undefined,
+        year: selectedYear,
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
+      });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     } else {
       setMes(value);
       const monthDate = parseISO(`${selectedYear}-${value}-01`);
@@ -126,8 +135,8 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       setUrlFilters({ 
         mes: value, 
         year: selectedYear,
-        fechaDesde: desde.toISOString().split("T")[0],
-        fechaHasta: hasta.toISOString().split("T")[0],
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
     }
@@ -136,7 +145,6 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   const handleYearChange = (value: string) => {
     const year = parseInt(value);
     setSelectedYear(year);
-    setUrlFilters({ year });
     if (mes) {
       const monthDate = parseISO(`${year}-${mes}-01`);
       const desde = startOfMonth(monthDate);
@@ -146,12 +154,26 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       setUrlFilters({ 
         year, 
         mes,
-        fechaDesde: desde.toISOString().split("T")[0],
-        fechaHasta: hasta.toISOString().split("T")[0],
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
       onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
+    } else {
+      // Sin mes: aplicar rango del año completo
+      const yearDate = new Date(year, 0, 1);
+      const desde = startOfYear(yearDate);
+      const hasta = endOfYear(yearDate);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
+      setUrlFilters({
+        year,
+        fechaDesde: format(desde, "yyyy-MM-dd"),
+        fechaHasta: format(hasta, "yyyy-MM-dd"),
+      });
+      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     }
   };
+
 
   const handleFechaDesdeChange = (date: Date | undefined) => {
     setFechaDesde(date);
