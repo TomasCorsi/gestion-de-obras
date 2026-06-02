@@ -252,6 +252,8 @@ export function RemitoQuickFormDialog({
       const mode = next.precio_calc_mode;
       if (mode === "viajes") {
         next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
+      } else if (mode === "fijo") {
+        next.precio_total = next.precio_unitario || 0;
       } else {
         next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
       }
@@ -472,6 +474,7 @@ export function RemitoQuickFormDialog({
               <SelectContent>
                 <SelectItem value="viajes">Viajes × Precio</SelectItem>
                 <SelectItem value="cantidad">Cantidad × Precio</SelectItem>
+                <SelectItem value="fijo">Precio fijo por remito</SelectItem>
               </SelectContent>
             </Select>
           </div>
