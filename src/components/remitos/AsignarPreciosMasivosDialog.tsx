@@ -74,8 +74,11 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
       if (precio <= 0) continue;
       if (mode === "viajes") {
         total += precio * row.totalViajes;
-      } else {
+      } else if (mode === "cantidad") {
         total += precio * row.totalCantidad;
+      } else {
+        // fijo: precio se aplica a cada remito de este tipo
+        total += precio * row.count;
       }
     }
     return total;
