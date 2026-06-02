@@ -472,7 +472,7 @@ export function LiquidacionClienteDialog({
                   </TableHeader>
                   <TableBody>
                     {resumenPorCliente.map((c) => (
-                      <FragmentWithKey key={c.cliente}>
+                      <Fragment key={c.cliente}>
                         {c.tipos.map((t, idx) => (
                           <TableRow key={`${c.cliente}-${t.tipo}`}>
                             <TableCell className="font-medium">
@@ -489,7 +489,7 @@ export function LiquidacionClienteDialog({
                             </TableCell>
                           </TableRow>
                         ))}
-                        <TableRow key={`${c.cliente}-subtotal`} className="bg-muted/30 font-semibold">
+                        <TableRow className="bg-muted/30 font-semibold">
                           <TableCell colSpan={2}>Subtotal {c.cliente}</TableCell>
                           <TableCell className="text-center">{c.subtotal.viajes}</TableCell>
                           <TableCell className="text-center">
@@ -500,7 +500,7 @@ export function LiquidacionClienteDialog({
                             ${c.subtotal.precioTotal.toLocaleString("es-AR")}
                           </TableCell>
                         </TableRow>
-                      </>
+                      </Fragment>
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
                       <TableCell colSpan={2}>TOTAL GENERAL</TableCell>
