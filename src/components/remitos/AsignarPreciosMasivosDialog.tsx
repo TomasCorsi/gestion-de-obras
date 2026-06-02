@@ -155,7 +155,7 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
           {/* Mode selector */}
           <div className="flex items-center gap-4">
             <Label className="text-sm font-medium">Calcular precio total:</Label>
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as "viajes" | "cantidad")} className="flex gap-4">
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as "viajes" | "cantidad" | "fijo")} className="flex gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="viajes" id="mode-viajes" />
                 <Label htmlFor="mode-viajes" className="cursor-pointer">Por viaje</Label>
@@ -163,6 +163,10 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="cantidad" id="mode-cantidad" />
                 <Label htmlFor="mode-cantidad" className="cursor-pointer">Por cantidad (m³/tn)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="fijo" id="mode-fijo" />
+                <Label htmlFor="mode-fijo" className="cursor-pointer">Precio fijo por remito</Label>
               </div>
             </RadioGroup>
           </div>
