@@ -234,15 +234,30 @@ export function LiquidacionClienteDialog({
     }
 
     const wb = XLSX.utils.book_new();
-    const data = resumen.map((r) => ({
-      "Tipo Material": r.tipo,
-      Viajes: r.viajes,
-      Cantidad: r.cantidad,
-      Unidad: r.unidad,
-      "Precio Total": r.precioTotal,
-    }));
+    const data: Array<Record<string, string | number>> = [];
+    resumenPorCliente.forEach((c) => {
+      c.tipos.forEach((t) => {
+        data.push({
+          Cliente: c.cliente,
+          "Tipo Material": t.tipo,
+          Viajes: t.viajes,
+          Cantidad: t.cantidad,
+          Unidad: t.unidad,
+          "Precio Total": t.precioTotal,
+        });
+      });
+      data.push({
+        Cliente: `Subtotal ${c.cliente}`,
+        "Tipo Material": "",
+        Viajes: c.subtotal.viajes,
+        Cantidad: c.subtotal.cantidad,
+        Unidad: "",
+        "Precio Total": c.subtotal.precioTotal,
+      });
+    });
     data.push({
-      "Tipo Material": "TOTAL",
+      Cliente: "TOTAL GENERAL",
+      "Tipo Material": "",
       Viajes: totales.viajes,
       Cantidad: totales.cantidad,
       Unidad: "",
@@ -250,10 +265,14 @@ export function LiquidacionClienteDialog({
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
-    const colWidths = Object.keys(data[0]).map((key) => ({
-      wch: Math.max(key.length, 14),
-    }));
-    ws["!cols"] = colWidths;
+    ws["!cols"] = [
+      { wch: 30 },
+      { wch: 22 },
+      { wch: 10 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 16 },
+    ];
 
     XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
 
