@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
   Dialog,
   DialogContent,
@@ -216,6 +216,53 @@ export function LiquidacionClienteDialog({
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
+
+    // Detalle de remitos
+    const detalleRemitos = remitosCliente
+      .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
+      .sort((a, b) => {
+        const f = (a.fecha || "").localeCompare(b.fecha || "");
+        if (f !== 0) return f;
+        return (a.numero || "").localeCompare(b.numero || "");
+      });
+
+    const fmtFecha = (f: string | null) => {
+      if (!f) return "";
+      try {
+        return format(parseISO(f), "dd/MM/yyyy");
+      } catch {
+        return f;
+      }
+    };
+
+    const detalleData = detalleRemitos.map((r) => ({
+      Fecha: fmtFecha(r.fecha),
+      "N° Remito": r.numero || "",
+      "Remito Tercero": r.remito_tercero || "",
+      Cliente: r.cliente || "",
+      "Cliente Destino": r.cliente_destino || "",
+      "Cliente Cantera": r.cliente_cantera || "",
+      Desde: r.desde || "",
+      Hasta: r.hasta || "",
+      "Tipo Material": r.tipo_material || "",
+      Viajes: r.cantidad_viajes || 0,
+      Cantidad: r.cantidad || 0,
+      Unidad: r.unidad || "",
+      "Precio Unitario": r.precio_unitario || 0,
+      "Precio Total": r.precio_total || 0,
+      Transporte: r.tipo_transporte || "",
+      Patente: r.maquinaria?.patente || r.patente_tercero || "",
+      Observaciones: r.observaciones || "",
+    }));
+
+    if (detalleData.length > 0) {
+      const wsDetalle = XLSX.utils.json_to_sheet(detalleData);
+      wsDetalle["!cols"] = Object.keys(detalleData[0]).map((key) => ({
+        wch: Math.max(key.length, 14),
+      }));
+      XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle Remitos");
+    }
+
     const prefijo =
       tipoCliente === "cliente_cantera"
         ? "Liquidacion_Cantera"
