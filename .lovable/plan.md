@@ -1,36 +1,34 @@
 ## Objetivo
+Modificar el diálogo de "Liquidación por Cliente" en el módulo Remitos para permitir búsqueda rápida de clientes y selección múltiple (algunos o todos), en lugar del actual dropdown de selección única.
 
-Que el importador con IA de Órdenes de Compra (facturas PDF/imagen/texto de proveedor) detecte automáticamente, además de los datos actuales:
+## Cambios a realizar
 
-- **Percepción IVA** (monto en $)
-- **Percepción IIBB** (monto en $)
-- **IVA discriminado** (ya se detecta, se refuerza el prompt para que siempre marque `incluir_iva` y `iva_porcentaje` cuando figure el monto del IVA en la factura)
+### 1. Reemplazar selector de cliente único por lista multi-seleccionable con búsqueda
 
-Estos valores se precargan en los campos correspondientes del formulario de Orden de Compra.
+En `src/components/remitos/LiquidacionClienteDialog.tsx`:
 
-## Cambios
+- **Estado**: Cambiar `selectedCliente` (string único) a `selectedClientes` (Set<string>).
+- **Buscador**: Agregar un `<Input>` con ícono `Search` sobre la lista de clientes para filtrar en tiempo real por nombre.
+- **Lista de clientes**: Reemplazar el `<Select>` por un contenedor scrollable con checkboxes:
+  - Cada cliente se muestra con un `<Checkbox>` + nombre.
+  - Altura fija con scroll para manejar listas largas.
+  - Texto "No se encontraron clientes" cuando el filtro no coincide.
+- **Botones de selección masiva**: Agregar al lado del título "Clientes" dos botones compactos:
+  - "Seleccionar todos" — marca todos los clientes visibles (o todos los del tipo actual).
+  - "Deseleccionar todos" — limpia la selección.
 
-### 1. `supabase/functions/parse-orden-compra/index.ts`
-- Ampliar el **system prompt** con reglas para reconocer:
-  - "Percepción IVA", "Perc. IVA", "Percep. IVA", "RG 3337", etiquetas tipo "IVA Percepción".
-  - "Percepción IIBB", "Perc. IIBB", "IIBB", "Ingresos Brutos", percepciones provinciales (ARBA, AGIP, etc.). Tomar el monto, no la alícuota.
-  - Aclarar que son **montos finales en la moneda de la factura**, normalizados a número (coma decimal AR → punto).
-  - Si una percepción no aparece, devolver `0` (no inventar).
-  - Reforzar detección de IVA: si en el comprobante figura "IVA 21%", "IVA Inscripto", monto de IVA discriminado → `incluir_iva = true` y `iva_porcentaje` = alícuota detectada (21, 10.5, 27).
-- Agregar al `tool` `extract_orden_compra` dos propiedades nuevas en `parameters.properties`:
-  - `percepcion_iva: { type: "number" }`
-  - `percepcion_iibb: { type: "number" }`
+### 2. Adaptar la lógica de resumen a múltiples clientes
 
-### 2. `src/components/proveedores/ImportFacturaProveedorDialog.tsx`
-- Extender la interfaz `ParsedOrdenCompra` con `percepcion_iva?: number` y `percepcion_iibb?: number`.
-- En el bloque de preview (debajo de IVA), mostrar las percepciones cuando vienen > 0 (`Perc. IVA` y `Perc. IIBB` con `fmtMoney`).
+- **`remitosCliente`**: Filtrar remitos que correspondan a **cualquiera** de los clientes seleccionados.
+- **`tiposUnicos`**: Extraer tipos de material de los remitos de todos los clientes seleccionados.
+- **`resumen`**: Agrupar y sumarizar por `tipo_material` cruzando todos los clientes seleccionados.
+- **Exportación Excel**: Incluir los datos consolidados de todos los clientes seleccionados. El nombre del archivo usará "Multiple" o el primer cliente + "_y_otros" cuando haya más de uno.
 
-### 3. `src/components/proveedores/OrdenCompraFormDialog.tsx`
-- En `handleImport` (alrededor de línea 112), tras los campos de IVA, copiar al form:
-  - `if (typeof parsed.percepcion_iva === "number" && parsed.percepcion_iva > 0) next.percepcion_iva = parsed.percepcion_iva;`
-  - `if (typeof parsed.percepcion_iibb === "number" && parsed.percepcion_iibb > 0) next.percepcion_iibb = parsed.percepcion_iibb;`
+### 3. UI/UX
 
-## Fuera de alcance
+- Mantener la sección de "Tipos de material a incluir" con sus checkboxes de selección parcial (sin cambios).
+- La tabla de resumen y el botón "Exportar Excel" se mantienen igual, pero ahora reflejan el total de todos los clientes seleccionados.
+- Resetear `selectedTypes` cada vez que cambia la selección de clientes o el tipo de cliente.
 
-- Cambios de UI en el formulario (los inputs Percepción IVA / IIBB ya existen).
-- Cambios en la base de datos (las columnas `percepcion_iva` y `percepcion_iibb` ya existen en `ordenes_compra`).
+## Archivo afectado
+- `src/components/remitos/LiquidacionClienteDialog.tsx` (único archivo)

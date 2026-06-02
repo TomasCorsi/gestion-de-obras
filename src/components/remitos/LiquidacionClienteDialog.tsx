@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, FileText } from "lucide-react";
+import { Download, FileText, Search } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -56,9 +57,10 @@ export function LiquidacionClienteDialog({
   remitos,
 }: LiquidacionClienteDialogProps) {
   const [tipoCliente, setTipoCliente] = useState<TipoCliente>("cliente_o_destino");
-  const [selectedCliente, setSelectedCliente] = useState<string>("");
+  const [selectedClientes, setSelectedClientes] = useState<Set<string>>(new Set());
+  const [searchCliente, setSearchCliente] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
-  const [initialized, setInitialized] = useState(false);
+  const [typesInitialized, setTypesInitialized] = useState(false);
 
   // Get unique clients based on tipoCliente
   const clientesUnicos = useMemo(() => {
@@ -76,20 +78,31 @@ export function LiquidacionClienteDialog({
     return [...set].sort();
   }, [remitos, tipoCliente]);
 
-  // Get remitos for selected client based on tipoCliente
+  const filteredClientes = useMemo(() => {
+    const q = searchCliente.trim().toLowerCase();
+    if (!q) return clientesUnicos;
+    return clientesUnicos.filter((c) => c.toLowerCase().includes(q));
+  }, [clientesUnicos, searchCliente]);
+
+  // Get remitos for selected clients based on tipoCliente
   const remitosCliente = useMemo(() => {
-    if (!selectedCliente) return [];
+    if (selectedClientes.size === 0) return [];
     return remitos.filter((r) => {
       if (tipoCliente === "cliente_o_destino") {
-        return r.cliente === selectedCliente || r.cliente_destino === selectedCliente;
+        return (
+          (r.cliente && selectedClientes.has(r.cliente)) ||
+          (r.cliente_destino && selectedClientes.has(r.cliente_destino))
+        );
       }
-      if (tipoCliente === "cliente_destino") return r.cliente_destino === selectedCliente;
-      if (tipoCliente === "cliente_cantera") return r.cliente_cantera === selectedCliente;
+      if (tipoCliente === "cliente_destino")
+        return !!r.cliente_destino && selectedClientes.has(r.cliente_destino);
+      if (tipoCliente === "cliente_cantera")
+        return !!r.cliente_cantera && selectedClientes.has(r.cliente_cantera);
       return false;
     });
-  }, [remitos, selectedCliente, tipoCliente]);
+  }, [remitos, selectedClientes, tipoCliente]);
 
-  // Get unique types for this client
+  // Get unique types for selected clients
   const tiposUnicos = useMemo(() => {
     const set = new Set<string>();
     remitosCliente.forEach((r) => {
@@ -98,24 +111,39 @@ export function LiquidacionClienteDialog({
     return [...set].sort();
   }, [remitosCliente]);
 
-  // Initialize selectedTypes when client changes
-  useMemo(() => {
-    if (tiposUnicos.length > 0 && !initialized) {
+  // Initialize selectedTypes when client selection changes
+  useEffect(() => {
+    if (tiposUnicos.length > 0 && !typesInitialized) {
       setSelectedTypes(new Set(tiposUnicos));
-      setInitialized(true);
+      setTypesInitialized(true);
     }
-  }, [tiposUnicos, initialized]);
+  }, [tiposUnicos, typesInitialized]);
 
   const handleTipoClienteChange = (value: TipoCliente) => {
     setTipoCliente(value);
-    setSelectedCliente("");
-    setInitialized(false);
+    setSelectedClientes(new Set());
+    setSearchCliente("");
+    setTypesInitialized(false);
     setSelectedTypes(new Set());
   };
 
-  const handleClienteChange = (value: string) => {
-    setSelectedCliente(value);
-    setInitialized(false);
+  const toggleCliente = (cliente: string) => {
+    setSelectedClientes((prev) => {
+      const next = new Set(prev);
+      if (next.has(cliente)) next.delete(cliente);
+      else next.add(cliente);
+      return next;
+    });
+    setTypesInitialized(false);
+  };
+
+  const selectAllClientes = () => {
+    setSelectedClientes(new Set(filteredClientes));
+    setTypesInitialized(false);
+  };
+  const deselectAllClientes = () => {
+    setSelectedClientes(new Set());
+    setTypesInitialized(false);
     setSelectedTypes(new Set());
   };
 
@@ -194,10 +222,17 @@ export function LiquidacionClienteDialog({
         : tipoCliente === "cliente_destino"
         ? "Liquidacion_Destino"
         : "Liquidacion";
-    const fileName = `${prefijo}_${selectedCliente.replace(/\s/g, "_")}_${format(new Date(), "yyyyMMdd")}.xlsx`;
+    const clientesArr = [...selectedClientes];
+    const sufijo =
+      clientesArr.length === 1
+        ? clientesArr[0].replace(/\s/g, "_")
+        : `${clientesArr.length}_clientes`;
+    const fileName = `${prefijo}_${sufijo}_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(wb, fileName);
     toast.success("Excel exportado");
   };
+
+  const hasSelection = selectedClientes.size > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -220,40 +255,69 @@ export function LiquidacionClienteDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-              <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
+                <SelectItem value="cliente_o_destino">{TIPO_LABELS.cliente_o_destino}</SelectItem>
                 <SelectItem value="cliente_destino">{TIPO_LABELS.cliente_destino}</SelectItem>
                 <SelectItem value="cliente_cantera">{TIPO_LABELS.cliente_cantera}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Client selector */}
+          {/* Clientes multi-select with search */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
-              {TIPO_LABELS[tipoCliente]}
-            </label>
-            <Select value={selectedCliente} onValueChange={handleClienteChange}>
-              <SelectTrigger className="bg-card">
-                <SelectValue placeholder={`Seleccionar ${TIPO_LABELS[tipoCliente].toLowerCase()}...`} />
-              </SelectTrigger>
-              <SelectContent>
-                {clientesUnicos.length === 0 ? (
-                  <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                    No hay datos
-                  </div>
-                ) : (
-                  clientesUnicos.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-foreground">
+                {TIPO_LABELS[tipoCliente]}{" "}
+                {selectedClientes.size > 0 && (
+                  <span className="text-muted-foreground font-normal">
+                    ({selectedClientes.size} seleccionados)
+                  </span>
                 )}
-              </SelectContent>
-            </Select>
+              </label>
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={selectAllClientes} disabled={filteredClientes.length === 0}>
+                  Seleccionar todos
+                </Button>
+                <Button variant="ghost" size="sm" onClick={deselectAllClientes} disabled={selectedClientes.size === 0}>
+                  Ninguno
+                </Button>
+              </div>
+            </div>
+
+            <div className="relative mb-2">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                value={searchCliente}
+                onChange={(e) => setSearchCliente(e.target.value)}
+                placeholder="Buscar cliente..."
+                className="pl-9 bg-card"
+              />
+            </div>
+
+            <div className="rounded-md border max-h-60 overflow-y-auto bg-card">
+              {filteredClientes.length === 0 ? (
+                <div className="px-3 py-6 text-sm text-muted-foreground text-center">
+                  {clientesUnicos.length === 0 ? "No hay datos" : "No se encontraron clientes"}
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {filteredClientes.map((c) => (
+                    <li key={c}>
+                      <label className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-accent/40">
+                        <Checkbox
+                          checked={selectedClientes.has(c)}
+                          onCheckedChange={() => toggleCliente(c)}
+                        />
+                        <span className="truncate">{c}</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Type checkboxes */}
-          {selectedCliente && tiposUnicos.length > 0 && (
+          {hasSelection && tiposUnicos.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-foreground">
@@ -286,7 +350,7 @@ export function LiquidacionClienteDialog({
           )}
 
           {/* Summary table */}
-          {selectedCliente && resumen.length > 0 && (
+          {hasSelection && resumen.length > 0 && (
             <>
               <div className="rounded-md border">
                 <Table>
@@ -337,9 +401,9 @@ export function LiquidacionClienteDialog({
             </>
           )}
 
-          {selectedCliente && remitosCliente.length === 0 && (
+          {hasSelection && remitosCliente.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
-              No hay remitos para este {TIPO_LABELS[tipoCliente].toLowerCase()} en el período seleccionado.
+              No hay remitos para los clientes seleccionados en el período.
             </p>
           )}
         </div>
