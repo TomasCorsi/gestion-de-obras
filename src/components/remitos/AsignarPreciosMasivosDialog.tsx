@@ -178,15 +178,18 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
                 <TableRow>
                   <TableHead>Tipo Material</TableHead>
                   <TableHead className="text-center">Remitos</TableHead>
-                  <TableHead className="text-center">{mode === "viajes" ? "Viajes" : "Cantidad"}</TableHead>
-                  <TableHead className="text-right">Precio Unitario</TableHead>
+                  <TableHead className="text-center">{mode === "viajes" ? "Viajes" : mode === "cantidad" ? "Cantidad" : "—"}</TableHead>
+                  <TableHead className="text-right">{mode === "fijo" ? "Precio Fijo" : "Precio Unitario"}</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tiposData.map((row) => {
                   const precio = parseFloat(row.precio) || 0;
-                  const multiplicador = mode === "viajes" ? row.totalViajes : row.totalCantidad;
+                  const multiplicador =
+                    mode === "viajes" ? row.totalViajes
+                    : mode === "cantidad" ? row.totalCantidad
+                    : row.count;
                   const subtotal = precio * multiplicador;
                   return (
                     <TableRow key={row.tipo}>
@@ -195,7 +198,9 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
                       <TableCell className="text-center">
                         {mode === "viajes"
                           ? row.totalViajes
-                          : row.totalCantidad.toLocaleString("es-AR")}
+                          : mode === "cantidad"
+                          ? row.totalCantidad.toLocaleString("es-AR")
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <Input
