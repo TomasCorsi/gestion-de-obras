@@ -474,6 +474,7 @@ export function RemitoQuickFormDialog({
               <SelectContent>
                 <SelectItem value="viajes">Viajes × Precio</SelectItem>
                 <SelectItem value="cantidad">Cantidad × Precio</SelectItem>
+                <SelectItem value="fijo">Precio fijo por remito</SelectItem>
               </SelectContent>
             </Select>
           </div>
