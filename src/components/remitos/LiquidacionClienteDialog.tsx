@@ -472,7 +472,7 @@ export function LiquidacionClienteDialog({
                   </TableHeader>
                   <TableBody>
                     {resumenPorCliente.map((c) => (
-                      <>
+                      <FragmentWithKey key={c.cliente}>
                         {c.tipos.map((t, idx) => (
                           <TableRow key={`${c.cliente}-${t.tipo}`}>
                             <TableCell className="font-medium">
