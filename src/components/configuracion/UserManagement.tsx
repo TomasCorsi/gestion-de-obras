@@ -122,6 +122,26 @@ export function UserManagement() {
     return personalRecords.filter((p) => !p.user_id);
   }, [personalRecords]);
 
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      const haystack = [
+        u.nombre_completo,
+        u.telefono,
+        u.personal?.legajo,
+        u.personal?.nombre,
+        u.personal?.apellido,
+        u.personal ? `${u.personal.nombre ?? ""} ${u.personal.apellido ?? ""}` : "",
+        roleLabels[u.role],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [users, searchQuery]);
+
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     setUpdatingUserId(userId);
     try {
