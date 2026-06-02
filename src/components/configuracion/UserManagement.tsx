@@ -245,14 +245,14 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No hay usuarios registrados
+                      {users.length === 0 ? "No hay usuarios registrados" : "No se encontraron usuarios"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.user_id} className="border-border hover:bg-muted/50">
                       <TableCell className="font-medium">{user.nombre_completo}</TableCell>
                       <TableCell className="text-muted-foreground">
