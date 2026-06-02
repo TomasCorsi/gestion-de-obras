@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, Fragment } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 import {
   Dialog,
@@ -159,72 +159,32 @@ export function LiquidacionClienteDialog({
   const selectAllTypes = () => setSelectedTypes(new Set(tiposUnicos));
   const deselectAllTypes = () => setSelectedTypes(new Set());
 
-  // Helper: get the matching client name for a remito based on tipoCliente
-  const getClienteKey = (r: RemitoWithRelations): string | null => {
-    if (tipoCliente === "cliente_cantera") return r.cliente_cantera || null;
-    if (tipoCliente === "cliente_destino") return r.cliente_destino || null;
-    // cliente_o_destino: prefer cliente if selected, else cliente_destino
-    if (r.cliente && selectedClientes.has(r.cliente)) return r.cliente;
-    if (r.cliente_destino && selectedClientes.has(r.cliente_destino)) return r.cliente_destino;
-    return r.cliente || r.cliente_destino || null;
-  };
-
-  // Calculate summary grouped by cliente -> tipo_material
-  interface ClienteResumen {
-    cliente: string;
-    tipos: TipoResumen[];
-    subtotal: { viajes: number; cantidad: number; precioTotal: number };
-  }
-
-  const resumenPorCliente: ClienteResumen[] = useMemo(() => {
-    const byCliente: Record<string, Record<string, TipoResumen>> = {};
+  // Calculate summary grouped by tipo_material
+  const resumen: TipoResumen[] = useMemo(() => {
+    const map: Record<string, TipoResumen> = {};
 
     remitosCliente
       .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
       .forEach((r) => {
-        const cli = getClienteKey(r) || "(Sin cliente)";
         const tipo = r.tipo_material!;
-        if (!byCliente[cli]) byCliente[cli] = {};
-        if (!byCliente[cli][tipo]) {
-          byCliente[cli][tipo] = {
-            tipo,
-            viajes: 0,
-            cantidad: 0,
-            unidad: r.unidad || "M3",
-            precioTotal: 0,
-          };
+        if (!map[tipo]) {
+          map[tipo] = { tipo, viajes: 0, cantidad: 0, unidad: r.unidad || "M3", precioTotal: 0 };
         }
-        byCliente[cli][tipo].viajes += r.cantidad_viajes || 1;
-        byCliente[cli][tipo].cantidad += r.cantidad || 0;
-        byCliente[cli][tipo].precioTotal += r.precio_total || 0;
+        map[tipo].viajes += r.cantidad_viajes || 1;
+        map[tipo].cantidad += r.cantidad || 0;
+        map[tipo].precioTotal += r.precio_total || 0;
       });
 
-    return Object.entries(byCliente)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([cliente, tiposMap]) => {
-        const tipos = Object.values(tiposMap).sort((a, b) => a.tipo.localeCompare(b.tipo));
-        const subtotal = {
-          viajes: tipos.reduce((s, t) => s + t.viajes, 0),
-          cantidad: tipos.reduce((s, t) => s + t.cantidad, 0),
-          precioTotal: tipos.reduce((s, t) => s + t.precioTotal, 0),
-        };
-        return { cliente, tipos, subtotal };
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [remitosCliente, selectedTypes, tipoCliente, selectedClientes]);
-
-  const resumen = useMemo(
-    () => resumenPorCliente.flatMap((c) => c.tipos),
-    [resumenPorCliente]
-  );
+    return Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
+  }, [remitosCliente, selectedTypes]);
 
   const totales = useMemo(
     () => ({
-      viajes: resumenPorCliente.reduce((s, c) => s + c.subtotal.viajes, 0),
-      cantidad: resumenPorCliente.reduce((s, c) => s + c.subtotal.cantidad, 0),
-      precioTotal: resumenPorCliente.reduce((s, c) => s + c.subtotal.precioTotal, 0),
+      viajes: resumen.reduce((s, r) => s + r.viajes, 0),
+      cantidad: resumen.reduce((s, r) => s + r.cantidad, 0),
+      precioTotal: resumen.reduce((s, r) => s + r.precioTotal, 0),
     }),
-    [resumenPorCliente]
+    [resumen]
   );
 
   const exportarExcel = () => {
@@ -234,30 +194,15 @@ export function LiquidacionClienteDialog({
     }
 
     const wb = XLSX.utils.book_new();
-    const data: Array<Record<string, string | number>> = [];
-    resumenPorCliente.forEach((c) => {
-      c.tipos.forEach((t) => {
-        data.push({
-          Cliente: c.cliente,
-          "Tipo Material": t.tipo,
-          Viajes: t.viajes,
-          Cantidad: t.cantidad,
-          Unidad: t.unidad,
-          "Precio Total": t.precioTotal,
-        });
-      });
-      data.push({
-        Cliente: `Subtotal ${c.cliente}`,
-        "Tipo Material": "",
-        Viajes: c.subtotal.viajes,
-        Cantidad: c.subtotal.cantidad,
-        Unidad: "",
-        "Precio Total": c.subtotal.precioTotal,
-      });
-    });
+    const data = resumen.map((r) => ({
+      "Tipo Material": r.tipo,
+      Viajes: r.viajes,
+      Cantidad: r.cantidad,
+      Unidad: r.unidad,
+      "Precio Total": r.precioTotal,
+    }));
     data.push({
-      Cliente: "TOTAL GENERAL",
-      "Tipo Material": "",
+      "Tipo Material": "TOTAL",
       Viajes: totales.viajes,
       Cantidad: totales.cantidad,
       Unidad: "",
@@ -265,14 +210,10 @@ export function LiquidacionClienteDialog({
     });
 
     const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = [
-      { wch: 30 },
-      { wch: 22 },
-      { wch: 10 },
-      { wch: 12 },
-      { wch: 10 },
-      { wch: 16 },
-    ];
+    const colWidths = Object.keys(data[0]).map((key) => ({
+      wch: Math.max(key.length, 14),
+    }));
+    ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
 
@@ -462,7 +403,6 @@ export function LiquidacionClienteDialog({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Cliente</TableHead>
                       <TableHead>Tipo Material</TableHead>
                       <TableHead className="text-center">Viajes</TableHead>
                       <TableHead className="text-center">Cantidad</TableHead>
@@ -471,39 +411,21 @@ export function LiquidacionClienteDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {resumenPorCliente.map((c) => (
-                      <Fragment key={c.cliente}>
-                        {c.tipos.map((t, idx) => (
-                          <TableRow key={`${c.cliente}-${t.tipo}`}>
-                            <TableCell className="font-medium">
-                              {idx === 0 ? c.cliente : ""}
-                            </TableCell>
-                            <TableCell>{t.tipo}</TableCell>
-                            <TableCell className="text-center">{t.viajes}</TableCell>
-                            <TableCell className="text-center">
-                              {t.cantidad.toLocaleString("es-AR")}
-                            </TableCell>
-                            <TableCell className="text-center">{t.unidad}</TableCell>
-                            <TableCell className="text-right">
-                              ${t.precioTotal.toLocaleString("es-AR")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow className="bg-muted/30 font-semibold">
-                          <TableCell colSpan={2}>Subtotal {c.cliente}</TableCell>
-                          <TableCell className="text-center">{c.subtotal.viajes}</TableCell>
-                          <TableCell className="text-center">
-                            {c.subtotal.cantidad.toLocaleString("es-AR")}
-                          </TableCell>
-                          <TableCell />
-                          <TableCell className="text-right">
-                            ${c.subtotal.precioTotal.toLocaleString("es-AR")}
-                          </TableCell>
-                        </TableRow>
-                      </Fragment>
+                    {resumen.map((r) => (
+                      <TableRow key={r.tipo}>
+                        <TableCell className="font-medium">{r.tipo}</TableCell>
+                        <TableCell className="text-center">{r.viajes}</TableCell>
+                        <TableCell className="text-center">
+                          {r.cantidad.toLocaleString("es-AR")}
+                        </TableCell>
+                        <TableCell className="text-center">{r.unidad}</TableCell>
+                        <TableCell className="text-right">
+                          ${r.precioTotal.toLocaleString("es-AR")}
+                        </TableCell>
+                      </TableRow>
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell colSpan={2}>TOTAL GENERAL</TableCell>
+                      <TableCell>TOTAL</TableCell>
                       <TableCell className="text-center">{totales.viajes}</TableCell>
                       <TableCell className="text-center">
                         {totales.cantidad.toLocaleString("es-AR")}
