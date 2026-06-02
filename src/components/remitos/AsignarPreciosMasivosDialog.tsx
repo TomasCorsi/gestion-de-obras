@@ -98,7 +98,10 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
       const precioUnit = parseFloat(precioStr);
       if (isNaN(precioUnit) || precioUnit <= 0) continue;
 
-      const multiplicador = mode === "viajes" ? (r.cantidad_viajes || 1) : (r.cantidad || 0);
+      const multiplicador =
+        mode === "viajes" ? (r.cantidad_viajes || 1)
+        : mode === "cantidad" ? (r.cantidad || 0)
+        : 1;
       const precioTotal = precioUnit * multiplicador;
 
       updates.push({
