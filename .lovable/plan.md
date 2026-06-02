@@ -1,39 +1,50 @@
-## Agregar hoja de detalle de remitos al Excel de Liquidación por Cliente
+## Exportación de liquidación por cliente: desglose por cliente + hoja resumen general
 
-En `src/components/remitos/LiquidacionClienteDialog.tsx`, modificar `exportarExcel()` para agregar una segunda hoja "Detalle Remitos" al workbook, además de la hoja "Liquidación" ya existente.
+En `src/components/remitos/LiquidacionClienteDialog.tsx`, modificar `exportarExcel()` para que el workbook tenga **tres hojas**. La UI del diálogo no cambia.
 
-### Hoja "Detalle Remitos"
+### Hoja 1 — "Liquidación" (con desglose por cliente)
 
-Una fila por cada remito incluido en la liquidación (los mismos filtros aplicados: clientes seleccionados + tipos de material seleccionados), ordenados por fecha ascendente.
+Por cada cliente seleccionado (ordenado alfabéticamente) se imprime un bloque con sus tipos de material:
 
-Columnas:
-- Fecha (dd/mm/yyyy)
-- N° Remito (`numero`)
-- Remito Tercero (`remito_tercero`)
-- Cliente (`cliente`)
-- Cliente Destino (`cliente_destino`)
-- Cliente Cantera (`cliente_cantera`)
-- Desde (`desde`)
-- Hasta (`hasta`)
-- Tipo Material (`tipo_material`)
-- Viajes (`cantidad_viajes`)
-- Cantidad (`cantidad`)
-- Unidad (`unidad`)
-- Precio Unitario (`precio_unitario`)
-- Precio Total (`precio_total`)
-- Transporte (`tipo_transporte`)
-- Patente (de `maquinaria.patente` o `patente_tercero`)
-- Observaciones (`observaciones`)
+```
+Cliente: ACME S.A.
+Tipo Material | Viajes | Cantidad | Unidad | Precio Total
+Arena         |   12   |   180    |  M3    | $360.000
+Piedra        |    5   |    75    |  M3    | $225.000
+Subtotal ACME |   17   |   255    |        | $585.000
+(fila en blanco)
+```
+
+Al final, fila **TOTAL GENERAL** sumando todos los clientes.
+
+### Hoja 2 — "Liquidación General" (nueva)
+
+Resumen compacto, solo dos columnas:
+
+```
+Cliente        | Precio Total
+ACME S.A.      | $585.000
+Otro Cliente   | $835.000
+TOTAL          | $1.420.000
+```
+
+- Una fila por cliente seleccionado, ordenada alfabéticamente.
+- Última fila TOTAL con la suma.
+- Solo refleja los tipos de material incluidos en `selectedTypes`.
+
+### Hoja 3 — "Detalle Remitos"
+
+Sin cambios respecto a lo ya implementado (una fila por remito con todas las columnas detalladas).
 
 ### Detalles técnicos
 
-- Construir el array desde `remitosCliente.filter(r => r.tipo_material && selectedTypes.has(r.tipo_material))`.
-- Ordenar por `fecha` asc, luego `numero`.
-- Formatear fecha con `date-fns` `format(parseISO(fecha), "dd/MM/yyyy")`.
-- Anchos de columna automáticos (~14 mínimo, ajustar nombres más largos).
-- Agregar la hoja con `XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle Remitos")` después de la hoja "Liquidación".
-- No cambiar la hoja resumen ni la UI; solo se agrega contenido al archivo exportado.
+- Calcular `resumenPorCliente`: para cada cliente en `selectedClientes`, filtrar `remitosCliente` que correspondan a ese cliente (según `tipoCliente`) y `selectedTypes`, y agrupar por `tipo_material` (misma lógica del `resumen` actual, pero scoped por cliente). Saltar clientes sin datos.
+- Hoja "Liquidación": usar `XLSX.utils.aoa_to_sheet` (array of arrays) para permitir filas heterogéneas (encabezado de cliente, headers, datos, subtotal, fila vacía, TOTAL GENERAL). Columnas: `Tipo Material | Viajes | Cantidad | Unidad | Precio Total`. Anchos fijos (~22, 10, 12, 10, 16).
+- Subtotal por cliente: suma de viajes, cantidad y precio total. Unidad queda vacía si los tipos mezclan unidades, sino la unidad común.
+- Hoja "Liquidación General": `XLSX.utils.aoa_to_sheet` con header `["Cliente", "Precio Total"]`, una fila por cliente con su total, y fila final `["TOTAL", sumaTotal]`. Anchos ~30 y 16.
+- Hoja "Detalle Remitos": mantener la generación actual sin cambios.
+- Orden de hojas en el workbook: Liquidación → Liquidación General → Detalle Remitos.
 
 ### Archivos afectados
 
-- `src/components/remitos/LiquidacionClienteDialog.tsx` (única edición)
+- `src/components/remitos/LiquidacionClienteDialog.tsx` (única edición, solo dentro de `exportarExcel`)
