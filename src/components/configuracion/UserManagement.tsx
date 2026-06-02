@@ -54,6 +54,7 @@ export function UserManagement() {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Link dialog state
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
