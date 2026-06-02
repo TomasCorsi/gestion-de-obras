@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Loader2, Link2, Unlink, Mail, KeyRound } from "lucide-react";
+import { Users, Shield, Loader2, Link2, Unlink, Mail, KeyRound, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
