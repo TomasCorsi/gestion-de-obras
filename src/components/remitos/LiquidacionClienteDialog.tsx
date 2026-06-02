@@ -194,30 +194,103 @@ export function LiquidacionClienteDialog({
     }
 
     const wb = XLSX.utils.book_new();
-    const data = resumen.map((r) => ({
-      "Tipo Material": r.tipo,
-      Viajes: r.viajes,
-      Cantidad: r.cantidad,
-      Unidad: r.unidad,
-      "Precio Total": r.precioTotal,
-    }));
-    data.push({
-      "Tipo Material": "TOTAL",
-      Viajes: totales.viajes,
-      Cantidad: totales.cantidad,
-      Unidad: "",
-      "Precio Total": totales.precioTotal,
+
+    // ---------- Hoja 1: Liquidación (desglose por cliente) ----------
+    const clientesOrdenados = [...selectedClientes].sort((a, b) => a.localeCompare(b));
+
+    const matchCliente = (r: RemitoWithRelations, cliente: string) => {
+      if (tipoCliente === "cliente_o_destino") {
+        return r.cliente === cliente || r.cliente_destino === cliente;
+      }
+      if (tipoCliente === "cliente_destino") return r.cliente_destino === cliente;
+      if (tipoCliente === "cliente_cantera") return r.cliente_cantera === cliente;
+      return false;
+    };
+
+    type ClienteResumen = {
+      cliente: string;
+      tipos: TipoResumen[];
+      viajes: number;
+      cantidad: number;
+      precioTotal: number;
+    };
+
+    const resumenPorCliente: ClienteResumen[] = clientesOrdenados
+      .map((cliente) => {
+        const map: Record<string, TipoResumen> = {};
+        remitosCliente
+          .filter(
+            (r) =>
+              matchCliente(r, cliente) &&
+              r.tipo_material &&
+              selectedTypes.has(r.tipo_material)
+          )
+          .forEach((r) => {
+            const tipo = r.tipo_material!;
+            if (!map[tipo]) {
+              map[tipo] = {
+                tipo,
+                viajes: 0,
+                cantidad: 0,
+                unidad: r.unidad || "M3",
+                precioTotal: 0,
+              };
+            }
+            map[tipo].viajes += r.cantidad_viajes || 1;
+            map[tipo].cantidad += r.cantidad || 0;
+            map[tipo].precioTotal += r.precio_total || 0;
+          });
+        const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
+        return {
+          cliente,
+          tipos,
+          viajes: tipos.reduce((s, t) => s + t.viajes, 0),
+          cantidad: tipos.reduce((s, t) => s + t.cantidad, 0),
+          precioTotal: tipos.reduce((s, t) => s + t.precioTotal, 0),
+        };
+      })
+      .filter((c) => c.tipos.length > 0);
+
+    const aoa: (string | number)[][] = [];
+    resumenPorCliente.forEach((c) => {
+      aoa.push([`Cliente: ${c.cliente}`, "", "", "", ""]);
+      aoa.push(["Tipo Material", "Viajes", "Cantidad", "Unidad", "Precio Total"]);
+      c.tipos.forEach((t) => {
+        aoa.push([t.tipo, t.viajes, t.cantidad, t.unidad, t.precioTotal]);
+      });
+      const unidadesUnicas = new Set(c.tipos.map((t) => t.unidad));
+      const unidadSubtotal = unidadesUnicas.size === 1 ? [...unidadesUnicas][0] : "";
+      aoa.push([`Subtotal ${c.cliente}`, c.viajes, c.cantidad, unidadSubtotal, c.precioTotal]);
+      aoa.push(["", "", "", "", ""]);
     });
+    const totalGeneral = {
+      viajes: resumenPorCliente.reduce((s, c) => s + c.viajes, 0),
+      cantidad: resumenPorCliente.reduce((s, c) => s + c.cantidad, 0),
+      precioTotal: resumenPorCliente.reduce((s, c) => s + c.precioTotal, 0),
+    };
+    aoa.push([
+      "TOTAL GENERAL",
+      totalGeneral.viajes,
+      totalGeneral.cantidad,
+      "",
+      totalGeneral.precioTotal,
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(data);
-    const colWidths = Object.keys(data[0]).map((key) => ({
-      wch: Math.max(key.length, 14),
-    }));
-    ws["!cols"] = colWidths;
-
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = [{ wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
     XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
 
-    // Detalle de remitos
+    // ---------- Hoja 2: Liquidación General ----------
+    const aoaGeneral: (string | number)[][] = [["Cliente", "Precio Total"]];
+    resumenPorCliente.forEach((c) => {
+      aoaGeneral.push([c.cliente, c.precioTotal]);
+    });
+    aoaGeneral.push(["TOTAL", totalGeneral.precioTotal]);
+    const wsGeneral = XLSX.utils.aoa_to_sheet(aoaGeneral);
+    wsGeneral["!cols"] = [{ wch: 30 }, { wch: 16 }];
+    XLSX.utils.book_append_sheet(wb, wsGeneral, "Liquidación General");
+
+    // ---------- Hoja 3: Detalle Remitos ----------
     const detalleRemitos = remitosCliente
       .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
       .sort((a, b) => {
