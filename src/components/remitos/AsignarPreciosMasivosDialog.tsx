@@ -44,7 +44,7 @@ interface TipoRow {
 }
 
 export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batchSave }: Props) {
-  const [mode, setMode] = useState<"viajes" | "cantidad">("cantidad");
+  const [mode, setMode] = useState<"viajes" | "cantidad" | "fijo">("cantidad");
   const [precios, setPrecios] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
@@ -74,8 +74,11 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
       if (precio <= 0) continue;
       if (mode === "viajes") {
         total += precio * row.totalViajes;
-      } else {
+      } else if (mode === "cantidad") {
         total += precio * row.totalCantidad;
+      } else {
+        // fijo: precio se aplica a cada remito de este tipo
+        total += precio * row.count;
       }
     }
     return total;
@@ -95,7 +98,10 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
       const precioUnit = parseFloat(precioStr);
       if (isNaN(precioUnit) || precioUnit <= 0) continue;
 
-      const multiplicador = mode === "viajes" ? (r.cantidad_viajes || 1) : (r.cantidad || 0);
+      const multiplicador =
+        mode === "viajes" ? (r.cantidad_viajes || 1)
+        : mode === "cantidad" ? (r.cantidad || 0)
+        : 1;
       const precioTotal = precioUnit * multiplicador;
 
       updates.push({
@@ -149,7 +155,7 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
           {/* Mode selector */}
           <div className="flex items-center gap-4">
             <Label className="text-sm font-medium">Calcular precio total:</Label>
-            <RadioGroup value={mode} onValueChange={(v) => setMode(v as "viajes" | "cantidad")} className="flex gap-4">
+            <RadioGroup value={mode} onValueChange={(v) => setMode(v as "viajes" | "cantidad" | "fijo")} className="flex gap-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="viajes" id="mode-viajes" />
                 <Label htmlFor="mode-viajes" className="cursor-pointer">Por viaje</Label>
@@ -157,6 +163,10 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
               <div className="flex items-center gap-2">
                 <RadioGroupItem value="cantidad" id="mode-cantidad" />
                 <Label htmlFor="mode-cantidad" className="cursor-pointer">Por cantidad (m³/tn)</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="fijo" id="mode-fijo" />
+                <Label htmlFor="mode-fijo" className="cursor-pointer">Precio fijo por remito</Label>
               </div>
             </RadioGroup>
           </div>
@@ -168,15 +178,18 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
                 <TableRow>
                   <TableHead>Tipo Material</TableHead>
                   <TableHead className="text-center">Remitos</TableHead>
-                  <TableHead className="text-center">{mode === "viajes" ? "Viajes" : "Cantidad"}</TableHead>
-                  <TableHead className="text-right">Precio Unitario</TableHead>
+                  <TableHead className="text-center">{mode === "viajes" ? "Viajes" : mode === "cantidad" ? "Cantidad" : "—"}</TableHead>
+                  <TableHead className="text-right">{mode === "fijo" ? "Precio Fijo" : "Precio Unitario"}</TableHead>
                   <TableHead className="text-right">Subtotal</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tiposData.map((row) => {
                   const precio = parseFloat(row.precio) || 0;
-                  const multiplicador = mode === "viajes" ? row.totalViajes : row.totalCantidad;
+                  const multiplicador =
+                    mode === "viajes" ? row.totalViajes
+                    : mode === "cantidad" ? row.totalCantidad
+                    : row.count;
                   const subtotal = precio * multiplicador;
                   return (
                     <TableRow key={row.tipo}>
@@ -185,7 +198,9 @@ export function AsignarPreciosMasivosDialog({ open, onOpenChange, remitos, batch
                       <TableCell className="text-center">
                         {mode === "viajes"
                           ? row.totalViajes
-                          : row.totalCantidad.toLocaleString("es-AR")}
+                          : mode === "cantidad"
+                          ? row.totalCantidad.toLocaleString("es-AR")
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <Input
