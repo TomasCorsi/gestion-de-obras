@@ -252,6 +252,8 @@ export function RemitoQuickFormDialog({
       const mode = next.precio_calc_mode;
       if (mode === "viajes") {
         next.precio_total = (next.cantidad_viajes || 0) * (next.precio_unitario || 0);
+      } else if (mode === "fijo") {
+        next.precio_total = next.precio_unitario || 0;
       } else {
         next.precio_total = (next.cantidad || 0) * (next.precio_unitario || 0);
       }
