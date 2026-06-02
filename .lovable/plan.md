@@ -1,34 +1,39 @@
-## Objetivo
-Modificar el diálogo de "Liquidación por Cliente" en el módulo Remitos para permitir búsqueda rápida de clientes y selección múltiple (algunos o todos), en lugar del actual dropdown de selección única.
+## Agregar hoja de detalle de remitos al Excel de Liquidación por Cliente
 
-## Cambios a realizar
+En `src/components/remitos/LiquidacionClienteDialog.tsx`, modificar `exportarExcel()` para agregar una segunda hoja "Detalle Remitos" al workbook, además de la hoja "Liquidación" ya existente.
 
-### 1. Reemplazar selector de cliente único por lista multi-seleccionable con búsqueda
+### Hoja "Detalle Remitos"
 
-En `src/components/remitos/LiquidacionClienteDialog.tsx`:
+Una fila por cada remito incluido en la liquidación (los mismos filtros aplicados: clientes seleccionados + tipos de material seleccionados), ordenados por fecha ascendente.
 
-- **Estado**: Cambiar `selectedCliente` (string único) a `selectedClientes` (Set<string>).
-- **Buscador**: Agregar un `<Input>` con ícono `Search` sobre la lista de clientes para filtrar en tiempo real por nombre.
-- **Lista de clientes**: Reemplazar el `<Select>` por un contenedor scrollable con checkboxes:
-  - Cada cliente se muestra con un `<Checkbox>` + nombre.
-  - Altura fija con scroll para manejar listas largas.
-  - Texto "No se encontraron clientes" cuando el filtro no coincide.
-- **Botones de selección masiva**: Agregar al lado del título "Clientes" dos botones compactos:
-  - "Seleccionar todos" — marca todos los clientes visibles (o todos los del tipo actual).
-  - "Deseleccionar todos" — limpia la selección.
+Columnas:
+- Fecha (dd/mm/yyyy)
+- N° Remito (`numero`)
+- Remito Tercero (`remito_tercero`)
+- Cliente (`cliente`)
+- Cliente Destino (`cliente_destino`)
+- Cliente Cantera (`cliente_cantera`)
+- Desde (`desde`)
+- Hasta (`hasta`)
+- Tipo Material (`tipo_material`)
+- Viajes (`cantidad_viajes`)
+- Cantidad (`cantidad`)
+- Unidad (`unidad`)
+- Precio Unitario (`precio_unitario`)
+- Precio Total (`precio_total`)
+- Transporte (`tipo_transporte`)
+- Patente (de `maquinaria.patente` o `patente_tercero`)
+- Observaciones (`observaciones`)
 
-### 2. Adaptar la lógica de resumen a múltiples clientes
+### Detalles técnicos
 
-- **`remitosCliente`**: Filtrar remitos que correspondan a **cualquiera** de los clientes seleccionados.
-- **`tiposUnicos`**: Extraer tipos de material de los remitos de todos los clientes seleccionados.
-- **`resumen`**: Agrupar y sumarizar por `tipo_material` cruzando todos los clientes seleccionados.
-- **Exportación Excel**: Incluir los datos consolidados de todos los clientes seleccionados. El nombre del archivo usará "Multiple" o el primer cliente + "_y_otros" cuando haya más de uno.
+- Construir el array desde `remitosCliente.filter(r => r.tipo_material && selectedTypes.has(r.tipo_material))`.
+- Ordenar por `fecha` asc, luego `numero`.
+- Formatear fecha con `date-fns` `format(parseISO(fecha), "dd/MM/yyyy")`.
+- Anchos de columna automáticos (~14 mínimo, ajustar nombres más largos).
+- Agregar la hoja con `XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle Remitos")` después de la hoja "Liquidación".
+- No cambiar la hoja resumen ni la UI; solo se agrega contenido al archivo exportado.
 
-### 3. UI/UX
+### Archivos afectados
 
-- Mantener la sección de "Tipos de material a incluir" con sus checkboxes de selección parcial (sin cambios).
-- La tabla de resumen y el botón "Exportar Excel" se mantienen igual, pero ahora reflejan el total de todos los clientes seleccionados.
-- Resetear `selectedTypes` cada vez que cambia la selección de clientes o el tipo de cliente.
-
-## Archivo afectado
-- `src/components/remitos/LiquidacionClienteDialog.tsx` (único archivo)
+- `src/components/remitos/LiquidacionClienteDialog.tsx` (única edición)
