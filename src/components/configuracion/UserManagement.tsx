@@ -5,7 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Loader2, Link2, Unlink, Mail, KeyRound } from "lucide-react";
+import { Users, Shield, Loader2, Link2, Unlink, Mail, KeyRound, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { LinkUserDialog } from "./LinkUserDialog";
@@ -53,6 +54,7 @@ export function UserManagement() {
   const [personalRecords, setPersonalRecords] = useState<PersonalRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   
   // Link dialog state
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
@@ -119,6 +121,26 @@ export function UserManagement() {
   const availablePersonal = useMemo(() => {
     return personalRecords.filter((p) => !p.user_id);
   }, [personalRecords]);
+
+  const filteredUsers = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      const haystack = [
+        u.nombre_completo,
+        u.telefono,
+        u.personal?.legajo,
+        u.personal?.nombre,
+        u.personal?.apellido,
+        u.personal ? `${u.personal.nombre ?? ""} ${u.personal.apellido ?? ""}` : "",
+        roleLabels[u.role],
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [users, searchQuery]);
 
   const handleRoleChange = async (userId: string, newRole: AppRole) => {
     setUpdatingUserId(userId);
@@ -201,6 +223,15 @@ export function UserManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          <div className="relative mb-4 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nombre, teléfono, legajo o rol..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
           <div className="rounded-md border border-border overflow-x-auto">
             <Table>
               <TableHeader>
@@ -214,14 +245,14 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.length === 0 ? (
+                {filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                      No hay usuarios registrados
+                      {users.length === 0 ? "No hay usuarios registrados" : "No se encontraron usuarios"}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.user_id} className="border-border hover:bg-muted/50">
                       <TableCell className="font-medium">{user.nombre_completo}</TableCell>
                       <TableCell className="text-muted-foreground">
