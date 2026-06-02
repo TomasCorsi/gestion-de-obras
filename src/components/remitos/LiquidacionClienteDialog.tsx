@@ -462,6 +462,7 @@ export function LiquidacionClienteDialog({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Cliente</TableHead>
                       <TableHead>Tipo Material</TableHead>
                       <TableHead className="text-center">Viajes</TableHead>
                       <TableHead className="text-center">Cantidad</TableHead>
@@ -470,21 +471,39 @@ export function LiquidacionClienteDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {resumen.map((r) => (
-                      <TableRow key={r.tipo}>
-                        <TableCell className="font-medium">{r.tipo}</TableCell>
-                        <TableCell className="text-center">{r.viajes}</TableCell>
-                        <TableCell className="text-center">
-                          {r.cantidad.toLocaleString("es-AR")}
-                        </TableCell>
-                        <TableCell className="text-center">{r.unidad}</TableCell>
-                        <TableCell className="text-right">
-                          ${r.precioTotal.toLocaleString("es-AR")}
-                        </TableCell>
-                      </TableRow>
+                    {resumenPorCliente.map((c) => (
+                      <>
+                        {c.tipos.map((t, idx) => (
+                          <TableRow key={`${c.cliente}-${t.tipo}`}>
+                            <TableCell className="font-medium">
+                              {idx === 0 ? c.cliente : ""}
+                            </TableCell>
+                            <TableCell>{t.tipo}</TableCell>
+                            <TableCell className="text-center">{t.viajes}</TableCell>
+                            <TableCell className="text-center">
+                              {t.cantidad.toLocaleString("es-AR")}
+                            </TableCell>
+                            <TableCell className="text-center">{t.unidad}</TableCell>
+                            <TableCell className="text-right">
+                              ${t.precioTotal.toLocaleString("es-AR")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow key={`${c.cliente}-subtotal`} className="bg-muted/30 font-semibold">
+                          <TableCell colSpan={2}>Subtotal {c.cliente}</TableCell>
+                          <TableCell className="text-center">{c.subtotal.viajes}</TableCell>
+                          <TableCell className="text-center">
+                            {c.subtotal.cantidad.toLocaleString("es-AR")}
+                          </TableCell>
+                          <TableCell />
+                          <TableCell className="text-right">
+                            ${c.subtotal.precioTotal.toLocaleString("es-AR")}
+                          </TableCell>
+                        </TableRow>
+                      </>
                     ))}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell>TOTAL</TableCell>
+                      <TableCell colSpan={2}>TOTAL GENERAL</TableCell>
                       <TableCell className="text-center">{totales.viajes}</TableCell>
                       <TableCell className="text-center">
                         {totales.cantidad.toLocaleString("es-AR")}
