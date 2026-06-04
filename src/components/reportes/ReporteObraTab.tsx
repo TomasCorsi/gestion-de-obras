@@ -183,6 +183,7 @@ export function ReporteObraTab() {
                     {data.obra?.cliente && <span>· {data.obra.cliente}</span>}
                     {data.obra?.ubicacion && <span>· {data.obra.ubicacion}</span>}
                     {data.obra?.estado && <Badge variant="outline">{data.obra.estado}</Badge>}
+                    {data.esCantera && <Badge className="bg-primary text-primary-foreground">Cantera</Badge>}
                   </div>
                 </div>
               </div>
@@ -193,8 +194,12 @@ export function ReporteObraTab() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="card-industrial">
               <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">Cotizado</p>
-                <p className="text-2xl font-bold text-success">{fmt$(data.cotizado)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.esCantera ? "Ingresos (Remitos)" : "Cotizado"}
+                </p>
+                <p className="text-2xl font-bold text-success">
+                  {fmt$(data.esCantera ? data.totales.ingresosRemitos : data.cotizado)}
+                </p>
                 <DollarSign className="w-5 h-5 text-success mt-2" />
               </CardContent>
             </Card>
@@ -202,7 +207,9 @@ export function ReporteObraTab() {
               <CardContent className="pt-6">
                 <p className="text-xs text-muted-foreground">Total Gastos</p>
                 <p className="text-2xl font-bold text-destructive">{fmt$(data.totales.gastosTotal)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Combustible + OC + Otros</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.esCantera ? "Personal + Comb + OC + Otros" : "Combustible + OC + Otros"}
+                </p>
               </CardContent>
             </Card>
             <Card className="card-industrial">
@@ -224,7 +231,9 @@ export function ReporteObraTab() {
             </Card>
             <Card className="card-industrial">
               <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">Rentabilidad</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.esCantera ? "Margen" : "Rentabilidad"}
+                </p>
                 <p
                   className={`text-2xl font-bold ${
                     data.totales.rentabilidad >= 0 ? "text-success" : "text-destructive"
