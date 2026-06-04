@@ -27,7 +27,7 @@ import {
 import { Download, FileText, Search } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface LiquidacionClienteDialogProps {
   open: boolean;
