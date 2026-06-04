@@ -244,17 +244,40 @@ export function LiquidacionClienteDialog({
       return false;
     };
 
+    type FormaPagoTotales = {
+      efectivo: number;
+      transferencia: number;
+      cuenta_corriente: number;
+      sin_especificar: number;
+    };
+
     type ClienteResumen = {
       cliente: string;
       tipos: TipoResumen[];
       viajes: number;
       cantidad: number;
       precioTotal: number;
+      totalesPorFormaPago: FormaPagoTotales;
+    };
+
+    const normalizarFormaPago = (fp: string | null | undefined): keyof FormaPagoTotales => {
+      if (!fp) return "sin_especificar";
+      const v = fp.toLowerCase().trim();
+      if (v.includes("efectivo")) return "efectivo";
+      if (v.includes("transfer")) return "transferencia";
+      if (v.includes("cuenta") || v.includes("cta") || v.includes("corriente")) return "cuenta_corriente";
+      return "sin_especificar";
     };
 
     const resumenPorCliente: ClienteResumen[] = clientesOrdenados
       .map((cliente) => {
         const map: Record<string, TipoResumen> = {};
+        const totalesPorFormaPago: FormaPagoTotales = {
+          efectivo: 0,
+          transferencia: 0,
+          cuenta_corriente: 0,
+          sin_especificar: 0,
+        };
         remitosCliente
           .filter(
             (r) =>
@@ -276,6 +299,8 @@ export function LiquidacionClienteDialog({
             map[tipo].viajes += r.cantidad_viajes || 1;
             map[tipo].cantidad += r.cantidad || 0;
             map[tipo].precioTotal += r.precio_total || 0;
+            const fpKey = normalizarFormaPago(r.forma_pago);
+            totalesPorFormaPago[fpKey] += r.precio_total || 0;
           });
         const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
         return {
@@ -284,6 +309,7 @@ export function LiquidacionClienteDialog({
           viajes: tipos.reduce((s, t) => s + t.viajes, 0),
           cantidad: tipos.reduce((s, t) => s + t.cantidad, 0),
           precioTotal: tipos.reduce((s, t) => s + t.precioTotal, 0),
+          totalesPorFormaPago,
         };
       })
       .filter((c) => c.tipos.length > 0);
@@ -377,27 +403,100 @@ export function LiquidacionClienteDialog({
     const wsGeneral = wb.addWorksheet("Liquidación General", {
       views: [{ state: "frozen", ySplit: 1 }],
     });
-    wsGeneral.columns = [{ width: 36 }, { width: 20 }];
 
-    const genHeader = wsGeneral.addRow(["Cliente", "Precio Total"]);
-    applyHeaderStyle(genHeader);
+    // Detect if any forma_pago info exists
+    const hayFormaPago = resumenPorCliente.some(
+      (c) =>
+        c.totalesPorFormaPago.efectivo > 0 ||
+        c.totalesPorFormaPago.transferencia > 0 ||
+        c.totalesPorFormaPago.cuenta_corriente > 0
+    );
 
-    resumenPorCliente.forEach((c, idx) => {
-      const r = wsGeneral.addRow([c.cliente, c.precioTotal]);
-      const zebra = idx % 2 === 1;
-      r.eachCell((cell, col) => {
-        cell.border = thinBorder;
-        if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
-        cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+    const moneyFmt = '"$"#,##0.00;[Red]("$"#,##0.00);"-"';
+
+    if (hayFormaPago) {
+      wsGeneral.columns = [
+        { width: 36 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 20 },
+      ];
+      const genHeader = wsGeneral.addRow([
+        "Cliente",
+        "Efectivo",
+        "Transferencia",
+        "Cta. Corriente",
+        "Sin especificar",
+        "Precio Total",
+      ]);
+      applyHeaderStyle(genHeader);
+
+      resumenPorCliente.forEach((c, idx) => {
+        const r = wsGeneral.addRow([
+          c.cliente,
+          c.totalesPorFormaPago.efectivo,
+          c.totalesPorFormaPago.transferencia,
+          c.totalesPorFormaPago.cuenta_corriente,
+          c.totalesPorFormaPago.sin_especificar,
+          c.precioTotal,
+        ]);
+        const zebra = idx % 2 === 1;
+        r.eachCell((cell, col) => {
+          cell.border = thinBorder;
+          if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+          cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+          if (col >= 2) cell.numFmt = moneyFmt;
+        });
       });
-      r.getCell(2).numFmt = '"$"#,##0.00';
-    });
 
-    const genTotal = wsGeneral.addRow(["TOTAL", totalGeneral.precioTotal]);
-    applyTotalStyle(genTotal);
-    genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
-    genTotal.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
-    genTotal.getCell(2).numFmt = '"$"#,##0.00';
+      const sumFP = resumenPorCliente.reduce(
+        (acc, c) => ({
+          efectivo: acc.efectivo + c.totalesPorFormaPago.efectivo,
+          transferencia: acc.transferencia + c.totalesPorFormaPago.transferencia,
+          cuenta_corriente: acc.cuenta_corriente + c.totalesPorFormaPago.cuenta_corriente,
+          sin_especificar: acc.sin_especificar + c.totalesPorFormaPago.sin_especificar,
+        }),
+        { efectivo: 0, transferencia: 0, cuenta_corriente: 0, sin_especificar: 0 }
+      );
+
+      const genTotal = wsGeneral.addRow([
+        "TOTAL",
+        sumFP.efectivo,
+        sumFP.transferencia,
+        sumFP.cuenta_corriente,
+        sumFP.sin_especificar,
+        totalGeneral.precioTotal,
+      ]);
+      applyTotalStyle(genTotal);
+      genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      for (let col = 2; col <= 6; col++) {
+        genTotal.getCell(col).alignment = { vertical: "middle", horizontal: "right" };
+        genTotal.getCell(col).numFmt = moneyFmt;
+      }
+    } else {
+      wsGeneral.columns = [{ width: 36 }, { width: 20 }];
+      const genHeader = wsGeneral.addRow(["Cliente", "Precio Total"]);
+      applyHeaderStyle(genHeader);
+
+      resumenPorCliente.forEach((c, idx) => {
+        const r = wsGeneral.addRow([c.cliente, c.precioTotal]);
+        const zebra = idx % 2 === 1;
+        r.eachCell((cell, col) => {
+          cell.border = thinBorder;
+          if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+          cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+        });
+        r.getCell(2).numFmt = '"$"#,##0.00';
+      });
+
+      const genTotal = wsGeneral.addRow(["TOTAL", totalGeneral.precioTotal]);
+      applyTotalStyle(genTotal);
+      genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      genTotal.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+      genTotal.getCell(2).numFmt = '"$"#,##0.00';
+    }
 
     // ---------- Sheet 3: Detalle Remitos ----------
     const detalleRemitos = remitosCliente
