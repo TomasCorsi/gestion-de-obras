@@ -442,7 +442,7 @@ export function ReporteObraTab() {
 
           {/* Remitos */}
           <Section
-            title="Remitos"
+            title={data.esCantera ? "Ingresos por Remitos (ventas de material)" : "Remitos"}
             icon={<Truck className="w-4 h-4 text-primary" />}
             total={<span>{fmt$(data.totales.remitosTotal)}</span>}
           >
