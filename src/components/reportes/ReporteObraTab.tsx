@@ -252,6 +252,7 @@ export function ReporteObraTab() {
             total={
               <span>
                 {data.personal.length} personas · {data.totales.personalDias} días · {fmtN(data.totales.personalHoras)} hs
+                {data.esCantera && <> · {fmt$(data.totales.personalCosto)}</>}
               </span>
             }
           >
@@ -268,6 +269,7 @@ export function ReporteObraTab() {
                       <th className="text-right py-2 px-2">Horas</th>
                       <th className="text-right py-2 px-2">Viajes</th>
                       <th className="text-right py-2 px-2">Ausencias</th>
+                      {data.esCantera && <th className="text-right py-2 px-2">Costo estimado</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -279,6 +281,9 @@ export function ReporteObraTab() {
                         <td className="py-2 px-2 text-right font-mono">{fmtN(p.horas)}</td>
                         <td className="py-2 px-2 text-right font-mono">{p.viajes}</td>
                         <td className="py-2 px-2 text-right font-mono">{p.ausencias}</td>
+                        {data.esCantera && (
+                          <td className="py-2 px-2 text-right font-mono">{fmt$(p.costoEstimado)}</td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -289,6 +294,9 @@ export function ReporteObraTab() {
                       <td className="py-2 px-2 text-right font-mono">{fmtN(data.totales.personalHoras)}</td>
                       <td className="py-2 px-2 text-right font-mono">{data.personal.reduce((s, p) => s + p.viajes, 0)}</td>
                       <td className="py-2 px-2 text-right font-mono">{data.personal.reduce((s, p) => s + p.ausencias, 0)}</td>
+                      {data.esCantera && (
+                        <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.personalCosto)}</td>
+                      )}
                     </tr>
                   </tfoot>
                 </table>
