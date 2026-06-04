@@ -107,8 +107,10 @@ export function RemitoQuickFormDialog({
   onSubmit,
   editingRemito,
 }: RemitoQuickFormDialogProps) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const isFranco = user?.id === FRANCO_USER_ID;
+  const isAdmin = hasRole('admin');
+  const showClienteCantera = isFranco || isAdmin;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
