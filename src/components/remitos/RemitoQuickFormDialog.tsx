@@ -107,8 +107,10 @@ export function RemitoQuickFormDialog({
   onSubmit,
   editingRemito,
 }: RemitoQuickFormDialogProps) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
   const isFranco = user?.id === FRANCO_USER_ID;
+  const isAdmin = hasRole('admin');
+  const showClienteCantera = isFranco || isAdmin;
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(() => getInitialForm());
 
@@ -353,7 +355,7 @@ export function RemitoQuickFormDialog({
           </div>
 
           {/* === CLIENTE CANTERA (solo Franco) === */}
-          {isFranco && (
+          {showClienteCantera && (
             <>
               <SectionTitle>Cliente Cantera</SectionTitle>
               <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
