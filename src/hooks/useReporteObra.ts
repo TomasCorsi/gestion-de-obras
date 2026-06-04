@@ -232,14 +232,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         return true;
       });
 
-      // Detect cantera
-      const normalizeName = (s: string) =>
-        (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      const obraNombreNorm = normalizeName(obraRes.data?.nombre || "");
-      const esCantera =
-        obraNombreNorm.includes("cantera san vicente") ||
-        obraNombreNorm.includes("canteras del gaucho") ||
-        obraNombreNorm.includes("cantera del gaucho");
+      // (esCantera ya fue detectado arriba)
 
       // ---- Personal ----
       const persMap = new Map<string, PersonalRow>();
