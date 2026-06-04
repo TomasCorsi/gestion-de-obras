@@ -1,41 +1,46 @@
-# Mejorar diseño del Excel de Liquidación por Cliente
+# Plan: Habilitar consultas complejas en el Chat IA de Reportes
 
-Actualmente el Excel se genera con `xlsx` (SheetJS) sin estilos, ya que la versión community no soporta bordes/colores/fuentes. Para lograr tablas "lindas" hay que migrar la generación a **ExcelJS**, que sí soporta estilos completos.
+## Problema
+
+La función `chat-reportes` actualmente hace **una sola** consulta SQL por pregunta:
+1. La IA decide un query → 2. Se ejecuta → 3. La IA responde.
+
+Cuando hacés una pregunta como *"Necesito saber todo el movimiento de POLO INDUSTRIAL EZEIZA 2: empleados, combustible, remitos, órdenes de compra, gastos generales, etc."*, la IA necesita ejecutar **6+ queries encadenados** (primero buscar la obra, después con ese ID consultar cada tabla). Hoy ejecuta solo el primero y se queda muda.
+
+Confirmado en los logs: solo apareció `SELECT id, nombre, estado FROM obras WHERE nombre ILIKE '%POLO INDUSTRIAL EZEIZA 2%'` y nada más.
+
+## Solución
+
+Convertir la lógica de la edge function en un **loop agéntico**: permitir hasta N rondas de tool calls hasta que la IA decida que tiene toda la información para responder.
 
 ## Cambios
 
-### 1. Dependencia
-- Instalar `exceljs` (ya soporta estilos: bordes, negritas, fills, alineación, formatos numéricos, anchos de columna).
+### `supabase/functions/chat-reportes/index.ts`
 
-### 2. Archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`
-Reemplazar la función `exportarExcel` para usar ExcelJS, manteniendo la misma lógica de datos (3 hojas: Liquidación, Liquidación General, Detalle Remitos).
+1. **Refactor del flujo**: reemplazar el patrón `firstCall → toolResults → secondCall(stream)` por un loop:
+   ```
+   loop (hasta MAX_ITERATIONS = 8):
+     - llamar al modelo con todo el historial acumulado
+     - si devuelve tool_calls → ejecutar todos los SELECT, agregar resultados al historial, continuar
+     - si NO devuelve tool_calls → hacer la llamada final con stream=true y devolver el body
+   ```
 
-**Estilo aplicado a las 3 hojas:**
+2. **Ajustes adicionales**:
+   - Mejorar el system prompt para indicar que puede ejecutar varios queries secuenciales cuando el usuario pida información combinada de varias tablas.
+   - Sugerir que para preguntas tipo "todo el movimiento de la obra X" arranque obteniendo el `obra_id` y después haga queries paralelos.
+   - Loggear cada SQL ejecutado y el número de iteración para debugging.
+   - Cortar de forma segura si se alcanza el máximo de iteraciones devolviendo un mensaje útil ("La consulta es muy compleja, dividila en partes").
+   - Manejar errores de SQL devolviendo el error al modelo dentro del historial para que pueda corregir el query y reintentar.
 
-- **Título de cliente** (hoja Liquidación): fila merge `A:E`, fondo rojo corporativo `#B00020`, texto blanco, negrita, tamaño 12, alineado a la izquierda con padding.
-- **Encabezados de columnas**: fondo negro/gris oscuro `#0F0F0F`, texto blanco, negrita, centrado, bordes finos.
-- **Filas de datos**: bordes finos grises en todas las celdas, alineación según tipo (texto izq., números der., unidad centro). Filas alternadas con fondo `#F7F7F7` (zebra).
-- **Subtotal por cliente**: fondo gris claro `#E5E5E5`, negrita, borde superior grueso.
-- **TOTAL GENERAL** / **TOTAL**: fondo rojo `#B00020`, texto blanco, negrita, borde superior grueso doble.
-- **Formato numérico**:
-  - Cantidad: `#,##0.00`
-  - Viajes: `#,##0`
-  - Precio Total / Precio Unitario: `"$"#,##0.00`
-- **Anchos de columna** ajustados (más generosos que ahora).
-- **Altura de filas** de encabezado y totales aumentada para respirar mejor.
-- **Freeze panes**: congelar fila de encabezados en hojas "Liquidación General" y "Detalle Remitos".
-- **AutoFilter** en la hoja "Detalle Remitos".
+3. **Sin cambios en el frontend** (`ChatReportesTab.tsx`): sigue funcionando igual porque el contrato (JSON no-stream o SSE) se mantiene.
 
-**Hoja "Liquidación General":**
-- Encabezado estilizado, filas con bordes, fila TOTAL en rojo con texto blanco y negrita.
+## Detalles técnicos
 
-**Hoja "Detalle Remitos":**
-- Encabezado oscuro con texto blanco, bordes en todas las celdas, zebra stripes, autofilter, freeze de la primera fila, formato de moneda en Precio Unitario y Precio Total, formato de fecha legible.
+- `MAX_ITERATIONS = 8` (margen suficiente para 6-7 queries + respuesta final).
+- Conservar `google/gemini-3-flash-preview` (rápido y suficiente).
+- Mantener la verificación de rol admin y `execute_readonly_query`.
+- La última iteración (sin tool_calls) usa `stream: true` y se retorna el body como SSE, igual que hoy.
 
-### 3. Sin cambios funcionales
-- Misma estructura de hojas, mismos datos, mismo nombre de archivo.
-- Sólo cambia el aspecto visual del Excel descargado.
+## Verificación
 
-## Notas técnicas
-- `xlsx` se mantiene como dependencia (lo usan otros módulos: Remitos, Combustible, Vacaciones, etc.). Sólo este diálogo migra a ExcelJS.
-- Descarga vía `workbook.xlsx.writeBuffer()` + `Blob` + link temporal.
+Después del deploy, repetir la pregunta original y revisar los logs de la edge function: deberían aparecer 5-7 queries SQL secuenciales y una respuesta final en el chat.
