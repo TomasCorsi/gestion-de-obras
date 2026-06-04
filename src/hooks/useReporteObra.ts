@@ -214,6 +214,15 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         return true;
       });
 
+      // Detect cantera
+      const normalizeName = (s: string) =>
+        (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const obraNombreNorm = normalizeName(obraRes.data?.nombre || "");
+      const esCantera =
+        obraNombreNorm.includes("cantera san vicente") ||
+        obraNombreNorm.includes("canteras del gaucho") ||
+        obraNombreNorm.includes("cantera del gaucho");
+
       // ---- Personal ----
       const persMap = new Map<string, PersonalRow>();
       partes.forEach((p: any) => {
@@ -221,9 +230,9 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         if (!id) return;
         const per = perMap.get(id);
         const nombre = per ? `${per.apellido || ""} ${per.nombre || ""}`.trim() : "(sin datos)";
-        const cur =
+        const cur: PersonalRow =
           persMap.get(id) ||
-          { personal_id: id, nombre, rol: per?.rol || null, dias: 0, horas: 0, viajes: 0, ausencias: 0 };
+          { personal_id: id, nombre, rol: per?.rol || null, dias: 0, horas: 0, viajes: 0, ausencias: 0, costoEstimado: 0 };
         cur.dias += 1;
         let horas = 0;
         if (p.hora_entrada && p.hora_salida) {
@@ -235,6 +244,13 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         cur.viajes += p.cantidad_viajes || 0;
         cur.ausencias += Array.isArray(p.ausencias) ? p.ausencias.length : 0;
         persMap.set(id, cur);
+      });
+      // Estimate cost per person: (sueldo + sueldo_negro) / 22 * días
+      persMap.forEach((row, id) => {
+        const per = perMap.get(id);
+        const sueldoTotal = (Number(per?.sueldo) || 0) + (Number(per?.sueldo_negro) || 0);
+        const jornal = sueldoTotal > 0 ? sueldoTotal / 22 : 0;
+        row.costoEstimado = jornal * row.dias;
       });
       const personal = Array.from(persMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
