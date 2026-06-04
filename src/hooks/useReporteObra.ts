@@ -444,15 +444,20 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
       const cotizado = cots.reduce((s: number, c: any) => s + (Number(c.total) || 0), 0);
       const personalDias = personal.reduce((s, p) => s + p.dias, 0);
       const personalHoras = personal.reduce((s, p) => s + p.horas, 0);
+      const personalCosto = personal.reduce((s, p) => s + (p.costoEstimado || 0), 0);
       const horasMaquinaTotal = horasMaquina.reduce((s, h) => s + h.horas, 0);
       const combustibleLitros = combustible.reduce((s, c) => s + c.litros, 0);
       const combustibleCosto = combustible.reduce((s, c) => s + c.costo, 0);
       const remitosTotal = remitosAgrup.reduce((s, r) => s + r.total, 0);
       const ordenesCompraTotal = ordenesCompra.reduce((s, o) => s + o.total, 0);
       const otrosGastosTotal = otrosGastos.reduce((s, o) => s + o.monto, 0);
-      const gastosTotal = combustibleCosto + ordenesCompraTotal + otrosGastosTotal;
-      const balance = cotizado - gastosTotal;
-      const rentabilidad = cotizado > 0 ? (balance / cotizado) * 100 : 0;
+      const gastosTotal = esCantera
+        ? combustibleCosto + ordenesCompraTotal + otrosGastosTotal + personalCosto
+        : combustibleCosto + ordenesCompraTotal + otrosGastosTotal;
+      const ingresosRemitos = remitosTotal;
+      const referencia = esCantera ? ingresosRemitos : cotizado;
+      const balance = referencia - gastosTotal;
+      const rentabilidad = referencia > 0 ? (balance / referencia) * 100 : 0;
 
       return {
         obra: obraRes.data
@@ -467,6 +472,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
               cliente: clienteNombre,
             }
           : null,
+        esCantera,
         personal,
         horasMaquina,
         maquinarias,
@@ -478,6 +484,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         totales: {
           personalDias,
           personalHoras,
+          personalCosto,
           horasMaquinaTotal,
           combustibleLitros,
           combustibleCosto,
@@ -485,6 +492,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
           ordenesCompraTotal,
           otrosGastosTotal,
           gastosTotal,
+          ingresosRemitos,
           balance,
           rentabilidad,
         },
