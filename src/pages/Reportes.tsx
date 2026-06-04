@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChatReportesTab } from "@/components/reportes/ChatReportesTab";
-import { BarChart3, Sparkles } from "lucide-react";
+import { ReporteObraTab } from "@/components/reportes/ReporteObraTab";
+import { BarChart3, Sparkles, Building } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -266,11 +267,19 @@ export default function Reportes() {
             <BarChart3 className="w-4 h-4" />
             Financiero
           </TabsTrigger>
+          <TabsTrigger value="obra" className="flex items-center gap-2">
+            <Building className="w-4 h-4" />
+            Por Obra
+          </TabsTrigger>
           <TabsTrigger value="ia" className="flex items-center gap-2">
             <Sparkles className="w-4 h-4" />
             Consultar con IA
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="obra">
+          <ReporteObraTab />
+        </TabsContent>
 
         <TabsContent value="ia">
           <ChatReportesTab />
