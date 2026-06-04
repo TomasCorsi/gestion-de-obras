@@ -111,17 +111,6 @@ export interface ReporteObraData {
     rentabilidad: number;
   };
 }
-    horasMaquinaTotal: number;
-    combustibleLitros: number;
-    combustibleCosto: number;
-    remitosTotal: number;
-    ordenesCompraTotal: number;
-    otrosGastosTotal: number;
-    gastosTotal: number;
-    balance: number;
-    rentabilidad: number;
-  };
-}
 
 const between = <T extends { fecha?: string | null }>(rows: T[], desde?: string, hasta?: string) => {
   if (!desde && !hasta) return rows;
