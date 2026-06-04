@@ -602,6 +602,12 @@ export function ReporteObraTab() {
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
+                  {data.esCantera && (
+                    <tr className="border-b">
+                      <td className="py-2 px-2">Personal (costo estimado)</td>
+                      <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.personalCosto)}</td>
+                    </tr>
+                  )}
                   <tr className="border-b">
                     <td className="py-2 px-2">Combustible</td>
                     <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.combustibleCosto)}</td>
@@ -618,14 +624,23 @@ export function ReporteObraTab() {
                     <td className="py-2 px-2">TOTAL GASTOS</td>
                     <td className="py-2 px-2 text-right font-mono text-destructive">{fmt$(data.totales.gastosTotal)}</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="py-2 px-2">Remitos facturados</td>
-                    <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.remitosTotal)}</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 px-2">Cotizado (aprobado)</td>
-                    <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.cotizado)}</td>
-                  </tr>
+                  {data.esCantera ? (
+                    <tr className="border-b">
+                      <td className="py-2 px-2">Ingresos por Remitos</td>
+                      <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.totales.ingresosRemitos)}</td>
+                    </tr>
+                  ) : (
+                    <>
+                      <tr className="border-b">
+                        <td className="py-2 px-2">Remitos facturados</td>
+                        <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.remitosTotal)}</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 px-2">Cotizado (aprobado)</td>
+                        <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.cotizado)}</td>
+                      </tr>
+                    </>
+                  )}
                   <tr className="font-bold text-base">
                     <td className="py-3 px-2">BALANCE</td>
                     <td
