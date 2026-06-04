@@ -15,6 +15,7 @@ export interface PersonalRow {
   horas: number;
   viajes: number;
   ausencias: number;
+  costoEstimado: number;
 }
 
 export interface HorasMaquinaRow {
@@ -85,6 +86,7 @@ export interface ReporteObraData {
     fecha_fin_estimada: string | null;
     cliente: string | null;
   } | null;
+  esCantera: boolean;
   personal: PersonalRow[];
   horasMaquina: HorasMaquinaRow[];
   maquinarias: MaquinariaUsadaRow[];
@@ -96,6 +98,7 @@ export interface ReporteObraData {
   totales: {
     personalDias: number;
     personalHoras: number;
+    personalCosto: number;
     horasMaquinaTotal: number;
     combustibleLitros: number;
     combustibleCosto: number;
@@ -103,6 +106,7 @@ export interface ReporteObraData {
     ordenesCompraTotal: number;
     otrosGastosTotal: number;
     gastosTotal: number;
+    ingresosRemitos: number;
     balance: number;
     rentabilidad: number;
   };
@@ -158,7 +162,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         fetchAll<any>(supabase.from("partes_diarios").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("horas_maquina").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("maquinarias").select("id, codigo, nombre, patente, tipo")),
-        fetchAll<any>(supabase.from("personal").select("id, nombre, apellido, rol")),
+        fetchAll<any>(supabase.from("personal").select("id, nombre, apellido, rol, sueldo, sueldo_negro")),
         fetchAll<any>(supabase.from("cargas_combustible").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("cargas_combustible_repartidor").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("precios_productos_mes" as any).select("*")),
@@ -210,6 +214,15 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         return true;
       });
 
+      // Detect cantera
+      const normalizeName = (s: string) =>
+        (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const obraNombreNorm = normalizeName(obraRes.data?.nombre || "");
+      const esCantera =
+        obraNombreNorm.includes("cantera san vicente") ||
+        obraNombreNorm.includes("canteras del gaucho") ||
+        obraNombreNorm.includes("cantera del gaucho");
+
       // ---- Personal ----
       const persMap = new Map<string, PersonalRow>();
       partes.forEach((p: any) => {
@@ -217,9 +230,9 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         if (!id) return;
         const per = perMap.get(id);
         const nombre = per ? `${per.apellido || ""} ${per.nombre || ""}`.trim() : "(sin datos)";
-        const cur =
+        const cur: PersonalRow =
           persMap.get(id) ||
-          { personal_id: id, nombre, rol: per?.rol || null, dias: 0, horas: 0, viajes: 0, ausencias: 0 };
+          { personal_id: id, nombre, rol: per?.rol || null, dias: 0, horas: 0, viajes: 0, ausencias: 0, costoEstimado: 0 };
         cur.dias += 1;
         let horas = 0;
         if (p.hora_entrada && p.hora_salida) {
@@ -231,6 +244,13 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         cur.viajes += p.cantidad_viajes || 0;
         cur.ausencias += Array.isArray(p.ausencias) ? p.ausencias.length : 0;
         persMap.set(id, cur);
+      });
+      // Estimate cost per person: (sueldo + sueldo_negro) / 22 * días
+      persMap.forEach((row, id) => {
+        const per = perMap.get(id);
+        const sueldoTotal = (Number(per?.sueldo) || 0) + (Number(per?.sueldo_negro) || 0);
+        const jornal = sueldoTotal > 0 ? sueldoTotal / 22 : 0;
+        row.costoEstimado = jornal * row.dias;
       });
       const personal = Array.from(persMap.values()).sort((a, b) => a.nombre.localeCompare(b.nombre));
 
@@ -424,15 +444,20 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
       const cotizado = cots.reduce((s: number, c: any) => s + (Number(c.total) || 0), 0);
       const personalDias = personal.reduce((s, p) => s + p.dias, 0);
       const personalHoras = personal.reduce((s, p) => s + p.horas, 0);
+      const personalCosto = personal.reduce((s, p) => s + (p.costoEstimado || 0), 0);
       const horasMaquinaTotal = horasMaquina.reduce((s, h) => s + h.horas, 0);
       const combustibleLitros = combustible.reduce((s, c) => s + c.litros, 0);
       const combustibleCosto = combustible.reduce((s, c) => s + c.costo, 0);
       const remitosTotal = remitosAgrup.reduce((s, r) => s + r.total, 0);
       const ordenesCompraTotal = ordenesCompra.reduce((s, o) => s + o.total, 0);
       const otrosGastosTotal = otrosGastos.reduce((s, o) => s + o.monto, 0);
-      const gastosTotal = combustibleCosto + ordenesCompraTotal + otrosGastosTotal;
-      const balance = cotizado - gastosTotal;
-      const rentabilidad = cotizado > 0 ? (balance / cotizado) * 100 : 0;
+      const gastosTotal = esCantera
+        ? combustibleCosto + ordenesCompraTotal + otrosGastosTotal + personalCosto
+        : combustibleCosto + ordenesCompraTotal + otrosGastosTotal;
+      const ingresosRemitos = remitosTotal;
+      const referencia = esCantera ? ingresosRemitos : cotizado;
+      const balance = referencia - gastosTotal;
+      const rentabilidad = referencia > 0 ? (balance / referencia) * 100 : 0;
 
       return {
         obra: obraRes.data
@@ -447,6 +472,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
               cliente: clienteNombre,
             }
           : null,
+        esCantera,
         personal,
         horasMaquina,
         maquinarias,
@@ -458,6 +484,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         totales: {
           personalDias,
           personalHoras,
+          personalCosto,
           horasMaquinaTotal,
           combustibleLitros,
           combustibleCosto,
@@ -465,6 +492,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
           ordenesCompraTotal,
           otrosGastosTotal,
           gastosTotal,
+          ingresosRemitos,
           balance,
           rentabilidad,
         },

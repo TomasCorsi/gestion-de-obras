@@ -183,6 +183,7 @@ export function ReporteObraTab() {
                     {data.obra?.cliente && <span>· {data.obra.cliente}</span>}
                     {data.obra?.ubicacion && <span>· {data.obra.ubicacion}</span>}
                     {data.obra?.estado && <Badge variant="outline">{data.obra.estado}</Badge>}
+                    {data.esCantera && <Badge className="bg-primary text-primary-foreground">Cantera</Badge>}
                   </div>
                 </div>
               </div>
@@ -193,8 +194,12 @@ export function ReporteObraTab() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="card-industrial">
               <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">Cotizado</p>
-                <p className="text-2xl font-bold text-success">{fmt$(data.cotizado)}</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.esCantera ? "Ingresos (Remitos)" : "Cotizado"}
+                </p>
+                <p className="text-2xl font-bold text-success">
+                  {fmt$(data.esCantera ? data.totales.ingresosRemitos : data.cotizado)}
+                </p>
                 <DollarSign className="w-5 h-5 text-success mt-2" />
               </CardContent>
             </Card>
@@ -202,7 +207,9 @@ export function ReporteObraTab() {
               <CardContent className="pt-6">
                 <p className="text-xs text-muted-foreground">Total Gastos</p>
                 <p className="text-2xl font-bold text-destructive">{fmt$(data.totales.gastosTotal)}</p>
-                <p className="text-xs text-muted-foreground mt-1">Combustible + OC + Otros</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {data.esCantera ? "Personal + Comb + OC + Otros" : "Combustible + OC + Otros"}
+                </p>
               </CardContent>
             </Card>
             <Card className="card-industrial">
@@ -224,7 +231,9 @@ export function ReporteObraTab() {
             </Card>
             <Card className="card-industrial">
               <CardContent className="pt-6">
-                <p className="text-xs text-muted-foreground">Rentabilidad</p>
+                <p className="text-xs text-muted-foreground">
+                  {data.esCantera ? "Margen" : "Rentabilidad"}
+                </p>
                 <p
                   className={`text-2xl font-bold ${
                     data.totales.rentabilidad >= 0 ? "text-success" : "text-destructive"
@@ -243,6 +252,7 @@ export function ReporteObraTab() {
             total={
               <span>
                 {data.personal.length} personas · {data.totales.personalDias} días · {fmtN(data.totales.personalHoras)} hs
+                {data.esCantera && <> · {fmt$(data.totales.personalCosto)}</>}
               </span>
             }
           >
@@ -259,6 +269,7 @@ export function ReporteObraTab() {
                       <th className="text-right py-2 px-2">Horas</th>
                       <th className="text-right py-2 px-2">Viajes</th>
                       <th className="text-right py-2 px-2">Ausencias</th>
+                      {data.esCantera && <th className="text-right py-2 px-2">Costo estimado</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -270,6 +281,9 @@ export function ReporteObraTab() {
                         <td className="py-2 px-2 text-right font-mono">{fmtN(p.horas)}</td>
                         <td className="py-2 px-2 text-right font-mono">{p.viajes}</td>
                         <td className="py-2 px-2 text-right font-mono">{p.ausencias}</td>
+                        {data.esCantera && (
+                          <td className="py-2 px-2 text-right font-mono">{fmt$(p.costoEstimado)}</td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -280,6 +294,9 @@ export function ReporteObraTab() {
                       <td className="py-2 px-2 text-right font-mono">{fmtN(data.totales.personalHoras)}</td>
                       <td className="py-2 px-2 text-right font-mono">{data.personal.reduce((s, p) => s + p.viajes, 0)}</td>
                       <td className="py-2 px-2 text-right font-mono">{data.personal.reduce((s, p) => s + p.ausencias, 0)}</td>
+                      {data.esCantera && (
+                        <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.personalCosto)}</td>
+                      )}
                     </tr>
                   </tfoot>
                 </table>
@@ -425,7 +442,7 @@ export function ReporteObraTab() {
 
           {/* Remitos */}
           <Section
-            title="Remitos"
+            title={data.esCantera ? "Ingresos por Remitos (ventas de material)" : "Remitos"}
             icon={<Truck className="w-4 h-4 text-primary" />}
             total={<span>{fmt$(data.totales.remitosTotal)}</span>}
           >
@@ -585,6 +602,12 @@ export function ReporteObraTab() {
             <CardContent>
               <table className="w-full text-sm">
                 <tbody>
+                  {data.esCantera && (
+                    <tr className="border-b">
+                      <td className="py-2 px-2">Personal (costo estimado)</td>
+                      <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.personalCosto)}</td>
+                    </tr>
+                  )}
                   <tr className="border-b">
                     <td className="py-2 px-2">Combustible</td>
                     <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.combustibleCosto)}</td>
@@ -601,14 +624,23 @@ export function ReporteObraTab() {
                     <td className="py-2 px-2">TOTAL GASTOS</td>
                     <td className="py-2 px-2 text-right font-mono text-destructive">{fmt$(data.totales.gastosTotal)}</td>
                   </tr>
-                  <tr className="border-b">
-                    <td className="py-2 px-2">Remitos facturados</td>
-                    <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.remitosTotal)}</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-2 px-2">Cotizado (aprobado)</td>
-                    <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.cotizado)}</td>
-                  </tr>
+                  {data.esCantera ? (
+                    <tr className="border-b">
+                      <td className="py-2 px-2">Ingresos por Remitos</td>
+                      <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.totales.ingresosRemitos)}</td>
+                    </tr>
+                  ) : (
+                    <>
+                      <tr className="border-b">
+                        <td className="py-2 px-2">Remitos facturados</td>
+                        <td className="py-2 px-2 text-right font-mono">{fmt$(data.totales.remitosTotal)}</td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="py-2 px-2">Cotizado (aprobado)</td>
+                        <td className="py-2 px-2 text-right font-mono text-success">{fmt$(data.cotizado)}</td>
+                      </tr>
+                    </>
+                  )}
                   <tr className="font-bold text-base">
                     <td className="py-3 px-2">BALANCE</td>
                     <td

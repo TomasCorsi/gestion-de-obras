@@ -120,19 +120,34 @@ export async function exportReporteObraExcel(
   applyHeaderStyle(totalesHeader);
 
   const t = data.totales;
-  const totalRows: [string, number, boolean?][] = [
-    ["Cotizado (aprobado)", data.cotizado],
-    ["Personal — días-persona", t.personalDias],
-    ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
-    ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
-    ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
-    ["Combustible — costo $", t.combustibleCosto],
-    ["Remitos — $ facturado", t.remitosTotal],
-    ["Órdenes de compra — $", t.ordenesCompraTotal],
-    ["Gastos generales — $", t.otrosGastosTotal],
-    ["TOTAL GASTOS (Comb + OC + Otros)", t.gastosTotal, true],
-    ["BALANCE (Cotizado - Gastos)", t.balance, true],
-  ];
+  const esCantera = data.esCantera;
+  const totalRows: [string, number, boolean?][] = esCantera
+    ? [
+        ["Ingresos por Remitos (ventas)", t.ingresosRemitos],
+        ["Personal — días-persona", t.personalDias],
+        ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
+        ["Personal — costo estimado $", t.personalCosto],
+        ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
+        ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
+        ["Combustible — costo $", t.combustibleCosto],
+        ["Órdenes de compra — $", t.ordenesCompraTotal],
+        ["Gastos generales — $", t.otrosGastosTotal],
+        ["TOTAL GASTOS (Pers + Comb + OC + Otros)", t.gastosTotal, true],
+        ["BALANCE (Ingresos - Gastos)", t.balance, true],
+      ]
+    : [
+        ["Cotizado (aprobado)", data.cotizado],
+        ["Personal — días-persona", t.personalDias],
+        ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
+        ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
+        ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
+        ["Combustible — costo $", t.combustibleCosto],
+        ["Remitos — $ facturado", t.remitosTotal],
+        ["Órdenes de compra — $", t.ordenesCompraTotal],
+        ["Gastos generales — $", t.otrosGastosTotal],
+        ["TOTAL GASTOS (Comb + OC + Otros)", t.gastosTotal, true],
+        ["BALANCE (Cotizado - Gastos)", t.balance, true],
+      ];
   totalRows.forEach(([label, val, bold]) => {
     const r = wsR.addRow([label, val]);
     r.eachCell((c) => {
@@ -142,6 +157,7 @@ export async function exportReporteObraExcel(
     if (
       label.includes("$") ||
       label.startsWith("Cotizado") ||
+      label.startsWith("Ingresos") ||
       label.startsWith("TOTAL") ||
       label.startsWith("BALANCE")
     ) {
@@ -151,7 +167,8 @@ export async function exportReporteObraExcel(
     }
     r.getCell(2).alignment = { horizontal: "right" };
   });
-  const rentRow = wsR.addRow(["Rentabilidad %", Number(t.rentabilidad.toFixed(2))]);
+  const rentLabel = esCantera ? "Margen %" : "Rentabilidad %";
+  const rentRow = wsR.addRow([rentLabel, Number(t.rentabilidad.toFixed(2))]);
   rentRow.eachCell((c) => {
     c.border = thinBorder;
     c.font = { bold: true };
@@ -161,17 +178,30 @@ export async function exportReporteObraExcel(
 
   // -------- Sheet: Personal --------
   const wsP = wb.addWorksheet("Personal", { views: [{ state: "frozen", ySplit: 2 }] });
-  wsP.columns = [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }];
-  addSheetTitle(wsP, "Personal — Partes Diarios", 6);
-  const pH = wsP.addRow(["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias"]);
+  const pCols = esCantera
+    ? [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 18 }]
+    : [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }];
+  wsP.columns = pCols;
+  addSheetTitle(wsP, "Personal — Partes Diarios", pCols.length);
+  const pHeader = esCantera
+    ? ["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias", "Costo estimado"]
+    : ["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias"];
+  const pH = wsP.addRow(pHeader);
   applyHeaderStyle(pH);
   const pStart = wsP.rowCount + 1;
-  data.personal.forEach((p) => wsP.addRow([p.nombre, p.rol || "", p.dias, Number(p.horas.toFixed(2)), p.viajes, p.ausencias]));
+  data.personal.forEach((p) => {
+    const base = [p.nombre, p.rol || "", p.dias, Number(p.horas.toFixed(2)), p.viajes, p.ausencias];
+    wsP.addRow(esCantera ? [...base, p.costoEstimado] : base);
+  });
   const pEnd = wsP.rowCount;
-  if (pEnd >= pStart) styleDataRows(wsP, pStart, pEnd, [], [3, 4, 5, 6]);
-  const pT = wsP.addRow(["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0)]);
+  if (pEnd >= pStart) styleDataRows(wsP, pStart, pEnd, esCantera ? [7] : [], [3, 4, 5, 6]);
+  const pTotalRow = esCantera
+    ? ["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0), t.personalCosto]
+    : ["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0)];
+  const pT = wsP.addRow(pTotalRow);
   applyTotalStyle(pT);
   [3, 4, 5, 6].forEach((c) => (pT.getCell(c).numFmt = "#,##0.##"));
+  if (esCantera) pT.getCell(7).numFmt = MONEY;
 
   // -------- Sheet: Horas Máquina --------
   const wsH = wb.addWorksheet("Horas Máquina", { views: [{ state: "frozen", ySplit: 2 }] });
@@ -228,7 +258,7 @@ export async function exportReporteObraExcel(
   // -------- Sheet: Remitos --------
   const wsRe = wb.addWorksheet("Remitos", { views: [{ state: "frozen", ySplit: 2 }] });
   wsRe.columns = [{ width: 26 }, { width: 22 }, { width: 10 }, { width: 12 }, { width: 14 }, { width: 10 }, { width: 16 }];
-  addSheetTitle(wsRe, "Remitos por Tipo de Material", 7);
+  addSheetTitle(wsRe, esCantera ? "Ingresos por Remitos (ventas de material)" : "Remitos por Tipo de Material", 7);
   const reH = wsRe.addRow(["Tipo Material", "Material", "Remitos", "Viajes", "Cantidad", "Unidad", "Total $"]);
   applyHeaderStyle(reH);
   const reStart = wsRe.rowCount + 1;
