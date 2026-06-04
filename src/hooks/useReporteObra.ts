@@ -15,6 +15,7 @@ export interface PersonalRow {
   horas: number;
   viajes: number;
   ausencias: number;
+  costoEstimado: number;
 }
 
 export interface HorasMaquinaRow {
