@@ -120,19 +120,34 @@ export async function exportReporteObraExcel(
   applyHeaderStyle(totalesHeader);
 
   const t = data.totales;
-  const totalRows: [string, number, boolean?][] = [
-    ["Cotizado (aprobado)", data.cotizado],
-    ["Personal — días-persona", t.personalDias],
-    ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
-    ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
-    ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
-    ["Combustible — costo $", t.combustibleCosto],
-    ["Remitos — $ facturado", t.remitosTotal],
-    ["Órdenes de compra — $", t.ordenesCompraTotal],
-    ["Gastos generales — $", t.otrosGastosTotal],
-    ["TOTAL GASTOS (Comb + OC + Otros)", t.gastosTotal, true],
-    ["BALANCE (Cotizado - Gastos)", t.balance, true],
-  ];
+  const esCantera = data.esCantera;
+  const totalRows: [string, number, boolean?][] = esCantera
+    ? [
+        ["Ingresos por Remitos (ventas)", t.ingresosRemitos],
+        ["Personal — días-persona", t.personalDias],
+        ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
+        ["Personal — costo estimado $", t.personalCosto],
+        ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
+        ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
+        ["Combustible — costo $", t.combustibleCosto],
+        ["Órdenes de compra — $", t.ordenesCompraTotal],
+        ["Gastos generales — $", t.otrosGastosTotal],
+        ["TOTAL GASTOS (Pers + Comb + OC + Otros)", t.gastosTotal, true],
+        ["BALANCE (Ingresos - Gastos)", t.balance, true],
+      ]
+    : [
+        ["Cotizado (aprobado)", data.cotizado],
+        ["Personal — días-persona", t.personalDias],
+        ["Personal — horas totales", Number(t.personalHoras.toFixed(2))],
+        ["Horas máquina (total)", Number(t.horasMaquinaTotal.toFixed(2))],
+        ["Combustible — litros", Number(t.combustibleLitros.toFixed(2))],
+        ["Combustible — costo $", t.combustibleCosto],
+        ["Remitos — $ facturado", t.remitosTotal],
+        ["Órdenes de compra — $", t.ordenesCompraTotal],
+        ["Gastos generales — $", t.otrosGastosTotal],
+        ["TOTAL GASTOS (Comb + OC + Otros)", t.gastosTotal, true],
+        ["BALANCE (Cotizado - Gastos)", t.balance, true],
+      ];
   totalRows.forEach(([label, val, bold]) => {
     const r = wsR.addRow([label, val]);
     r.eachCell((c) => {
@@ -142,6 +157,7 @@ export async function exportReporteObraExcel(
     if (
       label.includes("$") ||
       label.startsWith("Cotizado") ||
+      label.startsWith("Ingresos") ||
       label.startsWith("TOTAL") ||
       label.startsWith("BALANCE")
     ) {
@@ -151,7 +167,8 @@ export async function exportReporteObraExcel(
     }
     r.getCell(2).alignment = { horizontal: "right" };
   });
-  const rentRow = wsR.addRow(["Rentabilidad %", Number(t.rentabilidad.toFixed(2))]);
+  const rentLabel = esCantera ? "Margen %" : "Rentabilidad %";
+  const rentRow = wsR.addRow([rentLabel, Number(t.rentabilidad.toFixed(2))]);
   rentRow.eachCell((c) => {
     c.border = thinBorder;
     c.font = { bold: true };
