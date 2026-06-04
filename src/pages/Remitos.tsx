@@ -372,6 +372,7 @@ export default function Remitos() {
       "Unidad": r.unidad || "",
       "Precio Unitario": r.precio_unitario || "",
       "Precio Total": r.precio_total || 0,
+      "Forma de Pago": r.forma_pago || "",
       "Proveedor": r.proveedor || "",
       "Observaciones": r.observaciones || "",
       ...(isAdminOrCapataz ? { "Cargado por": (r as any).created_by ? (creadoresMap[(r as any).created_by] || "") : "" } : {}),
