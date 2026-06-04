@@ -244,17 +244,40 @@ export function LiquidacionClienteDialog({
       return false;
     };
 
+    type FormaPagoTotales = {
+      efectivo: number;
+      transferencia: number;
+      cuenta_corriente: number;
+      sin_especificar: number;
+    };
+
     type ClienteResumen = {
       cliente: string;
       tipos: TipoResumen[];
       viajes: number;
       cantidad: number;
       precioTotal: number;
+      totalesPorFormaPago: FormaPagoTotales;
+    };
+
+    const normalizarFormaPago = (fp: string | null | undefined): keyof FormaPagoTotales => {
+      if (!fp) return "sin_especificar";
+      const v = fp.toLowerCase().trim();
+      if (v.includes("efectivo")) return "efectivo";
+      if (v.includes("transfer")) return "transferencia";
+      if (v.includes("cuenta") || v.includes("cta") || v.includes("corriente")) return "cuenta_corriente";
+      return "sin_especificar";
     };
 
     const resumenPorCliente: ClienteResumen[] = clientesOrdenados
       .map((cliente) => {
         const map: Record<string, TipoResumen> = {};
+        const totalesPorFormaPago: FormaPagoTotales = {
+          efectivo: 0,
+          transferencia: 0,
+          cuenta_corriente: 0,
+          sin_especificar: 0,
+        };
         remitosCliente
           .filter(
             (r) =>
@@ -276,6 +299,8 @@ export function LiquidacionClienteDialog({
             map[tipo].viajes += r.cantidad_viajes || 1;
             map[tipo].cantidad += r.cantidad || 0;
             map[tipo].precioTotal += r.precio_total || 0;
+            const fpKey = normalizarFormaPago(r.forma_pago);
+            totalesPorFormaPago[fpKey] += r.precio_total || 0;
           });
         const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
         return {
@@ -284,6 +309,7 @@ export function LiquidacionClienteDialog({
           viajes: tipos.reduce((s, t) => s + t.viajes, 0),
           cantidad: tipos.reduce((s, t) => s + t.cantidad, 0),
           precioTotal: tipos.reduce((s, t) => s + t.precioTotal, 0),
+          totalesPorFormaPago,
         };
       })
       .filter((c) => c.tipos.length > 0);
