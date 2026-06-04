@@ -258,7 +258,7 @@ export async function exportReporteObraExcel(
   // -------- Sheet: Remitos --------
   const wsRe = wb.addWorksheet("Remitos", { views: [{ state: "frozen", ySplit: 2 }] });
   wsRe.columns = [{ width: 26 }, { width: 22 }, { width: 10 }, { width: 12 }, { width: 14 }, { width: 10 }, { width: 16 }];
-  addSheetTitle(wsRe, "Remitos por Tipo de Material", 7);
+  addSheetTitle(wsRe, esCantera ? "Ingresos por Remitos (ventas de material)" : "Remitos por Tipo de Material", 7);
   const reH = wsRe.addRow(["Tipo Material", "Material", "Remitos", "Viajes", "Cantidad", "Unidad", "Total $"]);
   applyHeaderStyle(reH);
   const reStart = wsRe.rowCount + 1;
