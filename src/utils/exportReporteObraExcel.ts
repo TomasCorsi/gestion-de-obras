@@ -178,17 +178,30 @@ export async function exportReporteObraExcel(
 
   // -------- Sheet: Personal --------
   const wsP = wb.addWorksheet("Personal", { views: [{ state: "frozen", ySplit: 2 }] });
-  wsP.columns = [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }];
-  addSheetTitle(wsP, "Personal — Partes Diarios", 6);
-  const pH = wsP.addRow(["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias"]);
+  const pCols = esCantera
+    ? [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }, { width: 18 }]
+    : [{ width: 32 }, { width: 16 }, { width: 12 }, { width: 14 }, { width: 12 }, { width: 12 }];
+  wsP.columns = pCols;
+  addSheetTitle(wsP, "Personal — Partes Diarios", pCols.length);
+  const pHeader = esCantera
+    ? ["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias", "Costo estimado"]
+    : ["Empleado", "Rol", "Días", "Horas", "Viajes", "Ausencias"];
+  const pH = wsP.addRow(pHeader);
   applyHeaderStyle(pH);
   const pStart = wsP.rowCount + 1;
-  data.personal.forEach((p) => wsP.addRow([p.nombre, p.rol || "", p.dias, Number(p.horas.toFixed(2)), p.viajes, p.ausencias]));
+  data.personal.forEach((p) => {
+    const base = [p.nombre, p.rol || "", p.dias, Number(p.horas.toFixed(2)), p.viajes, p.ausencias];
+    wsP.addRow(esCantera ? [...base, p.costoEstimado] : base);
+  });
   const pEnd = wsP.rowCount;
-  if (pEnd >= pStart) styleDataRows(wsP, pStart, pEnd, [], [3, 4, 5, 6]);
-  const pT = wsP.addRow(["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0)]);
+  if (pEnd >= pStart) styleDataRows(wsP, pStart, pEnd, esCantera ? [7] : [], [3, 4, 5, 6]);
+  const pTotalRow = esCantera
+    ? ["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0), t.personalCosto]
+    : ["TOTAL", "", t.personalDias, Number(t.personalHoras.toFixed(2)), data.personal.reduce((s, p) => s + p.viajes, 0), data.personal.reduce((s, p) => s + p.ausencias, 0)];
+  const pT = wsP.addRow(pTotalRow);
   applyTotalStyle(pT);
   [3, 4, 5, 6].forEach((c) => (pT.getCell(c).numFmt = "#,##0.##"));
+  if (esCantera) pT.getCell(7).numFmt = MONEY;
 
   // -------- Sheet: Horas Máquina --------
   const wsH = wb.addWorksheet("Horas Máquina", { views: [{ state: "frozen", ySplit: 2 }] });
