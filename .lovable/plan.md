@@ -1,28 +1,41 @@
-## Nuevo modo de cálculo: Precio fijo por remito
+# Mejorar diseño del Excel de Liquidación por Cliente
 
-En `src/components/remitos/AsignarPreciosMasivosDialog.tsx` agregar una tercera opción en el selector "Modo Cálculo":
+Actualmente el Excel se genera con `xlsx` (SheetJS) sin estilos, ya que la versión community no soporta bordes/colores/fuentes. Para lograr tablas "lindas" hay que migrar la generación a **ExcelJS**, que sí soporta estilos completos.
 
-- **Viajes × Precio** (existente)
-- **Cantidad × Precio** (existente)
-- **Precio fijo (sin multiplicar)** (nuevo)
+## Cambios
 
-### Comportamiento
+### 1. Dependencia
+- Instalar `exceljs` (ya soporta estilos: bordes, negritas, fills, alineación, formatos numéricos, anchos de columna).
 
-El precio unitario ingresado por tipo de material se asigna **tal cual** como `precio_total` de cada remito de ese tipo (multiplicador = 1). El campo `precio_unitario` se guarda con el mismo valor y `precio_calc_mode` se persiste como `"fijo"`.
+### 2. Archivo: `src/components/remitos/LiquidacionClienteDialog.tsx`
+Reemplazar la función `exportarExcel` para usar ExcelJS, manteniendo la misma lógica de datos (3 hojas: Liquidación, Liquidación General, Detalle Remitos).
 
-### Cambios técnicos
+**Estilo aplicado a las 3 hojas:**
 
-- Ampliar el tipo del state `mode` a `"viajes" | "cantidad" | "fijo"`.
-- Agregar un tercer `RadioGroupItem` con label "Precio fijo".
-- En la tabla, cuando `mode === "fijo"`:
-  - Ocultar/neutralizar la columna del multiplicador (mostrar "—" en la columna "Viajes/Cantidad") ya que no aplica.
-  - Subtotal por fila = `precio` (sin multiplicar).
-  - Total estimado = suma de `precio` por cada tipo con valor cargado (un único valor por tipo, no multiplicado por cantidad de remitos).
-- En `handleApply`, cuando `mode === "fijo"`, usar `multiplicador = 1` y guardar `precio_calc_mode: "fijo"`.
-- Encabezado dinámico de la columna de cantidad: "Viajes" | "Cantidad" | "—".
+- **Título de cliente** (hoja Liquidación): fila merge `A:E`, fondo rojo corporativo `#B00020`, texto blanco, negrita, tamaño 12, alineado a la izquierda con padding.
+- **Encabezados de columnas**: fondo negro/gris oscuro `#0F0F0F`, texto blanco, negrita, centrado, bordes finos.
+- **Filas de datos**: bordes finos grises en todas las celdas, alineación según tipo (texto izq., números der., unidad centro). Filas alternadas con fondo `#F7F7F7` (zebra).
+- **Subtotal por cliente**: fondo gris claro `#E5E5E5`, negrita, borde superior grueso.
+- **TOTAL GENERAL** / **TOTAL**: fondo rojo `#B00020`, texto blanco, negrita, borde superior grueso doble.
+- **Formato numérico**:
+  - Cantidad: `#,##0.00`
+  - Viajes: `#,##0`
+  - Precio Total / Precio Unitario: `"$"#,##0.00`
+- **Anchos de columna** ajustados (más generosos que ahora).
+- **Altura de filas** de encabezado y totales aumentada para respirar mejor.
+- **Freeze panes**: congelar fila de encabezados en hojas "Liquidación General" y "Detalle Remitos".
+- **AutoFilter** en la hoja "Detalle Remitos".
 
-### Archivos afectados
+**Hoja "Liquidación General":**
+- Encabezado estilizado, filas con bordes, fila TOTAL en rojo con texto blanco y negrita.
 
-- `src/components/remitos/AsignarPreciosMasivosDialog.tsx` (única edición).
+**Hoja "Detalle Remitos":**
+- Encabezado oscuro con texto blanco, bordes en todas las celdas, zebra stripes, autofilter, freeze de la primera fila, formato de moneda en Precio Unitario y Precio Total, formato de fecha legible.
 
-No requiere cambios de base de datos: `precio_calc_mode` ya es texto libre en la tabla `remitos`.
+### 3. Sin cambios funcionales
+- Misma estructura de hojas, mismos datos, mismo nombre de archivo.
+- Sólo cambia el aspecto visual del Excel descargado.
+
+## Notas técnicas
+- `xlsx` se mantiene como dependencia (lo usan otros módulos: Remitos, Combustible, Vacaciones, etc.). Sólo este diálogo migra a ExcelJS.
+- Descarga vía `workbook.xlsx.writeBuffer()` + `Blob` + link temporal.

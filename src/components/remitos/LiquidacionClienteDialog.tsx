@@ -27,7 +27,7 @@ import {
 import { Download, FileText, Search } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface LiquidacionClienteDialogProps {
   open: boolean;
@@ -187,15 +187,52 @@ export function LiquidacionClienteDialog({
     [resumen]
   );
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (resumen.length === 0) {
       toast.error("No hay datos para exportar");
       return;
     }
 
-    const wb = XLSX.utils.book_new();
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Gestión de Obras";
+    wb.created = new Date();
 
-    // ---------- Hoja 1: Liquidación (desglose por cliente) ----------
+    // Style helpers
+    const COLOR_RED = "FFB00020";
+    const COLOR_BLACK = "FF0F0F0F";
+    const COLOR_GRAY_LIGHT = "FFF7F7F7";
+    const COLOR_GRAY_MED = "FFE5E5E5";
+    const COLOR_WHITE = "FFFFFFFF";
+    const COLOR_BORDER = "FFBFBFBF";
+
+    const thinBorder = {
+      top: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      left: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      bottom: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      right: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+    };
+
+    const applyHeaderStyle = (row: ExcelJS.Row) => {
+      row.height = 22;
+      row.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 11 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_BLACK } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = thinBorder;
+      });
+    };
+
+    const applyTotalStyle = (row: ExcelJS.Row) => {
+      row.height = 22;
+      row.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 11 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_RED } };
+        cell.alignment = { vertical: "middle" };
+        cell.border = thinBorder;
+      });
+    };
+
+    // ---------- Sheet 1: Liquidación ----------
     const clientesOrdenados = [...selectedClientes].sort((a, b) => a.localeCompare(b));
 
     const matchCliente = (r: RemitoWithRelations, cliente: string) => {
@@ -251,46 +288,118 @@ export function LiquidacionClienteDialog({
       })
       .filter((c) => c.tipos.length > 0);
 
-    const aoa: (string | number)[][] = [];
+    const ws = wb.addWorksheet("Liquidación");
+    ws.columns = [
+      { width: 28 },
+      { width: 12 },
+      { width: 14 },
+      { width: 10 },
+      { width: 18 },
+    ];
+
     resumenPorCliente.forEach((c) => {
-      aoa.push([`Cliente: ${c.cliente}`, "", "", "", ""]);
-      aoa.push(["Tipo Material", "Viajes", "Cantidad", "Unidad", "Precio Total"]);
-      c.tipos.forEach((t) => {
-        aoa.push([t.tipo, t.viajes, t.cantidad, t.unidad, t.precioTotal]);
+      // Cliente title row (merged)
+      const titleRow = ws.addRow([`Cliente: ${c.cliente}`]);
+      ws.mergeCells(titleRow.number, 1, titleRow.number, 5);
+      const titleCell = titleRow.getCell(1);
+      titleCell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 12 };
+      titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_RED } };
+      titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      titleRow.height = 24;
+
+      // Header
+      const headerRow = ws.addRow(["Tipo Material", "Viajes", "Cantidad", "Unidad", "Precio Total"]);
+      applyHeaderStyle(headerRow);
+
+      // Data rows
+      c.tipos.forEach((t, idx) => {
+        const dataRow = ws.addRow([t.tipo, t.viajes, t.cantidad, t.unidad, t.precioTotal]);
+        const zebra = idx % 2 === 1;
+        dataRow.eachCell((cell, col) => {
+          cell.border = thinBorder;
+          if (zebra) {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+          }
+          if (col === 1) cell.alignment = { vertical: "middle", horizontal: "left" };
+          else if (col === 4) cell.alignment = { vertical: "middle", horizontal: "center" };
+          else cell.alignment = { vertical: "middle", horizontal: "right" };
+        });
+        dataRow.getCell(2).numFmt = "#,##0";
+        dataRow.getCell(3).numFmt = "#,##0.00";
+        dataRow.getCell(5).numFmt = '"$"#,##0.00';
       });
+
+      // Subtotal
       const unidadesUnicas = new Set(c.tipos.map((t) => t.unidad));
       const unidadSubtotal = unidadesUnicas.size === 1 ? [...unidadesUnicas][0] : "";
-      aoa.push([`Subtotal ${c.cliente}`, c.viajes, c.cantidad, unidadSubtotal, c.precioTotal]);
-      aoa.push(["", "", "", "", ""]);
+      const subRow = ws.addRow([`Subtotal ${c.cliente}`, c.viajes, c.cantidad, unidadSubtotal, c.precioTotal]);
+      subRow.height = 20;
+      subRow.eachCell((cell, col) => {
+        cell.font = { bold: true, color: { argb: COLOR_BLACK } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_MED } };
+        cell.border = {
+          ...thinBorder,
+          top: { style: "medium", color: { argb: COLOR_BLACK } },
+        };
+        if (col === 1) cell.alignment = { vertical: "middle", horizontal: "left" };
+        else if (col === 4) cell.alignment = { vertical: "middle", horizontal: "center" };
+        else cell.alignment = { vertical: "middle", horizontal: "right" };
+      });
+      subRow.getCell(2).numFmt = "#,##0";
+      subRow.getCell(3).numFmt = "#,##0.00";
+      subRow.getCell(5).numFmt = '"$"#,##0.00';
+
+      ws.addRow([]);
     });
+
     const totalGeneral = {
       viajes: resumenPorCliente.reduce((s, c) => s + c.viajes, 0),
       cantidad: resumenPorCliente.reduce((s, c) => s + c.cantidad, 0),
       precioTotal: resumenPorCliente.reduce((s, c) => s + c.precioTotal, 0),
     };
-    aoa.push([
+    const totalRow = ws.addRow([
       "TOTAL GENERAL",
       totalGeneral.viajes,
       totalGeneral.cantidad,
       "",
       totalGeneral.precioTotal,
     ]);
+    applyTotalStyle(totalRow);
+    totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    totalRow.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(3).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(2).numFmt = "#,##0";
+    totalRow.getCell(3).numFmt = "#,##0.00";
+    totalRow.getCell(5).numFmt = '"$"#,##0.00';
 
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = [{ wch: 22 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 16 }];
-    XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
-
-    // ---------- Hoja 2: Liquidación General ----------
-    const aoaGeneral: (string | number)[][] = [["Cliente", "Precio Total"]];
-    resumenPorCliente.forEach((c) => {
-      aoaGeneral.push([c.cliente, c.precioTotal]);
+    // ---------- Sheet 2: Liquidación General ----------
+    const wsGeneral = wb.addWorksheet("Liquidación General", {
+      views: [{ state: "frozen", ySplit: 1 }],
     });
-    aoaGeneral.push(["TOTAL", totalGeneral.precioTotal]);
-    const wsGeneral = XLSX.utils.aoa_to_sheet(aoaGeneral);
-    wsGeneral["!cols"] = [{ wch: 30 }, { wch: 16 }];
-    XLSX.utils.book_append_sheet(wb, wsGeneral, "Liquidación General");
+    wsGeneral.columns = [{ width: 36 }, { width: 20 }];
 
-    // ---------- Hoja 3: Detalle Remitos ----------
+    const genHeader = wsGeneral.addRow(["Cliente", "Precio Total"]);
+    applyHeaderStyle(genHeader);
+
+    resumenPorCliente.forEach((c, idx) => {
+      const r = wsGeneral.addRow([c.cliente, c.precioTotal]);
+      const zebra = idx % 2 === 1;
+      r.eachCell((cell, col) => {
+        cell.border = thinBorder;
+        if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+        cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+      });
+      r.getCell(2).numFmt = '"$"#,##0.00';
+    });
+
+    const genTotal = wsGeneral.addRow(["TOTAL", totalGeneral.precioTotal]);
+    applyTotalStyle(genTotal);
+    genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    genTotal.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+    genTotal.getCell(2).numFmt = '"$"#,##0.00';
+
+    // ---------- Sheet 3: Detalle Remitos ----------
     const detalleRemitos = remitosCliente
       .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
       .sort((a, b) => {
@@ -308,34 +417,75 @@ export function LiquidacionClienteDialog({
       }
     };
 
-    const detalleData = detalleRemitos.map((r) => ({
-      Fecha: fmtFecha(r.fecha),
-      "N° Remito": r.numero || "",
-      "Remito Tercero": r.remito_tercero || "",
-      Cliente: r.cliente || "",
-      "Cliente Destino": r.cliente_destino || "",
-      "Cliente Cantera": r.cliente_cantera || "",
-      Desde: r.desde || "",
-      Hasta: r.hasta || "",
-      "Tipo Material": r.tipo_material || "",
-      Viajes: r.cantidad_viajes || 0,
-      Cantidad: r.cantidad || 0,
-      Unidad: r.unidad || "",
-      "Precio Unitario": r.precio_unitario || 0,
-      "Precio Total": r.precio_total || 0,
-      Transporte: r.tipo_transporte || "",
-      Patente: r.maquinaria?.patente || r.patente_tercero || "",
-      Observaciones: r.observaciones || "",
-    }));
-
-    if (detalleData.length > 0) {
-      const wsDetalle = XLSX.utils.json_to_sheet(detalleData);
-      wsDetalle["!cols"] = Object.keys(detalleData[0]).map((key) => ({
-        wch: Math.max(key.length, 14),
+    if (detalleRemitos.length > 0) {
+      const wsDetalle = wb.addWorksheet("Detalle Remitos", {
+        views: [{ state: "frozen", ySplit: 1 }],
+      });
+      const headers = [
+        "Fecha",
+        "N° Remito",
+        "Remito Tercero",
+        "Cliente",
+        "Cliente Destino",
+        "Cliente Cantera",
+        "Desde",
+        "Hasta",
+        "Tipo Material",
+        "Viajes",
+        "Cantidad",
+        "Unidad",
+        "Precio Unitario",
+        "Precio Total",
+        "Transporte",
+        "Patente",
+        "Observaciones",
+      ];
+      wsDetalle.columns = headers.map((h) => ({
+        width: Math.max(h.length + 2, 14),
       }));
-      XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle Remitos");
+
+      const detHeader = wsDetalle.addRow(headers);
+      applyHeaderStyle(detHeader);
+
+      detalleRemitos.forEach((r, idx) => {
+        const row = wsDetalle.addRow([
+          fmtFecha(r.fecha),
+          r.numero || "",
+          r.remito_tercero || "",
+          r.cliente || "",
+          r.cliente_destino || "",
+          r.cliente_cantera || "",
+          r.desde || "",
+          r.hasta || "",
+          r.tipo_material || "",
+          r.cantidad_viajes || 0,
+          r.cantidad || 0,
+          r.unidad || "",
+          r.precio_unitario || 0,
+          r.precio_total || 0,
+          r.tipo_transporte || "",
+          r.maquinaria?.patente || r.patente_tercero || "",
+          r.observaciones || "",
+        ]);
+        const zebra = idx % 2 === 1;
+        row.eachCell((cell) => {
+          cell.border = thinBorder;
+          if (zebra) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+          cell.alignment = { vertical: "middle" };
+        });
+        row.getCell(10).numFmt = "#,##0";
+        row.getCell(11).numFmt = "#,##0.00";
+        row.getCell(13).numFmt = '"$"#,##0.00';
+        row.getCell(14).numFmt = '"$"#,##0.00';
+      });
+
+      wsDetalle.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: headers.length },
+      };
     }
 
+    // ---------- Download ----------
     const prefijo =
       tipoCliente === "cliente_cantera"
         ? "Liquidacion_Cantera"
@@ -348,7 +498,17 @@ export function LiquidacionClienteDialog({
         ? clientesArr[0].replace(/\s/g, "_")
         : `${clientesArr.length}_clientes`;
     const fileName = `${prefijo}_${sufijo}_${format(new Date(), "yyyyMMdd")}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
     toast.success("Excel exportado");
   };
 
