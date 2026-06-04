@@ -86,6 +86,7 @@ export interface ReporteObraData {
     fecha_fin_estimada: string | null;
     cliente: string | null;
   } | null;
+  esCantera: boolean;
   personal: PersonalRow[];
   horasMaquina: HorasMaquinaRow[];
   maquinarias: MaquinariaUsadaRow[];
@@ -97,6 +98,19 @@ export interface ReporteObraData {
   totales: {
     personalDias: number;
     personalHoras: number;
+    personalCosto: number;
+    horasMaquinaTotal: number;
+    combustibleLitros: number;
+    combustibleCosto: number;
+    remitosTotal: number;
+    ordenesCompraTotal: number;
+    otrosGastosTotal: number;
+    gastosTotal: number;
+    ingresosRemitos: number;
+    balance: number;
+    rentabilidad: number;
+  };
+}
     horasMaquinaTotal: number;
     combustibleLitros: number;
     combustibleCosto: number;
