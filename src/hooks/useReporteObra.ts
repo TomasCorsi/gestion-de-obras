@@ -137,15 +137,36 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
     queryFn: async (): Promise<ReporteObraData> => {
       if (!obraId) throw new Error("Obra requerida");
 
-      // Obra + cliente
-      const obraQ = supabase
+      // Obra + cliente (fetch first to detect cantera for remitos query)
+      const obraRes = await supabase
         .from("obras")
         .select("id, nombre, numero, estado, ubicacion, fecha_inicio, fecha_fin_estimada, cliente_id")
         .eq("id", obraId)
         .maybeSingle();
 
+      if (obraRes.error) throw obraRes.error;
+
+      // Detect cantera early to ampliar query de remitos
+      const normalizeName = (s: string) =>
+        (s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const obraNombreNorm = normalizeName(obraRes.data?.nombre || "");
+      const esCantera =
+        obraNombreNorm.includes("cantera san vicente") ||
+        obraNombreNorm.includes("canteras del gaucho") ||
+        obraNombreNorm.includes("cantera del gaucho");
+
+      // Pattern para matchear remitos por campo "desde"
+      let canteraDesdePattern: string | null = null;
+      if (esCantera) {
+        if (obraNombreNorm.includes("san vicente")) canteraDesdePattern = "%san vicente%";
+        else if (obraNombreNorm.includes("gaucho")) canteraDesdePattern = "%gaucho%";
+      }
+
+      const remitosQuery = canteraDesdePattern
+        ? supabase.from("remitos").select("*").or(`obra_id.eq.${obraId},desde.ilike.${canteraDesdePattern}`)
+        : supabase.from("remitos").select("*").eq("obra_id", obraId);
+
       const [
-        obraRes,
         partesAll,
         horasMaqAll,
         maquinariasAll,
@@ -158,7 +179,6 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         otrosAll,
         cotsAll,
       ] = await Promise.all([
-        obraQ,
         fetchAll<any>(supabase.from("partes_diarios").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("horas_maquina").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("maquinarias").select("id, codigo, nombre, patente, tipo")),
@@ -166,7 +186,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         fetchAll<any>(supabase.from("cargas_combustible").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("cargas_combustible_repartidor").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("precios_productos_mes" as any).select("*")),
-        fetchAll<any>(supabase.from("remitos").select("*").eq("obra_id", obraId)),
+        fetchAll<any>(remitosQuery),
         fetchAll<any>(
           supabase
             .from("ordenes_compra")
@@ -178,8 +198,6 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
           supabase.from("cotizaciones").select("id, total, estado, fecha_creacion, obra_id").eq("obra_id", obraId)
         ),
       ]);
-
-      if (obraRes.error) throw obraRes.error;
 
       let clienteNombre: string | null = null;
       if (obraRes.data?.cliente_id) {
