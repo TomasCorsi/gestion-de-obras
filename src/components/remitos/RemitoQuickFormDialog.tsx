@@ -45,7 +45,7 @@ const TIPO_TRANSPORTE_OPTIONS = [
   "Larraige", "Fidanza", "Transgom", "ARIDO EXPRESS S.A",
 ];
 
-const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U"];
+const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U", "DIA"];
 
 export interface RemitoEditData {
   id: string;
