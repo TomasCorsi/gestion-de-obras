@@ -355,7 +355,7 @@ export function RemitoQuickFormDialog({
           </div>
 
           {/* === CLIENTE CANTERA (solo Franco) === */}
-          {isFranco && (
+          {showClienteCantera && (
             <>
               <SectionTitle>Cliente Cantera</SectionTitle>
               <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
