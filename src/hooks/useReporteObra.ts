@@ -162,9 +162,11 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         else if (obraNombreNorm.includes("gaucho")) canteraDesdePattern = "%gaucho%";
       }
 
-      const remitosQuery = canteraDesdePattern
-        ? supabase.from("remitos").select("*").or(`obra_id.eq.${obraId},desde.ilike.${canteraDesdePattern}`)
-        : supabase.from("remitos").select("*").eq("obra_id", obraId);
+      // Remitos: query A por obra_id; si es cantera, query B adicional por `desde ilike`.
+      const remitosByObraQuery = supabase.from("remitos").select("*").eq("obra_id", obraId);
+      const remitosByDesdeQuery = canteraDesdePattern
+        ? supabase.from("remitos").select("*").ilike("desde", canteraDesdePattern)
+        : null;
 
       const [
         partesAll,
