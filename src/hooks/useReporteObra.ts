@@ -162,9 +162,11 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         else if (obraNombreNorm.includes("gaucho")) canteraDesdePattern = "%gaucho%";
       }
 
-      const remitosQuery = canteraDesdePattern
-        ? supabase.from("remitos").select("*").or(`obra_id.eq.${obraId},desde.ilike.${canteraDesdePattern}`)
-        : supabase.from("remitos").select("*").eq("obra_id", obraId);
+      // Remitos: query A por obra_id; si es cantera, query B adicional por `desde ilike`.
+      const remitosByObraQuery = supabase.from("remitos").select("*").eq("obra_id", obraId);
+      const remitosByDesdeQuery = canteraDesdePattern
+        ? supabase.from("remitos").select("*").ilike("desde", canteraDesdePattern)
+        : null;
 
       const [
         partesAll,
@@ -174,7 +176,8 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         combAll,
         combRepAll,
         preciosAll,
-        remitosAll,
+        remitosByObra,
+        remitosByDesde,
         ordenesAll,
         otrosAll,
         cotsAll,
@@ -186,7 +189,8 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         fetchAll<any>(supabase.from("cargas_combustible").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("cargas_combustible_repartidor").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("precios_productos_mes" as any).select("*")),
-        fetchAll<any>(remitosQuery),
+        fetchAll<any>(remitosByObraQuery),
+        remitosByDesdeQuery ? fetchAll<any>(remitosByDesdeQuery) : Promise.resolve([] as any[]),
         fetchAll<any>(
           supabase
             .from("ordenes_compra")
@@ -198,6 +202,13 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
           supabase.from("cotizaciones").select("id, total, estado, fecha_creacion, obra_id").eq("obra_id", obraId)
         ),
       ]);
+
+      // Merge remitos deduplicando por id
+      const remitosMap = new Map<string, any>();
+      [...(remitosByObra || []), ...(remitosByDesde || [])].forEach((r: any) => {
+        if (r?.id) remitosMap.set(r.id, r);
+      });
+      const remitosAll = Array.from(remitosMap.values());
 
       let clienteNombre: string | null = null;
       if (obraRes.data?.cliente_id) {

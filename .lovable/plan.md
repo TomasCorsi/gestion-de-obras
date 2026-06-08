@@ -1,36 +1,28 @@
-## Problema
+## Objetivo
 
-En el reporte **"Por Obra"**, al filtrar **Cantera San Vicente** (o Canteras del Gaucho), la sección **Remitos** aparece vacía aunque hay remitos cargados (ej. Franco Buceta cargó muchos hoy).
+Que el reporte "Por Obra" muestre correctamente los ingresos por remitos cuando la obra seleccionada es **Cantera San Vicente** o **Canteras del Gaucho**, sin tocar el módulo de Remitos ni la base de datos.
 
-## Causa
+## Cambios
 
-Los remitos de cantera **no tienen `obra_id`** seteado. La cantera se identifica por el campo de texto **`desde`** (ej. `desde = "Cantera San Vicente"`). El hook `useReporteObra.ts` filtra remitos únicamente por `obra_id = obraId`, por eso no encuentra nada.
+Único archivo: `src/hooks/useReporteObra.ts`
 
-Confirmado en DB: los remitos cargados por Franco tienen `obra_id = NULL` y `desde = "Cantera San Vicente"`.
+1. **Detectar cantera temprano** (ya está hecho): usar `esCantera` + `canteraDesdePattern` (`%san vicente%` o `%gaucho%`) basados en el nombre normalizado de la obra.
 
-## Solución
+2. **Reemplazar el `.or(...)` por dos queries separadas** y unir resultados en memoria:
+   - Query A: `from("remitos").select("*").eq("obra_id", obraId)` — remitos asociados explícitamente a la obra (hoy siempre vacío para canteras, pero queda preparado).
+   - Query B (sólo si `esCantera`): `from("remitos").select("*").ilike("desde", canteraDesdePattern)` — remitos de cantera identificados por el campo de texto `desde`.
+   - Motivo: el `.or()` con `ilike` y espacios/comas suele romperse en PostgREST y dejar la consulta vacía silenciosamente. Dos queries simples son más robustas.
 
-En `src/hooks/useReporteObra.ts`, cuando la obra seleccionada sea una cantera, ampliar la consulta de remitos para incluir también los que tienen `desde` que coincida con el nombre de la cantera.
+3. **Deduplicar por `id`** al combinar ambos arrays antes del filtrado por fecha y de la agrupación por material.
 
-### Cambios técnicos
+4. **No tocar** el resto del hook: personal, combustible, horas máquina, OC y otros gastos siguen filtrando por `obra_id` como hoy.
 
-1. **Detección temprana de cantera**: calcular `esCantera` y `nombreCantera` antes de las queries (con la consulta de `obra` ya resuelta o usando el nombre normalizado del `obraId`).
+## Validación
 
-2. **Query de remitos adaptada**:
-   - Obra normal: `eq("obra_id", obraId)` (como hoy).
-   - Cantera: `.or("obra_id.eq.<id>,desde.ilike.%<nombre cantera>%")` para capturar:
-     - remitos con `obra_id` asignado a la cantera (si los hubiera),
-     - remitos con `desde` que mencione el nombre de la cantera (caso real actual).
-   - Para "Cantera San Vicente" matchear `desde ILIKE '%san vicente%'`; para "Canteras del Gaucho" matchear `desde ILIKE '%gaucho%'`. Patrones tolerantes a variantes ("Cantera"/"Canteras").
+- Abrir reporte → seleccionar **Cantera San Vicente** → verificar que la sección **Remitos** lista los materiales cargados por Franco y que **Ingresos por remitos** deja de mostrar $0.
+- Repetir con **Canteras del Gaucho**.
+- Verificar que una obra normal (no cantera) sigue mostrando exactamente los mismos remitos que antes (sin duplicados ni cruces).
 
-3. **Ingresos**: el cálculo de `ingresosRemitos = sum(precio_total)` ya queda correcto al incluir estos remitos.
+## Nota
 
-4. **Resto de secciones**: no se tocan. Combustible, partes, OC, gastos siguen filtrando por `obra_id` (que sí se setea normalmente para esos casos en la cantera).
-
-### Archivo a tocar
-
-- `src/hooks/useReporteObra.ts` — ajustar la query y filtrado de remitos para canteras.
-
-### Nota
-
-Si más adelante querés que todos los remitos de cantera queden vinculados también vía `obra_id`, podemos hacer una migración para asociarlos automáticamente, pero por ahora el fix es no-invasivo y respeta los datos existentes.
+Esto no asigna `obra_id` a los remitos existentes. Si más adelante querés que todos los remitos de cantera queden vinculados también por `obra_id` (opción B), lo hacemos en una migración aparte.
