@@ -446,6 +446,7 @@ export function useCertificados(obraId?: string) {
     onSuccess: () => {
       toast.success("Certificado creado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: (e) => {
       console.error(e);
