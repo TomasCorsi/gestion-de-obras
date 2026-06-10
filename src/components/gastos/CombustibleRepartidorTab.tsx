@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCargasRepartidorAll, type CargaRepartidorFull } from "@/hooks/useCargasRepartidorAll";
+import { HistoricoBanner } from "@/components/shared/HistoricoBanner";
 import { usePreciosMes, usePreciosTodos } from "@/hooks/usePreciosMes";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -195,7 +196,7 @@ function PreciosMesPanel({
 }
 
 export function CombustibleRepartidorTab() {
-  const { cargas, isLoading, updateCarga, deleteCarga, isUpdating, isDeleting } = useCargasRepartidorAll();
+  const { cargas, isLoading, updateCarga, deleteCarga, isUpdating, isDeleting, loadAll, cargarHistorico } = useCargasRepartidorAll();
   const { personal } = usePersonal();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
@@ -407,6 +408,12 @@ export function CombustibleRepartidorTab() {
 
   return (
     <div className="space-y-4">
+      <HistoricoBanner
+        loadAll={loadAll}
+        onCargarHistorico={cargarHistorico}
+        diasMostrados={90}
+        label="entregas"
+      />
       {/* Date / month / year row */}
       <div className="flex flex-wrap gap-2 items-center justify-end">
         <div className="relative">

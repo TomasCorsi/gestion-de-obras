@@ -283,20 +283,39 @@ export function useCertificados(obraId?: string) {
     refetchOnWindowFocus: false,
   });
 
-  // Items for a specific certificado
-  const fetchItems = async (certificadoId: string): Promise<CertificadoItem[]> => {
-    const { data, error } = await supabase
-      .from("certificado_items")
-      .select("*")
-      .eq("certificado_id", certificadoId)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return (data as any[]).map((d) => ({
-      ...d,
-      etapa: d.etapa || null,
-      seccion: d.seccion || null,
-    })) as CertificadoItem[];
-  };
+  // Items for a specific certificado — cached per certId
+  const fetchItems = (certificadoId: string): Promise<CertificadoItem[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_items", certificadoId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("certificado_items")
+          .select("*")
+          .eq("certificado_id", certificadoId)
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return (data as any[]).map((d) => ({
+          ...d,
+          etapa: d.etapa || null,
+          seccion: d.seccion || null,
+        })) as CertificadoItem[];
+      },
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
+
+  // Acumulados — cached per (obra, periodo, excludeCertId)
+  const fetchAcumuladosCached = (
+    obraIdArg: string,
+    periodoActual: string,
+    excludeCertId?: string,
+  ): Promise<AcumuladoConcepto[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_acumulados", obraIdArg, periodoActual, excludeCertId || null],
+      queryFn: () => fetchAcumulados(obraIdArg, periodoActual, excludeCertId),
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
 
   // ---- Concepto mutations ----
 
@@ -427,6 +446,7 @@ export function useCertificados(obraId?: string) {
     onSuccess: () => {
       toast.success("Certificado creado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: (e) => {
       console.error(e);
@@ -528,9 +548,11 @@ export function useCertificados(obraId?: string) {
         if (itemsError) throw itemsError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Certificado actualizado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_items", vars.id] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: (e) => {
       console.error(e);
@@ -546,9 +568,11 @@ export function useCertificados(obraId?: string) {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       toast.success("Certificado eliminado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_items", id] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: () => toast.error("Error al eliminar certificado"),
   });
@@ -600,15 +624,21 @@ export function useCertificados(obraId?: string) {
     refetchOnWindowFocus: false,
   });
 
-  const fetchPagos = async (certificadoId: string): Promise<CertificadoPago[]> => {
-    const { data, error } = await supabase
-      .from("certificado_pagos")
-      .select("*")
-      .eq("certificado_id", certificadoId)
-      .order("fecha", { ascending: true });
-    if (error) throw error;
-    return data as CertificadoPago[];
-  };
+  const fetchPagos = (certificadoId: string): Promise<CertificadoPago[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_pagos_cert", certificadoId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("certificado_pagos")
+          .select("*")
+          .eq("certificado_id", certificadoId)
+          .order("fecha", { ascending: true });
+        if (error) throw error;
+        return data as CertificadoPago[];
+      },
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
 
   // ---- Helper: upload comprobante and return path ----
   const uploadComprobante = async (file: File, certId: string): Promise<string> => {
@@ -708,9 +738,10 @@ export function useCertificados(obraId?: string) {
       await syncCertificadoEstado(pago.certificado_id);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago registrado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: (e: any) => toast.error(e?.message || "Error al registrar pago"),
@@ -738,9 +769,10 @@ export function useCertificados(obraId?: string) {
       if (error) throw error;
       await syncCertificadoEstado(certificado_id);
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago actualizado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: (e: any) => toast.error(e?.message || "Error al actualizar pago"),
@@ -755,9 +787,10 @@ export function useCertificados(obraId?: string) {
       if (error) throw error;
       await syncCertificadoEstado(certificado_id);
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago eliminado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: () => toast.error("Error al eliminar pago"),
@@ -816,6 +849,7 @@ export function useCertificados(obraId?: string) {
     certificados,
     loadingCertificados,
     fetchItems,
+    fetchAcumuladosCached,
     createConcepto: createConcepto.mutateAsync,
     updateConcepto: updateConcepto.mutateAsync,
     deleteConcepto: deleteConcepto.mutateAsync,

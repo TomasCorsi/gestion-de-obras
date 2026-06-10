@@ -4,7 +4,6 @@ import { CertificadoServiceGrid } from "@/components/certificados/CertificadoSer
 import { useObras } from "@/hooks/useObras";
 import {
   useCertificados,
-  fetchAcumulados,
   CONCEPTOS_ESTANDAR,
   CATEGORIAS_CERTIFICADO,
   METODOS_PAGO,
@@ -199,6 +198,7 @@ export default function Certificados() {
     certificados,
     loadingCertificados,
     fetchItems,
+    fetchAcumuladosCached,
     createConcepto,
     updateConcepto,
     deleteConcepto,
@@ -366,7 +366,7 @@ export default function Certificados() {
   // Fetch acumulados when tipo is obra or mixto and dialog is open
   useEffect(() => {
     if (crearOpen && (tipoCert === "obra" || tipoCert === "mixto") && selectedObraId && periodo) {
-      fetchAcumulados(selectedObraId, periodo, editingCertId || undefined).then(setAcumulados);
+      fetchAcumuladosCached(selectedObraId, periodo, editingCertId || undefined).then(setAcumulados);
     } else {
       setAcumulados([]);
     }
@@ -719,17 +719,23 @@ export default function Certificados() {
     setLoadingItems(true);
     setNewPago(emptyPago());
     setEditingPagoId(null);
-    const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
-    setViewItems(items);
-    setViewPagos(pagos);
 
     const cert = certificados.find((c) => c.id === id);
-    if ((cert?.tipo === "obra" || cert?.tipo === "mixto") && selectedObraId) {
-      const ac = await fetchAcumulados(selectedObraId, cert.periodo, cert.id);
-      setViewAcumulados(ac);
-    } else {
-      setViewAcumulados([]);
-    }
+    const needsAcumulados =
+      (cert?.tipo === "obra" || cert?.tipo === "mixto") && !!selectedObraId;
+
+    // Run all three queries in parallel (cached per cert)
+    const [items, pagos, ac] = await Promise.all([
+      fetchItems(id),
+      fetchPagos(id),
+      needsAcumulados
+        ? fetchAcumuladosCached(selectedObraId!, cert!.periodo, cert!.id)
+        : Promise.resolve([] as AcumuladoConcepto[]),
+    ]);
+
+    setViewItems(items);
+    setViewPagos(pagos);
+    setViewAcumulados(ac);
     setLoadingItems(false);
   };
 
@@ -836,7 +842,7 @@ export default function Certificados() {
     // For obra type, fetch acumulados and merge ALL active concepts
     let pdfAcumulados: AcumuladoConcepto[] = [];
     if ((targetCert.tipo === "obra" || targetCert.tipo === "mixto") && selectedObraId) {
-      pdfAcumulados = await fetchAcumulados(selectedObraId, targetCert.periodo, targetCert.id);
+      pdfAcumulados = await fetchAcumuladosCached(selectedObraId, targetCert.periodo, targetCert.id);
 
       // Only use real certificate items — no virtual/phantom items
     }
