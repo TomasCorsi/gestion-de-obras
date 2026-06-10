@@ -195,6 +195,10 @@ export function useRemitos() {
     queryKey: ['remitos', filterUserId, fechaDesde],
     queryFn: () => fetchRemitosFromDB(filterUserId, fechaDesde),
     enabled: currentUserId !== null,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
 

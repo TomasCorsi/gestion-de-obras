@@ -60,6 +60,10 @@ export function useObras() {
   } = useQuery({
     queryKey: ['obras'],
     queryFn: fetchObrasFromDB,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({

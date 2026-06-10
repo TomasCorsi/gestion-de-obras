@@ -107,6 +107,10 @@ export function usePersonal() {
   } = useQuery({
     queryKey: ['personal'],
     queryFn: fetchPersonalFromDB,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   // Helper to clean form data - converts empty strings to null for date fields

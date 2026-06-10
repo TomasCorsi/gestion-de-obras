@@ -43,6 +43,10 @@ export function useObservacionesMaquina() {
       if (error) throw error;
       return (data || []) as unknown as ObservacionMaquina[];
     },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const toggleAtendida = useMutation({
