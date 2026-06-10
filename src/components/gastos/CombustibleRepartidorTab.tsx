@@ -411,7 +411,7 @@ export function CombustibleRepartidorTab() {
       <HistoricoBanner
         loadAll={loadAll}
         onCargarHistorico={cargarHistorico}
-        diasMostrados={90}
+        diasMostrados={30}
         label="entregas"
       />
       {/* Date / month / year row */}
