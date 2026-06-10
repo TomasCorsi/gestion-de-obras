@@ -315,6 +315,12 @@ export default function Combustible() {
 
   return (
     <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
+      <HistoricoBanner
+        loadAll={loadAll}
+        onCargarHistorico={cargarHistorico}
+        diasMostrados={90}
+        label="cargas"
+      />
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar obras={obras} maquinarias={maquinarias} onFilterChange={setFilters} showMaquinariaFilter />

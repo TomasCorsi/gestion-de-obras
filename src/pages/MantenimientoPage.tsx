@@ -56,6 +56,7 @@ import { useObras } from "@/hooks/useObras";
 import { cn, formatDate } from "@/lib/utils";
 import { ESTADO_CONFIG, TIPO_CONFIG, formatCurrency } from "@/components/mantenimiento/mantenimientoConstants";
 import * as XLSX from "xlsx";
+import { HistoricoBanner } from "@/components/shared/HistoricoBanner";
 
 export default function MantenimientoPage() {
   const { mantenimientos, loading, updateMantenimiento, deleteMantenimiento, loadAll, cargarHistorico } = useMantenimientos();
