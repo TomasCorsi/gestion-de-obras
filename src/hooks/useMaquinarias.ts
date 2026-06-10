@@ -86,6 +86,10 @@ export function useMaquinarias() {
   } = useQuery({
     queryKey: ['maquinarias'],
     queryFn: fetchMaquinariasFromDB,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({

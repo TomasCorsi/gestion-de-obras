@@ -60,6 +60,10 @@ export function useCombustible() {
   } = useQuery({
     queryKey: ['combustible'],
     queryFn: fetchCargasFromDB,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const createMutation = useMutation({
