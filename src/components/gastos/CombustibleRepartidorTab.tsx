@@ -195,7 +195,7 @@ function PreciosMesPanel({
 }
 
 export function CombustibleRepartidorTab() {
-  const { cargas, isLoading, updateCarga, deleteCarga, isUpdating, isDeleting } = useCargasRepartidorAll();
+  const { cargas, isLoading, updateCarga, deleteCarga, isUpdating, isDeleting, loadAll, cargarHistorico } = useCargasRepartidorAll();
   const { personal } = usePersonal();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
