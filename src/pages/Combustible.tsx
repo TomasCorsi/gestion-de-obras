@@ -69,7 +69,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function Combustible() {
-  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave } = useCombustible();
+  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave, loadAll, cargarHistorico } = useCombustible();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();

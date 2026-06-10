@@ -58,7 +58,7 @@ import { ESTADO_CONFIG, TIPO_CONFIG, formatCurrency } from "@/components/manteni
 import * as XLSX from "xlsx";
 
 export default function MantenimientoPage() {
-  const { mantenimientos, loading, updateMantenimiento, deleteMantenimiento } = useMantenimientos();
+  const { mantenimientos, loading, updateMantenimiento, deleteMantenimiento, loadAll, cargarHistorico } = useMantenimientos();
   const { pendientes: obsPendientes } = useObservacionesMaquina();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
