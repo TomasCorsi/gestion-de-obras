@@ -548,9 +548,11 @@ export function useCertificados(obraId?: string) {
         if (itemsError) throw itemsError;
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Certificado actualizado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_items", vars.id] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: (e) => {
       console.error(e);
@@ -566,9 +568,11 @@ export function useCertificados(obraId?: string) {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       toast.success("Certificado eliminado");
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_items", id] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_acumulados", obraId] });
     },
     onError: () => toast.error("Error al eliminar certificado"),
   });
