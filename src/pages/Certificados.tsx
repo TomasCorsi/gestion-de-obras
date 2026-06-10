@@ -213,7 +213,6 @@ export default function Certificados() {
     updatePago,
     deletePago,
     getComprobanteSignedUrl,
-    getPagadoByCert,
     bulkInsertConceptos,
     bulkAdjustPrices,
   } = useCertificados(selectedObraId);
