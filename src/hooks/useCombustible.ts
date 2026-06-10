@@ -1,6 +1,10 @@
+import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+const DEFAULT_DAYS_BACK = 90;
+const LOAD_ALL_SESSION_KEY = "combustible:loadAll";
 
 export interface CargaCombustibleDB {
   id: string;
@@ -36,8 +40,8 @@ export interface CargaCombustibleForm {
   comprobante?: string;
 }
 
-const fetchCargasFromDB = async (): Promise<CargaCombustibleWithRelations[]> => {
-  const { data, error } = await supabase
+const fetchCargasFromDB = async (fechaDesde: string | null): Promise<CargaCombustibleWithRelations[]> => {
+  let query = supabase
     .from("cargas_combustible")
     .select(`
       *,
@@ -46,6 +50,11 @@ const fetchCargasFromDB = async (): Promise<CargaCombustibleWithRelations[]> => 
     `)
     .order("fecha", { ascending: false });
 
+  if (fechaDesde) {
+    query = query.gte("fecha", fechaDesde);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 };
@@ -53,18 +62,37 @@ const fetchCargasFromDB = async (): Promise<CargaCombustibleWithRelations[]> => 
 export function useCombustible() {
   const queryClient = useQueryClient();
 
+  const [loadAll, setLoadAll] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(LOAD_ALL_SESSION_KEY) === "1";
+  });
+  const cargarHistorico = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(LOAD_ALL_SESSION_KEY, "1");
+    }
+    setLoadAll(true);
+  }, []);
+
+  const fechaDesde = useMemo(() => {
+    if (loadAll) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - DEFAULT_DAYS_BACK);
+    return d.toISOString().slice(0, 10);
+  }, [loadAll]);
+
   const { 
     data: cargas = [], 
     isLoading: loading,
     refetch: fetchCargas 
   } = useQuery({
-    queryKey: ['combustible'],
-    queryFn: fetchCargasFromDB,
+    queryKey: ['combustible', fechaDesde],
+    queryFn: () => fetchCargasFromDB(fechaDesde),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
 
   const createMutation = useMutation({
     mutationFn: async (carga: CargaCombustibleForm) => {
@@ -203,6 +231,8 @@ export function useCombustible() {
     cargas,
     loading,
     fetchCargas,
+    loadAll,
+    cargarHistorico,
     createCarga: async (carga: CargaCombustibleForm) => {
       try {
         return await createMutation.mutateAsync(carga);

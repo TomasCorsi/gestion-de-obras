@@ -59,6 +59,7 @@ import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDi
 import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { HistoricoBanner } from "@/components/shared/HistoricoBanner";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
@@ -69,7 +70,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function Combustible() {
-  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave } = useCombustible();
+  const { cargas, loading, createCarga, updateCarga, deleteCarga, fetchCargas, batchSave, loadAll, cargarHistorico } = useCombustible();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { personal } = usePersonal();
@@ -315,6 +316,12 @@ export default function Combustible() {
 
   return (
     <MainLayout title="Combustible" subtitle="Control de cargas de combustible">
+      <HistoricoBanner
+        loadAll={loadAll}
+        onCargarHistorico={cargarHistorico}
+        diasMostrados={90}
+        label="cargas"
+      />
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar obras={obras} maquinarias={maquinarias} onFilterChange={setFilters} showMaquinariaFilter />

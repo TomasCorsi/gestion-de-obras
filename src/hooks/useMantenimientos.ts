@@ -1,7 +1,11 @@
+import { useCallback, useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ChecklistCambio, ChecklistChequeo } from "@/components/mantenimiento/mantenimientoConstants";
+
+const DEFAULT_DAYS_BACK = 180;
+const LOAD_ALL_SESSION_KEY = "mantenimientos:loadAll";
 
 export type TipoMantenimiento = "preventivo" | "correctivo" | "emergencia";
 export type EstadoMantenimiento = "pendiente" | "en_proceso" | "completado";
@@ -66,8 +70,8 @@ export interface MantenimientoForm {
   observacion_reporte_id?: string;
 }
 
-const fetchMantenimientosFromDB = async (): Promise<MantenimientoWithRelations[]> => {
-  const { data, error } = await supabase
+const fetchMantenimientosFromDB = async (fechaDesde: string | null): Promise<MantenimientoWithRelations[]> => {
+  let query = supabase
     .from("mantenimientos")
     .select(`
       *,
@@ -76,6 +80,11 @@ const fetchMantenimientosFromDB = async (): Promise<MantenimientoWithRelations[]
     `)
     .order("fecha", { ascending: false });
 
+  if (fechaDesde) {
+    query = query.gte("fecha", fechaDesde);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return (data || []) as unknown as MantenimientoWithRelations[];
 };
@@ -83,13 +92,31 @@ const fetchMantenimientosFromDB = async (): Promise<MantenimientoWithRelations[]
 export function useMantenimientos() {
   const queryClient = useQueryClient();
 
+  const [loadAll, setLoadAll] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(LOAD_ALL_SESSION_KEY) === "1";
+  });
+  const cargarHistorico = useCallback(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(LOAD_ALL_SESSION_KEY, "1");
+    }
+    setLoadAll(true);
+  }, []);
+
+  const fechaDesde = useMemo(() => {
+    if (loadAll) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - DEFAULT_DAYS_BACK);
+    return d.toISOString().slice(0, 10);
+  }, [loadAll]);
+
   const { 
     data: mantenimientos = [], 
     isLoading: loading,
     refetch: fetchMantenimientos 
   } = useQuery({
-    queryKey: ['mantenimientos'],
-    queryFn: fetchMantenimientosFromDB,
+    queryKey: ['mantenimientos', fechaDesde],
+    queryFn: () => fetchMantenimientosFromDB(fechaDesde),
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: false,
@@ -171,6 +198,8 @@ export function useMantenimientos() {
     mantenimientos,
     loading,
     fetchMantenimientos,
+    loadAll,
+    cargarHistorico,
     createMantenimiento: async (mant: MantenimientoForm) => {
       try {
         return await createMutation.mutateAsync(mant);
