@@ -283,20 +283,39 @@ export function useCertificados(obraId?: string) {
     refetchOnWindowFocus: false,
   });
 
-  // Items for a specific certificado
-  const fetchItems = async (certificadoId: string): Promise<CertificadoItem[]> => {
-    const { data, error } = await supabase
-      .from("certificado_items")
-      .select("*")
-      .eq("certificado_id", certificadoId)
-      .order("created_at", { ascending: true });
-    if (error) throw error;
-    return (data as any[]).map((d) => ({
-      ...d,
-      etapa: d.etapa || null,
-      seccion: d.seccion || null,
-    })) as CertificadoItem[];
-  };
+  // Items for a specific certificado — cached per certId
+  const fetchItems = (certificadoId: string): Promise<CertificadoItem[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_items", certificadoId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("certificado_items")
+          .select("*")
+          .eq("certificado_id", certificadoId)
+          .order("created_at", { ascending: true });
+        if (error) throw error;
+        return (data as any[]).map((d) => ({
+          ...d,
+          etapa: d.etapa || null,
+          seccion: d.seccion || null,
+        })) as CertificadoItem[];
+      },
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
+
+  // Acumulados — cached per (obra, periodo, excludeCertId)
+  const fetchAcumuladosCached = (
+    obraIdArg: string,
+    periodoActual: string,
+    excludeCertId?: string,
+  ): Promise<AcumuladoConcepto[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_acumulados", obraIdArg, periodoActual, excludeCertId || null],
+      queryFn: () => fetchAcumulados(obraIdArg, periodoActual, excludeCertId),
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
 
   // ---- Concepto mutations ----
 
