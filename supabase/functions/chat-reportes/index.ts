@@ -27,7 +27,7 @@ TABLAS DISPONIBLES (schema public):
 - cotizaciones (id uuid, numero text, obra_id uuid, descripcion text, estado estado_cotizacion, fecha_creacion date, subtotal numeric, iva numeric, total numeric, moneda text)
 - cotizacion_items (id uuid, cotizacion_id uuid, descripcion text, unidad text, cantidad numeric, precio_unitario numeric, subtotal numeric, categoria_id uuid)
 - remitos (id uuid, numero text, fecha date, obra_id uuid, desde text, hasta text, material text, tipo_material text, cantidad numeric, unidad text, cantidad_viajes integer, precio_unitario numeric, precio_total numeric, maquinaria_id uuid, tipo_transporte text, cliente text, cliente_destino text)
-- cargas_combustible (id uuid, fecha date, obra_id uuid, maquinaria_id uuid, litros numeric, precio_litro numeric, costo_total numeric, horas_maquina numeric, operador text)
+
 - cargas_combustible_repartidor (id uuid, fecha date, maquinaria_id uuid, obra_id uuid, litros numeric, tipo_producto text, numero_remito integer, observaciones text)
 - mantenimientos (id uuid, fecha date, maquinaria_id uuid, tipo tipo_mantenimiento, descripcion text, costo_repuestos numeric, costo_mano_obra numeric, costo_total numeric, horas_maquina numeric, tecnico text, estado estado_mantenimiento)
 - horas_maquina (id uuid, fecha date, maquinaria_id uuid, obra_id uuid, operador_id uuid, horas_trabajadas numeric)
