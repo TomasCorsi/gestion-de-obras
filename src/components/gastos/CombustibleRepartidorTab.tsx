@@ -408,6 +408,12 @@ export function CombustibleRepartidorTab() {
 
   return (
     <div className="space-y-4">
+      <HistoricoBanner
+        loadAll={loadAll}
+        onCargarHistorico={cargarHistorico}
+        diasMostrados={90}
+        label="entregas"
+      />
       {/* Date / month / year row */}
       <div className="flex flex-wrap gap-2 items-center justify-end">
         <div className="relative">
