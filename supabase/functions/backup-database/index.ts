@@ -14,7 +14,7 @@ const TABLES = [
   "remitos",
   "viajes",
   "partes_diarios",
-  "cargas_combustible",
+  
   "cargas_combustible_repartidor",
   "mantenimientos",
   "otros_gastos",
