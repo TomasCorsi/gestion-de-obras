@@ -59,6 +59,7 @@ import { CombustibleCSVImportDialog } from "@/components/combustible/CSVImportDi
 import { CombustibleDataGrid } from "@/components/combustible/CombustibleDataGrid";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { HistoricoBanner } from "@/components/shared/HistoricoBanner";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("es-AR", {
