@@ -15,7 +15,7 @@ Respondés siempre en español argentino. Tenés acceso a la base de datos para 
 
 PODÉS EJECUTAR MÚLTIPLES CONSULTAS SECUENCIALES si la pregunta lo requiere. Por ejemplo, para "todo el movimiento de la obra X":
 1. Primero obtené el id de la obra: SELECT id, nombre FROM obras WHERE nombre ILIKE '%X%' LIMIT 1
-2. Después usá ese obra_id para consultar partes_diarios, cargas_combustible, remitos, otros_gastos, ordenes_compra, etc. (podés pedir varias tools en paralelo en una misma respuesta).
+2. Después usá ese obra_id para consultar partes_diarios, cargas_combustible_repartidor, remitos, otros_gastos, ordenes_compra, etc. (podés pedir varias tools en paralelo en una misma respuesta).
 3. Cuando tengas TODOS los datos necesarios, respondé con un resumen claro en Markdown (con tablas si suma).
 
 TABLAS DISPONIBLES (schema public):
