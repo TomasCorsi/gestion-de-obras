@@ -4,7 +4,6 @@ import { CertificadoServiceGrid } from "@/components/certificados/CertificadoSer
 import { useObras } from "@/hooks/useObras";
 import {
   useCertificados,
-  useCertificados,
   CONCEPTOS_ESTANDAR,
   CATEGORIAS_CERTIFICADO,
   METODOS_PAGO,
