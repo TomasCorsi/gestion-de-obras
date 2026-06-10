@@ -199,6 +199,7 @@ export default function Certificados() {
     certificados,
     loadingCertificados,
     fetchItems,
+    fetchAcumuladosCached,
     createConcepto,
     updateConcepto,
     deleteConcepto,
