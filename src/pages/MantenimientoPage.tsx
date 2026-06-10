@@ -298,6 +298,12 @@ export default function MantenimientoPage() {
 
   const renderFiltersAndActions = (type: "service" | "reparacion") => (
     <>
+      <HistoricoBanner
+        loadAll={loadAll}
+        onCargarHistorico={cargarHistorico}
+        diasMostrados={180}
+        label="mantenimientos"
+      />
       <div className="mb-4">
         <FilterBar obras={obras} onFilterChange={setFilters} showObraFilter={false} />
       </div>
