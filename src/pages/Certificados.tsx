@@ -720,17 +720,23 @@ export default function Certificados() {
     setLoadingItems(true);
     setNewPago(emptyPago());
     setEditingPagoId(null);
-    const [items, pagos] = await Promise.all([fetchItems(id), fetchPagos(id)]);
-    setViewItems(items);
-    setViewPagos(pagos);
 
     const cert = certificados.find((c) => c.id === id);
-    if ((cert?.tipo === "obra" || cert?.tipo === "mixto") && selectedObraId) {
-      const ac = await fetchAcumulados(selectedObraId, cert.periodo, cert.id);
-      setViewAcumulados(ac);
-    } else {
-      setViewAcumulados([]);
-    }
+    const needsAcumulados =
+      (cert?.tipo === "obra" || cert?.tipo === "mixto") && !!selectedObraId;
+
+    // Run all three queries in parallel (cached per cert)
+    const [items, pagos, ac] = await Promise.all([
+      fetchItems(id),
+      fetchPagos(id),
+      needsAcumulados
+        ? fetchAcumuladosCached(selectedObraId!, cert!.periodo, cert!.id)
+        : Promise.resolve([] as AcumuladoConcepto[]),
+    ]);
+
+    setViewItems(items);
+    setViewPagos(pagos);
+    setViewAcumulados(ac);
     setLoadingItems(false);
   };
 
