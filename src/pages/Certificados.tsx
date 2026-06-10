@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CertificadoServiceGrid } from "@/components/certificados/CertificadoServiceGrid";
 import { useObras } from "@/hooks/useObras";
@@ -219,13 +219,16 @@ export default function Certificados() {
   } = useCertificados(selectedObraId);
 
   // Build etapaOrdenMap from conceptos' orden field (min orden per etapa)
-  const etapaOrdenMap: Record<string, number> = {};
-  conceptos.forEach((c) => {
-    const etapa = c.etapa || "Sin etapa";
-    if (!(etapa in etapaOrdenMap) || c.orden < etapaOrdenMap[etapa]) {
-      etapaOrdenMap[etapa] = c.orden;
-    }
-  });
+  const etapaOrdenMap = useMemo<Record<string, number>>(() => {
+    const map: Record<string, number> = {};
+    conceptos.forEach((c) => {
+      const etapa = c.etapa || "Sin etapa";
+      if (!(etapa in map) || c.orden < map[etapa]) {
+        map[etapa] = c.orden;
+      }
+    });
+    return map;
+  }, [conceptos]);
 
   // ---- Filtros listado ----
   const [filtroEstado, setFiltroEstado] = useUrlState<string>({ key: "fest", defaultValue: "todos", serialize: v => v, deserialize: v => v });
@@ -234,26 +237,53 @@ export default function Certificados() {
   const [filtroMes, setFiltroMes] = useUrlState<string>({ key: "fmes", defaultValue: "", serialize: v => v, deserialize: v => v });
   const [vistaListado, setVistaListado] = useUrlState<"cards" | "tabla">({ key: "vista", defaultValue: "tabla", serialize: v => v, deserialize: v => (v === "cards" ? "cards" : "tabla") });
 
-  const certificadosFiltrados = certificados.filter((c) => {
-    if (filtroEstado !== "todos" && c.estado !== filtroEstado) return false;
-    if (filtroTipo !== "todos" && c.tipo !== filtroTipo) return false;
-    if (filtroBusqueda && !c.numero.toLowerCase().includes(filtroBusqueda.toLowerCase())) return false;
-    if (filtroMes && c.periodo !== filtroMes) return false;
-    return true;
-  });
+  // Debounced search (200 ms) to avoid recomputing filters on every keystroke
+  const [busquedaDebounced, setBusquedaDebounced] = useState(filtroBusqueda);
+  useEffect(() => {
+    const t = setTimeout(() => setBusquedaDebounced(filtroBusqueda), 200);
+    return () => clearTimeout(t);
+  }, [filtroBusqueda]);
+
+  // O(1) lookup: total pagado por certificado
+  const pagadoByCertMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of allPagos) {
+      m.set(p.certificado_id, (m.get(p.certificado_id) || 0) + Number(p.monto));
+    }
+    return m;
+  }, [allPagos]);
+
+  const getPagadoByCert = useCallback(
+    (certId: string) => pagadoByCertMap.get(certId) || 0,
+    [pagadoByCertMap]
+  );
+
+  const certificadosFiltrados = useMemo(() => {
+    const q = busquedaDebounced.toLowerCase();
+    return certificados.filter((c) => {
+      if (filtroEstado !== "todos" && c.estado !== filtroEstado) return false;
+      if (filtroTipo !== "todos" && c.tipo !== filtroTipo) return false;
+      if (q && !c.numero.toLowerCase().includes(q)) return false;
+      if (filtroMes && c.periodo !== filtroMes) return false;
+      return true;
+    });
+  }, [certificados, filtroEstado, filtroTipo, busquedaDebounced, filtroMes]);
 
   // ---- KPIs ----
-  const totalCertificados = certificadosFiltrados.length;
-  const montoTotal = certificadosFiltrados.reduce((s, c) => s + c.total, 0);
-  const montoCobrado = certificadosFiltrados.reduce((s, c) => s + getPagadoByCert(c.id), 0);
-  const montoPendiente = certificadosFiltrados
-    .filter((c) => c.estado !== "cobrado")
-    .reduce((s, c) => s + (c.total - getPagadoByCert(c.id)), 0);
-  const pctCobranza = montoTotal > 0 ? (montoCobrado / montoTotal) * 100 : 0;
-  const pendientes = certificadosFiltrados.filter((c) => c.estado !== "cobrado" && c.fecha_emision);
-  const antiguedadProm = pendientes.length > 0
-    ? pendientes.reduce((s, c) => s + differenceInDays(new Date(), parseISO(c.fecha_emision!)), 0) / pendientes.length
-    : 0;
+  const { totalCertificados, montoTotal, montoCobrado, montoPendiente, pctCobranza, antiguedadProm } = useMemo(() => {
+    const totalCertificados = certificadosFiltrados.length;
+    const montoTotal = certificadosFiltrados.reduce((s, c) => s + c.total, 0);
+    const montoCobrado = certificadosFiltrados.reduce((s, c) => s + (pagadoByCertMap.get(c.id) || 0), 0);
+    const montoPendiente = certificadosFiltrados
+      .filter((c) => c.estado !== "cobrado")
+      .reduce((s, c) => s + (c.total - (pagadoByCertMap.get(c.id) || 0)), 0);
+    const pctCobranza = montoTotal > 0 ? (montoCobrado / montoTotal) * 100 : 0;
+    const pendientes = certificadosFiltrados.filter((c) => c.estado !== "cobrado" && c.fecha_emision);
+    const antiguedadProm = pendientes.length > 0
+      ? pendientes.reduce((s, c) => s + differenceInDays(new Date(), parseISO(c.fecha_emision!)), 0) / pendientes.length
+      : 0;
+    return { totalCertificados, montoTotal, montoCobrado, montoPendiente, pctCobranza, antiguedadProm };
+  }, [certificadosFiltrados, pagadoByCertMap]);
 
   // ---- Conceptos tab filters ----
   const [conceptoSearch, setConceptoSearch] = useState("");
