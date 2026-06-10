@@ -1,6 +1,11 @@
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+const DEFAULT_DAYS_BACK = 90;
+const LOAD_ALL_SESSION_KEY = 'cargas_repartidor:loadAll';
+
 export interface CargaRepartidorFull {
   id: string;
   parte_diario_id: string | null;
@@ -26,10 +31,31 @@ export interface CargaRepartidorFull {
 }
 
 export function useCargasRepartidorAll() {
+  const queryClient = useQueryClient();
+
+  const [loadAll, setLoadAll] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return sessionStorage.getItem(LOAD_ALL_SESSION_KEY) === '1';
+  });
+
+  const cargarHistorico = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(LOAD_ALL_SESSION_KEY, '1');
+    }
+    setLoadAll(true);
+  }, []);
+
+  const fechaDesde = useMemo(() => {
+    if (loadAll) return null;
+    const d = new Date();
+    d.setDate(d.getDate() - DEFAULT_DAYS_BACK);
+    return d.toISOString().slice(0, 10);
+  }, [loadAll]);
+
   const { data: cargas = [], isLoading } = useQuery({
-    queryKey: ['cargas_combustible_repartidor_all'],
+    queryKey: ['cargas_combustible_repartidor_all', fechaDesde],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('cargas_combustible_repartidor')
         .select(`
           *,
@@ -43,16 +69,20 @@ export function useCargasRepartidorAll() {
         `)
         .order('fecha', { ascending: false });
 
+      if (fechaDesde) query = query.gte('fecha', fechaDesde);
+
+      const { data, error } = await query;
       if (error) {
         console.error('Error fetching all cargas repartidor:', error);
         throw error;
       }
-
       return data as CargaRepartidorFull[];
     },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
-
-  const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string; [key: string]: any }) => {
@@ -92,6 +122,8 @@ export function useCargasRepartidorAll() {
     cargas,
     isLoading,
     totalLitros,
+    loadAll,
+    cargarHistorico,
     updateCarga: updateMutation.mutateAsync,
     deleteCarga: deleteMutation.mutateAsync,
     isUpdating: updateMutation.isPending,
