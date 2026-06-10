@@ -29,8 +29,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
-import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
-import { useAsignacionesMaquinaria } from "@/hooks/useAsignacionesMaquinaria";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
 import { useOtrosGastos } from "@/hooks/useOtrosGastos";
 import { Badge } from "@/components/ui/badge";
