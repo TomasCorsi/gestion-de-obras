@@ -1,49 +1,62 @@
 
-## Diagnóstico
+# Limpieza total de secciones no usadas en Gastos
 
-### 1. Diálogo "CERT-XXX — Obra" tarda en cargar
-En `src/pages/Certificados.tsx` → `openViewCert()` (línea 717) cada vez que abrís un certificado se disparan **3 consultas a la DB** (`fetchItems`, `fetchPagos`, `fetchAcumulados`) — no están cacheadas en React Query, son `async` simples. Aunque cierres y vuelvas a abrir el mismo certificado, vuelve a ir a la base.
+## Resultado final
+La página **Gastos** queda con una sola sección llamada **Combustible** (la actual "Repartidor"). Se elimina todo el código, hooks, componentes, página standalone y tablas de las otras tres secciones.
 
-Además `fetchAcumulados` se ejecuta **después** de las otras dos en vez de en paralelo, y para certificados tipo "obra"/"mixto" hace 2 queries adicionales (lista de certificados previos + suma de sus items).
+## Cambios en el frontend
 
-### 2. Pestaña Repartidor (`/gastos` → tab Repartidor) tarda mucho
-`src/hooks/useCargasRepartidorAll.ts` trae **las 2.210 cargas completas** con 5 joins anidados (operador, maquinaria, obra, parte_diario→personal, repartidor) **en cada visita**, sin `staleTime`, sin filtro de fecha, sin paginación. Es el query más caro de esa sección.
+### 1. `src/pages/Gastos.tsx` — reescritura simplificada
+- Eliminar tabs *Maquinarias*, *Personal* y *Combustible* (la vieja, basada en `cargas_combustible`).
+- Dejar una única pestaña/vista con `<CombustibleRepartidorTab>`, titulada **Combustible** (ícono Fuel).
+- Como queda una sola sección, se puede quitar el `<Tabs>` y renderizar directo el componente.
+- Quitar todo el estado, handlers, imports, filtros, dialogs, exports y vista full-screen relacionados a la vieja Combustible/Maquinarias/Personal.
 
----
+### 2. Borrar página standalone y su ruta
+- `src/pages/Combustible.tsx` → eliminar archivo.
+- `src/App.tsx` → quitar `lazy(... Combustible)` y la ruta `/combustible` si existe.
+- `src/components/layout/AppLauncher.tsx` y `Sidebar.tsx` → quitar entradas a `/combustible` si las hay.
 
-## Plan de cambios
+### 3. Borrar hooks
+- `src/hooks/useCombustible.ts`
+- `src/hooks/useAsignacionesMaquinaria.ts`
+- `src/hooks/useAsignacionesPersonal.ts`
 
-### A. Caché del diálogo de certificado (`src/pages/Certificados.tsx` + `src/hooks/useCertificados.ts`)
+### 4. Borrar componentes
+- `src/components/combustible/` (carpeta completa: `CombustibleDataGrid.tsx`, `CSVImportDialog.tsx`)
+- `src/components/maquinarias/AsignacionesMaquinariaObra.tsx`
+- `src/components/personal/AsignacionesPersonalObra.tsx`
 
-1. Convertir `fetchItems`, `fetchPagos` y `fetchAcumulados` en **queries de React Query** keyed por `certId` (y por `obraId`+`periodo`+`excludeCertId` en el caso de acumulados), con `staleTime: 5 min`, `gcTime: 30 min`.
-2. En `openViewCert`: en vez de `await Promise.all([fetchItems, fetchPagos]).then(fetchAcumulados)`, hacer **las 3 en paralelo** (`Promise.all`) porque ya no dependen entre sí.
-3. Invalidar esas keys al guardar/editar/eliminar items o pagos del cert (las mutations ya existentes).
+### 5. Limpiar referencias residuales
+- `src/hooks/useDashboardData.ts` → quitar la query a `cargas_combustible` y el KPI/cálculo derivado.
+- `src/hooks/useReporteObra.ts` → quitar el fetch y los cálculos basados en `cargas_combustible`.
+- Buscar y eliminar cualquier import huérfano (`rg "useCombustible|useAsignaciones(Personal|Maquinaria)|AsignacionesMaquinariaObra|AsignacionesPersonalObra"`).
 
-**Resultado esperado:** segunda apertura del mismo cert = instantánea; primera apertura ≈ tiempo de la query más lenta de las 3 en lugar de la suma.
+## Cambios en backend / Edge Functions
 
-### B. Filtro por defecto + caché en pestaña Repartidor
+### 6. `supabase/functions/backup-database/index.ts`
+- Quitar `"cargas_combustible"`, `"asignaciones_maquinaria_obra"`, `"asignaciones_personal_obra"` del array de tablas a respaldar.
+- Redeploy automático.
 
-1. En `src/hooks/useCargasRepartidorAll.ts`:
-   - Aceptar parámetro opcional `fechaDesde` (por defecto últimos **90 días**).
-   - Agregar `staleTime: 5 min`, `gcTime: 30 min`, `refetchOnMount: false`, `refetchOnWindowFocus: false`.
-   - Exponer `loadAll` + `cargarHistorico` con persistencia en `sessionStorage` (mismo patrón usado en Combustible/Mantenimiento).
-2. En `src/components/gastos/CombustibleRepartidorTab.tsx`:
-   - Mostrar el `<HistoricoBanner>` existente con label "entregas" y `diasMostrados={90}`.
-   - Si el usuario aplica filtro de mes/año fuera de los 90 días, llamar `cargarHistorico()` automáticamente (opcional, sano).
+### 7. `supabase/functions/chat-reportes/index.ts`
+- Eliminar las menciones a `cargas_combustible` del prompt/esquema enviado al modelo (líneas 18 y 30).
 
-**Resultado esperado:** la pestaña carga ~10× menos filas por defecto (las últimas 90 días) y se queda cacheada al volver.
+## Cambios en base de datos (migración)
 
-### C. Sin cambios de DB ni de UI/negocio
+Tabla de drop con CASCADE para arrastrar políticas, índices, FKs y vistas dependientes:
 
-Los índices de cargas_combustible_repartidor, certificado_items, certificado_pagos y certificados ya están en la base (los aplicamos en la migración anterior). No hace falta otra migración.
+```sql
+DROP TABLE IF EXISTS public.cargas_combustible CASCADE;
+DROP TABLE IF EXISTS public.asignaciones_maquinaria_obra CASCADE;
+DROP TABLE IF EXISTS public.asignaciones_personal_obra CASCADE;
+```
 
-No se toca el render del diálogo, ni los PDF, ni la lógica de pagos/IVA/acumulados.
+Sin export previo de datos (confirmado por el usuario).
 
----
+> Nota: la tabla `cargas_combustible_repartidor` **se conserva** intacta, ya que es la fuente de la nueva pestaña "Combustible".
 
-## Archivos afectados
-
-- `src/hooks/useCertificados.ts` — convertir fetchItems/fetchPagos/fetchAcumulados a queries cacheadas (o exponerlas con `queryClient.fetchQuery` para mantener firma actual).
-- `src/pages/Certificados.tsx` — `openViewCert` en paralelo, consumir nuevas queries.
-- `src/hooks/useCargasRepartidorAll.ts` — `fechaDesde`, `loadAll`, opciones de caché.
-- `src/components/gastos/CombustibleRepartidorTab.tsx` — `<HistoricoBanner>`.
+## Validación post-cambios
+- Build sin errores TS (imports rotos).
+- `/gastos` carga y muestra solo Combustible (ex-Repartidor).
+- Dashboard y Reporte de Obra cargan sin errores (sin sección de combustible viejo).
+- Backup de DB corre sin fallar por tablas inexistentes.

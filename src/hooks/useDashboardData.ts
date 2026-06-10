@@ -208,7 +208,7 @@ const fetchReportesDataFromDB = async (): Promise<ReportesData> => {
   const startOfCurrentWeek = startOfWeek(new Date(), { weekStartsOn: 1 });
   const endOfCurrentWeek = endOfWeek(new Date(), { weekStartsOn: 1 });
 
-  const [obrasResult, maquinariasResult, viajesResult, combustibleResult, mantenimientosResult] = await Promise.all([
+  const [obrasResult, maquinariasResult, viajesResult, mantenimientosResult] = await Promise.all([
     supabase.from("obras").select("*"),
     supabase.from("maquinarias").select("id, nombre, codigo, tipo, estado, obra_id"),
     supabase
@@ -216,7 +216,6 @@ const fetchReportesDataFromDB = async (): Promise<ReportesData> => {
       .select("*")
       .gte("fecha", format(startOfCurrentWeek, "yyyy-MM-dd"))
       .lte("fecha", format(endOfCurrentWeek, "yyyy-MM-dd")),
-    supabase.from("cargas_combustible").select("id, fecha, litros, costo_total, obra_id, maquinaria_id"),
     supabase.from("mantenimientos").select("id, fecha, costo_total, maquinaria_id, maquinaria:maquinarias(obra_id)"),
   ]);
 
@@ -224,7 +223,7 @@ const fetchReportesDataFromDB = async (): Promise<ReportesData> => {
     obras: obrasResult.data || [],
     maquinarias: maquinariasResult.data || [],
     viajes: viajesResult.data || [],
-    combustible: combustibleResult.data || [],
+    combustible: [],
     mantenimientos: mantenimientosResult.data || [],
   };
 };

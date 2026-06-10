@@ -14,7 +14,7 @@ const TABLES = [
   "remitos",
   "viajes",
   "partes_diarios",
-  "cargas_combustible",
+  
   "cargas_combustible_repartidor",
   "mantenimientos",
   "otros_gastos",
@@ -34,8 +34,6 @@ const TABLES = [
   "registros_hh",
   "observaciones_maquina_estado",
   "precios_productos_mes",
-  "asignaciones_maquinaria_obra",
-  "asignaciones_personal_obra",
 ];
 
 Deno.serve(async (req) => {

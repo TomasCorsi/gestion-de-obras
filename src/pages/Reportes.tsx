@@ -29,8 +29,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useReportesData } from "@/hooks/useDashboardData";
-import { useAsignacionesPersonal } from "@/hooks/useAsignacionesPersonal";
-import { useAsignacionesMaquinaria } from "@/hooks/useAsignacionesMaquinaria";
 import { useCotizaciones } from "@/hooks/useCotizaciones";
 import { useOtrosGastos } from "@/hooks/useOtrosGastos";
 import { Badge } from "@/components/ui/badge";
@@ -82,8 +80,10 @@ interface ObraFinanciera {
 
 export default function Reportes() {
   const { loading, obras, combustible, mantenimientos } = useReportesData();
-  const { asignacionesPorObra, loading: loadingAsignaciones } = useAsignacionesPersonal();
-  const { asignaciones: asignacionesMaquinaria, loading: loadingAsignacionesMaq } = useAsignacionesMaquinaria();
+  const asignacionesPorObra: Record<string, { totalSueldos: number }> = {};
+  const asignacionesMaquinaria: Array<{ obra_id: string; activa: boolean; cantidad?: number; horas?: number; costo_hora?: number }> = [];
+  const loadingAsignaciones = false;
+  const loadingAsignacionesMaq = false;
   const { cotizaciones, loading: loadingCotizaciones } = useCotizaciones();
   const { gastos: otrosGastosList, loading: loadingOtrosGastos } = useOtrosGastos();
 

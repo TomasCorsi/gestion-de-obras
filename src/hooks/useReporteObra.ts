@@ -186,7 +186,7 @@ export function useReporteObra({ obraId, fechaDesde, fechaHasta }: ReporteObraPa
         fetchAll<any>(supabase.from("horas_maquina").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("maquinarias").select("id, codigo, nombre, patente, tipo")),
         fetchAll<any>(supabase.from("personal").select("id, nombre, apellido, rol, sueldo, sueldo_negro")),
-        fetchAll<any>(supabase.from("cargas_combustible").select("*").eq("obra_id", obraId)),
+        Promise.resolve([] as any[]),
         fetchAll<any>(supabase.from("cargas_combustible_repartidor").select("*").eq("obra_id", obraId)),
         fetchAll<any>(supabase.from("precios_productos_mes" as any).select("*")),
         fetchAll<any>(remitosByObraQuery),

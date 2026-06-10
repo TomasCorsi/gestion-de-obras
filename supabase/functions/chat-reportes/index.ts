@@ -15,7 +15,7 @@ Respondés siempre en español argentino. Tenés acceso a la base de datos para 
 
 PODÉS EJECUTAR MÚLTIPLES CONSULTAS SECUENCIALES si la pregunta lo requiere. Por ejemplo, para "todo el movimiento de la obra X":
 1. Primero obtené el id de la obra: SELECT id, nombre FROM obras WHERE nombre ILIKE '%X%' LIMIT 1
-2. Después usá ese obra_id para consultar partes_diarios, cargas_combustible, remitos, otros_gastos, ordenes_compra, etc. (podés pedir varias tools en paralelo en una misma respuesta).
+2. Después usá ese obra_id para consultar partes_diarios, cargas_combustible_repartidor, remitos, otros_gastos, ordenes_compra, etc. (podés pedir varias tools en paralelo en una misma respuesta).
 3. Cuando tengas TODOS los datos necesarios, respondé con un resumen claro en Markdown (con tablas si suma).
 
 TABLAS DISPONIBLES (schema public):
@@ -27,7 +27,7 @@ TABLAS DISPONIBLES (schema public):
 - cotizaciones (id uuid, numero text, obra_id uuid, descripcion text, estado estado_cotizacion, fecha_creacion date, subtotal numeric, iva numeric, total numeric, moneda text)
 - cotizacion_items (id uuid, cotizacion_id uuid, descripcion text, unidad text, cantidad numeric, precio_unitario numeric, subtotal numeric, categoria_id uuid)
 - remitos (id uuid, numero text, fecha date, obra_id uuid, desde text, hasta text, material text, tipo_material text, cantidad numeric, unidad text, cantidad_viajes integer, precio_unitario numeric, precio_total numeric, maquinaria_id uuid, tipo_transporte text, cliente text, cliente_destino text)
-- cargas_combustible (id uuid, fecha date, obra_id uuid, maquinaria_id uuid, litros numeric, precio_litro numeric, costo_total numeric, horas_maquina numeric, operador text)
+
 - cargas_combustible_repartidor (id uuid, fecha date, maquinaria_id uuid, obra_id uuid, litros numeric, tipo_producto text, numero_remito integer, observaciones text)
 - mantenimientos (id uuid, fecha date, maquinaria_id uuid, tipo tipo_mantenimiento, descripcion text, costo_repuestos numeric, costo_mano_obra numeric, costo_total numeric, horas_maquina numeric, tecnico text, estado estado_mantenimiento)
 - horas_maquina (id uuid, fecha date, maquinaria_id uuid, obra_id uuid, operador_id uuid, horas_trabajadas numeric)
