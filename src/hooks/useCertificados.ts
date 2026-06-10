@@ -849,6 +849,7 @@ export function useCertificados(obraId?: string) {
     certificados,
     loadingCertificados,
     fetchItems,
+    fetchAcumuladosCached,
     createConcepto: createConcepto.mutateAsync,
     updateConcepto: updateConcepto.mutateAsync,
     deleteConcepto: deleteConcepto.mutateAsync,
