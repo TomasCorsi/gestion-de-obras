@@ -738,9 +738,10 @@ export function useCertificados(obraId?: string) {
       await syncCertificadoEstado(pago.certificado_id);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago registrado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: (e: any) => toast.error(e?.message || "Error al registrar pago"),
@@ -768,9 +769,10 @@ export function useCertificados(obraId?: string) {
       if (error) throw error;
       await syncCertificadoEstado(certificado_id);
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago actualizado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: (e: any) => toast.error(e?.message || "Error al actualizar pago"),
@@ -785,9 +787,10 @@ export function useCertificados(obraId?: string) {
       if (error) throw error;
       await syncCertificadoEstado(certificado_id);
     },
-    onSuccess: () => {
+    onSuccess: (_, vars) => {
       toast.success("Pago eliminado");
       queryClient.invalidateQueries({ queryKey: ["certificado_pagos", obraId] });
+      queryClient.invalidateQueries({ queryKey: ["certificado_pagos_cert", vars.certificado_id] });
       queryClient.invalidateQueries({ queryKey: ["certificados", obraId] });
     },
     onError: () => toast.error("Error al eliminar pago"),
