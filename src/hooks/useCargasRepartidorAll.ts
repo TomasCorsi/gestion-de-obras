@@ -58,7 +58,9 @@ export function useCargasRepartidorAll() {
       let query = supabase
         .from('cargas_combustible_repartidor')
         .select(`
-          *,
+          id, parte_diario_id, fecha, litros, horas, km,
+          operador_id, maquinaria_id, obra_id, tipo_operador, tipo_producto,
+          repartidor_id, observaciones, numero_remito, created_at, updated_at,
           operador:personal!cargas_combustible_repartidor_operador_id_fkey(nombre, apellido),
           maquinaria:maquinarias!cargas_combustible_repartidor_maquinaria_id_fkey(codigo, tipo, nombre),
           obra:obras!cargas_combustible_repartidor_obra_id_fkey(nombre),
