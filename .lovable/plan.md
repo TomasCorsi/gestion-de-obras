@@ -1,101 +1,73 @@
-# Plan: Hacer el sistema más rápido y fluido
+# Plan: Acelerar la sección Certificados
 
-## Diagnóstico (datos reales del backend)
+## Diagnóstico (datos reales)
 
-Revisé las consultas más lentas y los índices actuales. El problema NO es la UI: es que muchas pantallas piden **tablas enteras** al backend cada vez que se entra, y faltan índices clave.
+Tablas: 14 certificados, 76 conceptos, 120 items, 1 pago. **El volumen no es el problema.** Lo que pesa es:
 
-Top ofensores (tiempo total acumulado):
-- `observaciones_maquina_estado` con joins → **838 s** en 11.976 llamadas (mean 70 ms)
-- `remitos` con joins (sin filtro) → **644 s** en 3.563 llamadas (mean 180 ms, 2.856 filas cada vez)
-- `mantenimientos` con joins → **387 s** en 9.943 llamadas
-- `partes_diarios` con joins → **348 s** en 13.341 llamadas
-- `cargas_combustible_repartidor` → **263 s** en 2.458 llamadas
-- `maquinarias`, `obras` con joins → **+320 s** combinados, llamadas miles de veces
-
-Causas raíz:
-1. **Sin paginación**: hooks como `useRemitos`, `useMantenimientos`, `useObservacionesMaquina` traen TODO sin `LIMIT`, y los grids muestran 2.000+ filas en memoria.
-2. **Sin caché estable**: React Query refetchea en cada navegación; los hooks no setean `staleTime`, así que cada cambio de pestaña dispara la consulta otra vez.
-3. **Faltan índices**:
-   - `remitos(fecha DESC, created_at DESC)` — orden default sin índice → scan completo.
-   - `partes_diarios(personal_id, fecha DESC)` — el hook de empleado lo usa siempre.
-   - `mantenimientos(fecha DESC)`, `cargas_combustible_repartidor(repartidor_id, created_at DESC)`.
-   - `observaciones_maquina_estado(atendida, fecha_reporte)`.
-4. **Joins anidados pesados** en `observaciones_maquina_estado` (parte_diario → personal + obra) traídos en cada poll.
+1. **Cero índices** en `certificado_items`, `certificado_pagos`, `certificado_conceptos`, `certificados` (solo el `pkey`). Cada lookup por `certificado_id`, `obra_id`, `(obra_id, periodo)` hace scan secuencial.
+2. **`Certificados.tsx` mide 2.794 líneas** en un solo componente. Cosas que se recalculan en cada render:
+   - `etapaOrdenMap` (loop sobre conceptos) sin `useMemo`.
+   - `certificadosFiltrados`, `montoTotal`, `montoCobrado`, `montoPendiente`, `pendientes`, `antiguedadProm` — todos sin `useMemo`.
+   - `getPagadoByCert` recorre `allPagos` por cada certificado en cada render (N×M).
+   - Cada tecla en el buscador recalcula todo.
+3. **Hooks sin caché**: `useCertificados` (conceptos, certificados, allPagos) sin `staleTime`/`refetchOnMount:false` → cambiar de obra y volver re-pegado completo a la DB.
+4. **`fetchAcumulados` se dispara en useEffect** cada vez que cambia `periodo` / `editingCertId`, sin caché y haciendo 2 queries seguidas.
+5. **Dialog de crear/editar es monstruoso** (cientos de líneas dentro del mismo componente) → al abrirlo se re-renderiza todo el árbol.
 
 ## Cambios propuestos (3 frentes)
 
-### 1. Base de datos — Crear índices faltantes (migración SQL)
+### 1. Índices DB (migración)
 
 ```sql
-CREATE INDEX IF NOT EXISTS idx_remitos_fecha_created
-  ON public.remitos (fecha DESC, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_remitos_obra_fecha
-  ON public.remitos (obra_id, fecha DESC) WHERE obra_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_remitos_desde_lower
-  ON public.remitos (lower(desde));
+CREATE INDEX IF NOT EXISTS idx_cert_items_certificado
+  ON public.certificado_items (certificado_id);
+CREATE INDEX IF NOT EXISTS idx_cert_items_concepto
+  ON public.certificado_items (concepto_id);
 
-CREATE INDEX IF NOT EXISTS idx_partes_personal_fecha
-  ON public.partes_diarios (personal_id, fecha DESC, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_partes_fecha
-  ON public.partes_diarios (fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_cert_pagos_certificado_fecha
+  ON public.certificado_pagos (certificado_id, fecha DESC);
 
-CREATE INDEX IF NOT EXISTS idx_mantenimientos_fecha
-  ON public.mantenimientos (fecha DESC);
-CREATE INDEX IF NOT EXISTS idx_mantenimientos_maquinaria_fecha
-  ON public.mantenimientos (maquinaria_id, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_cert_conceptos_obra_orden
+  ON public.certificado_conceptos (obra_id, orden);
 
-CREATE INDEX IF NOT EXISTS idx_cargas_rep_repartidor_created
-  ON public.cargas_combustible_repartidor (repartidor_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_cargas_rep_fecha
-  ON public.cargas_combustible_repartidor (fecha DESC);
-
-CREATE INDEX IF NOT EXISTS idx_obs_maq_atendida_fecha
-  ON public.observaciones_maquina_estado (atendida, fecha_reporte DESC);
-
-CREATE INDEX IF NOT EXISTS idx_horas_maquina_obra_fecha
-  ON public.horas_maquina (obra_id, fecha DESC);
-CREATE INDEX IF NOT EXISTS idx_cargas_combustible_obra_fecha
-  ON public.cargas_combustible (obra_id, fecha DESC);
+CREATE INDEX IF NOT EXISTS idx_certificados_obra_periodo
+  ON public.certificados (obra_id, periodo DESC);
+CREATE INDEX IF NOT EXISTS idx_certificados_obra_tipo_periodo
+  ON public.certificados (obra_id, tipo, periodo);
 ```
 
-Impacto esperado: las consultas con `ORDER BY fecha DESC` y filtros por FK pasan de scan secuencial a index scan. En tablas de 2-4K filas, mean_ms baja de 70-180 ms a < 20 ms.
+Esto acelera `fetchAcumulados`, `fetchItems`, `fetchPagos`, `allPagos.in(...)`, y el listado por obra.
 
-### 2. React Query — Caché agresivo y `staleTime` por hook
+### 2. Caché en `useCertificados`
 
-Aplicar a los hooks de listas grandes (`useRemitos`, `useMantenimientos`, `useObservacionesMaquina`, `useCargasRepartidor`, `useMaquinarias`, `useObras`, `usePersonal`):
-
+Aplicar a las 3 queries (`certificado_conceptos`, `certificados`, `certificado_pagos`):
 ```ts
-useQuery({
-  queryKey: [...],
-  queryFn: ...,
-  staleTime: 5 * 60 * 1000,   // 5 min: no refetchea al navegar
-  gcTime: 30 * 60 * 1000,
-  refetchOnWindowFocus: false, // ya está global, asegurar por hook
-  refetchOnMount: false,       // usar caché si está fresca
-})
+staleTime: 5 * 60 * 1000,
+gcTime: 30 * 60 * 1000,
+refetchOnMount: false,
+refetchOnWindowFocus: false,
 ```
+Las mutaciones ya invalidan, así que la consistencia se mantiene.
 
-Las mutaciones siguen invalidando con `queryClient.invalidateQueries`, así que los datos quedan consistentes; lo que evitamos es el refetch automático al cambiar de página.
+### 3. Memoización en `Certificados.tsx`
 
-### 3. Frontend — Reducir payload por pantalla
+- `useMemo` para: `etapaOrdenMap`, `certificadosFiltrados`, KPIs (`montoTotal`, `montoCobrado`, `montoPendiente`, `pctCobranza`, `antiguedadProm`).
+- **Precalcular `pagadoByCertMap`** una sola vez con `useMemo(() => allPagos.reduce(...), [allPagos])`, y reemplazar las llamadas a `getPagadoByCert(id)` por lookup `O(1)` en el Map. Hoy es `O(N×M)` en cada render.
+- `useCallback` para handlers que se pasan a hijos (`getPagadoByCert`, handlers de pago).
+- Debounce de 200 ms al buscador de certificados (`filtroBusqueda`) y al de conceptos (`conceptoSearch`).
 
-- **`useRemitos`, `useMantenimientos`, `useCargasRepartidor`**: agregar paginación server-side (50-100 filas por página) o filtro por defecto del mes en curso. Hoy traen TODAS las filas históricas en cada visita.
-- **`useObservacionesMaquina`**: filtrar `atendida = false` por defecto y traer las atendidas solo al cambiar de pestaña.
-- **`useMaquinarias` en selectores**: usar `SECURITY DEFINER` view tipo `maquinarias_selector` (igual que `personal_selector`) que devuelva solo `id, codigo, nombre, patente`.
-
-## Implementación por fases
-
-1. **Fase 1 (rápida, impacto alto)** — Migración de índices + setear `staleTime` global y por hook crítico. Sin tocar UI. Estimado: 30-50% menos latencia percibida.
-2. **Fase 2** — Paginación + filtro por defecto (último mes) en Remitos, Mantenimientos, Combustible. Toca grids pero el cambio es contenido.
-3. **Fase 3** — Vista selector liviana para maquinarias/obras en combos.
+No toco la estructura visual ni la lógica de negocio (PDF, pagos, anticipos, IVA, acumulados — todo igual).
 
 ## Detalles técnicos
 
-- Los índices son `CREATE INDEX IF NOT EXISTS`, no bloquean ni rompen nada.
-- El cambio de `staleTime` es seguro: las mutaciones ya invalidan las queries afectadas.
-- La paginación requiere ajustar los grids para que sepan que hay "más páginas"; mantengo el comportamiento offline (cache local).
-- No toco RLS, esquema, ni lógica de negocio.
+- Los índices son `IF NOT EXISTS`, seguros, no bloquean.
+- `staleTime` no cambia comportamiento: al guardar/editar siempre se invalida la query.
+- La memoización no cambia resultados; solo evita recalcular en cada render. El Map de pagos es matemáticamente equivalente al `filter().reduce()` actual.
+- No reescribo el componente: solo agrego `useMemo`/`useCallback` puntuales y un debounce.
 
-## Pregunta antes de ejecutar
+## Fases
 
-¿Arrancamos por **Fase 1 sola** (índices + caché, sin tocar UI, mejora medible inmediata) o vamos directo **Fases 1 + 2** (también paginación en Remitos/Mantenimientos/Combustible)?
+1. **Fase A** — Índices + caché. Impacto inmediato sin tocar UI.
+2. **Fase B** — Memoización en `Certificados.tsx` + debounce. Suaviza tipeo, filtros y apertura de diálogos.
+
+Avanzo directo con A + B en este mismo turno una vez aprobado, salvo que prefieras solo A primero.

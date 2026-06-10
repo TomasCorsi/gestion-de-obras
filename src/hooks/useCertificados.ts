@@ -252,6 +252,10 @@ export function useCertificados(obraId?: string) {
       })) as CertificadoConcepto[];
     },
     enabled: !!obraId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   // Certificados for selected obra
@@ -273,6 +277,10 @@ export function useCertificados(obraId?: string) {
       })) as Certificado[];
     },
     enabled: !!obraId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   // Items for a specific certificado
@@ -586,6 +594,10 @@ export function useCertificados(obraId?: string) {
       return data as CertificadoPago[];
     },
     enabled: !!obraId && certificados.length > 0,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const fetchPagos = async (certificadoId: string): Promise<CertificadoPago[]> => {
