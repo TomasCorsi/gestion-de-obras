@@ -367,7 +367,7 @@ export default function Certificados() {
   // Fetch acumulados when tipo is obra or mixto and dialog is open
   useEffect(() => {
     if (crearOpen && (tipoCert === "obra" || tipoCert === "mixto") && selectedObraId && periodo) {
-      fetchAcumulados(selectedObraId, periodo, editingCertId || undefined).then(setAcumulados);
+      fetchAcumuladosCached(selectedObraId, periodo, editingCertId || undefined).then(setAcumulados);
     } else {
       setAcumulados([]);
     }
