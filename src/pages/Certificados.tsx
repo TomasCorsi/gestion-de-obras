@@ -843,7 +843,7 @@ export default function Certificados() {
     // For obra type, fetch acumulados and merge ALL active concepts
     let pdfAcumulados: AcumuladoConcepto[] = [];
     if ((targetCert.tipo === "obra" || targetCert.tipo === "mixto") && selectedObraId) {
-      pdfAcumulados = await fetchAcumulados(selectedObraId, targetCert.periodo, targetCert.id);
+      pdfAcumulados = await fetchAcumuladosCached(selectedObraId, targetCert.periodo, targetCert.id);
 
       // Only use real certificate items — no virtual/phantom items
     }
