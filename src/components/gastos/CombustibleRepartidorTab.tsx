@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCargasRepartidorAll, type CargaRepartidorFull } from "@/hooks/useCargasRepartidorAll";
+import { HistoricoBanner } from "@/components/shared/HistoricoBanner";
 import { usePreciosMes, usePreciosTodos } from "@/hooks/usePreciosMes";
 import { usePersonal } from "@/hooks/usePersonal";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
