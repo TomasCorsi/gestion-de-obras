@@ -619,15 +619,21 @@ export function useCertificados(obraId?: string) {
     refetchOnWindowFocus: false,
   });
 
-  const fetchPagos = async (certificadoId: string): Promise<CertificadoPago[]> => {
-    const { data, error } = await supabase
-      .from("certificado_pagos")
-      .select("*")
-      .eq("certificado_id", certificadoId)
-      .order("fecha", { ascending: true });
-    if (error) throw error;
-    return data as CertificadoPago[];
-  };
+  const fetchPagos = (certificadoId: string): Promise<CertificadoPago[]> =>
+    queryClient.fetchQuery({
+      queryKey: ["certificado_pagos_cert", certificadoId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("certificado_pagos")
+          .select("*")
+          .eq("certificado_id", certificadoId)
+          .order("fecha", { ascending: true });
+        if (error) throw error;
+        return data as CertificadoPago[];
+      },
+      staleTime: 5 * 60 * 1000,
+      gcTime: 30 * 60 * 1000,
+    });
 
   // ---- Helper: upload comprobante and return path ----
   const uploadComprobante = async (file: File, certId: string): Promise<string> => {
