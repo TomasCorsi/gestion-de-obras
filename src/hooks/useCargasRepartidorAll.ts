@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-const DEFAULT_DAYS_BACK = 90;
+const DEFAULT_DAYS_BACK = 30;
 const LOAD_ALL_SESSION_KEY = 'cargas_repartidor:loadAll';
 
 export interface CargaRepartidorFull {
