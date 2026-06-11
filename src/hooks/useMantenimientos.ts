@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { ChecklistCambio, ChecklistChequeo } from "@/components/mantenimiento/mantenimientoConstants";
 
-const DEFAULT_DAYS_BACK = 180;
+const DEFAULT_DAYS_BACK = 90;
 const LOAD_ALL_SESSION_KEY = "mantenimientos:loadAll";
 
 export type TipoMantenimiento = "preventivo" | "correctivo" | "emergencia";
