@@ -74,7 +74,10 @@ const fetchMantenimientosFromDB = async (fechaDesde: string | null): Promise<Man
   let query = supabase
     .from("mantenimientos")
     .select(`
-      *,
+      id, fecha, maquinaria_id, tipo, descripcion, repuestos, costo_repuestos, costo_mano_obra,
+      costo_total, horas_maquina, kilometros, tecnico, tecnico_id, estado, proximo_mantenimiento,
+      proximo_service_km, proximo_service_hr, informe_tecnico, alerta_campo, checklist_cambio,
+      checklist_chequeo, adjunto_url, observaciones, observacion_reporte_id, created_at, updated_at,
       maquinaria:maquinarias(nombre, codigo, horas_acumuladas),
       tecnico_personal:personal!mantenimientos_tecnico_id_fkey(nombre, apellido)
     `)

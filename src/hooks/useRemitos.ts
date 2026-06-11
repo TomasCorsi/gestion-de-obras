@@ -101,7 +101,11 @@ const fetchRemitosFromDB = async (
     let query = supabase
       .from("remitos")
       .select(`
-        *,
+        id, numero, viaje_id, fecha, obra_id, material, cantidad, unidad, recibido_por,
+        firmado, evidencia_url, observaciones, created_at, updated_at, row_color, proveedor,
+        cliente, cliente_destino, remito_tercero, remito_local, desde, hasta, cantidad_viajes,
+        tipo_material, precio_total, tipo_transporte, maquinaria_id, patente_tercero,
+        cantidad_uni, precio_unitario, precio_calc_mode, forma_pago, created_by, cliente_cantera,
         obra:obras(nombre),
         viaje:viajes(origen, destino),
         maquinaria:maquinarias(codigo, patente)
