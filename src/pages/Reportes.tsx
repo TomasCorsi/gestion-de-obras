@@ -279,12 +279,17 @@ export default function Reportes() {
         </TabsList>
 
         <TabsContent value="obra">
-          <ReporteObraTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <ReporteObraTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="ia">
-          <ChatReportesTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <ChatReportesTab />
+          </Suspense>
         </TabsContent>
+
 
         <TabsContent value="financiero">
       {/* Filters Section */}
