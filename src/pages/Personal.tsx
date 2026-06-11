@@ -487,7 +487,9 @@ export default function Personal() {
         </TabsContent>
 
         <TabsContent value="vacaciones">
-          <VacacionesTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <VacacionesTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="liquidaciones">
@@ -503,17 +505,24 @@ export default function Personal() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="sueldos">
-              <SueldosTab personal={personal} />
+              <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+                <SueldosTab personal={personal} />
+              </Suspense>
             </TabsContent>
             <TabsContent value="planilla">
-              <LiquidacionesTab personal={personal} />
+              <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+                <LiquidacionesTab personal={personal} />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         <TabsContent value="epp">
-          <EntregaEPPTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <EntregaEPPTab />
+          </Suspense>
         </TabsContent>
+
       </Tabs>
 
       {/* Form Dialog */}
