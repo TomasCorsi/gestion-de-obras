@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,10 +57,11 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
-import { VacacionesTab } from "@/components/personal/VacacionesTab";
-import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
-import { SueldosTab } from "@/components/personal/SueldosTab";
-import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
+const VacacionesTab = lazy(() => import("@/components/personal/VacacionesTab").then(m => ({ default: m.VacacionesTab })));
+const LiquidacionesTab = lazy(() => import("@/components/personal/LiquidacionesTab").then(m => ({ default: m.LiquidacionesTab })));
+const SueldosTab = lazy(() => import("@/components/personal/SueldosTab").then(m => ({ default: m.SueldosTab })));
+const EntregaEPPTab = lazy(() => import("@/components/personal/EntregaEPPTab").then(m => ({ default: m.EntregaEPPTab })));
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
@@ -486,7 +487,9 @@ export default function Personal() {
         </TabsContent>
 
         <TabsContent value="vacaciones">
-          <VacacionesTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <VacacionesTab />
+          </Suspense>
         </TabsContent>
 
         <TabsContent value="liquidaciones">
@@ -502,17 +505,24 @@ export default function Personal() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="sueldos">
-              <SueldosTab personal={personal} />
+              <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+                <SueldosTab personal={personal} />
+              </Suspense>
             </TabsContent>
             <TabsContent value="planilla">
-              <LiquidacionesTab personal={personal} />
+              <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+                <LiquidacionesTab personal={personal} />
+              </Suspense>
             </TabsContent>
           </Tabs>
         </TabsContent>
 
         <TabsContent value="epp">
-          <EntregaEPPTab />
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <EntregaEPPTab />
+          </Suspense>
         </TabsContent>
+
       </Tabs>
 
       {/* Form Dialog */}

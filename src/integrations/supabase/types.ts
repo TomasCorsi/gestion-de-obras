@@ -2180,6 +2180,78 @@ export type Database = {
       }
     }
     Views: {
+      mantenimientos_list_view: {
+        Row: {
+          adjunto_url: string | null
+          alerta_campo: string | null
+          checklist_cambio: Json | null
+          checklist_chequeo: Json | null
+          costo_mano_obra: number | null
+          costo_repuestos: number | null
+          costo_total: number | null
+          created_at: string | null
+          descripcion: string | null
+          estado: Database["public"]["Enums"]["estado_mantenimiento"] | null
+          fecha: string | null
+          horas_maquina: number | null
+          id: string | null
+          informe_tecnico: string | null
+          kilometros: number | null
+          maquinaria_codigo: string | null
+          maquinaria_horas_acumuladas: number | null
+          maquinaria_id: string | null
+          maquinaria_nombre: string | null
+          observacion_reporte_id: string | null
+          observaciones: string | null
+          proximo_mantenimiento: string | null
+          proximo_service_hr: number | null
+          proximo_service_km: number | null
+          repuestos: string | null
+          tecnico: string | null
+          tecnico_apellido: string | null
+          tecnico_id: string | null
+          tecnico_nombre: string | null
+          tipo: Database["public"]["Enums"]["tipo_mantenimiento"] | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mantenimientos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_observacion_reporte_id_fkey"
+            columns: ["observacion_reporte_id"]
+            isOneToOne: false
+            referencedRelation: "observaciones_maquina_estado"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mantenimientos_tecnico_id_fkey"
+            columns: ["tecnico_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personal_legajo_lookup: {
         Row: {
           id: string | null
@@ -2231,8 +2303,74 @@ export type Database = {
         }
         Relationships: []
       }
+      remitos_list_view: {
+        Row: {
+          cantidad: number | null
+          cantidad_uni: number | null
+          cantidad_viajes: number | null
+          cliente: string | null
+          cliente_cantera: string | null
+          cliente_destino: string | null
+          created_at: string | null
+          created_by: string | null
+          desde: string | null
+          evidencia_url: string | null
+          fecha: string | null
+          firmado: boolean | null
+          forma_pago: string | null
+          hasta: string | null
+          id: string | null
+          maquinaria_codigo: string | null
+          maquinaria_id: string | null
+          maquinaria_patente: string | null
+          material: string | null
+          numero: string | null
+          obra_id: string | null
+          obra_nombre: string | null
+          observaciones: string | null
+          patente_tercero: string | null
+          precio_calc_mode: string | null
+          precio_total: number | null
+          precio_unitario: number | null
+          proveedor: string | null
+          recibido_por: string | null
+          remito_local: string | null
+          remito_tercero: string | null
+          row_color: string | null
+          tipo_material: string | null
+          tipo_transporte: string | null
+          unidad: string | null
+          updated_at: string | null
+          viaje_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remitos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_viaje_id_fkey"
+            columns: ["viaje_id"]
+            isOneToOne: false
+            referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
+      can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
       execute_readonly_query: { Args: { query_sql: string }; Returns: Json }
       get_user_role: {
         Args: { _user_id: string }
