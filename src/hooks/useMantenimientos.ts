@@ -71,15 +71,15 @@ export interface MantenimientoForm {
 }
 
 const fetchMantenimientosFromDB = async (fechaDesde: string | null): Promise<MantenimientoWithRelations[]> => {
-  let query = supabase
-    .from("mantenimientos")
+  let query = (supabase as any)
+    .from("mantenimientos_list_view")
     .select(`
       id, fecha, maquinaria_id, tipo, descripcion, repuestos, costo_repuestos, costo_mano_obra,
       costo_total, horas_maquina, kilometros, tecnico, tecnico_id, estado, proximo_mantenimiento,
       proximo_service_km, proximo_service_hr, informe_tecnico, alerta_campo, checklist_cambio,
       checklist_chequeo, adjunto_url, observaciones, observacion_reporte_id, created_at, updated_at,
-      maquinaria:maquinarias(nombre, codigo, horas_acumuladas),
-      tecnico_personal:personal!mantenimientos_tecnico_id_fkey(nombre, apellido)
+      maquinaria_nombre, maquinaria_codigo, maquinaria_horas_acumuladas,
+      tecnico_nombre, tecnico_apellido
     `)
     .order("fecha", { ascending: false });
 
@@ -89,8 +89,22 @@ const fetchMantenimientosFromDB = async (fechaDesde: string | null): Promise<Man
 
   const { data, error } = await query;
   if (error) throw error;
-  return (data || []) as unknown as MantenimientoWithRelations[];
+  // Map flat columns back into nested relations to keep the existing component contract
+  return (data || []).map((row: any) => ({
+    ...row,
+    maquinaria: row.maquinaria_id
+      ? {
+          nombre: row.maquinaria_nombre,
+          codigo: row.maquinaria_codigo,
+          horas_acumuladas: row.maquinaria_horas_acumuladas,
+        }
+      : undefined,
+    tecnico_personal: row.tecnico_id
+      ? { nombre: row.tecnico_nombre, apellido: row.tecnico_apellido }
+      : null,
+  })) as MantenimientoWithRelations[];
 };
+
 
 export function useMantenimientos() {
   const queryClient = useQueryClient();
