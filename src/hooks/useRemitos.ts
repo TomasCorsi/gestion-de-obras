@@ -98,17 +98,15 @@ const fetchRemitosFromDB = async (
   let from = 0;
 
   while (true) {
-    let query = supabase
-      .from("remitos")
+    let query = (supabase as any)
+      .from("remitos_list_view")
       .select(`
         id, numero, viaje_id, fecha, obra_id, material, cantidad, unidad, recibido_por,
         firmado, evidencia_url, observaciones, created_at, updated_at, row_color, proveedor,
         cliente, cliente_destino, remito_tercero, remito_local, desde, hasta, cantidad_viajes,
         tipo_material, precio_total, tipo_transporte, maquinaria_id, patente_tercero,
         cantidad_uni, precio_unitario, precio_calc_mode, forma_pago, created_by, cliente_cantera,
-        obra:obras(nombre),
-        viaje:viajes(origen, destino),
-        maquinaria:maquinarias(codigo, patente)
+        obra_nombre, maquinaria_codigo, maquinaria_patente
       `)
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })
@@ -126,13 +124,22 @@ const fetchRemitosFromDB = async (
     if (error) throw error;
     if (!data || data.length === 0) break;
 
-    allData = allData.concat(data);
+    const mapped = (data as any[]).map((row) => ({
+      ...row,
+      obra: row.obra_nombre ? { nombre: row.obra_nombre } : undefined,
+      maquinaria: row.maquinaria_id
+        ? { codigo: row.maquinaria_codigo, patente: row.maquinaria_patente }
+        : undefined,
+    })) as RemitoWithRelations[];
+
+    allData = allData.concat(mapped);
     if (data.length < PAGE_SIZE) break;
     from += PAGE_SIZE;
   }
 
   return allData;
 };
+
 
 export function useRemitos() {
   const queryClient = useQueryClient();
