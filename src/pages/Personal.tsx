@@ -57,10 +57,11 @@ import { DetailDialog } from "@/components/shared/DetailDialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { CSVImportDialog } from "@/components/personal/CSVImportDialog";
-import { VacacionesTab } from "@/components/personal/VacacionesTab";
-import { LiquidacionesTab } from "@/components/personal/LiquidacionesTab";
-import { SueldosTab } from "@/components/personal/SueldosTab";
-import { EntregaEPPTab } from "@/components/personal/EntregaEPPTab";
+const VacacionesTab = lazy(() => import("@/components/personal/VacacionesTab").then(m => ({ default: m.VacacionesTab })));
+const LiquidacionesTab = lazy(() => import("@/components/personal/LiquidacionesTab").then(m => ({ default: m.LiquidacionesTab })));
+const SueldosTab = lazy(() => import("@/components/personal/SueldosTab").then(m => ({ default: m.SueldosTab })));
+const EntregaEPPTab = lazy(() => import("@/components/personal/EntregaEPPTab").then(m => ({ default: m.EntregaEPPTab })));
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
 import { cn, formatDate } from "@/lib/utils";
