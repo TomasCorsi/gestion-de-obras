@@ -1,7 +1,8 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChatReportesTab } from "@/components/reportes/ChatReportesTab";
-import { ReporteObraTab } from "@/components/reportes/ReporteObraTab";
+const ChatReportesTab = lazy(() => import("@/components/reportes/ChatReportesTab").then(m => ({ default: m.ChatReportesTab })));
+const ReporteObraTab = lazy(() => import("@/components/reportes/ReporteObraTab").then(m => ({ default: m.ReporteObraTab })));
+
 import { BarChart3, Sparkles, Building } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
