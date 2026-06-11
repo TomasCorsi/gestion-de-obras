@@ -27,23 +27,30 @@ export function useObservacionesMaquina() {
   const { data: observaciones = [], isLoading } = useQuery({
     queryKey: ["observaciones_maquina"],
     queryFn: async () => {
+      // Limit history to last 180 days to keep payload small.
+      const desde = new Date();
+      desde.setDate(desde.getDate() - 180);
+      const fechaDesde = desde.toISOString().slice(0, 10);
+
       const { data, error } = await supabase
         .from("observaciones_maquina_estado")
         .select(`
-          *,
+          id, parte_diario_id, maquinaria_id, fecha_reporte, observacion,
+          atendida, atendida_por, fecha_atencion, notas_resolucion, created_at,
           maquinaria:maquinaria_id(codigo, nombre, tipo, patente),
           parte_diario:parte_diario_id(
             personal:personal_id(nombre, apellido),
             obra:obra_id(id, nombre)
           )
         `)
+        .gte("fecha_reporte", fechaDesde)
         .order("atendida", { ascending: true })
-        .order("fecha_reporte", { ascending: true });
+        .order("fecha_reporte", { ascending: false });
 
       if (error) throw error;
       return (data || []) as unknown as ObservacionMaquina[];
     },
-    staleTime: 2 * 60 * 1000,
+    staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnMount: false,
     refetchOnWindowFocus: false,

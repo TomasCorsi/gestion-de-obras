@@ -66,14 +66,16 @@ const fetchMaquinariasFromDB = async (): Promise<MaquinariaWithRelations[]> => {
   const { data, error } = await supabase
     .from("maquinarias")
     .select(`
-      *,
+      id, codigo, nombre, tipo, marca, anio, patente, estado,
+      horas_acumuladas, km_acumulados, operador_asignado_id, obra_id,
+      created_at, updated_at,
       operador:personal!operador_asignado_id(nombre, apellido),
       obra:obras(nombre)
     `)
     .order("nombre");
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as MaquinariaWithRelations[];
 };
 
 export function useMaquinarias() {
