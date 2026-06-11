@@ -40,14 +40,15 @@ const fetchObrasFromDB = async (): Promise<ObraWithRelations[]> => {
   const { data, error } = await supabase
     .from("obras")
     .select(`
-      *,
+      id, nombre, numero, ubicacion, descripcion, estado, fecha_inicio, fecha_fin_estimada,
+      responsable_id, cliente_id, created_at, updated_at,
       responsable:personal(nombre, apellido),
       cliente:clientes(id, nombre, cuit, direccion, localidad, telefono, email)
     `)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  return (data || []) as unknown as ObraWithRelations[];
 };
 
 export function useObras() {
