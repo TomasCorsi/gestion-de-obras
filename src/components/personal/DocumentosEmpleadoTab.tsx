@@ -561,8 +561,10 @@ export function DocumentosEmpleadoTab() {
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
               {analyzing && analyzeProgress
-                ? `Analizando ${analyzeProgress.done}/${analyzeProgress.total}...`
-                : "Analizar con IA y detectar empleado"}
+                ? analyzePhase === "local"
+                  ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
+                  : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
+                : "Analizar y detectar empleado"}
             </Button>
 
 
