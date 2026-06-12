@@ -206,8 +206,27 @@ export default function Personal() {
     setDeleteOpen(false);
   };
 
+  const [numeroCuentaError, setNumeroCuentaError] = useState("");
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNumeroCuentaError("");
+
+    const cuenta = formData.numero_cuenta?.trim();
+    if (cuenta) {
+      const duplicado = personal.find(
+        (p) =>
+          p.numero_cuenta?.trim() === cuenta &&
+          p.id !== selectedPersona?.id
+      );
+      if (duplicado) {
+        setNumeroCuentaError(
+          `El número de cuenta ya está registrado por ${duplicado.nombre} ${duplicado.apellido}`
+        );
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
