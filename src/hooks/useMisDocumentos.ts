@@ -9,7 +9,7 @@ import type { EmpleadoDocumento } from "./useEmpleadoDocumentos";
 const BUCKET = "empleado-documentos";
 
 export function useMisDocumentos() {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const { empleado } = useEmpleadoProfile();
   const qc = useQueryClient();
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -17,10 +17,13 @@ export function useMisDocumentos() {
 
   const list = useQuery({
     queryKey: ["mis_documentos", user?.id],
-    enabled: !!user?.id,
+    // Esperar a que la sesión esté restaurada antes de consultar — evita race con RLS (auth.uid() null)
+    enabled: !authLoading && !!user?.id,
     refetchOnWindowFocus: true,
+    refetchOnMount: true,
     refetchInterval: 60_000,
     staleTime: 0,
+    retry: 2,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("empleado_documentos")

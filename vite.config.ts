@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => ({
       manifest: {
         name: "Calamina Sur - Gestión de Obras",
         short_name: "Calamina Sur",
-        description: "Sistema de gestión integral para movimiento de suelo y obras civiles",
+        description: "Sistema de gestión integral para movimiento de suelo y obras civiles - v2",
         theme_color: "#B00020",
         background_color: "#0F0F0F",
         display: "standalone",
