@@ -10,25 +10,29 @@ const BUCKET = "empleado-documentos";
 
 export function useMisDocumentos() {
   const { user, loading: authLoading } = useAuth();
-  const { empleado } = useEmpleadoProfile();
+  const { empleado, loading: empleadoLoading } = useEmpleadoProfile();
   const qc = useQueryClient();
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initializedRef = useRef(false);
+  const loginAlertShownRef = useRef(false);
+
+  const personalId = empleado?.id ?? null;
 
   const list = useQuery({
-    queryKey: ["mis_documentos", user?.id],
-    // Esperar a que la sesión esté restaurada antes de consultar — evita race con RLS (auth.uid() null)
-    enabled: !authLoading && !!user?.id,
+    queryKey: ["mis_documentos", user?.id, personalId],
+    enabled: !authLoading && !empleadoLoading && !!user?.id,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchInterval: 60_000,
     staleTime: 0,
     retry: 2,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let q = supabase
         .from("empleado_documentos")
         .select("*")
         .order("created_at", { ascending: false });
+      if (personalId) q = q.eq("personal_id", personalId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as unknown as EmpleadoDocumento[];
     },
@@ -36,7 +40,11 @@ export function useMisDocumentos() {
 
   const docs = list.data || [];
 
-  // Track seen IDs and notify on truly new ones
+  const pendientesCount = docs.filter(
+    (d) => !d.visto_at || (d.tipo === "recibo_sueldo" && !d.firmado_at)
+  ).length;
+
+  // Toast en realtime: notificar documentos nuevos detectados después de la primera carga
   useEffect(() => {
     if (!list.data) return;
     if (!initializedRef.current) {
@@ -47,16 +55,55 @@ export function useMisDocumentos() {
     list.data.forEach((d) => {
       if (!seenIdsRef.current.has(d.id)) {
         seenIdsRef.current.add(d.id);
-        toast.success("Nuevo documento disponible", {
-          description: d.titulo,
+        const desc =
+          d.tipo === "recibo_sueldo"
+            ? "Tenés un recibo de sueldo para ver y firmar"
+            : "Tenés un estudio médico para revisar";
+        toast.success(d.titulo || "Nuevo documento disponible", {
+          description: desc,
+          duration: 8000,
         });
       }
     });
   }, [list.data]);
 
-  // Realtime: subscribe to inserts/updates/deletes for this empleado's documents
+  // Aviso al iniciar sesión / abrir la app: si hay pendientes, un toast con dedupe por set de IDs
   useEffect(() => {
-    const personalId = empleado?.id;
+    if (!user?.id || !list.data || loginAlertShownRef.current) return;
+    const pendientes = list.data.filter(
+      (d) => !d.visto_at || (d.tipo === "recibo_sueldo" && !d.firmado_at)
+    );
+    if (pendientes.length === 0) return;
+
+    const key = `docs_login_alert_${user.id}`;
+    const idsKey = pendientes.map((d) => d.id).sort().join(",");
+    const prev = (() => {
+      try { return localStorage.getItem(key); } catch { return null; }
+    })();
+
+    if (prev !== idsKey) {
+      const hasRecibo = pendientes.some((d) => d.tipo === "recibo_sueldo");
+      const hasEstudio = pendientes.some((d) => d.tipo === "estudio_medico");
+      let description = "";
+      if (hasRecibo && hasEstudio) description = "Tenés recibos y estudios médicos para revisar";
+      else if (hasRecibo) description = pendientes.length > 1
+        ? `Tenés ${pendientes.length} recibos para ver y firmar`
+        : "Tenés un recibo de sueldo para ver y firmar";
+      else description = pendientes.length > 1
+        ? `Tenés ${pendientes.length} estudios médicos para revisar`
+        : "Tenés un estudio médico para revisar";
+
+      toast.message("Documentos pendientes", {
+        description,
+        duration: 10000,
+      });
+      try { localStorage.setItem(key, idsKey); } catch {}
+    }
+    loginAlertShownRef.current = true;
+  }, [user?.id, list.data]);
+
+  // Realtime
+  useEffect(() => {
     if (!personalId) return;
 
     const channel = supabase
@@ -78,11 +125,7 @@ export function useMisDocumentos() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [empleado?.id, qc]);
-
-  const pendientesCount = docs.filter(
-    (d) => !d.visto_at || (d.tipo === "recibo_sueldo" && !d.firmado_at)
-  ).length;
+  }, [personalId, qc]);
 
   const markVisto = useMutation({
     mutationFn: async (id: string) => {
