@@ -20,6 +20,15 @@ export function useServiceWorker() {
         setInterval(() => {
           r.update();
         }, 5 * 60 * 1000);
+
+        // Verificar también cuando la PWA vuelve a primer plano
+        const onVisible = () => {
+          if (document.visibilityState === 'visible') {
+            r.update().catch(() => {});
+          }
+        };
+        document.addEventListener('visibilitychange', onVisible);
+        window.addEventListener('focus', onVisible);
       }
     },
     onRegisterError(error) {
