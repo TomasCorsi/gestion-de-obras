@@ -1,62 +1,28 @@
+## Plan
 
-# Limpieza total de secciones no usadas en Gastos
+1. **Hacer visible “Mis Documentos” como acceso principal**
+   - Agregar un botón/tarjeta “Mis Documentos” directamente en la pantalla de Parte Diario, junto a “Nuevo Parte” y “Mis Partes”.
+   - Debe aparecer aunque no haya documentos pendientes, para que la sección exista siempre.
 
-## Resultado final
-La página **Gastos** queda con una sola sección llamada **Combustible** (la actual "Repartidor"). Se elimina todo el código, hooks, componentes, página standalone y tablas de las otras tres secciones.
+2. **Agregar acceso dentro del menú de usuario**
+   - Incluir “Mis Documentos” en el desplegable del avatar, debajo de “Perfil”.
+   - Mostrar el contador rojo si hay documentos pendientes.
 
-## Cambios en el frontend
+3. **Mantener el ícono superior, pero hacerlo más compatible con mobile**
+   - Dejar el ícono de documentos en la barra superior para pantallas con espacio.
+   - Ajustar el layout mobile para que no quede oculto, cortado o tapado por el menú/avatar.
 
-### 1. `src/pages/Gastos.tsx` — reescritura simplificada
-- Eliminar tabs *Maquinarias*, *Personal* y *Combustible* (la vieja, basada en `cargas_combustible`).
-- Dejar una única pestaña/vista con `<CombustibleRepartidorTab>`, titulada **Combustible** (ícono Fuel).
-- Como queda una sola sección, se puede quitar el `<Tabs>` y renderizar directo el componente.
-- Quitar todo el estado, handlers, imports, filtros, dialogs, exports y vista full-screen relacionados a la vieja Combustible/Maquinarias/Personal.
+4. **Banner del Parte Diario**
+   - Mantener el banner amarillo solo cuando haya documentos pendientes.
+   - El nuevo botón fijo “Mis Documentos” servirá como respaldo si el contador no carga o si no hay pendientes.
 
-### 2. Borrar página standalone y su ruta
-- `src/pages/Combustible.tsx` → eliminar archivo.
-- `src/App.tsx` → quitar `lazy(... Combustible)` y la ruta `/combustible` si existe.
-- `src/components/layout/AppLauncher.tsx` y `Sidebar.tsx` → quitar entradas a `/combustible` si las hay.
+5. **Verificación**
+   - Revisar que `/mis-documentos` siga protegida para usuarios autenticados.
+   - Verificar en mobile que se vea: botón/tarjeta “Mis Documentos”, opción en el menú del avatar, y contador cuando corresponda.
 
-### 3. Borrar hooks
-- `src/hooks/useCombustible.ts`
-- `src/hooks/useAsignacionesMaquinaria.ts`
-- `src/hooks/useAsignacionesPersonal.ts`
+## Detalles técnicos
 
-### 4. Borrar componentes
-- `src/components/combustible/` (carpeta completa: `CombustibleDataGrid.tsx`, `CSVImportDialog.tsx`)
-- `src/components/maquinarias/AsignacionesMaquinariaObra.tsx`
-- `src/components/personal/AsignacionesPersonalObra.tsx`
-
-### 5. Limpiar referencias residuales
-- `src/hooks/useDashboardData.ts` → quitar la query a `cargas_combustible` y el KPI/cálculo derivado.
-- `src/hooks/useReporteObra.ts` → quitar el fetch y los cálculos basados en `cargas_combustible`.
-- Buscar y eliminar cualquier import huérfano (`rg "useCombustible|useAsignaciones(Personal|Maquinaria)|AsignacionesMaquinariaObra|AsignacionesPersonalObra"`).
-
-## Cambios en backend / Edge Functions
-
-### 6. `supabase/functions/backup-database/index.ts`
-- Quitar `"cargas_combustible"`, `"asignaciones_maquinaria_obra"`, `"asignaciones_personal_obra"` del array de tablas a respaldar.
-- Redeploy automático.
-
-### 7. `supabase/functions/chat-reportes/index.ts`
-- Eliminar las menciones a `cargas_combustible` del prompt/esquema enviado al modelo (líneas 18 y 30).
-
-## Cambios en base de datos (migración)
-
-Tabla de drop con CASCADE para arrastrar políticas, índices, FKs y vistas dependientes:
-
-```sql
-DROP TABLE IF EXISTS public.cargas_combustible CASCADE;
-DROP TABLE IF EXISTS public.asignaciones_maquinaria_obra CASCADE;
-DROP TABLE IF EXISTS public.asignaciones_personal_obra CASCADE;
-```
-
-Sin export previo de datos (confirmado por el usuario).
-
-> Nota: la tabla `cargas_combustible_repartidor` **se conserva** intacta, ya que es la fuente de la nueva pestaña "Combustible".
-
-## Validación post-cambios
-- Build sin errores TS (imports rotos).
-- `/gastos` carga y muestra solo Combustible (ex-Repartidor).
-- Dashboard y Reporte de Obra cargan sin errores (sin sección de combustible viejo).
-- Backup de DB corre sin fallar por tablas inexistentes.
+- Archivos previstos:
+  - `src/components/layout/TopNavbar.tsx`
+  - `src/components/parte-diario/ParteDiarioHomeView.tsx`
+- No tocaría la base de datos ni las políticas en esta pasada, porque la captura muestra que el problema principal ahora es de navegación/visibilidad de la sección en la interfaz.
