@@ -126,6 +126,7 @@ export function DocumentosEmpleadoTab() {
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzePhase, setAnalyzePhase] = useState<"local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
