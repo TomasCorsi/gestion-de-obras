@@ -755,10 +755,19 @@ export default function Personal() {
               <Input
                 id="numero_cuenta"
                 value={formData.numero_cuenta || ""}
-                onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, numero_cuenta: e.target.value });
+                  setNumeroCuentaError("");
+                }}
                 placeholder="Número de cuenta bancaria"
-                className="bg-muted border-border"
+                className={cn(
+                  "bg-muted border-border",
+                  numeroCuentaError && "border-destructive focus-visible:ring-destructive"
+                )}
               />
+              {numeroCuentaError && (
+                <p className="text-xs text-destructive">{numeroCuentaError}</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4">
