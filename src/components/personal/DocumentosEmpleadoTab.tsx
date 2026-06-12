@@ -439,7 +439,7 @@ export function DocumentosEmpleadoTab() {
                           <Combobox
                             options={personalOptions}
                             value={r.personal_id || ""}
-                            onChange={(v) => setRows((prev) => prev.map((x, j) => j === i ? { ...x, personal_id: v, selected: !!v } : x))}
+                            onValueChange={(v) => setRows((prev) => prev.map((x, j) => j === i ? { ...x, personal_id: v, selected: !!v } : x))}
                             placeholder="Asignar..."
                           />
                         </TableCell>
