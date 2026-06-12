@@ -1,9 +1,11 @@
-import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell, Clock, Receipt } from "lucide-react";
+import { Plus, ClipboardList, AlertCircle, Trash2, CheckCircle2, Fuel, Pencil, ChevronLeft, ChevronRight, Wrench, Bell, Clock, Receipt, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { format, parseISO, isToday as isDateToday } from "date-fns";
 import { es } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
+import { useMisDocumentos } from "@/hooks/useMisDocumentos";
 import type { ParteDiario } from "@/hooks/useParteDiario";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
@@ -90,6 +92,8 @@ export const ParteDiarioHomeView = ({
   showRemitosButton = false,
   onIrRemitos,
 }: ParteDiarioHomeViewProps) => {
+  const navigate = useNavigate();
+  const { pendientesCount: docsPendientes } = useMisDocumentos();
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -99,6 +103,25 @@ export const ParteDiarioHomeView = ({
           Hola, {nombreEmpleado} ({rolLabel})
         </p>
       </div>
+
+      {docsPendientes > 0 && (
+        <Alert className="bg-amber-500/10 border-amber-500/50">
+          <FileText className="h-5 w-5 text-amber-500" />
+          <AlertDescription className="ml-2">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div>
+                <p className="font-semibold text-foreground">
+                  Tenés {docsPendientes} documento{docsPendientes !== 1 ? 's' : ''} para revisar
+                </p>
+                <p className="text-xs text-muted-foreground">Estudios médicos o recibos de sueldo pendientes</p>
+              </div>
+              <Button size="sm" onClick={() => navigate('/mis-documentos')}>
+                Ver
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Main buttons */}
       <div className={`grid ${isRepartidor ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>

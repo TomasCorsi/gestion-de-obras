@@ -1,4 +1,4 @@
-import { Bell, User, LogOut, Shield, RefreshCw, Loader2 } from "lucide-react";
+import { Bell, User, LogOut, Shield, RefreshCw, Loader2, FileText } from "lucide-react";
 import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { AppLauncher } from "./AppLauncher";
 import { useServiceWorker } from "@/hooks/useServiceWorker";
 import { toast } from "@/components/ui/sonner";
 import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
+import { useMisDocumentos } from "@/hooks/useMisDocumentos";
 
 interface TopNavbarProps {
   title?: string;
@@ -47,6 +48,7 @@ const personalRoleLabels: Record<string, string> = {
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
   const { profile, role, signOut } = useAuth();
   const { rolPersonal } = useEmpleadoProfile();
+  const { pendientesCount } = useMisDocumentos();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
 
   const displayRoleLabel = rolPersonal
@@ -131,6 +133,22 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
 
         {/* App Launcher - Solo para admin */}
         {role === 'admin' && <AppLauncher />}
+
+        {/* Mis Documentos - badge para todos */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          onClick={() => navigate('/mis-documentos')}
+          aria-label="Mis documentos"
+        >
+          <FileText className="w-5 h-5 text-muted-foreground" />
+          {pendientesCount > 0 && (
+            <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground">
+              {pendientesCount}
+            </Badge>
+          )}
+        </Button>
 
         {/* Notifications - Solo para admin */}
         {role === 'admin' && (
