@@ -73,7 +73,12 @@ export function DocumentoViewerDialog({ open, onOpenChange, documento }: Props) 
               isImg ? (
                 <img src={url} alt={documento.titulo} className="w-full h-auto" />
               ) : (
-                <iframe src={url} className="w-full" style={{ height: 500 }} title={documento.titulo} />
+                <iframe
+                  src={`${url}#view=FitH&toolbar=1`}
+                  className="w-full block"
+                  style={{ height: "75vh", minHeight: 600 }}
+                  title={documento.titulo}
+                />
               )
             ) : (
               <div className="flex items-center justify-center h-[400px]">
@@ -81,6 +86,7 @@ export function DocumentoViewerDialog({ open, onOpenChange, documento }: Props) 
               </div>
             )}
           </div>
+
 
           {url && (
             <a href={url} target="_blank" rel="noopener" className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
