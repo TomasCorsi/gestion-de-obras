@@ -33,6 +33,7 @@ const TIPO_LABEL: Record<TipoDocumento, string> = {
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
 const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // PDF "fuente" antes de partir
 
 const fileToDataUrl = (f: File) =>
   new Promise<string>((res, rej) => {
@@ -116,8 +117,10 @@ export function DocumentosEmpleadoTab() {
   const [openMas, setOpenMas] = useState(false);
   const [masTipo, setMasTipo] = useState<TipoDocumento>("recibo_sueldo");
   const [masPeriodo, setMasPeriodo] = useState("");
-  const [masFiles, setMasFiles] = useState<File[]>([]);
+  const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
+  const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -125,51 +128,104 @@ export function DocumentosEmpleadoTab() {
   const handlePickMas = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files).filter((f) => {
-      if (f.size > MAX_BYTES) {
-        toast.error(`"${f.name}" supera 10 MB`);
+      if (f.size > MAX_SOURCE_BYTES) {
+        toast.error(`"${f.name}" supera 100 MB`);
         return false;
       }
       return true;
     });
-    if (arr.length > 50) {
-      toast.error("Máximo 50 archivos por lote");
-      return;
-    }
     setMasFiles(arr);
     setRows([]);
+  };
+
+  // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
+  const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
+    if (pages < 1) pages = 1;
+    const { PDFDocument } = await import("pdf-lib");
+    const out: File[] = [];
+    for (const f of files) {
+      if (!f.type.includes("pdf") || pages === 1) {
+        // sin partir: validar tamaño individual
+        if (f.size > MAX_BYTES) {
+          toast.error(`"${f.name}" supera 10 MB`);
+          continue;
+        }
+        out.push(f);
+        continue;
+      }
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const src = await PDFDocument.load(bytes);
+        const total = src.getPageCount();
+        const base = f.name.replace(/\.pdf$/i, "");
+        for (let start = 0; start < total; start += pages) {
+          const end = Math.min(start + pages, total);
+          const sub = await PDFDocument.create();
+          const copied = await sub.copyPages(src, Array.from({ length: end - start }, (_, k) => start + k));
+          copied.forEach((p) => sub.addPage(p));
+          const u8 = await sub.save();
+          const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+          const chunk = new File([ab], `${base} (${start + 1}-${end}).pdf`, { type: "application/pdf" });
+          if (chunk.size > MAX_BYTES) {
+            toast.error(`Chunk "${chunk.name}" supera 10 MB`);
+            continue;
+          }
+          out.push(chunk);
+        }
+      } catch (e: any) {
+        toast.error(`No se pudo partir "${f.name}": ${e?.message || e}`);
+      }
+    }
+    return out;
   };
 
   const analyze = async () => {
     if (masFiles.length === 0) return;
     setAnalyzing(true);
+    setAnalyzeProgress(null);
     try {
-      const payloadFiles = await Promise.all(
-        masFiles.map(async (f) => ({
-          name: f.name,
-          mime: f.type,
-          data: await fileToDataUrl(f),
-        }))
-      );
+      const chunks = await splitFiles(masFiles, pagesPerDoc);
+      if (chunks.length === 0) {
+        toast.error("No quedaron archivos para analizar");
+        return;
+      }
+      if (chunks.length > 200) {
+        toast.error(`Demasiados documentos (${chunks.length}). Subí en tandas más chicas.`);
+        return;
+      }
+
       const personalLite = personal
         .filter((p) => p.activo)
         .map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni }));
 
-      const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
-        body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
-      });
-      if (error) throw error;
-
-      const results = (data?.results || []) as any[];
-      const next: MatchRow[] = results.map((r, i) => ({
-        file: masFiles[i],
-        detected: r.detected,
-        personal_id: r.personal_id,
-        confidence: r.confidence,
-        error: r.error,
-        selected: !!r.personal_id,
-      }));
-      setRows(next);
-      toast.success(`Analizados ${next.length} archivos`);
+      // Procesar de a lotes de 5 para evitar payloads enormes y timeouts
+      const BATCH = 5;
+      const collected: MatchRow[] = [];
+      setAnalyzeProgress({ done: 0, total: chunks.length });
+      for (let i = 0; i < chunks.length; i += BATCH) {
+        const slice = chunks.slice(i, i + BATCH);
+        const payloadFiles = await Promise.all(
+          slice.map(async (f) => ({ name: f.name, mime: f.type, data: await fileToDataUrl(f) }))
+        );
+        const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
+          body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
+        });
+        if (error) throw error;
+        const results = (data?.results || []) as any[];
+        results.forEach((r, k) => {
+          collected.push({
+            file: slice[k],
+            detected: r.detected,
+            personal_id: r.personal_id,
+            confidence: r.confidence,
+            error: r.error,
+            selected: !!r.personal_id,
+          });
+        });
+        setAnalyzeProgress({ done: Math.min(i + BATCH, chunks.length), total: chunks.length });
+        setRows([...collected]);
+      }
+      toast.success(`Analizados ${collected.length} documentos`);
     } catch (e: any) {
       toast.error(e?.message || "Error al analizar");
     } finally {
@@ -374,10 +430,17 @@ export function DocumentosEmpleadoTab() {
         <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Carga masiva con auto-asignación</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs">Tipo</Label>
-                <Select value={masTipo} onValueChange={(v: any) => { setMasTipo(v); setRows([]); }}>
+                <Select
+                  value={masTipo}
+                  onValueChange={(v: any) => {
+                    setMasTipo(v);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
+                    setRows([]);
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recibo_sueldo">Recibo de sueldo</SelectItem>
@@ -389,21 +452,39 @@ export function DocumentosEmpleadoTab() {
                 <Label className="text-xs">Período (opcional)</Label>
                 <Input value={masPeriodo} onChange={(e) => setMasPeriodo(e.target.value)} placeholder="Ej: Junio 2026" />
               </div>
+              <div>
+                <Label className="text-xs">Páginas por documento</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={pagesPerDoc}
+                  onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Si subís un PDF unificado, se parte cada N páginas.
+                </p>
+              </div>
             </div>
 
             <div>
-              <Label className="text-xs">Archivos (máx 50, 10 MB c/u)</Label>
+              <Label className="text-xs">Archivos (PDF unificado o varios sueltos, máx 100 MB c/u)</Label>
               <Input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{masFiles.length} archivos seleccionados</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
+                </p>
               )}
             </div>
 
             <Button onClick={analyze} disabled={masFiles.length === 0 || analyzing} className="w-full">
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
-              Analizar con IA y detectar empleado
+              {analyzing && analyzeProgress
+                ? `Analizando ${analyzeProgress.done}/${analyzeProgress.total}...`
+                : "Analizar con IA y detectar empleado"}
             </Button>
+
 
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
