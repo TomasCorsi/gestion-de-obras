@@ -33,6 +33,7 @@ const TIPO_LABEL: Record<TipoDocumento, string> = {
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
 const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // PDF "fuente" antes de partir
 
 const fileToDataUrl = (f: File) =>
   new Promise<string>((res, rej) => {
