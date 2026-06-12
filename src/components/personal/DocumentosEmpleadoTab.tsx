@@ -251,7 +251,7 @@ export function DocumentosEmpleadoTab() {
             <Combobox
               options={[{ value: "", label: "Todos" }, ...personalOptions]}
               value={filterPersonal}
-              onChange={setFilterPersonal}
+              onValueChange={setFilterPersonal}
               placeholder="Todos"
             />
           </div>
@@ -334,7 +334,7 @@ export function DocumentosEmpleadoTab() {
           <div className="space-y-3">
             <div>
               <Label className="text-xs">Empleado</Label>
-              <Combobox options={personalOptions} value={indPersonal} onChange={setIndPersonal} placeholder="Elegir empleado" />
+              <Combobox options={personalOptions} value={indPersonal} onValueChange={setIndPersonal} placeholder="Elegir empleado" />
             </div>
             <div>
               <Label className="text-xs">Tipo</Label>
