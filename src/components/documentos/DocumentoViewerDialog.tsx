@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Download, Loader2 } from "lucide-react";
 import { FirmaCanvas } from "./FirmaCanvas";
+import { PdfPagesView } from "./PdfPagesView";
 import { useMisDocumentos } from "@/hooks/useMisDocumentos";
 import type { EmpleadoDocumento } from "@/hooks/useEmpleadoDocumentos";
 import { formatDate } from "@/lib/utils";
