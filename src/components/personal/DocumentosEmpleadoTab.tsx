@@ -25,6 +25,12 @@ import { useEmpleadoDocumentos, type TipoDocumento, type EmpleadoDocumento } fro
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import {
+  buildPersonalIndex,
+  extractTextFromPdf,
+  matchEmpleadoLocal,
+  runWithConcurrency,
+} from "@/utils/empleadoMatcher";
 
 const TIPO_LABEL: Record<TipoDocumento, string> = {
   estudio_medico: "Estudio médico",
@@ -120,6 +126,7 @@ export function DocumentosEmpleadoTab() {
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzePhase, setAnalyzePhase] = useState<"local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
@@ -182,6 +189,7 @@ export function DocumentosEmpleadoTab() {
   const analyze = async () => {
     if (masFiles.length === 0) return;
     setAnalyzing(true);
+    setAnalyzePhase(null);
     setAnalyzeProgress(null);
     try {
       const chunks = await splitFiles(masFiles, pagesPerDoc);
@@ -189,47 +197,119 @@ export function DocumentosEmpleadoTab() {
         toast.error("No quedaron archivos para analizar");
         return;
       }
-      if (chunks.length > 200) {
+      if (chunks.length > 500) {
         toast.error(`Demasiados documentos (${chunks.length}). Subí en tandas más chicas.`);
         return;
       }
 
-      const personalLite = personal
-        .filter((p) => p.activo)
-        .map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni }));
+      const personalActivo = personal.filter((p) => p.activo);
+      const personalIndex = buildPersonalIndex(personalActivo);
 
-      // Procesar de a lotes de 5 para evitar payloads enormes y timeouts
-      const BATCH = 5;
-      const collected: MatchRow[] = [];
+      // ---------- FASE 1: matching local con pdfjs ----------
+      setAnalyzePhase("local");
       setAnalyzeProgress({ done: 0, total: chunks.length });
-      for (let i = 0; i < chunks.length; i += BATCH) {
-        const slice = chunks.slice(i, i + BATCH);
-        const payloadFiles = await Promise.all(
-          slice.map(async (f) => ({ name: f.name, mime: f.type, data: await fileToDataUrl(f) }))
+
+      const localResults = await runWithConcurrency(
+        chunks,
+        8,
+        async (f) => {
+          // Las imágenes no tienen texto extraíble: las marcamos para IA.
+          if (!f.type.includes("pdf")) {
+            return { needsAi: true, match: null as any };
+          }
+          try {
+            const text = await extractTextFromPdf(f);
+            const match = matchEmpleadoLocal(text, personalIndex);
+            return {
+              needsAi: match.confidence === "sin_match" && !match.detected,
+              match,
+            };
+          } catch {
+            return { needsAi: true, match: null as any };
+          }
+        },
+        (done, total) => setAnalyzeProgress({ done, total })
+      );
+
+      const collected: MatchRow[] = chunks.map((f, i) => {
+        const r = localResults[i];
+        if (r && r.match) {
+          return {
+            file: f,
+            detected: r.match.detected,
+            personal_id: r.match.personal_id,
+            confidence: r.match.confidence,
+            selected: !!r.match.personal_id,
+          };
+        }
+        return {
+          file: f,
+          detected: null,
+          personal_id: null,
+          confidence: "sin_match",
+          selected: false,
+        };
+      });
+      setRows([...collected]);
+
+      // ---------- FASE 2: IA solo para los que no matchearon ----------
+      const pendingIdx = collected
+        .map((r, i) => (!r.personal_id ? i : -1))
+        .filter((i) => i >= 0);
+
+      if (pendingIdx.length > 0) {
+        setAnalyzePhase("ia");
+        setAnalyzeProgress({ done: 0, total: pendingIdx.length });
+
+        const personalLite = personalActivo.map((p) => ({
+          id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni,
+        }));
+
+        const BATCH = 5;
+        const batches: number[][] = [];
+        for (let i = 0; i < pendingIdx.length; i += BATCH) {
+          batches.push(pendingIdx.slice(i, i + BATCH));
+        }
+
+        let aiDone = 0;
+        await runWithConcurrency(
+          batches,
+          3,
+          async (batchIdx) => {
+            const slice = batchIdx.map((i) => collected[i].file);
+            const payloadFiles = await Promise.all(
+              slice.map(async (f) => ({ name: f.name, mime: f.type, data: await fileToDataUrl(f) }))
+            );
+            const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
+              body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
+            });
+            if (error) throw error;
+            const results = (data?.results || []) as any[];
+            results.forEach((r, k) => {
+              const targetIdx = batchIdx[k];
+              collected[targetIdx] = {
+                ...collected[targetIdx],
+                detected: r.detected ?? collected[targetIdx].detected,
+                personal_id: r.personal_id,
+                confidence: r.confidence,
+                error: r.error,
+                selected: !!r.personal_id,
+              };
+            });
+            aiDone += batchIdx.length;
+            setAnalyzeProgress({ done: aiDone, total: pendingIdx.length });
+            setRows([...collected]);
+          }
         );
-        const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
-          body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
-        });
-        if (error) throw error;
-        const results = (data?.results || []) as any[];
-        results.forEach((r, k) => {
-          collected.push({
-            file: slice[k],
-            detected: r.detected,
-            personal_id: r.personal_id,
-            confidence: r.confidence,
-            error: r.error,
-            selected: !!r.personal_id,
-          });
-        });
-        setAnalyzeProgress({ done: Math.min(i + BATCH, chunks.length), total: chunks.length });
-        setRows([...collected]);
       }
-      toast.success(`Analizados ${collected.length} documentos`);
+
+      const matched = collected.filter((r) => r.personal_id).length;
+      toast.success(`Analizados ${collected.length} documentos · ${matched} con match`);
     } catch (e: any) {
       toast.error(e?.message || "Error al analizar");
     } finally {
       setAnalyzing(false);
+      setAnalyzePhase(null);
     }
   };
 
@@ -481,8 +561,10 @@ export function DocumentosEmpleadoTab() {
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
               {analyzing && analyzeProgress
-                ? `Analizando ${analyzeProgress.done}/${analyzeProgress.total}...`
-                : "Analizar con IA y detectar empleado"}
+                ? analyzePhase === "local"
+                  ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
+                  : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
+                : "Analizar y detectar empleado"}
             </Button>
 
 
