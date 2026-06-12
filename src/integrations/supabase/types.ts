@@ -571,6 +571,88 @@ export type Database = {
           },
         ]
       }
+      empleado_documentos: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          firma_data_url: string | null
+          firmado_at: string | null
+          firmado_ip: string | null
+          id: string
+          mime_type: string | null
+          nombre_original: string | null
+          periodo: string | null
+          personal_id: string
+          storage_path: string
+          tamano_bytes: number | null
+          tipo: Database["public"]["Enums"]["tipo_documento_empleado"]
+          titulo: string
+          updated_at: string
+          uploaded_by: string | null
+          visto_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          firma_data_url?: string | null
+          firmado_at?: string | null
+          firmado_ip?: string | null
+          id?: string
+          mime_type?: string | null
+          nombre_original?: string | null
+          periodo?: string | null
+          personal_id: string
+          storage_path: string
+          tamano_bytes?: number | null
+          tipo: Database["public"]["Enums"]["tipo_documento_empleado"]
+          titulo: string
+          updated_at?: string
+          uploaded_by?: string | null
+          visto_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          firma_data_url?: string | null
+          firmado_at?: string | null
+          firmado_ip?: string | null
+          id?: string
+          mime_type?: string | null
+          nombre_original?: string | null
+          periodo?: string | null
+          personal_id?: string
+          storage_path?: string
+          tamano_bytes?: number | null
+          tipo?: Database["public"]["Enums"]["tipo_documento_empleado"]
+          titulo?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          visto_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "empleado_documentos_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empleado_documentos_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "empleado_documentos_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entrega_epp_items: {
         Row: {
           cantidad: number
@@ -2372,6 +2454,10 @@ export type Database = {
       can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
       can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
       execute_readonly_query: { Args: { query_sql: string }; Returns: Json }
+      get_documento_signed_url: {
+        Args: { _documento_id: string }
+        Returns: string
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
@@ -2381,6 +2467,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_owner_of_personal: {
+        Args: { _personal_id: string; _user_id: string }
         Returns: boolean
       }
       is_personal_capataz: { Args: { _user_id: string }; Returns: boolean }
@@ -2433,6 +2523,7 @@ export type Database = {
         | "mecanico"
         | "topografo"
         | "repartidor_calecita"
+      tipo_documento_empleado: "estudio_medico" | "recibo_sueldo"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
         | "cargadora"
@@ -2622,6 +2713,7 @@ export const Constants = {
         "topografo",
         "repartidor_calecita",
       ],
+      tipo_documento_empleado: ["estudio_medico", "recibo_sueldo"],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [
         "cargadora",
