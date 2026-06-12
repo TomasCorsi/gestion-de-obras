@@ -91,6 +91,7 @@ export default function Personal() {
   const [selectedPersona, setSelectedPersona] = useState<PersonalDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [numeroCuentaError, setNumeroCuentaError] = useState("");
 
   const [formData, setFormData] = useState<PersonalForm>({
     nombre: "",
@@ -206,8 +207,26 @@ export default function Personal() {
     setDeleteOpen(false);
   };
 
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setNumeroCuentaError("");
+
+    const cuenta = formData.numero_cuenta?.trim();
+    if (cuenta) {
+      const duplicado = personal.find(
+        (p) =>
+          p.numero_cuenta?.trim() === cuenta &&
+          p.id !== selectedPersona?.id
+      );
+      if (duplicado) {
+        setNumeroCuentaError(
+          `El número de cuenta ya está registrado por ${duplicado.nombre} ${duplicado.apellido}`
+        );
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -736,10 +755,19 @@ export default function Personal() {
               <Input
                 id="numero_cuenta"
                 value={formData.numero_cuenta || ""}
-                onChange={(e) => setFormData({ ...formData, numero_cuenta: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, numero_cuenta: e.target.value });
+                  setNumeroCuentaError("");
+                }}
                 placeholder="Número de cuenta bancaria"
-                className="bg-muted border-border"
+                className={cn(
+                  "bg-muted border-border",
+                  numeroCuentaError && "border-destructive focus-visible:ring-destructive"
+                )}
               />
+              {numeroCuentaError && (
+                <p className="text-xs text-destructive">{numeroCuentaError}</p>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-2 pt-4">
