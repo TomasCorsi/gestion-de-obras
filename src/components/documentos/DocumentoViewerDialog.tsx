@@ -69,20 +69,15 @@ export function DocumentoViewerDialog({ open, onOpenChange, documento }: Props) 
         </DialogHeader>
 
         <div className="flex-1 overflow-auto space-y-4">
-          <div className="bg-muted rounded-md overflow-hidden" style={{ minHeight: 400 }}>
+          <div className="bg-muted rounded-md overflow-hidden p-1" style={{ minHeight: 200 }}>
             {url ? (
               isImg ? (
                 <img src={url} alt={documento.titulo} className="w-full h-auto" />
               ) : (
-                <iframe
-                  src={`${url}#view=FitH&toolbar=1`}
-                  className="w-full block"
-                  style={{ height: "75vh", minHeight: 600 }}
-                  title={documento.titulo}
-                />
+                <PdfPagesView url={url} />
               )
             ) : (
-              <div className="flex items-center justify-center h-[400px]">
+              <div className="flex items-center justify-center h-[200px]">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             )}
