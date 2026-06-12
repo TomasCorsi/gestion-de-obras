@@ -430,10 +430,17 @@ export function DocumentosEmpleadoTab() {
         <DialogContent className="max-w-4xl">
           <DialogHeader><DialogTitle>Carga masiva con auto-asignación</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs">Tipo</Label>
-                <Select value={masTipo} onValueChange={(v: any) => { setMasTipo(v); setRows([]); }}>
+                <Select
+                  value={masTipo}
+                  onValueChange={(v: any) => {
+                    setMasTipo(v);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
+                    setRows([]);
+                  }}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="recibo_sueldo">Recibo de sueldo</SelectItem>
@@ -445,21 +452,39 @@ export function DocumentosEmpleadoTab() {
                 <Label className="text-xs">Período (opcional)</Label>
                 <Input value={masPeriodo} onChange={(e) => setMasPeriodo(e.target.value)} placeholder="Ej: Junio 2026" />
               </div>
+              <div>
+                <Label className="text-xs">Páginas por documento</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={pagesPerDoc}
+                  onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Si subís un PDF unificado, se parte cada N páginas.
+                </p>
+              </div>
             </div>
 
             <div>
-              <Label className="text-xs">Archivos (máx 50, 10 MB c/u)</Label>
+              <Label className="text-xs">Archivos (PDF unificado o varios sueltos, máx 100 MB c/u)</Label>
               <Input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
-                <p className="text-xs text-muted-foreground mt-1">{masFiles.length} archivos seleccionados</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
+                </p>
               )}
             </div>
 
             <Button onClick={analyze} disabled={masFiles.length === 0 || analyzing} className="w-full">
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
-              Analizar con IA y detectar empleado
+              {analyzing && analyzeProgress
+                ? `Analizando ${analyzeProgress.done}/${analyzeProgress.total}...`
+                : "Analizar con IA y detectar empleado"}
             </Button>
+
 
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
