@@ -156,6 +156,22 @@ export const ParteDiarioHomeView = ({
         )}
       </div>
 
+      {/* Mis Documentos - acceso siempre visible */}
+      <Button
+        onClick={() => navigate('/mis-documentos')}
+        variant="outline"
+        className="w-full h-16 gap-3 relative"
+        size="lg"
+      >
+        <FileText className="w-6 h-6" />
+        <span className="font-semibold">Mis Documentos</span>
+        {docsPendientes > 0 && (
+          <Badge className="ml-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground">
+            {docsPendientes}
+          </Badge>
+        )}
+      </Button>
+
       {/* Remitos shortcut (Sergio) */}
       {showRemitosButton && onIrRemitos && (
         <Button

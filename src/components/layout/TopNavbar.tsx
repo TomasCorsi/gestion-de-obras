@@ -201,6 +201,18 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
               <User className="w-4 h-4 mr-2" />
               Perfil
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => navigate('/mis-documentos')}
+              className="text-foreground focus:bg-accent cursor-pointer"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              <span className="flex-1">Mis Documentos</span>
+              {pendientesCount > 0 && (
+                <Badge className="ml-2 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px] bg-destructive text-destructive-foreground">
+                  {pendientesCount}
+                </Badge>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuItem 
               onClick={handleCheckUpdates}
               disabled={isChecking}
