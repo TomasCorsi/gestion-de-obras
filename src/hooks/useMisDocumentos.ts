@@ -1,6 +1,8 @@
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useEmpleadoProfile } from "@/hooks/useEmpleadoProfile";
 import { toast } from "sonner";
 import type { EmpleadoDocumento } from "./useEmpleadoDocumentos";
 
@@ -8,13 +10,17 @@ const BUCKET = "empleado-documentos";
 
 export function useMisDocumentos() {
   const { user } = useAuth();
+  const { empleado } = useEmpleadoProfile();
   const qc = useQueryClient();
+  const seenIdsRef = useRef<Set<string>>(new Set());
+  const initializedRef = useRef(false);
 
   const list = useQuery({
     queryKey: ["mis_documentos", user?.id],
     enabled: !!user?.id,
     refetchOnWindowFocus: true,
-    staleTime: 60_000,
+    refetchInterval: 60_000,
+    staleTime: 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("empleado_documentos")
@@ -26,6 +32,51 @@ export function useMisDocumentos() {
   });
 
   const docs = list.data || [];
+
+  // Track seen IDs and notify on truly new ones
+  useEffect(() => {
+    if (!list.data) return;
+    if (!initializedRef.current) {
+      list.data.forEach((d) => seenIdsRef.current.add(d.id));
+      initializedRef.current = true;
+      return;
+    }
+    list.data.forEach((d) => {
+      if (!seenIdsRef.current.has(d.id)) {
+        seenIdsRef.current.add(d.id);
+        toast.success("Nuevo documento disponible", {
+          description: d.titulo,
+        });
+      }
+    });
+  }, [list.data]);
+
+  // Realtime: subscribe to inserts/updates/deletes for this empleado's documents
+  useEffect(() => {
+    const personalId = empleado?.id;
+    if (!personalId) return;
+
+    const channel = supabase
+      .channel(`empleado_documentos:${personalId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "empleado_documentos",
+          filter: `personal_id=eq.${personalId}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ["mis_documentos"] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [empleado?.id, qc]);
+
   const pendientesCount = docs.filter(
     (d) => !d.visto_at || (d.tipo === "recibo_sueldo" && !d.firmado_at)
   ).length;
