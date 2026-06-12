@@ -1,28 +1,27 @@
-## Plan
+Plan para corregir banner y notificación de documentos
 
-1. **Hacer visible “Mis Documentos” como acceso principal**
-   - Agregar un botón/tarjeta “Mis Documentos” directamente en la pantalla de Parte Diario, junto a “Nuevo Parte” y “Mis Partes”.
-   - Debe aparecer aunque no haya documentos pendientes, para que la sección exista siempre.
+1. Ajustar la carga de “Mis Documentos”
+   - Hacer que `useMisDocumentos` espere a que la sesión y el perfil de empleado estén listos antes de consultar.
+   - Consultar explícitamente por `personal_id` del empleado cuando esté disponible, en vez de depender solo de RLS.
+   - Mantener soporte para administradores sin romper la vista actual.
 
-2. **Agregar acceso dentro del menú de usuario**
-   - Incluir “Mis Documentos” en el desplegable del avatar, debajo de “Perfil”.
-   - Mostrar el contador rojo si hay documentos pendientes.
+2. Mostrar notificación al iniciar sesión
+   - Cambiar la lógica actual: hoy solo avisa documentos nuevos después de la primera carga, por eso si el recibo/examen ya estaba cargado antes de iniciar sesión no muestra toast.
+   - Al abrir la app o iniciar sesión, si hay documentos pendientes, mostrar un mensaje tipo:
+     - “Tenés un examen médico para revisar”
+     - “Tenés un recibo de sueldo para ver y firmar”
+     - o un resumen si hay varios.
+   - Evitar repetir el mismo aviso constantemente usando almacenamiento local por usuario/documento.
 
-3. **Mantener el ícono superior, pero hacerlo más compatible con mobile**
-   - Dejar el ícono de documentos en la barra superior para pantallas con espacio.
-   - Ajustar el layout mobile para que no quede oculto, cortado o tapado por el menú/avatar.
+3. Hacer el banner de Parte Diario más confiable
+   - Mantener el banner amarillo cuando haya pendientes.
+   - Asegurar que espere el resultado real de documentos antes de decidir no mostrarse.
+   - Dejar el acceso fijo a “Mis Documentos” aunque no haya pendientes.
 
-4. **Banner del Parte Diario**
-   - Mantener el banner amarillo solo cuando haya documentos pendientes.
-   - El nuevo botón fijo “Mis Documentos” servirá como respaldo si el contador no carga o si no hay pendientes.
+4. Mejorar Realtime
+   - Cuando se suba un documento mientras el usuario tiene la app abierta, invalidar la consulta y mostrar toast inmediato.
+   - Evitar suscripciones si todavía no existe `personal_id`.
 
-5. **Verificación**
-   - Revisar que `/mis-documentos` siga protegida para usuarios autenticados.
-   - Verificar en mobile que se vea: botón/tarjeta “Mis Documentos”, opción en el menú del avatar, y contador cuando corresponda.
-
-## Detalles técnicos
-
-- Archivos previstos:
-  - `src/components/layout/TopNavbar.tsx`
-  - `src/components/parte-diario/ParteDiarioHomeView.tsx`
-- No tocaría la base de datos ni las políticas en esta pasada, porque la captura muestra que el problema principal ahora es de navegación/visibilidad de la sección en la interfaz.
+5. Validación
+   - Revisar que `/mis-documentos`, el botón fijo, el badge, el banner y el toast usen el mismo contador de pendientes.
+   - Verificar que recibos pendientes cuenten hasta ser firmados y exámenes médicos hasta ser vistos.
