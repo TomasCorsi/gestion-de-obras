@@ -117,8 +117,10 @@ export function DocumentosEmpleadoTab() {
   const [openMas, setOpenMas] = useState(false);
   const [masTipo, setMasTipo] = useState<TipoDocumento>("recibo_sueldo");
   const [masPeriodo, setMasPeriodo] = useState("");
-  const [masFiles, setMasFiles] = useState<File[]>([]);
+  const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
+  const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -126,51 +128,104 @@ export function DocumentosEmpleadoTab() {
   const handlePickMas = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files).filter((f) => {
-      if (f.size > MAX_BYTES) {
-        toast.error(`"${f.name}" supera 10 MB`);
+      if (f.size > MAX_SOURCE_BYTES) {
+        toast.error(`"${f.name}" supera 100 MB`);
         return false;
       }
       return true;
     });
-    if (arr.length > 50) {
-      toast.error("Máximo 50 archivos por lote");
-      return;
-    }
     setMasFiles(arr);
     setRows([]);
+  };
+
+  // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
+  const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
+    if (pages < 1) pages = 1;
+    const { PDFDocument } = await import("pdf-lib");
+    const out: File[] = [];
+    for (const f of files) {
+      if (!f.type.includes("pdf") || pages === 1) {
+        // sin partir: validar tamaño individual
+        if (f.size > MAX_BYTES) {
+          toast.error(`"${f.name}" supera 10 MB`);
+          continue;
+        }
+        out.push(f);
+        continue;
+      }
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const src = await PDFDocument.load(bytes);
+        const total = src.getPageCount();
+        const base = f.name.replace(/\.pdf$/i, "");
+        for (let start = 0; start < total; start += pages) {
+          const end = Math.min(start + pages, total);
+          const sub = await PDFDocument.create();
+          const copied = await sub.copyPages(src, Array.from({ length: end - start }, (_, k) => start + k));
+          copied.forEach((p) => sub.addPage(p));
+          const u8 = await sub.save();
+          const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+          const chunk = new File([ab], `${base} (${start + 1}-${end}).pdf`, { type: "application/pdf" });
+          if (chunk.size > MAX_BYTES) {
+            toast.error(`Chunk "${chunk.name}" supera 10 MB`);
+            continue;
+          }
+          out.push(chunk);
+        }
+      } catch (e: any) {
+        toast.error(`No se pudo partir "${f.name}": ${e?.message || e}`);
+      }
+    }
+    return out;
   };
 
   const analyze = async () => {
     if (masFiles.length === 0) return;
     setAnalyzing(true);
+    setAnalyzeProgress(null);
     try {
-      const payloadFiles = await Promise.all(
-        masFiles.map(async (f) => ({
-          name: f.name,
-          mime: f.type,
-          data: await fileToDataUrl(f),
-        }))
-      );
+      const chunks = await splitFiles(masFiles, pagesPerDoc);
+      if (chunks.length === 0) {
+        toast.error("No quedaron archivos para analizar");
+        return;
+      }
+      if (chunks.length > 200) {
+        toast.error(`Demasiados documentos (${chunks.length}). Subí en tandas más chicas.`);
+        return;
+      }
+
       const personalLite = personal
         .filter((p) => p.activo)
         .map((p) => ({ id: p.id, nombre: p.nombre, apellido: p.apellido, dni: p.dni }));
 
-      const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
-        body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
-      });
-      if (error) throw error;
-
-      const results = (data?.results || []) as any[];
-      const next: MatchRow[] = results.map((r, i) => ({
-        file: masFiles[i],
-        detected: r.detected,
-        personal_id: r.personal_id,
-        confidence: r.confidence,
-        error: r.error,
-        selected: !!r.personal_id,
-      }));
-      setRows(next);
-      toast.success(`Analizados ${next.length} archivos`);
+      // Procesar de a lotes de 5 para evitar payloads enormes y timeouts
+      const BATCH = 5;
+      const collected: MatchRow[] = [];
+      setAnalyzeProgress({ done: 0, total: chunks.length });
+      for (let i = 0; i < chunks.length; i += BATCH) {
+        const slice = chunks.slice(i, i + BATCH);
+        const payloadFiles = await Promise.all(
+          slice.map(async (f) => ({ name: f.name, mime: f.type, data: await fileToDataUrl(f) }))
+        );
+        const { data, error } = await supabase.functions.invoke("match-empleado-documentos", {
+          body: { files: payloadFiles, tipo: masTipo, personal: personalLite },
+        });
+        if (error) throw error;
+        const results = (data?.results || []) as any[];
+        results.forEach((r, k) => {
+          collected.push({
+            file: slice[k],
+            detected: r.detected,
+            personal_id: r.personal_id,
+            confidence: r.confidence,
+            error: r.error,
+            selected: !!r.personal_id,
+          });
+        });
+        setAnalyzeProgress({ done: Math.min(i + BATCH, chunks.length), total: chunks.length });
+        setRows([...collected]);
+      }
+      toast.success(`Analizados ${collected.length} documentos`);
     } catch (e: any) {
       toast.error(e?.message || "Error al analizar");
     } finally {
