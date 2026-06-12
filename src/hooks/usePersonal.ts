@@ -196,7 +196,11 @@ export function usePersonal() {
     },
     onError: (error: any) => {
       console.error("Error updating personal:", error);
-      toast.error("Error al actualizar personal: " + error.message);
+      if (error.code === '23505') {
+        toast.error("El número de cuenta bancaria ya está registrado por otro empleado.");
+      } else {
+        toast.error("Error al actualizar personal: " + (error.message || ""));
+      }
     },
   });
 
