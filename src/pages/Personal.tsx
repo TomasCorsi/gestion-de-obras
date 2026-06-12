@@ -207,7 +207,6 @@ export default function Personal() {
     setDeleteOpen(false);
   };
 
-  const [numeroCuentaError, setNumeroCuentaError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
