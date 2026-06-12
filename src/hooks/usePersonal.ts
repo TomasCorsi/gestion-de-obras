@@ -153,9 +153,13 @@ export function usePersonal() {
       queryClient.invalidateQueries({ queryKey: ['personal'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       console.error("Error creating personal:", error);
-      toast.error("Error al crear personal");
+      if (error.code === '23505') {
+        toast.error("El número de cuenta bancaria ya está registrado por otro empleado.");
+      } else {
+        toast.error("Error al crear personal: " + (error.message || ""));
+      }
     },
   });
 
