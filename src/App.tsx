@@ -39,6 +39,7 @@ const RegistroEmpleado = lazy(() => import("./pages/RegistroEmpleado"));
 const Reportes = lazy(() => import("./pages/Reportes"));
 const Configuracion = lazy(() => import("./pages/Configuracion"));
 const MiPerfil = lazy(() => import("./pages/MiPerfil"));
+const MisDocumentos = lazy(() => import("./pages/MisDocumentos"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 
 const Presentismo = lazy(() => import("./pages/Presentismo"));
@@ -182,6 +183,12 @@ const App = () => (
               <Route path="/mi-perfil" element={
                 <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante', 'remitero']}>
                   <MiPerfil />
+                </ProtectedRoute>
+              } />
+
+              <Route path="/mis-documentos" element={
+                <ProtectedRoute requiredRoles={['admin', 'capataz', 'maquinista', 'ayudante', 'remitero']}>
+                  <MisDocumentos />
                 </ProtectedRoute>
               } />
 
