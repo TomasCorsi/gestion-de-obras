@@ -91,6 +91,7 @@ export default function Personal() {
   const [selectedPersona, setSelectedPersona] = useState<PersonalDB | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [numeroCuentaError, setNumeroCuentaError] = useState("");
 
   const [formData, setFormData] = useState<PersonalForm>({
     nombre: "",
