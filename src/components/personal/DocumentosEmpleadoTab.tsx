@@ -25,6 +25,12 @@ import { useEmpleadoDocumentos, type TipoDocumento, type EmpleadoDocumento } fro
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import {
+  buildPersonalIndex,
+  extractTextFromPdf,
+  matchEmpleadoLocal,
+  runWithConcurrency,
+} from "@/utils/empleadoMatcher";
 
 const TIPO_LABEL: Record<TipoDocumento, string> = {
   estudio_medico: "Estudio médico",
