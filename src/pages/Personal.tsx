@@ -61,6 +61,7 @@ const VacacionesTab = lazy(() => import("@/components/personal/VacacionesTab").t
 const LiquidacionesTab = lazy(() => import("@/components/personal/LiquidacionesTab").then(m => ({ default: m.LiquidacionesTab })));
 const SueldosTab = lazy(() => import("@/components/personal/SueldosTab").then(m => ({ default: m.SueldosTab })));
 const EntregaEPPTab = lazy(() => import("@/components/personal/EntregaEPPTab").then(m => ({ default: m.EntregaEPPTab })));
+const DocumentosEmpleadoTab = lazy(() => import("@/components/personal/DocumentosEmpleadoTab").then(m => ({ default: m.DocumentosEmpleadoTab })));
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePersonal, PersonalDB, PersonalForm, RolPersonal, ModalidadPago } from "@/hooks/usePersonal";
@@ -277,6 +278,10 @@ export default function Personal() {
           <TabsTrigger value="epp" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
             <ShieldCheck className="w-4 h-4 mr-2" />
             EPP
+          </TabsTrigger>
+          <TabsTrigger value="documentos" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+            <FileText className="w-4 h-4 mr-2" />
+            Documentos
           </TabsTrigger>
         </TabsList>
 
@@ -539,6 +544,12 @@ export default function Personal() {
         <TabsContent value="epp">
           <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
             <EntregaEPPTab />
+          </Suspense>
+        </TabsContent>
+
+        <TabsContent value="documentos">
+          <Suspense fallback={<div className="p-8 text-sm text-muted-foreground">Cargando…</div>}>
+            <DocumentosEmpleadoTab />
           </Suspense>
         </TabsContent>
 
