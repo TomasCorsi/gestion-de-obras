@@ -181,7 +181,7 @@ export function DocumentosEmpleadoTab() {
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzePhase, setAnalyzePhase] = useState<"local" | "ia" | null>(null);
+  const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
@@ -199,6 +199,45 @@ export function DocumentosEmpleadoTab() {
     setMasFiles(arr);
     setRows([]);
   };
+
+  // Expande ZIP/RAR en los PDFs/imágenes internos. Resto pasa tal cual.
+  const expandArchives = async (files: File[]): Promise<File[]> => {
+    const out: File[] = [];
+    const archives = files.filter((f) => isZip(f) || isRar(f));
+    if (archives.length > 0) {
+      setAnalyzePhase("extract");
+      setAnalyzeProgress({ done: 0, total: archives.length });
+    }
+    let extractedCount = 0;
+    for (const f of files) {
+      if (isZip(f)) {
+        try {
+          const inner = await extractZip(f);
+          if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
+          out.push(...inner);
+        } catch (e: any) {
+          toast.error(`No se pudo abrir ZIP "${f.name}": ${e?.message || e}`);
+        }
+        extractedCount++;
+        setAnalyzeProgress({ done: extractedCount, total: archives.length });
+      } else if (isRar(f)) {
+        try {
+          const inner = await extractRar(f);
+          if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
+          out.push(...inner);
+        } catch (e: any) {
+          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}`);
+        }
+        extractedCount++;
+        setAnalyzeProgress({ done: extractedCount, total: archives.length });
+      } else {
+        out.push(f);
+      }
+    }
+    return out;
+  };
+
+
 
   // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
   const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
