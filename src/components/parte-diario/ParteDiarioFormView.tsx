@@ -179,10 +179,17 @@ export const ParteDiarioFormView = ({
     return personal.filter(p => p.id !== empleadoId);
   }, [personal, empleadoId]);
 
-  // Filtered personal based on search
+  // Debounce the absence search input (200ms) to avoid filtering on every keystroke
+  const [debouncedSearchAusencia, setDebouncedSearchAusencia] = useState('');
+  useEffect(() => {
+    const id = window.setTimeout(() => setDebouncedSearchAusencia(searchAusencia), 200);
+    return () => window.clearTimeout(id);
+  }, [searchAusencia]);
+
+  // Filtered personal based on (debounced) search
   const filteredPersonalForAusencias = useMemo(() => {
-    if (!searchAusencia.trim()) return personalForAusencias;
-    const searchLower = searchAusencia.toLowerCase().trim();
+    if (!debouncedSearchAusencia.trim()) return personalForAusencias;
+    const searchLower = debouncedSearchAusencia.toLowerCase().trim();
     return personalForAusencias.filter(p => {
       const nombre = (p.nombre || '').toLowerCase();
       const apellido = (p.apellido || '').toLowerCase();
@@ -193,7 +200,7 @@ export const ParteDiarioFormView = ({
              legajo.includes(searchLower) ||
              fullName.includes(searchLower);
     });
-  }, [personalForAusencias, searchAusencia]);
+  }, [personalForAusencias, debouncedSearchAusencia]);
 
   // Get selected employees info for display
   const selectedAusenciasInfo = useMemo(() => {
