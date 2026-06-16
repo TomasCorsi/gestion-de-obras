@@ -647,8 +647,8 @@ export function DocumentosEmpleadoTab() {
             </div>
 
             <div>
-              <Label className="text-xs">Archivos (PDF unificado o varios sueltos, máx 100 MB c/u)</Label>
-              <Input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={(e) => handlePickMas(e.target.files)} />
+              <Label className="text-xs">Archivos (PDF unificado, varios sueltos, o ZIP/RAR con PDFs · máx 100 MB c/u)</Label>
+              <Input ref={fileInputRef} type="file" accept={ACCEPT_BULK} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
@@ -660,11 +660,14 @@ export function DocumentosEmpleadoTab() {
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
               {analyzing && analyzeProgress
-                ? analyzePhase === "local"
-                  ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
-                  : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
+                ? analyzePhase === "extract"
+                  ? `Extrayendo comprimidos ${analyzeProgress.done}/${analyzeProgress.total}...`
+                  : analyzePhase === "local"
+                    ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
+                    : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
                 : "Analizar y detectar empleado"}
             </Button>
+
 
 
             {rows.length > 0 && (
