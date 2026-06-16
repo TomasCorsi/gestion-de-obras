@@ -29,6 +29,7 @@ import {
   buildPersonalIndex,
   extractTextFromPdf,
   matchEmpleadoLocal,
+  matchEmpleadoByFilename,
   runWithConcurrency,
 } from "@/utils/empleadoMatcher";
 
@@ -277,7 +278,14 @@ export function DocumentosEmpleadoTab() {
           out.push(chunk);
         }
       } catch (e: any) {
-        toast.error(`No se pudo partir "${f.name}": ${e?.message || e}`);
+        // Si pdf-lib no puede partirlo, no lo descartamos: lo pasamos entero al pipeline
+        // si entra dentro del límite individual, así matching local/IA igual puede procesarlo.
+        if (f.size <= MAX_BYTES) {
+          toast.warning(`No se pudo partir "${f.name}", se procesa entero`);
+          out.push(f);
+        } else {
+          toast.error(`No se pudo partir "${f.name}" y supera 10 MB: ${e?.message || e}`);
+        }
       }
     }
     return out;
@@ -315,20 +323,32 @@ export function DocumentosEmpleadoTab() {
         chunks,
         8,
         async (f) => {
-          // Las imágenes no tienen texto extraíble: las marcamos para IA.
+          // Imágenes: intentar match por nombre de archivo, sino IA.
           if (!f.type.includes("pdf")) {
+            const byName = matchEmpleadoByFilename(f.name, personalIndex);
+            if (byName.personal_id) return { needsAi: false, match: byName };
             return { needsAi: true, match: null as any };
           }
+          let textMatch: ReturnType<typeof matchEmpleadoLocal> | null = null;
           try {
             const text = await extractTextFromPdf(f);
-            const match = matchEmpleadoLocal(text, personalIndex);
-            return {
-              needsAi: match.confidence === "sin_match" && !match.detected,
-              match,
-            };
+            textMatch = matchEmpleadoLocal(text, personalIndex);
+            if (textMatch.personal_id) {
+              return { needsAi: false, match: textMatch };
+            }
           } catch {
-            return { needsAi: true, match: null as any };
+            // pdfjs falló (PDF dañado o sin texto) → seguimos con filename
           }
+          // Fallback: matching por nombre de archivo
+          const byName = matchEmpleadoByFilename(f.name, personalIndex);
+          if (byName.personal_id) {
+            return { needsAi: false, match: byName };
+          }
+          // Si el texto trajo algo detectado (CUIT/DNI que no matcheó), lo mantenemos
+          if (textMatch && textMatch.detected) {
+            return { needsAi: false, match: textMatch };
+          }
+          return { needsAi: true, match: null as any };
         },
         (done, total) => setAnalyzeProgress({ done, total })
       );
