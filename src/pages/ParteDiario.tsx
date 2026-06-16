@@ -109,13 +109,12 @@ const ParteDiario = () => {
   const [editingMantenimiento, setEditingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
   const [deletingMantenimiento, setDeletingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
   const [selectedDateMec, setSelectedDateMec] = useState<Date>(new Date());
-  const { deleteMantenimiento } = useMantenimientos();
 
-  // todayStr needed by both repartidor and mechanic
-  const todayStr = (() => {
+  // todayStr needed by both repartidor and mechanic (memoized: stable per mount)
+  const todayStr = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  })();
+  }, []);
 
   const mantenimientosPendientes = useMemo(() => {
     return mantenimientos.filter(m => m.estado === 'pendiente');
