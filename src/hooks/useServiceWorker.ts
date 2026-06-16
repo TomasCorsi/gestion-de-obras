@@ -47,7 +47,7 @@ export function useServiceWorker() {
       setIsChecking(false);
       return { found: false, error: String(error) };
     }
-  }, [swNeedRefresh]);
+  }, []);
 
   return {
     needRefresh,
