@@ -1,5 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 
+/**
+ * Lightweight hook to surface SW update state and provide a manual update check.
+ * Registration itself is handled centrally by registerAppServiceWorker() in main.tsx.
+ */
 export function useServiceWorker() {
   const [needRefresh, setNeedRefresh] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -7,42 +11,49 @@ export function useServiceWorker() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    navigator.serviceWorker.getRegistrations()
-      .then((registrations) => {
-        const appRegistrations = registrations.filter((registration) => {
-          const scriptUrl = registration.active?.scriptURL
-            || registration.waiting?.scriptURL
-            || registration.installing?.scriptURL
-            || "";
-          return registration.scope === `${window.location.origin}/` || scriptUrl.endsWith("/sw.js");
+    const handler = () => setNeedRefresh(true);
+    let reg: ServiceWorkerRegistration | undefined;
+
+    navigator.serviceWorker.getRegistration().then((r) => {
+      reg = r;
+      if (!r) return;
+      if (r.waiting) setNeedRefresh(true);
+      r.addEventListener("updatefound", () => {
+        const nw = r.installing;
+        if (!nw) return;
+        nw.addEventListener("statechange", () => {
+          if (nw.state === "installed" && navigator.serviceWorker.controller) {
+            handler();
+          }
         });
+      });
+    }).catch(() => undefined);
 
-        return Promise.allSettled(appRegistrations.map((registration) => registration.unregister()));
-      })
-      .catch(() => undefined);
+    return () => {
+      reg?.removeEventListener("updatefound", handler);
+    };
   }, []);
 
-  const handleUpdate = useCallback(() => {
-    window.location.reload();
+  const updateServiceWorker = useCallback(() => {
+    navigator.serviceWorker.getRegistration().then((reg) => {
+      if (reg?.waiting) {
+        reg.waiting.postMessage({ type: "SKIP_WAITING" });
+      } else {
+        window.location.reload();
+      }
+    });
   }, []);
 
-  const handleDismiss = useCallback(() => {
-    setNeedRefresh(false);
-  }, []);
-
-  const handleOfflineReady = useCallback(() => {
-    return undefined;
-  }, []);
+  const dismissUpdate = useCallback(() => setNeedRefresh(false), []);
+  const dismissOfflineReady = useCallback(() => undefined, []);
 
   const checkForUpdates = useCallback(async (): Promise<{ found: boolean; error?: string }> => {
     setIsChecking(true);
     try {
-      if ("serviceWorker" in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        await Promise.allSettled(registrations.map((registration) => registration.unregister()));
-      }
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) await reg.update();
       setIsChecking(false);
-      return { found: false };
+      return { found: !!reg?.waiting };
     } catch (error) {
       setIsChecking(false);
       return { found: false, error: String(error) };
@@ -54,8 +65,8 @@ export function useServiceWorker() {
     offlineReady: false,
     isChecking,
     checkForUpdates,
-    updateServiceWorker: handleUpdate,
-    dismissUpdate: handleDismiss,
-    dismissOfflineReady: handleOfflineReady,
+    updateServiceWorker,
+    dismissUpdate,
+    dismissOfflineReady,
   };
 }
