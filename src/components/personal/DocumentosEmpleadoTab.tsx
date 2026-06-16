@@ -442,32 +442,129 @@ export function DocumentosEmpleadoTab() {
       return;
     }
     setSavingBulk(true);
-    let ko = 0;
+
+    // Agrupar por personal_id preservando el orden de aparición
+    const order: string[] = [];
+    const groups = new Map<string, MatchRow[]>();
     for (const r of ok) {
+      const pid = r.personal_id!;
+      if (!groups.has(pid)) {
+        groups.set(pid, []);
+        order.push(pid);
+      }
+      groups.get(pid)!.push(r);
+    }
+
+    const { PDFDocument } = await import("pdf-lib");
+    const titulo = masPeriodo
+      ? `${TIPO_LABEL[masTipo]} - ${masPeriodo}`
+      : TIPO_LABEL[masTipo];
+
+    let ko = 0;
+    let okGroups = 0;
+
+    for (const pid of order) {
+      const items = groups.get(pid)!;
       try {
-        const titulo = masPeriodo
-          ? `${TIPO_LABEL[masTipo]} - ${masPeriodo}`
-          : TIPO_LABEL[masTipo];
+        let fileToUpload: File;
+        const allPdf = items.every((it) => it.file.type.includes("pdf"));
+
+        if (items.length === 1 || !allPdf) {
+          // Sin merge: subir cada archivo del grupo individualmente
+          for (const it of items) {
+            try {
+              await uploadOne({
+                personal_id: pid,
+                tipo: masTipo,
+                titulo,
+                periodo: masPeriodo,
+                file: it.file,
+              });
+            } catch {
+              ko++;
+            }
+          }
+          okGroups++;
+          continue;
+        }
+
+        // Merge de todos los chunks PDF en un solo documento
+        try {
+          const merged = await PDFDocument.create();
+          for (const it of items) {
+            const bytes = new Uint8Array(await it.file.arrayBuffer());
+            const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const copied = await merged.copyPages(src, src.getPageIndices());
+            copied.forEach((p) => merged.addPage(p));
+          }
+          const u8 = await merged.save();
+          const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+          const baseName = items[0].file.name
+            .replace(/\s*\(\d+-\d+\)\.pdf$/i, "")
+            .replace(/\.pdf$/i, "");
+          fileToUpload = new File([ab], `${baseName}.pdf`, { type: "application/pdf" });
+
+          if (fileToUpload.size > MAX_BYTES) {
+            // Fallback: subir cada chunk por separado
+            toast.warning(`PDF unificado de ${items[0].file.name} supera 10 MB, se suben los chunks por separado`);
+            for (const it of items) {
+              try {
+                await uploadOne({
+                  personal_id: pid,
+                  tipo: masTipo,
+                  titulo,
+                  periodo: masPeriodo,
+                  file: it.file,
+                });
+              } catch {
+                ko++;
+              }
+            }
+            okGroups++;
+            continue;
+          }
+        } catch {
+          // Fallback: subir cada chunk por separado si el merge falla
+          for (const it of items) {
+            try {
+              await uploadOne({
+                personal_id: pid,
+                tipo: masTipo,
+                titulo,
+                periodo: masPeriodo,
+                file: it.file,
+              });
+            } catch {
+              ko++;
+            }
+          }
+          okGroups++;
+          continue;
+        }
+
         await uploadOne({
-          personal_id: r.personal_id!,
+          personal_id: pid,
           tipo: masTipo,
           titulo,
           periodo: masPeriodo,
-          file: r.file,
+          file: fileToUpload,
         });
+        okGroups++;
       } catch {
         ko++;
       }
     }
+
     setSavingBulk(false);
     if (ko === 0) {
-      toast.success(`Subidos ${ok.length} documentos`);
+      toast.success(`Subidos ${okGroups} empleados`);
     } else {
-      toast.warning(`Subidos ${ok.length - ko} / ${ok.length}. ${ko} con error.`);
+      toast.warning(`Procesados ${okGroups} empleados. ${ko} con error.`);
     }
     setOpenMas(false);
     setMasFiles([]); setRows([]); setMasPeriodo("");
   };
+
 
   const [toDelete, setToDelete] = useState<EmpleadoDocumento | null>(null);
 
