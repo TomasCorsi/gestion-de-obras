@@ -9,7 +9,7 @@ import type { EmpleadoDocumento } from "./useEmpleadoDocumentos";
 const BUCKET = "empleado-documentos";
 
 export function useMisDocumentos() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
   const { empleado, loading: empleadoLoading } = useEmpleadoProfile();
   const qc = useQueryClient();
   const seenIdsRef = useRef<Set<string>>(new Set());
@@ -17,22 +17,31 @@ export function useMisDocumentos() {
   const loginAlertShownRef = useRef(false);
 
   const personalId = empleado?.id ?? null;
+  const canQueryOwnDocsWithoutProfile = !!user?.id && role !== "admin";
 
   const list = useQuery({
-    queryKey: ["mis_documentos", user?.id, personalId],
-    enabled: !authLoading && !empleadoLoading && !!user?.id && !!personalId,
+    queryKey: ["mis_documentos", user?.id, personalId, role],
+    enabled: !authLoading && !empleadoLoading && !!user?.id && (!!personalId || canQueryOwnDocsWithoutProfile),
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchInterval: 60_000,
     staleTime: 0,
     retry: 2,
     queryFn: async () => {
-      if (!personalId) return [];
-      const { data, error } = await supabase
+      if (!personalId && !canQueryOwnDocsWithoutProfile) return [];
+
+      let query = supabase
         .from("empleado_documentos")
         .select("*")
-        .eq("personal_id", personalId)
         .order("created_at", { ascending: false });
+
+      // Si el perfil operativo todavía no hidrató en la PWA, consultamos sin filtro:
+      // RLS limita el resultado a los documentos propios del usuario autenticado.
+      if (personalId) {
+        query = query.eq("personal_id", personalId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as unknown as EmpleadoDocumento[];
     },
@@ -97,7 +106,7 @@ export function useMisDocumentos() {
         description,
         duration: 10000,
       });
-      try { localStorage.setItem(key, idsKey); } catch {}
+      try { localStorage.setItem(key, idsKey); } catch { void 0; }
     }
     loginAlertShownRef.current = true;
   }, [user?.id, list.data]);
@@ -137,7 +146,7 @@ export function useMisDocumentos() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["mis_documentos"] }),
-    onError: (e: any) => toast.error(e?.message || "Error al marcar como visto"),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error al marcar como visto"),
   });
 
   const firmar = useMutation({
@@ -147,7 +156,7 @@ export function useMisDocumentos() {
         const r = await fetch("https://api.ipify.org?format=json");
         const j = await r.json();
         ip = j?.ip || null;
-      } catch {}
+      } catch { void 0; }
       const { error } = await supabase
         .from("empleado_documentos")
         .update({
@@ -163,7 +172,7 @@ export function useMisDocumentos() {
       qc.invalidateQueries({ queryKey: ["mis_documentos"] });
       toast.success("Recibo firmado");
     },
-    onError: (e: any) => toast.error(e?.message || "Error al firmar"),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error al firmar"),
   });
 
   const getDownloadUrl = async (doc: EmpleadoDocumento) => {
