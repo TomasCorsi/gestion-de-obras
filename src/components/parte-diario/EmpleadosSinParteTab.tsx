@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
-import * as XLSX from "xlsx";
+
 import { Download, Search, UserX, User, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
