@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Loader2, Download, BarChart3, User, Users, ArrowLeft } from "lucide-react";
@@ -14,10 +14,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useParteDiarioRendimiento } from "@/hooks/useParteDiarioRendimiento";
-import { ParteDiarioRendimientoChart } from "./ParteDiarioRendimientoChart";
 import { ParteDiarioResumenGeneral } from "./ParteDiarioResumenGeneral";
-import { generateParteDiarioPDF } from "@/utils/generateParteDiarioPDF";
 import type { PersonalDB } from "@/hooks/usePersonal";
+
+// Lazy: recharts (~200KB) only when this tab actually renders a chart
+const ParteDiarioRendimientoChart = lazy(() =>
+  import("./ParteDiarioRendimientoChart").then(m => ({ default: m.ParteDiarioRendimientoChart }))
+);
 
 interface ParteDiarioRendimientoTabProps {
   personal: PersonalDB[];
