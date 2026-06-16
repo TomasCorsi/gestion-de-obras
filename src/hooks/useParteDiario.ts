@@ -87,7 +87,7 @@ export function useParteDiario() {
   const queryClient = useQueryClient();
   const { empleado } = useEmpleadoProfile();
   const { isOnline } = useNetworkStatus();
-  const { enqueueOfflineQueue: _, enqueueOfflineParte } = useOfflineQueue() as any;
+  const { enqueueOfflineParte } = useOfflineQueue();
   const fechaHoy = format(new Date(), 'yyyy-MM-dd');
   const fechaDesde = format(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
 
