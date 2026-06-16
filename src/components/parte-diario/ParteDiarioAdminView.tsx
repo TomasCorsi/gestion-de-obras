@@ -180,8 +180,9 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return codigo || tipo + (patente ? ` (${patente})` : "");
   };
 
-  // Export to Excel
-  const handleExportExcel = () => {
+  // Export to Excel (lazy-load xlsx)
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
     const exportData = filteredPartes.map((p) => ({
       Fecha: format(parseISO(p.fecha), "dd/MM/yyyy"),
       Empleado: getEmpleadoNombre(p),
