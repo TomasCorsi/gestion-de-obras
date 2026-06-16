@@ -9,7 +9,6 @@ const Toaster = lazy(() => import("@/components/ui/toaster").then(m => ({ defaul
 const Sonner = lazy(() => import("@/components/ui/sonner").then(m => ({ default: m.Toaster })));
 const TooltipProvider = lazy(() => import("@/components/ui/tooltip").then(m => ({ default: m.TooltipProvider })));
 const SessionKeepAlive = lazy(() => import("@/components/auth/SessionKeepAlive").then(m => ({ default: m.SessionKeepAlive })));
-const UpdatePrompt = lazy(() => import("@/components/pwa/UpdatePrompt").then(m => ({ default: m.UpdatePrompt })));
 const OfflineBanner = lazy(() => import("@/components/pwa/OfflineBanner").then(m => ({ default: m.OfflineBanner })));
 
 // Eagerly loaded pages (critical path)
@@ -74,7 +73,6 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={null}>
               <SessionKeepAlive />
-              <UpdatePrompt />
               <OfflineBanner />
             </Suspense>
           <Suspense fallback={<PageLoader />}>
