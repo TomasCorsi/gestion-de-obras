@@ -38,8 +38,63 @@ const TIPO_LABEL: Record<TipoDocumento, string> = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
+const ACCEPT_BULK = "application/pdf,image/png,image/jpeg,image/webp,application/zip,application/x-zip-compressed,.zip,application/x-rar-compressed,application/vnd.rar,.rar";
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // PDF "fuente" antes de partir
+
+const isZip = (f: File) => /\.zip$/i.test(f.name) || f.type === "application/zip" || f.type === "application/x-zip-compressed";
+const isRar = (f: File) => /\.rar$/i.test(f.name) || f.type === "application/x-rar-compressed" || f.type === "application/vnd.rar";
+const isPdfName = (name: string) => /\.pdf$/i.test(name);
+const isImageName = (name: string) => /\.(png|jpe?g|webp)$/i.test(name);
+const isIgnorable = (path: string) => {
+  const base = path.split("/").pop() || "";
+  return path.includes("__MACOSX/") || base.startsWith(".");
+};
+
+async function extractZip(file: File): Promise<File[]> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(file);
+  const out: File[] = [];
+  const entries = Object.values(zip.files).filter((e) => !e.dir && !isIgnorable(e.name) && (isPdfName(e.name) || isImageName(e.name)));
+  for (const entry of entries) {
+    const blob = await entry.async("blob");
+    const type = isPdfName(entry.name) ? "application/pdf" : blob.type || "application/octet-stream";
+    out.push(new File([blob], entry.name.replace(/\//g, " - "), { type }));
+  }
+  return out;
+}
+
+async function extractRar(file: File): Promise<File[]> {
+  const mod: any = await import("libarchive.js");
+  const Archive = mod.Archive || mod.default?.Archive || mod.default;
+  try {
+    Archive.init({
+      workerUrl: (await import("libarchive.js/dist/worker-bundle.js?url")).default,
+    });
+  } catch {
+    // init puede tirar si ya fue inicializado o el url no resuelve: probar sin opciones
+    try { Archive.init(); } catch {}
+  }
+  const archive = await Archive.open(file);
+  const filesObj = await archive.extractFiles();
+  const out: File[] = [];
+  const walk = async (obj: any, prefix: string) => {
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      const path = prefix ? `${prefix}/${key}` : key;
+      if (val instanceof File) {
+        if (isIgnorable(path)) continue;
+        if (!isPdfName(key) && !isImageName(key)) continue;
+        const type = isPdfName(key) ? "application/pdf" : val.type || "application/octet-stream";
+        out.push(new File([val], path.replace(/\//g, " - "), { type }));
+      } else if (val && typeof val === "object") {
+        await walk(val, path);
+      }
+    }
+  };
+  await walk(filesObj, "");
+  return out;
+}
 
 const fileToDataUrl = (f: File) =>
   new Promise<string>((res, rej) => {
