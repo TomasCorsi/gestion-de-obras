@@ -96,6 +96,8 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
 
     setIsGeneratingPDF(true);
     try {
+      // Lazy-load PDF generator (jsPDF + autoTable, ~400KB)
+      const { generateParteDiarioPDF } = await import("@/utils/generateParteDiarioPDF");
       await generateParteDiarioPDF(
         data.empleado,
         data.partes,
