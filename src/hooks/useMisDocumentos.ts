@@ -106,7 +106,7 @@ export function useMisDocumentos() {
         description,
         duration: 10000,
       });
-      try { localStorage.setItem(key, idsKey); } catch {}
+      try { localStorage.setItem(key, idsKey); } catch { void 0; }
     }
     loginAlertShownRef.current = true;
   }, [user?.id, list.data]);
@@ -146,7 +146,7 @@ export function useMisDocumentos() {
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["mis_documentos"] }),
-    onError: (e: any) => toast.error(e?.message || "Error al marcar como visto"),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error al marcar como visto"),
   });
 
   const firmar = useMutation({
@@ -156,7 +156,7 @@ export function useMisDocumentos() {
         const r = await fetch("https://api.ipify.org?format=json");
         const j = await r.json();
         ip = j?.ip || null;
-      } catch {}
+      } catch { void 0; }
       const { error } = await supabase
         .from("empleado_documentos")
         .update({
@@ -172,7 +172,7 @@ export function useMisDocumentos() {
       qc.invalidateQueries({ queryKey: ["mis_documentos"] });
       toast.success("Recibo firmado");
     },
-    onError: (e: any) => toast.error(e?.message || "Error al firmar"),
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : "Error al firmar"),
   });
 
   const getDownloadUrl = async (doc: EmpleadoDocumento) => {
