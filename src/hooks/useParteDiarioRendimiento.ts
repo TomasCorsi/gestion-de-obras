@@ -92,34 +92,35 @@ export function useParteDiarioRendimiento(
   const { data, isLoading, error } = useQuery({
     queryKey: ['partes_diarios_rendimiento', empleadoId, mes, anio],
     enabled: !!empleadoId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     queryFn: async () => {
-      // Fetch employee data
-      const { data: empleadoData, error: empleadoError } = await supabase
-        .from('personal_selector' as any)
-        .select('id, nombre, apellido, rol, legajo')
-        .eq('id', empleadoId!)
-        .single() as { data: EmpleadoRendimiento | null; error: any };
-      
-      if (empleadoError) throw empleadoError;
-      
-      // Fetch partes for the period
-      const { data: partesData, error: partesError } = await supabase
-        .from('partes_diarios')
-        .select(`
-          *,
-          personal:personal_id (id, nombre, apellido, rol),
-          obras:obra_id (id, nombre),
-          maquinarias:maquinaria_id (id, codigo, tipo, patente)
-        `)
-        .eq('personal_id', empleadoId!)
-        .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
-        .lte('fecha', format(fechaFin, 'yyyy-MM-dd'))
-        .order('fecha', { ascending: true });
-      
-      if (partesError) throw partesError;
-      
-      const partes = partesData as unknown as ParteDiario[];
-      const empleado = empleadoData as EmpleadoRendimiento;
+      // Parallelize the two independent fetches
+      const [empleadoRes, partesRes] = await Promise.all([
+        supabase
+          .from('personal_selector' as any)
+          .select('id, nombre, apellido, rol, legajo')
+          .eq('id', empleadoId!)
+          .single() as unknown as Promise<{ data: EmpleadoRendimiento | null; error: any }>,
+        supabase
+          .from('partes_diarios')
+          .select(`
+            *,
+            personal:personal_id (id, nombre, apellido, rol),
+            obras:obra_id (id, nombre),
+            maquinarias:maquinaria_id (id, codigo, tipo, patente)
+          `)
+          .eq('personal_id', empleadoId!)
+          .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
+          .lte('fecha', format(fechaFin, 'yyyy-MM-dd'))
+          .order('fecha', { ascending: true }),
+      ]);
+
+      if (empleadoRes.error) throw empleadoRes.error;
+      if (partesRes.error) throw partesRes.error;
+
+      const partes = partesRes.data as unknown as ParteDiario[];
+      const empleado = empleadoRes.data as EmpleadoRendimiento;
       
       // Generate all days of the month
       const diasIntervalo = eachDayOfInterval({ start: fechaInicio, end: fechaFin });
