@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
 // Render every page of a PDF as <canvas> stacked vertically so the page scroll
 // (not an iframe) controls navigation. Click a page to view it fullscreen.
