@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { format, subDays } from 'date-fns';
 import type { ParteDiario } from './useParteDiario';
 
 export interface ParteDiarioAdminFilters {
@@ -16,57 +17,44 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
 
   const { data: partes = [], isLoading, error } = useQuery({
     queryKey: ['partes_diarios_admin', filters],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     queryFn: async () => {
-      const batchSize = 1000;
-      let from = 0;
-      let allPartes: ParteDiario[] = [];
+      let query = supabase
+        .from('partes_diarios')
+        .select(`
+          *,
+          personal:personal_id (id, nombre, apellido, rol),
+          obras:obra_id (id, nombre),
+          maquinarias:maquinaria_id (id, codigo, tipo, patente)
+        `)
+        .order('fecha', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(2000);
 
-      while (true) {
-        let query = supabase
-          .from('partes_diarios')
-          .select(`
-            *,
-            personal:personal_id (id, nombre, apellido, rol),
-            obras:obra_id (id, nombre),
-            maquinarias:maquinaria_id (id, codigo, tipo, patente)
-          `)
-          .order('fecha', { ascending: false })
-          .order('created_at', { ascending: false })
-          .range(from, from + batchSize - 1);
-
-        if (filters.empleadoId) {
-          query = query.eq('personal_id', filters.empleadoId);
-        }
-        if (filters.obraId) {
-          query = query.eq('obra_id', filters.obraId);
-        }
-        if (filters.estado) {
-          query = query.eq('estado', filters.estado);
-        }
-        if (filters.fechaDesde) {
-          query = query.gte('fecha', filters.fechaDesde);
-        }
-        if (filters.fechaHasta) {
-          query = query.lte('fecha', filters.fechaHasta);
-        }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        const batch = (data ?? []) as unknown as ParteDiario[];
-        allPartes = [...allPartes, ...batch];
-
-        console.log(`[ParteDiarioAdmin] Batch from=${from}, got=${batch.length}, total=${allPartes.length}`);
-
-        if (batch.length < batchSize) {
-          break;
-        }
-
-        from += batchSize;
+      if (filters.empleadoId) {
+        query = query.eq('personal_id', filters.empleadoId);
+      }
+      if (filters.obraId) {
+        query = query.eq('obra_id', filters.obraId);
+      }
+      if (filters.estado) {
+        query = query.eq('estado', filters.estado);
+      }
+      if (filters.fechaDesde) {
+        query = query.gte('fecha', filters.fechaDesde);
+      }
+      if (filters.fechaHasta) {
+        query = query.lte('fecha', filters.fechaHasta);
+      }
+      // Default window: last 30 days if no date range provided
+      if (!filters.fechaDesde && !filters.fechaHasta) {
+        query = query.gte('fecha', format(subDays(new Date(), 30), 'yyyy-MM-dd'));
       }
 
-      return allPartes;
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as unknown as ParteDiario[];
     },
   });
 

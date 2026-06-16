@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, lazy, Suspense } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Loader2, Download, BarChart3, User, Users, ArrowLeft } from "lucide-react";
@@ -14,10 +14,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useParteDiarioRendimiento } from "@/hooks/useParteDiarioRendimiento";
-import { ParteDiarioRendimientoChart } from "./ParteDiarioRendimientoChart";
 import { ParteDiarioResumenGeneral } from "./ParteDiarioResumenGeneral";
-import { generateParteDiarioPDF } from "@/utils/generateParteDiarioPDF";
 import type { PersonalDB } from "@/hooks/usePersonal";
+
+// Lazy: recharts (~200KB) only when this tab actually renders a chart
+const ParteDiarioRendimientoChart = lazy(() =>
+  import("./ParteDiarioRendimientoChart").then(m => ({ default: m.ParteDiarioRendimientoChart }))
+);
 
 interface ParteDiarioRendimientoTabProps {
   personal: PersonalDB[];
@@ -93,6 +96,8 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
 
     setIsGeneratingPDF(true);
     try {
+      // Lazy-load PDF generator (jsPDF + autoTable, ~400KB)
+      const { generateParteDiarioPDF } = await import("@/utils/generateParteDiarioPDF");
       await generateParteDiarioPDF(
         data.empleado,
         data.partes,
@@ -260,12 +265,14 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                     </CardContent>
                   </Card>
                 ) : (
-                  <ParteDiarioRendimientoChart
-                    diasDelMes={data.diasDelMes}
-                    totales={data.totales}
-                    rol={data.empleado.rol}
-                    mesLabel={getMesLabel(selectedMes, selectedAnio)}
-                  />
+                  <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+                    <ParteDiarioRendimientoChart
+                      diasDelMes={data.diasDelMes}
+                      totales={data.totales}
+                      rol={data.empleado.rol}
+                      mesLabel={getMesLabel(selectedMes, selectedAnio)}
+                    />
+                  </Suspense>
                 )}
               </>
             ) : null}

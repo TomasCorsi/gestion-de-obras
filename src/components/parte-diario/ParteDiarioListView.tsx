@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ArrowLeft, FileEdit, CheckCircle, Clock, Calendar, Lock, Pencil, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,10 +22,24 @@ export const ParteDiarioListView = ({
 }: ParteDiarioListViewProps) => {
   const [viewingParte, setViewingParte] = useState<ParteDiario | null>(null);
 
-  const handleCardClick = (parte: ParteDiario) => {
-    const parteDate = parseISO(parte.fecha);
-    const canEdit = isToday(parteDate) || isYesterday(parteDate);
-    
+  // Pre-compute date-derived flags once per partes list (avoid re-parsing per render)
+  const partesEnriquecidos = useMemo(() => {
+    return partes.map((parte) => {
+      const parteDate = parseISO(parte.fecha);
+      const isHoy = isToday(parteDate);
+      const isAyer = isYesterday(parteDate);
+      return {
+        parte,
+        isBorrador: (parte as any).estado === 'borrador',
+        isHoy,
+        isAyer,
+        canEdit: isHoy || isAyer,
+        fechaLabel: format(parteDate, "EEEE d 'de' MMMM", { locale: es }),
+      };
+    });
+  }, [partes]);
+
+  const handleCardClick = (parte: ParteDiario, canEdit: boolean) => {
     if (canEdit) {
       onEdit(parte);
     } else {
@@ -48,13 +62,7 @@ export const ParteDiarioListView = ({
 
       {/* List */}
       <div className="space-y-3">
-        {partes.map((parte) => {
-          const isBorrador = (parte as any).estado === 'borrador';
-          const parteDate = parseISO(parte.fecha);
-          const isHoy = isToday(parteDate);
-          const isAyer = isYesterday(parteDate);
-          const canEdit = isHoy || isAyer;
-          
+        {partesEnriquecidos.map(({ parte, isBorrador, isHoy, isAyer, canEdit, fechaLabel }) => {
           return (
             <Card 
               key={parte.id} 
@@ -63,7 +71,7 @@ export const ParteDiarioListView = ({
                 isBorrador && "border-amber-500/50 bg-amber-500/5",
                 !canEdit && "opacity-90"
               )}
-              onClick={() => handleCardClick(parte)}
+              onClick={() => handleCardClick(parte, canEdit)}
             >
               <CardContent className="py-4 px-4">
                 <div className="flex justify-between items-start gap-3">
@@ -71,7 +79,7 @@ export const ParteDiarioListView = ({
                     <div className="flex items-center gap-2 mb-1">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">
-                        {format(parseISO(parte.fecha), "EEEE d 'de' MMMM", { locale: es })}
+                        {fechaLabel}
                       </span>
                     </div>
                     

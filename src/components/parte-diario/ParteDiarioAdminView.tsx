@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import * as XLSX from "xlsx";
 import { useUrlTab, useUrlSearch, useUrlFilters, useUrlState } from "@/hooks/useUrlState";
 import { 
   Loader2, 
@@ -124,9 +123,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
   
-  // Get today's date for the "sin parte hoy" KPI
+  // Only fetch "sin parte hoy" when the relevant tabs are active
   const today = format(new Date(), "yyyy-MM-dd");
-  const { empleadosSinParte } = useEmpleadosSinParte(today);
+  const sinParteEnabled = activeTab === "listado" || activeTab === "faltantes";
+  const { empleadosSinParte } = useEmpleadosSinParte(today, sinParteEnabled);
+
 
   // Filter partes by search term (employee name)
   const filteredPartes = useMemo(() => {
@@ -154,10 +155,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return filteredPartes.slice(start, start + pageSize);
   }, [filteredPartes, currentPage, pageSize]);
 
-  // Reset page when search changes
-  useMemo(() => {
+  // Reset page when search/pageSize changes (useEffect, not useMemo)
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize]);
+
 
   const formatTime = (time: string | null) => {
     if (!time) return "-";
@@ -181,8 +183,9 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return codigo || tipo + (patente ? ` (${patente})` : "");
   };
 
-  // Export to Excel
-  const handleExportExcel = () => {
+  // Export to Excel (lazy-load xlsx)
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
     const exportData = filteredPartes.map((p) => ({
       Fecha: format(parseISO(p.fecha), "dd/MM/yyyy"),
       Empleado: getEmpleadoNombre(p),

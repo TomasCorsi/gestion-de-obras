@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays } from "date-fns";
 import { es } from "date-fns/locale";
-import * as XLSX from "xlsx";
+
 import { Download, Search, UserX, User, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -79,8 +79,9 @@ export function EmpleadosSinParteTab() {
     });
   }, [empleadosSinParte, searchTerm]);
 
-  // Export to Excel
-  const handleExportExcel = () => {
+  // Export to Excel (lazy-load xlsx)
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
     const exportData = filteredEmpleados.map((emp) => ({
       Legajo: emp.legajo || "-",
       Apellido: emp.apellido || "-",

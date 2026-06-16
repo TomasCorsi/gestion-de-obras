@@ -64,24 +64,28 @@ export function useParteDiarioResumenGeneral(mes: number, anio: number) {
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['partes_diarios_resumen_general', mes, anio],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 15 * 60 * 1000,
     queryFn: async () => {
-      // Fetch all active employees
-      const { data: empleadosData, error: empleadosError } = await supabase
-        .from('personal_selector' as any)
-        .select('id, nombre, apellido, rol, legajo')
-        .eq('activo', true)
-        .order('apellido') as { data: { id: string; nombre: string | null; apellido: string | null; rol: string; legajo: string | null }[] | null; error: any };
-      
-      if (empleadosError) throw empleadosError;
-      
-      // Fetch all partes for the period
-      const { data: partesData, error: partesError } = await supabase
-        .from('partes_diarios')
-        .select('*')
-        .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
-        .lte('fecha', format(fechaFin, 'yyyy-MM-dd'));
-      
-      if (partesError) throw partesError;
+      // Parallelize independent fetches
+      const [empleadosRes, partesRes] = await Promise.all([
+        supabase
+          .from('personal_selector' as any)
+          .select('id, nombre, apellido, rol, legajo')
+          .eq('activo', true)
+          .order('apellido') as unknown as Promise<{ data: { id: string; nombre: string | null; apellido: string | null; rol: string; legajo: string | null }[] | null; error: any }>,
+        supabase
+          .from('partes_diarios')
+          .select('personal_id, estado, horometro_inicio, horometro_fin, cantidad_viajes, cantidad_movimiento_interno, combustible, check_filtro_aire, check_aceite_motor, check_aceite_hidraulico, check_liquido_refrigerante, check_uria')
+          .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
+          .lte('fecha', format(fechaFin, 'yyyy-MM-dd')),
+      ]);
+
+      if (empleadosRes.error) throw empleadosRes.error;
+      if (partesRes.error) throw partesRes.error;
+
+      const empleadosData = empleadosRes.data;
+      const partesData = partesRes.data;
       
       // Group partes by employee
       const partesPorEmpleado = new Map<string, any[]>();

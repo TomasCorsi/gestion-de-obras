@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -88,13 +89,15 @@ export function useParteDiario() {
   const { isOnline } = useNetworkStatus();
   const { enqueueOfflineParte } = useOfflineQueue();
   const fechaHoy = format(new Date(), 'yyyy-MM-dd');
+  const fechaDesde = format(new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd');
 
-  // Fetch all partes for the current employee
+  // Fetch partes for the current employee (last 90 days)
   const { data: partes = [], isLoading, error } = useQuery({
     queryKey: ['partes_diarios', empleado?.id],
     enabled: !!empleado?.id,
     retry: false,
     networkMode: 'offlineFirst',
+    staleTime: 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('partes_diarios')
@@ -105,6 +108,7 @@ export function useParteDiario() {
           maquinarias:maquinaria_id (id, codigo, tipo, patente)
         `)
         .eq('personal_id', empleado!.id)
+        .gte('fecha', fechaDesde)
         .order('fecha', { ascending: false })
         .order('created_at', { ascending: false });
 
@@ -113,29 +117,12 @@ export function useParteDiario() {
     },
   });
 
-  // Fetch ALL of today's partes (supports multiple partes per day for maquinistas)
-  const { data: partesHoy = [], isLoading: isLoadingParteHoy } = useQuery({
-    queryKey: ['parte_hoy', empleado?.id, fechaHoy],
-    enabled: !!empleado?.id,
-    retry: false,
-    networkMode: 'offlineFirst',
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('partes_diarios')
-        .select(`
-          *,
-          personal:personal_id (id, nombre, apellido, rol),
-          obras:obra_id (id, nombre),
-          maquinarias:maquinaria_id (id, codigo, tipo, patente)
-        `)
-        .eq('personal_id', empleado!.id)
-        .eq('fecha', fechaHoy)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      return data as unknown as ParteDiario[];
-    },
-  });
+  // Derive today's partes from the already-fetched list (no extra network call)
+  const partesHoy = useMemo(
+    () => partes.filter(p => p.fecha === fechaHoy),
+    [partes, fechaHoy]
+  );
+  const isLoadingParteHoy = isLoading;
 
   // Derived: first draft found today (for "continue draft" flow)
   const borradorHoy = partesHoy.find(p => p.estado === 'borrador') || null;
