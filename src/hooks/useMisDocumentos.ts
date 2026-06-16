@@ -20,19 +20,19 @@ export function useMisDocumentos() {
 
   const list = useQuery({
     queryKey: ["mis_documentos", user?.id, personalId],
-    enabled: !authLoading && !empleadoLoading && !!user?.id,
+    enabled: !authLoading && !empleadoLoading && !!user?.id && !!personalId,
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     refetchInterval: 60_000,
     staleTime: 0,
     retry: 2,
     queryFn: async () => {
-      let q = supabase
+      if (!personalId) return [];
+      const { data, error } = await supabase
         .from("empleado_documentos")
         .select("*")
+        .eq("personal_id", personalId)
         .order("created_at", { ascending: false });
-      if (personalId) q = q.eq("personal_id", personalId);
-      const { data, error } = await q;
       if (error) throw error;
       return (data || []) as unknown as EmpleadoDocumento[];
     },
