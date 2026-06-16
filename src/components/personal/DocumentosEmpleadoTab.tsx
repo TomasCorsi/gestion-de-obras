@@ -494,7 +494,7 @@ export function DocumentosEmpleadoTab() {
           for (const it of items) {
             const bytes = new Uint8Array(await it.file.arrayBuffer());
             const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
-            const copied = await merged.copyPages(src, src.getIndices());
+            const copied = await merged.copyPages(src, src.getPageIndices());
             copied.forEach((p) => merged.addPage(p));
           }
           const u8 = await merged.save();
