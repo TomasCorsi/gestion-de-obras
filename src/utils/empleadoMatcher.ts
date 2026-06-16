@@ -152,6 +152,110 @@ export function matchEmpleadoLocal(text: string, index: PersonalIndexed[]): Loca
   };
 }
 
+// Matching por nombre de archivo (fallback cuando el PDF no tiene texto extraíble).
+const STOPWORDS = new Set([
+  "INFORME","INFORMES","ESTUDIO","ESTUDIOS","MEDICO","MEDICA","MEDICOS","MEDICAS",
+  "EXAMEN","EXAMENES","ADJUNTO","ADJUNTOS","RECIBO","RECIBOS","SUELDO","SUELDOS",
+  "DNI","CUIT","CUIL","LEGAJO","COPIA","SCAN","ESCANEO","DOCUMENTO","DOCUMENTOS",
+  "PDF","PRE","OCUPACIONAL","PERIODICO","PERIODICA","APTO","APTITUD","FISICO",
+  "DE","DEL","LA","EL","LOS","LAS","Y","SR","SRA","SR.","SRA.",
+]);
+
+export function matchEmpleadoByFilename(filename: string, index: PersonalIndexed[]): LocalMatch {
+  const baseName = (filename || "").replace(/\.[^.]+$/, "");
+  const norm = normalize(baseName);
+  if (!norm) return { personal_id: null, confidence: "sin_match", detected: null };
+
+  // 1) CUIT / DNI dentro del filename
+  const digitsOnly = baseName.replace(/\D+/g, "");
+  // Buscar secuencias de 11 dígitos (CUIT)
+  const cuitMatches = baseName.match(/\b\d{11}\b/g) || [];
+  for (const c of cuitMatches) {
+    const found = index.find((p) => p.cuit === c);
+    if (found) {
+      return {
+        personal_id: found.id,
+        confidence: "alta",
+        detected: { cuit: c, nombre: found.nombre, apellido: found.apellido },
+      };
+    }
+  }
+  // Buscar secuencias de 7-8 dígitos (DNI)
+  const dniMatches = baseName.match(/\b\d{7,8}\b/g) || [];
+  for (const d of dniMatches) {
+    const padded = d.padStart(8, "0");
+    const found = index.find((p) => p.dniFromCuit && p.dniFromCuit.padStart(8, "0") === padded);
+    if (found) {
+      return {
+        personal_id: found.id,
+        confidence: "alta",
+        detected: { dni: padded, nombre: found.nombre, apellido: found.apellido },
+      };
+    }
+  }
+
+  // 2) Tokenizar y filtrar stopwords / números
+  const tokens = norm
+    .split(/\s+/)
+    .filter((t) => t.length >= 3 && !/^\d+$/.test(t) && !STOPWORDS.has(t));
+  if (tokens.length === 0) return { personal_id: null, confidence: "sin_match", detected: null };
+  const tokenSet = new Set(tokens);
+
+  // 3) Candidatos: apellido presente como token
+  const candidatos = index.filter(
+    (p) => p.apellidoNorm.length >= 3 && tokenSet.has(p.apellidoNorm.split(" ")[0])
+  );
+
+  // 3a) Apellido + algún nombre coincide → media
+  for (const c of candidatos) {
+    const nombres = c.nombreNorm.split(" ").filter((n) => n.length >= 3);
+    if (nombres.some((n) => tokenSet.has(n))) {
+      return {
+        personal_id: c.id,
+        confidence: "media",
+        detected: { nombre: c.nombre, apellido: c.apellido },
+      };
+    }
+  }
+
+  // 3b) Apellido único → baja
+  if (candidatos.length === 1) {
+    const c = candidatos[0];
+    return {
+      personal_id: c.id,
+      confidence: "baja",
+      detected: { apellido: c.apellido },
+    };
+  }
+
+  // 4) Fallback: apellido como substring del filename normalizado (apellidos compuestos)
+  const subCandidatos = index.filter(
+    (p) => p.apellidoNorm.length >= 4 && norm.includes(p.apellidoNorm)
+  );
+  if (subCandidatos.length === 1) {
+    const c = subCandidatos[0];
+    const primerNombre = c.nombreNorm.split(" ")[0];
+    const conNombre = primerNombre.length >= 3 && norm.includes(primerNombre);
+    return {
+      personal_id: c.id,
+      confidence: conNombre ? "media" : "baja",
+      detected: { nombre: c.nombre, apellido: c.apellido },
+    };
+  }
+  for (const c of subCandidatos) {
+    const primerNombre = c.nombreNorm.split(" ")[0];
+    if (primerNombre.length >= 3 && norm.includes(primerNombre)) {
+      return {
+        personal_id: c.id,
+        confidence: "media",
+        detected: { nombre: c.nombre, apellido: c.apellido },
+      };
+    }
+  }
+
+  return { personal_id: null, confidence: "sin_match", detected: null };
+}
+
 // Helper: corre tareas con concurrencia limitada.
 export async function runWithConcurrency<T, R>(
   items: T[],
