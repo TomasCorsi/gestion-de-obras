@@ -79,8 +79,9 @@ export function EmpleadosSinParteTab() {
     });
   }, [empleadosSinParte, searchTerm]);
 
-  // Export to Excel
-  const handleExportExcel = () => {
+  // Export to Excel (lazy-load xlsx)
+  const handleExportExcel = async () => {
+    const XLSX = await import("xlsx");
     const exportData = filteredEmpleados.map((emp) => ({
       Legajo: emp.legajo || "-",
       Apellido: emp.apellido || "-",
