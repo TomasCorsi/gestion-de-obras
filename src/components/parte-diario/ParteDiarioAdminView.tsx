@@ -1,6 +1,5 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { format, parseISO } from "date-fns";
-import * as XLSX from "xlsx";
 import { useUrlTab, useUrlSearch, useUrlFilters, useUrlState } from "@/hooks/useUrlState";
 import { 
   Loader2, 
