@@ -123,9 +123,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const { personal = [] } = usePersonal();
   const { obras = [] } = useObras();
   
-  // Get today's date for the "sin parte hoy" KPI
+  // Only fetch "sin parte hoy" when the relevant tabs are active
   const today = format(new Date(), "yyyy-MM-dd");
-  const { empleadosSinParte } = useEmpleadosSinParte(today);
+  const sinParteEnabled = activeTab === "listado" || activeTab === "faltantes";
+  const { empleadosSinParte } = useEmpleadosSinParte(today, sinParteEnabled);
+
 
   // Filter partes by search term (employee name)
   const filteredPartes = useMemo(() => {
