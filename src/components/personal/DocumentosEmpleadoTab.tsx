@@ -286,7 +286,12 @@ export function DocumentosEmpleadoTab() {
     setAnalyzePhase(null);
     setAnalyzeProgress(null);
     try {
-      const chunks = await splitFiles(masFiles, pagesPerDoc);
+      const expanded = await expandArchives(masFiles);
+      if (expanded.length === 0) {
+        toast.error("No quedaron archivos para analizar");
+        return;
+      }
+      const chunks = await splitFiles(expanded, pagesPerDoc);
       if (chunks.length === 0) {
         toast.error("No quedaron archivos para analizar");
         return;
