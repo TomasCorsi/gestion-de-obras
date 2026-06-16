@@ -155,10 +155,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return filteredPartes.slice(start, start + pageSize);
   }, [filteredPartes, currentPage, pageSize]);
 
-  // Reset page when search changes
-  useMemo(() => {
+  // Reset page when search/pageSize changes (useEffect, not useMemo)
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, pageSize]);
+
 
   const formatTime = (time: string | null) => {
     if (!time) return "-";
