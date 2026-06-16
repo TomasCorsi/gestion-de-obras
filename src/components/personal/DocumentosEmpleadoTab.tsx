@@ -38,8 +38,63 @@ const TIPO_LABEL: Record<TipoDocumento, string> = {
 };
 
 const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
+const ACCEPT_BULK = "application/pdf,image/png,image/jpeg,image/webp,application/zip,application/x-zip-compressed,.zip,application/x-rar-compressed,application/vnd.rar,.rar";
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // PDF "fuente" antes de partir
+
+const isZip = (f: File) => /\.zip$/i.test(f.name) || f.type === "application/zip" || f.type === "application/x-zip-compressed";
+const isRar = (f: File) => /\.rar$/i.test(f.name) || f.type === "application/x-rar-compressed" || f.type === "application/vnd.rar";
+const isPdfName = (name: string) => /\.pdf$/i.test(name);
+const isImageName = (name: string) => /\.(png|jpe?g|webp)$/i.test(name);
+const isIgnorable = (path: string) => {
+  const base = path.split("/").pop() || "";
+  return path.includes("__MACOSX/") || base.startsWith(".");
+};
+
+async function extractZip(file: File): Promise<File[]> {
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(file);
+  const out: File[] = [];
+  const entries = Object.values(zip.files).filter((e) => !e.dir && !isIgnorable(e.name) && (isPdfName(e.name) || isImageName(e.name)));
+  for (const entry of entries) {
+    const blob = await entry.async("blob");
+    const type = isPdfName(entry.name) ? "application/pdf" : blob.type || "application/octet-stream";
+    out.push(new File([blob], entry.name.replace(/\//g, " - "), { type }));
+  }
+  return out;
+}
+
+async function extractRar(file: File): Promise<File[]> {
+  const mod: any = await import("libarchive.js");
+  const Archive = mod.Archive || mod.default?.Archive || mod.default;
+  try {
+    Archive.init({
+      workerUrl: (await import("libarchive.js/dist/worker-bundle.js?url")).default,
+    });
+  } catch {
+    // init puede tirar si ya fue inicializado o el url no resuelve: probar sin opciones
+    try { Archive.init(); } catch {}
+  }
+  const archive = await Archive.open(file);
+  const filesObj = await archive.extractFiles();
+  const out: File[] = [];
+  const walk = async (obj: any, prefix: string) => {
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      const path = prefix ? `${prefix}/${key}` : key;
+      if (val instanceof File) {
+        if (isIgnorable(path)) continue;
+        if (!isPdfName(key) && !isImageName(key)) continue;
+        const type = isPdfName(key) ? "application/pdf" : val.type || "application/octet-stream";
+        out.push(new File([val], path.replace(/\//g, " - "), { type }));
+      } else if (val && typeof val === "object") {
+        await walk(val, path);
+      }
+    }
+  };
+  await walk(filesObj, "");
+  return out;
+}
 
 const fileToDataUrl = (f: File) =>
   new Promise<string>((res, rej) => {
@@ -126,7 +181,7 @@ export function DocumentosEmpleadoTab() {
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzePhase, setAnalyzePhase] = useState<"local" | "ia" | null>(null);
+  const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [rows, setRows] = useState<MatchRow[]>([]);
   const [savingBulk, setSavingBulk] = useState(false);
@@ -144,6 +199,45 @@ export function DocumentosEmpleadoTab() {
     setMasFiles(arr);
     setRows([]);
   };
+
+  // Expande ZIP/RAR en los PDFs/imágenes internos. Resto pasa tal cual.
+  const expandArchives = async (files: File[]): Promise<File[]> => {
+    const out: File[] = [];
+    const archives = files.filter((f) => isZip(f) || isRar(f));
+    if (archives.length > 0) {
+      setAnalyzePhase("extract");
+      setAnalyzeProgress({ done: 0, total: archives.length });
+    }
+    let extractedCount = 0;
+    for (const f of files) {
+      if (isZip(f)) {
+        try {
+          const inner = await extractZip(f);
+          if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
+          out.push(...inner);
+        } catch (e: any) {
+          toast.error(`No se pudo abrir ZIP "${f.name}": ${e?.message || e}`);
+        }
+        extractedCount++;
+        setAnalyzeProgress({ done: extractedCount, total: archives.length });
+      } else if (isRar(f)) {
+        try {
+          const inner = await extractRar(f);
+          if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
+          out.push(...inner);
+        } catch (e: any) {
+          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}`);
+        }
+        extractedCount++;
+        setAnalyzeProgress({ done: extractedCount, total: archives.length });
+      } else {
+        out.push(f);
+      }
+    }
+    return out;
+  };
+
+
 
   // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
   const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
@@ -192,7 +286,12 @@ export function DocumentosEmpleadoTab() {
     setAnalyzePhase(null);
     setAnalyzeProgress(null);
     try {
-      const chunks = await splitFiles(masFiles, pagesPerDoc);
+      const expanded = await expandArchives(masFiles);
+      if (expanded.length === 0) {
+        toast.error("No quedaron archivos para analizar");
+        return;
+      }
+      const chunks = await splitFiles(expanded, pagesPerDoc);
       if (chunks.length === 0) {
         toast.error("No quedaron archivos para analizar");
         return;
@@ -548,8 +647,8 @@ export function DocumentosEmpleadoTab() {
             </div>
 
             <div>
-              <Label className="text-xs">Archivos (PDF unificado o varios sueltos, máx 100 MB c/u)</Label>
-              <Input ref={fileInputRef} type="file" accept={ACCEPT} multiple onChange={(e) => handlePickMas(e.target.files)} />
+              <Label className="text-xs">Archivos (PDF unificado, varios sueltos, o ZIP/RAR con PDFs · máx 100 MB c/u)</Label>
+              <Input ref={fileInputRef} type="file" accept={ACCEPT_BULK} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
                   {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
@@ -561,11 +660,14 @@ export function DocumentosEmpleadoTab() {
               {analyzing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               <FileText className="w-4 h-4 mr-2" />
               {analyzing && analyzeProgress
-                ? analyzePhase === "local"
-                  ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
-                  : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
+                ? analyzePhase === "extract"
+                  ? `Extrayendo comprimidos ${analyzeProgress.done}/${analyzeProgress.total}...`
+                  : analyzePhase === "local"
+                    ? `Leyendo PDFs localmente ${analyzeProgress.done}/${analyzeProgress.total}...`
+                    : `Consultando IA ${analyzeProgress.done}/${analyzeProgress.total}...`
                 : "Analizar y detectar empleado"}
             </Button>
+
 
 
             {rows.length > 0 && (
