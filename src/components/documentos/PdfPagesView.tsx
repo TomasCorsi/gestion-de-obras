@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 
 // Render every page of a PDF as <canvas> stacked vertically so the page scroll
 // (not an iframe) controls navigation. Click a page to view it fullscreen.
@@ -95,30 +95,90 @@ export function PdfPagesView({ url }: { url: string }) {
       <div ref={containerRef} className="w-full" />
 
       {fullscreenSrc && (
-        <div
-          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center overflow-auto p-2"
-          onClick={() => setFullscreenSrc(null)}
-        >
-          <button
-            type="button"
-            className="fixed top-3 right-3 z-10 bg-white/10 hover:bg-white/20 text-white rounded-full p-2"
-            onClick={(e) => {
-              e.stopPropagation();
-              setFullscreenSrc(null);
-            }}
-            aria-label="Cerrar"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <img
-            src={fullscreenSrc}
-            alt="Página ampliada"
-            className="max-w-full h-auto"
-            style={{ touchAction: "pinch-zoom" }}
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
+        <FullscreenZoom src={fullscreenSrc} onClose={() => setFullscreenSrc(null)} />
       )}
+    </div>
+  );
+}
+
+function FullscreenZoom({ src, onClose }: { src: string; onClose: () => void }) {
+  const [zoom, setZoom] = useState(1);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const clamp = (z: number) => Math.min(6, Math.max(0.5, z));
+  const zoomIn = () => setZoom((z) => clamp(z + 0.25));
+  const zoomOut = () => setZoom((z) => clamp(z - 0.25));
+  const reset = () => setZoom(1);
+
+  // Pinch-to-zoom via wheel + ctrl (trackpads) and touch gesture
+  const lastDist = useRef<number | null>(null);
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length !== 2) return;
+    const [a, b] = [e.touches[0], e.touches[1]];
+    const dist = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+    if (lastDist.current != null) {
+      const delta = (dist - lastDist.current) / 200;
+      setZoom((z) => clamp(z + delta));
+    }
+    lastDist.current = dist;
+  };
+  const onTouchEnd = () => {
+    lastDist.current = null;
+  };
+  const onWheel = (e: React.WheelEvent) => {
+    if (!e.ctrlKey && !e.metaKey) return;
+    e.preventDefault();
+    setZoom((z) => clamp(z - e.deltaY * 0.01));
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] bg-black/90 flex flex-col"
+      onClick={onClose}
+    >
+      <div
+        className="absolute top-3 right-3 z-10 flex items-center gap-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2" onClick={zoomOut} aria-label="Alejar">
+          <ZoomOut className="w-5 h-5" />
+        </button>
+        <div className="bg-white/10 text-white text-xs px-2 py-1 rounded-full min-w-[3rem] text-center">
+          {Math.round(zoom * 100)}%
+        </div>
+        <button type="button" className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2" onClick={zoomIn} aria-label="Acercar">
+          <ZoomIn className="w-5 h-5" />
+        </button>
+        <button type="button" className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2" onClick={reset} aria-label="Restablecer zoom">
+          <RotateCcw className="w-5 h-5" />
+        </button>
+        <button type="button" className="bg-white/10 hover:bg-white/20 text-white rounded-full p-2" onClick={onClose} aria-label="Cerrar">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto flex items-start justify-center p-2"
+        onClick={(e) => e.stopPropagation()}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onWheel={onWheel}
+        style={{ touchAction: "pan-x pan-y pinch-zoom" }}
+      >
+        <img
+          src={src}
+          alt="Página ampliada"
+          style={{
+            width: `${zoom * 100}%`,
+            maxWidth: "none",
+            height: "auto",
+            transition: "width 0.1s ease-out",
+            userSelect: "none",
+          }}
+          draggable={false}
+        />
+      </div>
     </div>
   );
 }
