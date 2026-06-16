@@ -265,12 +265,14 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                     </CardContent>
                   </Card>
                 ) : (
-                  <ParteDiarioRendimientoChart
-                    diasDelMes={data.diasDelMes}
-                    totales={data.totales}
-                    rol={data.empleado.rol}
-                    mesLabel={getMesLabel(selectedMes, selectedAnio)}
-                  />
+                  <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>}>
+                    <ParteDiarioRendimientoChart
+                      diasDelMes={data.diasDelMes}
+                      totales={data.totales}
+                      rol={data.empleado.rol}
+                      mesLabel={getMesLabel(selectedMes, selectedAnio)}
+                    />
+                  </Suspense>
                 )}
               </>
             ) : null}
