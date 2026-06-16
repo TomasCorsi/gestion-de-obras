@@ -41,6 +41,7 @@ const ACCEPT = "application/pdf,image/png,image/jpeg,image/webp";
 const ACCEPT_BULK = "application/pdf,image/png,image/jpeg,image/webp,application/zip,application/x-zip-compressed,.zip,application/x-rar-compressed,application/vnd.rar,.rar";
 const MAX_BYTES = 10 * 1024 * 1024;
 const MAX_SOURCE_BYTES = 100 * 1024 * 1024; // PDF "fuente" antes de partir
+const MAX_ARCHIVE_BYTES = 1024 * 1024 * 1024; // 1 GB para ZIP/RAR
 
 const isZip = (f: File) => /\.zip$/i.test(f.name) || f.type === "application/zip" || f.type === "application/x-zip-compressed";
 const isRar = (f: File) => /\.rar$/i.test(f.name) || f.type === "application/x-rar-compressed" || f.type === "application/vnd.rar";
@@ -190,8 +191,10 @@ export function DocumentosEmpleadoTab() {
   const handlePickMas = (files: FileList | null) => {
     if (!files) return;
     const arr = Array.from(files).filter((f) => {
-      if (f.size > MAX_SOURCE_BYTES) {
-        toast.error(`"${f.name}" supera 100 MB`);
+      const archive = isZip(f) || isRar(f);
+      const limit = archive ? MAX_ARCHIVE_BYTES : MAX_SOURCE_BYTES;
+      if (f.size > limit) {
+        toast.error(`"${f.name}" supera ${archive ? "1 GB" : "100 MB"}`);
         return false;
       }
       return true;
