@@ -278,7 +278,14 @@ export function DocumentosEmpleadoTab() {
           out.push(chunk);
         }
       } catch (e: any) {
-        toast.error(`No se pudo partir "${f.name}": ${e?.message || e}`);
+        // Si pdf-lib no puede partirlo, no lo descartamos: lo pasamos entero al pipeline
+        // si entra dentro del límite individual, así matching local/IA igual puede procesarlo.
+        if (f.size <= MAX_BYTES) {
+          toast.warning(`No se pudo partir "${f.name}", se procesa entero`);
+          out.push(f);
+        } else {
+          toast.error(`No se pudo partir "${f.name}" y supera 10 MB: ${e?.message || e}`);
+        }
       }
     }
     return out;
