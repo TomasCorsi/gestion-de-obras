@@ -251,7 +251,63 @@ export function DocumentosEmpleadoTab() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
-  const [rows, setRows] = useState<MatchRow[]>([]);
+  const [items, setItems] = useState<MatchRow[]>([]);
+
+  // Consolidación visual: una fila por empleado detectado. Los sin_match quedan individuales.
+  type GroupedRow = {
+    key: string;
+    itemIdx: number[];
+    files: File[];
+    detected: any;
+    personal_id: string | null;
+    confidence: MatchRow["confidence"];
+    error?: string;
+    selected: boolean;
+  };
+  const rows: GroupedRow[] = useMemo(() => {
+    const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
+    const byPid = new Map<string, GroupedRow>();
+    const out: GroupedRow[] = [];
+    items.forEach((it, idx) => {
+      if (it.personal_id) {
+        const existing = byPid.get(it.personal_id);
+        if (existing) {
+          existing.itemIdx.push(idx);
+          existing.files.push(it.file);
+          if (confRank[it.confidence] > confRank[existing.confidence]) {
+            existing.confidence = it.confidence;
+          }
+          if (!existing.detected && it.detected) existing.detected = it.detected;
+          existing.selected = existing.selected || it.selected;
+        } else {
+          const g: GroupedRow = {
+            key: `pid-${it.personal_id}`,
+            itemIdx: [idx],
+            files: [it.file],
+            detected: it.detected,
+            personal_id: it.personal_id,
+            confidence: it.confidence,
+            error: it.error,
+            selected: it.selected,
+          };
+          byPid.set(it.personal_id, g);
+          out.push(g);
+        }
+      } else {
+        out.push({
+          key: `idx-${idx}`,
+          itemIdx: [idx],
+          files: [it.file],
+          detected: it.detected,
+          personal_id: null,
+          confidence: it.confidence,
+          error: it.error,
+          selected: it.selected,
+        });
+      }
+    });
+    return out;
+  }, [items]);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -267,7 +323,7 @@ export function DocumentosEmpleadoTab() {
       return true;
     });
     setMasFiles(arr);
-    setRows([]);
+    setItems([]);
   };
 
   // Expande ZIP/RAR en los PDFs/imágenes internos. Resto pasa tal cual.
@@ -440,7 +496,7 @@ export function DocumentosEmpleadoTab() {
           selected: false,
         };
       });
-      setRows([...collected]);
+      setItems([...collected]);
 
       // ---------- FASE 2: IA solo para los que no matchearon ----------
       const pendingIdx = collected
@@ -488,7 +544,7 @@ export function DocumentosEmpleadoTab() {
             });
             aiDone += batchIdx.length;
             setAnalyzeProgress({ done: aiDone, total: pendingIdx.length });
-            setRows([...collected]);
+            setItems([...collected]);
           }
         );
       }
@@ -511,18 +567,6 @@ export function DocumentosEmpleadoTab() {
     }
     setSavingBulk(true);
 
-    // Agrupar por personal_id preservando el orden de aparición
-    const order: string[] = [];
-    const groups = new Map<string, MatchRow[]>();
-    for (const r of ok) {
-      const pid = r.personal_id!;
-      if (!groups.has(pid)) {
-        groups.set(pid, []);
-        order.push(pid);
-      }
-      groups.get(pid)!.push(r);
-    }
-
     const { PDFDocument } = await import("pdf-lib");
     const titulo = masPeriodo
       ? `${TIPO_LABEL[masTipo]} - ${masPeriodo}`
@@ -531,22 +575,21 @@ export function DocumentosEmpleadoTab() {
     let ko = 0;
     let okGroups = 0;
 
-    for (const pid of order) {
-      const items = groups.get(pid)!;
+    for (const group of ok) {
+      const pid = group.personal_id!;
+      const files = group.files;
       try {
-        let fileToUpload: File;
-        const allPdf = items.every((it) => it.file.type.includes("pdf"));
+        const allPdf = files.every((f) => f.type.includes("pdf"));
 
-        if (items.length === 1 || !allPdf) {
-          // Sin merge: subir cada archivo del grupo individualmente
-          for (const it of items) {
+        if (files.length === 1 || !allPdf) {
+          for (const f of files) {
             try {
               await uploadOne({
                 personal_id: pid,
                 tipo: masTipo,
                 titulo,
                 periodo: masPeriodo,
-                file: it.file,
+                file: f,
               });
             } catch {
               ko++;
@@ -557,32 +600,32 @@ export function DocumentosEmpleadoTab() {
         }
 
         // Merge de todos los chunks PDF en un solo documento
+        let fileToUpload: File;
         try {
           const merged = await PDFDocument.create();
-          for (const it of items) {
-            const bytes = new Uint8Array(await it.file.arrayBuffer());
+          for (const f of files) {
+            const bytes = new Uint8Array(await f.arrayBuffer());
             const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
             const copied = await merged.copyPages(src, src.getPageIndices());
             copied.forEach((p) => merged.addPage(p));
           }
           const u8 = await merged.save();
           const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
-          const baseName = items[0].file.name
+          const baseName = files[0].name
             .replace(/\s*\(\d+-\d+\)\.pdf$/i, "")
             .replace(/\.pdf$/i, "");
           fileToUpload = new File([ab], `${baseName}.pdf`, { type: "application/pdf" });
 
           if (fileToUpload.size > MAX_BYTES) {
-            // Fallback: subir cada chunk por separado
-            toast.warning(`PDF unificado de ${items[0].file.name} supera 10 MB, se suben los chunks por separado`);
-            for (const it of items) {
+            toast.warning(`PDF unificado de ${files[0].name} supera 10 MB, se suben los chunks por separado`);
+            for (const f of files) {
               try {
                 await uploadOne({
                   personal_id: pid,
                   tipo: masTipo,
                   titulo,
                   periodo: masPeriodo,
-                  file: it.file,
+                  file: f,
                 });
               } catch {
                 ko++;
@@ -592,15 +635,14 @@ export function DocumentosEmpleadoTab() {
             continue;
           }
         } catch {
-          // Fallback: subir cada chunk por separado si el merge falla
-          for (const it of items) {
+          for (const f of files) {
             try {
               await uploadOne({
                 personal_id: pid,
                 tipo: masTipo,
                 titulo,
                 periodo: masPeriodo,
-                file: it.file,
+                file: f,
               });
             } catch {
               ko++;
@@ -630,7 +672,7 @@ export function DocumentosEmpleadoTab() {
       toast.warning(`Procesados ${okGroups} empleados. ${ko} con error.`);
     }
     setOpenMas(false);
-    setMasFiles([]); setRows([]); setMasPeriodo("");
+    setMasFiles([]); setItems([]); setMasPeriodo("");
   };
 
 
@@ -805,7 +847,7 @@ export function DocumentosEmpleadoTab() {
                   onValueChange={(v: any) => {
                     setMasTipo(v);
                     setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
-                    setRows([]);
+                    setItems([]);
                   }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -872,13 +914,19 @@ export function DocumentosEmpleadoTab() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((r, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={r.key}>
                         <TableCell>
-                          <input type="checkbox" checked={r.selected} onChange={(e) =>
-                            setRows((prev) => prev.map((x, j) => j === i ? { ...x, selected: e.target.checked } : x))
-                          } />
+                          <input type="checkbox" checked={r.selected} onChange={(e) => {
+                            const checked = e.target.checked;
+                            setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, selected: checked } : x));
+                          }} />
                         </TableCell>
-                        <TableCell className="max-w-[180px] truncate text-xs">{r.file.name}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-xs">
+                          {r.files[0].name}
+                          {r.files.length > 1 && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-xs">
                           {r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
                             r.detected ? (
@@ -892,7 +940,9 @@ export function DocumentosEmpleadoTab() {
                           <Combobox
                             options={personalOptions}
                             value={r.personal_id || ""}
-                            onValueChange={(v) => setRows((prev) => prev.map((x, j) => j === i ? { ...x, personal_id: v, selected: !!v } : x))}
+                            onValueChange={(v) => {
+                              setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, personal_id: v || null, selected: !!v } : x));
+                            }}
                             placeholder="Asignar..."
                           />
                         </TableCell>
