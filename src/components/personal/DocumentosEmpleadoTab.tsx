@@ -306,8 +306,16 @@ export function DocumentosEmpleadoTab() {
         });
       }
     });
+    // Filas sin asignar primero, para que se vean sin scrollear
+    out.sort((a, b) => {
+      const aSin = a.personal_id ? 1 : 0;
+      const bSin = b.personal_id ? 1 : 0;
+      return aSin - bSin;
+    });
     return out;
   }, [items]);
+  const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
+  const [confirmSkipOpen, setConfirmSkipOpen] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -583,7 +591,15 @@ export function DocumentosEmpleadoTab() {
       }
 
       const matched = collected.filter((r) => r.personal_id).length;
-      toast.success(`Analizados ${collected.length} documentos · ${matched} con match`);
+      const sinAsignar = collected.length - matched;
+      if (sinAsignar > 0) {
+        toast.warning(
+          `Analizados ${collected.length} · ${matched} con match · ${sinAsignar} sin asignar`,
+          { description: "Asignalos manualmente antes de confirmar o se descartan." }
+        );
+      } else {
+        toast.success(`Analizados ${collected.length} documentos · ${matched} con match`);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Error al analizar");
     } finally {
@@ -933,6 +949,16 @@ export function DocumentosEmpleadoTab() {
 
 
 
+            {rows.length > 0 && sinAsignarCount > 0 && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <strong>{sinAsignarCount} de {rows.length}</strong> documento(s) sin empleado asignado.
+                  Asignalos manualmente con el selector "Asignar..." o se van a descartar al confirmar.
+                </div>
+              </div>
+            )}
+
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
                 <Table>
@@ -947,7 +973,10 @@ export function DocumentosEmpleadoTab() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((r, i) => (
-                      <TableRow key={r.key}>
+                      <TableRow
+                        key={r.key}
+                        className={!r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
+                      >
                         <TableCell>
                           <input type="checkbox" checked={r.selected} onChange={(e) => {
                             const checked = e.target.checked;
@@ -979,7 +1008,11 @@ export function DocumentosEmpleadoTab() {
                             placeholder="Asignar..."
                           />
                         </TableCell>
-                        <TableCell>{confBadge(r.confidence)}</TableCell>
+                        <TableCell>
+                          {!r.personal_id
+                            ? <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700 dark:text-amber-400">Sin asignar</Badge>
+                            : confBadge(r.confidence)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -989,11 +1022,21 @@ export function DocumentosEmpleadoTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenMas(false)}>Cancelar</Button>
-            <Button onClick={confirmBulk} disabled={rows.length === 0 || savingBulk}>
+            <Button
+              onClick={() => {
+                if (sinAsignarCount > 0) {
+                  setConfirmSkipOpen(true);
+                } else {
+                  confirmBulk();
+                }
+              }}
+              disabled={rows.length === 0 || savingBulk}
+            >
               {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar y subir ({rows.filter(r => r.selected && r.personal_id).length})
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
@@ -1008,6 +1051,24 @@ export function DocumentosEmpleadoTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => { if (toDelete) remove(toDelete); setToDelete(null); }}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmSkipOpen} onOpenChange={setConfirmSkipOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hay documentos sin asignar</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sinAsignarCount} documento(s) no tienen empleado asignado y NO se van a subir.
+              Se subirán únicamente los {rows.filter(r => r.selected && r.personal_id).length} asignados. ¿Continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver a asignar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); confirmBulk(); }}>
+              Subir solo asignados
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
