@@ -131,8 +131,8 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* App Launcher - Solo para admin */}
-        {role === 'admin' && <AppLauncher />}
+        {/* App Launcher - admin o usuarios con múltiples roles */}
+        {(role === 'admin' || roles.length > 1) && <AppLauncher />}
 
         {/* Mis Documentos - badge para todos */}
         <Button
