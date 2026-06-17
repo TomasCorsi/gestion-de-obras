@@ -629,14 +629,31 @@ export function DocumentosEmpleadoTab() {
       return;
     }
     setSavingBulk(true);
+    setItems((prev) => prev.map((x) => ({ ...x, uploadError: undefined })));
 
     const { PDFDocument } = await import("pdf-lib");
     const titulo = masPeriodo
       ? `${TIPO_LABEL[masTipo]} - ${masPeriodo}`
       : TIPO_LABEL[masTipo];
 
-    let ko = 0;
-    let okGroups = 0;
+    let uploadedRows = 0;
+    let failedRows = 0;
+
+    const markGroupError = (group: GroupedRow, message: string) => {
+      setItems((prev) => prev.map((x, j) => group.itemIdx.includes(j) ? { ...x, uploadError: message } : x));
+    };
+
+    const uploadFilesOrThrow = async (pid: string, filesToUpload: File[]) => {
+      const errors: string[] = [];
+      for (const f of filesToUpload) {
+        try {
+          await uploadOne({ personal_id: pid, tipo: masTipo, titulo, periodo: masPeriodo, file: f });
+        } catch (e: any) {
+          errors.push(`${f.name}: ${e?.message || "Error al subir"}`);
+        }
+      }
+      if (errors.length > 0) throw new Error(errors.join(" · "));
+    };
 
     for (const group of ok) {
       const pid = group.personal_id!;
@@ -645,25 +662,13 @@ export function DocumentosEmpleadoTab() {
         const allPdf = files.every((f) => f.type.includes("pdf"));
 
         if (files.length === 1 || !allPdf) {
-          for (const f of files) {
-            try {
-              await uploadOne({
-                personal_id: pid,
-                tipo: masTipo,
-                titulo,
-                periodo: masPeriodo,
-                file: f,
-              });
-            } catch {
-              ko++;
-            }
-          }
-          okGroups++;
+          await uploadFilesOrThrow(pid, files);
+          uploadedRows++;
           continue;
         }
 
         // Merge de todos los chunks PDF en un solo documento
-        let fileToUpload: File;
+        let fileToUpload: File | null = null;
         try {
           const merged = await PDFDocument.create();
           for (const f of files) {
@@ -681,40 +686,18 @@ export function DocumentosEmpleadoTab() {
 
           if (fileToUpload.size > MAX_BYTES) {
             toast.warning(`PDF unificado de ${files[0].name} supera 10 MB, se suben los chunks por separado`);
-            for (const f of files) {
-              try {
-                await uploadOne({
-                  personal_id: pid,
-                  tipo: masTipo,
-                  titulo,
-                  periodo: masPeriodo,
-                  file: f,
-                });
-              } catch {
-                ko++;
-              }
-            }
-            okGroups++;
+            await uploadFilesOrThrow(pid, files);
+            uploadedRows++;
             continue;
           }
-        } catch {
-          for (const f of files) {
-            try {
-              await uploadOne({
-                personal_id: pid,
-                tipo: masTipo,
-                titulo,
-                periodo: masPeriodo,
-                file: f,
-              });
-            } catch {
-              ko++;
-            }
-          }
-          okGroups++;
+        } catch (e: any) {
+          console.warn("[confirmBulk] no se pudo unir PDF, se suben chunks", e);
+          await uploadFilesOrThrow(pid, files);
+          uploadedRows++;
           continue;
         }
 
+        if (!fileToUpload) throw new Error("No se pudo preparar el PDF para subir");
         await uploadOne({
           personal_id: pid,
           tipo: masTipo,
@@ -722,20 +705,23 @@ export function DocumentosEmpleadoTab() {
           periodo: masPeriodo,
           file: fileToUpload,
         });
-        okGroups++;
-      } catch {
-        ko++;
+        uploadedRows++;
+      } catch (e: any) {
+        failedRows++;
+        markGroupError(group, e?.message || "Error al subir este documento");
       }
     }
 
     setSavingBulk(false);
-    if (ko === 0) {
-      toast.success(`Subidos ${okGroups} empleados`);
+    if (failedRows === 0) {
+      toast.success(`Subidos ${uploadedRows} documentos`);
+      setOpenMas(false);
+      setMasFiles([]); setItems([]); setMasPeriodo("");
     } else {
-      toast.warning(`Procesados ${okGroups} empleados. ${ko} con error.`);
+      toast.warning(`Subidos ${uploadedRows} de ${ok.length} documentos. Fallaron ${failedRows}.`, {
+        description: "El detalle quedó marcado en la tabla para corregir y reintentar.",
+      });
     }
-    setOpenMas(false);
-    setMasFiles([]); setItems([]); setMasPeriodo("");
   };
 
 
