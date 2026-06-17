@@ -306,8 +306,16 @@ export function DocumentosEmpleadoTab() {
         });
       }
     });
+    // Filas sin asignar primero, para que se vean sin scrollear
+    out.sort((a, b) => {
+      const aSin = a.personal_id ? 1 : 0;
+      const bSin = b.personal_id ? 1 : 0;
+      return aSin - bSin;
+    });
     return out;
   }, [items]);
+  const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
+  const [confirmSkipOpen, setConfirmSkipOpen] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
