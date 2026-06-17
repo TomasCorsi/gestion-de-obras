@@ -428,6 +428,7 @@ export function DocumentosEmpleadoTab() {
 
 
   // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
+  // Importante: pages=1 significa "una hoja por archivo", NO "dejar PDF entero".
   const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
     if (pages < 1) pages = 1;
     const { PDFDocument, ParseSpeeds } = await import("pdf-lib");
@@ -451,7 +452,7 @@ export function DocumentosEmpleadoTab() {
     };
     const out: File[] = [];
     for (const f of files) {
-      if (!f.type.includes("pdf") || pages === 1) {
+      if (!f.type.includes("pdf")) {
         if (f.size > MAX_BYTES) {
           toast.error(`"${f.name}" supera 10 MB`);
           continue;
@@ -464,6 +465,10 @@ export function DocumentosEmpleadoTab() {
         const src = await loadTolerant(bytes);
         const total = src.getPageCount();
         const base = f.name.replace(/\.pdf$/i, "");
+        if (total <= 1 && f.size <= MAX_BYTES) {
+          out.push(new File([bytes], `${base} (1-1).pdf`, { type: "application/pdf" }));
+          continue;
+        }
         for (let start = 0; start < total; start += pages) {
           const end = Math.min(start + pages, total);
           try {
