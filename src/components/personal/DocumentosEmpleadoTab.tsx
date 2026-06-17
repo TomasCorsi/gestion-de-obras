@@ -981,10 +981,13 @@ export function DocumentosEmpleadoTab() {
                             setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, selected: checked } : x));
                           }} />
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-xs">
-                          {r.files[0].name}
+                        <TableCell className="max-w-[220px] text-xs">
+                          <div className="truncate">{r.files[0].name}</div>
+                          {extractPageRange(r.files[0].name) && (
+                            <div className="text-[10px] text-muted-foreground">Páginas {extractPageRange(r.files[0].name)}</div>
+                          )}
                           {r.files.length > 1 && (
-                            <span className="ml-1 text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                            <span className="text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
