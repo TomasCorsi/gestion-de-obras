@@ -53,6 +53,15 @@ const isIgnorable = (path: string) => {
   const base = path.split("/").pop() || "";
   return path.includes("__MACOSX/") || base.startsWith(".");
 };
+const stripChunkSuffix = (name: string) => {
+  const base = (name.split(/[\\/]/).pop() || name)
+    .replace(/\s*\(\d+\s*-\s*\d+\)\.pdf$/i, "")
+    .replace(/\.[^.]+$/i, "")
+    .trim();
+  return base || name;
+};
+const normalizeGroupKey = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
 async function extractZip(file: File): Promise<File[]> {
   const JSZip = (await import("jszip")).default;
