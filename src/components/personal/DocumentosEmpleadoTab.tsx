@@ -25,6 +25,7 @@ import { useEmpleadoDocumentos, type TipoDocumento, type EmpleadoDocumento } fro
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { createExtractorFromData } from "node-unrar-js/esm/index.esm";
 import {
   buildPersonalIndex,
   extractTextFromPdf,
@@ -70,13 +71,7 @@ let _rarWasmBinaryPromise: Promise<ArrayBuffer> | null = null;
 async function getRarWasmBinary(): Promise<ArrayBuffer> {
   if (!_rarWasmBinaryPromise) {
     _rarWasmBinaryPromise = (async () => {
-      let wasmUrl: string;
-      try {
-        wasmUrl = (await import("node-unrar-js/dist/js/unrar.wasm?url")).default;
-      } catch (e) {
-        console.warn("[getRarWasmBinary] import ?url falló, intento fallback", e);
-        wasmUrl = new URL("node-unrar-js/dist/js/unrar.wasm", import.meta.url).toString();
-      }
+      const wasmUrl = "/wasm/unrar.wasm";
       const res = await fetch(wasmUrl);
       if (!res.ok) throw new Error(`No se pudo cargar unrar.wasm (${res.status})`);
       return await res.arrayBuffer();
@@ -96,7 +91,6 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 }
 
 async function extractRar(file: File): Promise<File[]> {
-  const { createExtractorFromData } = await import("node-unrar-js");
   let wasmBinary: ArrayBuffer;
   try {
     wasmBinary = await getRarWasmBinary();
