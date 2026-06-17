@@ -264,6 +264,12 @@ export function DocumentosEmpleadoTab() {
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [items, setItems] = useState<MatchRow[]>([]);
 
+  // Extrae rango "(1-16)" del nombre del chunk si existe
+  const extractPageRange = (name: string): string | null => {
+    const m = name.match(/\((\d+)\s*-\s*(\d+)\)\.pdf$/i);
+    return m ? `${m[1]}-${m[2]}` : null;
+  };
+
   // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
   // pero nunca se fusionan documentos distintos solo por tener el mismo empleado.
   type GroupedRow = {
