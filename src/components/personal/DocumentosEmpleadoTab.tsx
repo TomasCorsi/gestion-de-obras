@@ -25,7 +25,7 @@ import { useEmpleadoDocumentos, type TipoDocumento, type EmpleadoDocumento } fro
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
-import { createExtractorFromData } from "node-unrar-js/esm/index.esm";
+import { createExtractorFromData } from "node-unrar-js";
 import {
   buildPersonalIndex,
   extractTextFromPdf,
