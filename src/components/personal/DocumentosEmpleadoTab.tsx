@@ -299,20 +299,55 @@ export function DocumentosEmpleadoTab() {
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
-    // Cada item es su propia fila: no fusionamos chunks de un mismo PDF fuente
-    // ni archivos distintos asignados al mismo empleado. Así, si subís un PDF
-    // único con 22 estudios de 16 páginas, ves 22 filas y subís 22 documentos.
-    const out: GroupedRow[] = items.map((it, idx) => ({
-      key: `doc-${idx}`,
-      itemIdx: [idx],
-      files: [it.file],
-      detected: it.detected,
-      personal_id: it.personal_id,
-      confidence: it.confidence,
-      error: it.error,
-      uploadError: it.uploadError,
-      selected: it.selected,
-    }));
+    const out: GroupedRow[] = [];
+    if (autoSplit) {
+      // Auto: agrupar páginas CONSECUTIVAS del MISMO PDF fuente y MISMO empleado.
+      // Páginas sin asignar quedan como fila propia para asignación manual.
+      let cur: (GroupedRow & { _sourceBase?: string }) | null = null;
+      items.forEach((it, idx) => {
+        const base = sourceBaseOf(it.file.name);
+        const canMerge =
+          !!cur &&
+          !!it.personal_id &&
+          cur._sourceBase === base &&
+          cur.personal_id === it.personal_id;
+        if (canMerge && cur) {
+          cur.itemIdx.push(idx);
+          cur.files.push(it.file);
+          // Mantener la mejor confianza/detected del grupo
+          if (it.detected && !cur.detected) cur.detected = it.detected;
+          cur.selected = cur.selected && it.selected;
+        } else {
+          cur = {
+            key: `g-${idx}`,
+            itemIdx: [idx],
+            files: [it.file],
+            detected: it.detected,
+            personal_id: it.personal_id,
+            confidence: it.confidence,
+            error: it.error,
+            uploadError: it.uploadError,
+            selected: it.selected,
+            _sourceBase: base,
+          };
+          out.push(cur);
+        }
+      });
+    } else {
+      items.forEach((it, idx) => {
+        out.push({
+          key: `doc-${idx}`,
+          itemIdx: [idx],
+          files: [it.file],
+          detected: it.detected,
+          personal_id: it.personal_id,
+          confidence: it.confidence,
+          error: it.error,
+          uploadError: it.uploadError,
+          selected: it.selected,
+        });
+      });
+    }
     // Filas sin asignar primero, para que se vean sin scrollear
     out.sort((a, b) => {
       const aSin = a.personal_id ? 1 : 0;
@@ -320,7 +355,7 @@ export function DocumentosEmpleadoTab() {
       return aSin - bSin;
     });
     return out;
-  }, [items]);
+  }, [items, autoSplit]);
   const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
   const selectedAssignedCount = useMemo(() => rows.filter((r) => r.selected && r.personal_id).length, [rows]);
   const duplicatePidKeys = useMemo(() => {
