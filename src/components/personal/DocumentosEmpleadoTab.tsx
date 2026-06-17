@@ -259,6 +259,7 @@ export function DocumentosEmpleadoTab() {
   const [masPeriodo, setMasPeriodo] = useState("");
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
+  const [autoSplit, setAutoSplit] = useState<boolean>(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
@@ -268,6 +269,20 @@ export function DocumentosEmpleadoTab() {
   const extractPageRange = (name: string): string | null => {
     const m = name.match(/\((\d+)\s*-\s*(\d+)\)\.pdf$/i);
     return m ? `${m[1]}-${m[2]}` : null;
+  };
+  const sourceBaseOf = (name: string): string =>
+    name.replace(/\s*\(\d+\s*-\s*\d+\)\.pdf$/i, "").replace(/\.pdf$/i, "").trim();
+  const groupPageRange = (files: File[]): string | null => {
+    const nums: number[] = [];
+    for (const f of files) {
+      const r = extractPageRange(f.name);
+      if (!r) continue;
+      r.split("-").forEach((n) => { const v = parseInt(n, 10); if (!isNaN(v)) nums.push(v); });
+    }
+    if (nums.length === 0) return null;
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    return min === max ? `${min}` : `${min}-${max}`;
   };
 
   // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
