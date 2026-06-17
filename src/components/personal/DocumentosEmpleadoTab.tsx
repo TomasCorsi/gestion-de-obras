@@ -496,7 +496,7 @@ export function DocumentosEmpleadoTab() {
           selected: false,
         };
       });
-      setRows([...collected]);
+      setItems([...collected]);
 
       // ---------- FASE 2: IA solo para los que no matchearon ----------
       const pendingIdx = collected
