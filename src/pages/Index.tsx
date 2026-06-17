@@ -195,22 +195,24 @@ const apps: AppItem[] = [
 ];
 
 const Index = () => {
-  const { hasRole, loading: loadingAuth, role } = useAuth();
+  const { hasRole, loading: loadingAuth, roles } = useAuth();
   const navigate = useNavigate();
 
-  // Redirigir usuarios no-admin a su sección correspondiente
+  // Redirigir solo cuando el usuario tiene UN solo rol no-admin.
+  // Usuarios con múltiples roles (ej. capataz + remitero) ven la home con sus tiles.
   useEffect(() => {
-    if (!loadingAuth && role && role !== 'admin') {
-      if (role === 'remitero') {
-        navigate('/remitos', { replace: true });
-      } else {
-        navigate('/parte-diario', { replace: true });
-      }
+    if (loadingAuth) return;
+    if (roles.length !== 1) return;
+    const only = roles[0];
+    if (only === 'admin') return;
+    if (only === 'remitero') {
+      navigate('/remitos', { replace: true });
+    } else {
+      navigate('/parte-diario', { replace: true });
     }
-  }, [role, loadingAuth, navigate]);
+  }, [roles, loadingAuth, navigate]);
 
-  // Mostrar loading mientras se verifica el rol
-  if (loadingAuth || (role && role !== 'admin')) {
+  if (loadingAuth || (roles.length === 1 && roles[0] !== 'admin')) {
     return <LoadingScreen />;
   }
 

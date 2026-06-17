@@ -46,7 +46,7 @@ const personalRoleLabels: Record<string, string> = {
 };
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, roles, signOut } = useAuth();
   const { rolPersonal } = useEmpleadoProfile();
   const { pendientesCount } = useMisDocumentos();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
@@ -131,8 +131,8 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* App Launcher - Solo para admin */}
-        {role === 'admin' && <AppLauncher />}
+        {/* App Launcher - admin o usuarios con múltiples roles */}
+        {(role === 'admin' || roles.length > 1) && <AppLauncher />}
 
         {/* Mis Documentos - badge para todos */}
         <Button
