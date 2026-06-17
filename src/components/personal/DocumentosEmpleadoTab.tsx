@@ -933,7 +933,8 @@ export function DocumentosEmpleadoTab() {
                   value={masTipo}
                   onValueChange={(v: any) => {
                     setMasTipo(v);
-                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 16);
+                    setAutoSplit(true);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
                     setItems([]);
                   }}
                 >
@@ -949,16 +950,31 @@ export function DocumentosEmpleadoTab() {
                 <Input value={masPeriodo} onChange={(e) => setMasPeriodo(e.target.value)} placeholder="Ej: Junio 2026" />
               </div>
               <div>
-                <Label className="text-xs">Páginas por documento</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={pagesPerDoc}
-                  onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
-                />
+                <Label className="text-xs">División de páginas</Label>
+                <Select
+                  value={autoSplit ? "auto" : "manual"}
+                  onValueChange={(v) => setAutoSplit(v === "auto")}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Automática (recomendado)</SelectItem>
+                    <SelectItem value="manual">Fijo: N páginas</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!autoSplit && (
+                  <Input
+                    className="mt-2"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={pagesPerDoc}
+                    onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                )}
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Si subís un PDF unificado, se parte cada N páginas.
+                  {autoSplit
+                    ? "Analiza cada página y agrupa las consecutivas del mismo empleado."
+                    : "Parte el PDF cada N páginas, sin importar el contenido."}
                 </p>
               </div>
             </div>
@@ -968,7 +984,10 @@ export function DocumentosEmpleadoTab() {
               <Input ref={fileInputRef} type="file" accept={ACCEPT_BULK} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
+                  {masFiles.length} archivo(s) fuente seleccionado(s)
+                  {autoSplit
+                    ? " · se analiza página por página y se agrupa por empleado"
+                    : pagesPerDoc > 1 ? ` · se parten cada ${pagesPerDoc} páginas` : ""}
                 </p>
               )}
             </div>
