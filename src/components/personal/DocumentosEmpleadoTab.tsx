@@ -1082,7 +1082,11 @@ export function DocumentosEmpleadoTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Volver a asignar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); duplicatePidCount > 0 ? setConfirmDupOpen(true) : confirmBulk(); }}>
+            <AlertDialogAction onClick={() => {
+              setConfirmSkipOpen(false);
+              if (duplicatePidCount > 0) setConfirmDupOpen(true);
+              else confirmBulk();
+            }}>
               Subir solo asignados
             </AlertDialogAction>
           </AlertDialogFooter>
