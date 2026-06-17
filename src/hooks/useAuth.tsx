@@ -25,12 +25,22 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   role: AppRole | null;
+  roles: AppRole[];
   loading: boolean;
   signUp: (email: string, password: string, nombreCompleto: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (requiredRole: AppRole | AppRole[]) => boolean;
 }
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<AppRole[]>([]);
+  const role = pickPrimaryRole(roles);
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
