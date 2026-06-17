@@ -519,7 +519,7 @@ export function DocumentosEmpleadoTab() {
         toast.error("No quedaron archivos para analizar");
         return;
       }
-      const chunks = await splitFiles(expanded, pagesPerDoc);
+      const chunks = await splitFiles(expanded, autoSplit ? 1 : pagesPerDoc);
       if (chunks.length === 0) {
         toast.error("No quedaron archivos para analizar");
         return;
