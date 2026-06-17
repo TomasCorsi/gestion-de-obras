@@ -1081,8 +1081,26 @@ export function DocumentosEmpleadoTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Volver a asignar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); confirmBulk(); }}>
+            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); duplicatePidCount > 0 ? setConfirmDupOpen(true) : confirmBulk(); }}>
               Subir solo asignados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDupOpen} onOpenChange={setConfirmDupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hay empleados repetidos</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a subir varios documentos para el mismo empleado en {duplicatePidCount} caso(s).
+              Si ya revisaste las asignaciones, podés continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver a revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmDupOpen(false); confirmBulk(); }}>
+              Continuar y subir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
