@@ -370,11 +370,28 @@ export function DocumentosEmpleadoTab() {
   // Particiona PDFs en chunks de N páginas. Imágenes pasan tal cual.
   const splitFiles = async (files: File[], pages: number): Promise<File[]> => {
     if (pages < 1) pages = 1;
-    const { PDFDocument } = await import("pdf-lib");
+    const { PDFDocument, ParseSpeeds } = await import("pdf-lib");
+    const loadTolerant = async (bytes: Uint8Array) => {
+      try {
+        return await PDFDocument.load(bytes, {
+          ignoreEncryption: true,
+          throwOnInvalidObject: false,
+          updateMetadata: false,
+          parseSpeed: ParseSpeeds.Fastest,
+        });
+      } catch {
+        return await PDFDocument.load(bytes, {
+          ignoreEncryption: true,
+          throwOnInvalidObject: false,
+          updateMetadata: false,
+          parseSpeed: ParseSpeeds.Fastest,
+          capNumbers: true,
+        });
+      }
+    };
     const out: File[] = [];
     for (const f of files) {
       if (!f.type.includes("pdf") || pages === 1) {
-        // sin partir: validar tamaño individual
         if (f.size > MAX_BYTES) {
           toast.error(`"${f.name}" supera 10 MB`);
           continue;
@@ -384,31 +401,47 @@ export function DocumentosEmpleadoTab() {
       }
       try {
         const bytes = new Uint8Array(await f.arrayBuffer());
-        const src = await PDFDocument.load(bytes);
+        const src = await loadTolerant(bytes);
         const total = src.getPageCount();
         const base = f.name.replace(/\.pdf$/i, "");
         for (let start = 0; start < total; start += pages) {
           const end = Math.min(start + pages, total);
-          const sub = await PDFDocument.create();
-          const copied = await sub.copyPages(src, Array.from({ length: end - start }, (_, k) => start + k));
-          copied.forEach((p) => sub.addPage(p));
-          const u8 = await sub.save();
-          const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
-          const chunk = new File([ab], `${base} (${start + 1}-${end}).pdf`, { type: "application/pdf" });
-          if (chunk.size > MAX_BYTES) {
-            toast.error(`Chunk "${chunk.name}" supera 10 MB`);
-            continue;
+          try {
+            const sub = await PDFDocument.create();
+            const copied = await sub.copyPages(src, Array.from({ length: end - start }, (_, k) => start + k));
+            copied.forEach((p) => sub.addPage(p));
+            const u8 = await sub.save();
+            const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+            const chunk = new File([ab], `${base} (${start + 1}-${end}).pdf`, { type: "application/pdf" });
+            if (chunk.size > MAX_BYTES) {
+              toast.error(`Chunk "${chunk.name}" supera 10 MB`);
+              continue;
+            }
+            out.push(chunk);
+          } catch (e: any) {
+            // Páginas específicas con error: intentar partir página por página dentro del rango
+            for (let p = start; p < end; p++) {
+              try {
+                const sub = await PDFDocument.create();
+                const [copied] = await sub.copyPages(src, [p]);
+                sub.addPage(copied);
+                const u8 = await sub.save();
+                const ab = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer;
+                const chunk = new File([ab], `${base} (${p + 1}-${p + 1}).pdf`, { type: "application/pdf" });
+                if (chunk.size > MAX_BYTES) continue;
+                out.push(chunk);
+              } catch {
+                // página dañada: la salteamos
+              }
+            }
           }
-          out.push(chunk);
         }
       } catch (e: any) {
-        // Si pdf-lib no puede partirlo, no lo descartamos: lo pasamos entero al pipeline
-        // si entra dentro del límite individual, así matching local/IA igual puede procesarlo.
         if (f.size <= MAX_BYTES) {
           toast.warning(`No se pudo partir "${f.name}", se procesa entero`);
           out.push(f);
         } else {
-          toast.error(`No se pudo partir "${f.name}" y supera 10 MB: ${e?.message || e}`);
+          toast.error(`"${f.name}" no se pudo partir y supera 10 MB. Reducí el archivo y volvé a intentar.`);
         }
       }
     }
@@ -605,7 +638,7 @@ export function DocumentosEmpleadoTab() {
           const merged = await PDFDocument.create();
           for (const f of files) {
             const bytes = new Uint8Array(await f.arrayBuffer());
-            const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const src = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false, updateMetadata: false });
             const copied = await merged.copyPages(src, src.getPageIndices());
             copied.forEach((p) => merged.addPage(p));
           }
