@@ -1147,21 +1147,28 @@ export function DocumentosEmpleadoTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenMas(false)}>Cancelar</Button>
-            <Button
-              onClick={() => {
-                if (sinAsignarCount > 0) {
-                  setConfirmSkipOpen(true);
-                } else if (duplicatePidCount > 0) {
-                  setConfirmDupOpen(true);
-                } else {
-                  confirmBulk();
-                }
-              }}
-              disabled={rows.length === 0 || savingBulk}
-            >
-              {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar y subir ({selectedAssignedCount})
-            </Button>
+            {rows.some((r) => r.uploadError) ? (
+              <Button onClick={() => confirmBulk()} disabled={savingBulk} variant="destructive">
+                {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Reintentar fallidos ({rows.filter((r) => r.uploadError).length})
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  if (sinAsignarCount > 0) {
+                    setConfirmSkipOpen(true);
+                  } else if (duplicatePidCount > 0) {
+                    setConfirmDupOpen(true);
+                  } else {
+                    confirmBulk();
+                  }
+                }}
+                disabled={rows.length === 0 || savingBulk}
+              >
+                {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Confirmar y subir ({selectedAssignedCount})
+              </Button>
+            )}
           </DialogFooter>
 
         </DialogContent>
