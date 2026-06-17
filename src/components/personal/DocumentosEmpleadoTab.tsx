@@ -1054,6 +1054,24 @@ export function DocumentosEmpleadoTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmSkipOpen} onOpenChange={setConfirmSkipOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hay documentos sin asignar</AlertDialogTitle>
+            <AlertDialogDescription>
+              {sinAsignarCount} documento(s) no tienen empleado asignado y NO se van a subir.
+              Se subirán únicamente los {rows.filter(r => r.selected && r.personal_id).length} asignados. ¿Continuar?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver a asignar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); confirmBulk(); }}>
+              Subir solo asignados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
