@@ -251,7 +251,63 @@ export function DocumentosEmpleadoTab() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
-  const [rows, setRows] = useState<MatchRow[]>([]);
+  const [items, setItems] = useState<MatchRow[]>([]);
+
+  // Consolidación visual: una fila por empleado detectado. Los sin_match quedan individuales.
+  type GroupedRow = {
+    key: string;
+    itemIdx: number[];
+    files: File[];
+    detected: any;
+    personal_id: string | null;
+    confidence: MatchRow["confidence"];
+    error?: string;
+    selected: boolean;
+  };
+  const rows: GroupedRow[] = useMemo(() => {
+    const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
+    const byPid = new Map<string, GroupedRow>();
+    const out: GroupedRow[] = [];
+    items.forEach((it, idx) => {
+      if (it.personal_id) {
+        const existing = byPid.get(it.personal_id);
+        if (existing) {
+          existing.itemIdx.push(idx);
+          existing.files.push(it.file);
+          if (confRank[it.confidence] > confRank[existing.confidence]) {
+            existing.confidence = it.confidence;
+          }
+          if (!existing.detected && it.detected) existing.detected = it.detected;
+          existing.selected = existing.selected || it.selected;
+        } else {
+          const g: GroupedRow = {
+            key: `pid-${it.personal_id}`,
+            itemIdx: [idx],
+            files: [it.file],
+            detected: it.detected,
+            personal_id: it.personal_id,
+            confidence: it.confidence,
+            error: it.error,
+            selected: it.selected,
+          };
+          byPid.set(it.personal_id, g);
+          out.push(g);
+        }
+      } else {
+        out.push({
+          key: `idx-${idx}`,
+          itemIdx: [idx],
+          files: [it.file],
+          detected: it.detected,
+          personal_id: null,
+          confidence: it.confidence,
+          error: it.error,
+          selected: it.selected,
+        });
+      }
+    });
+    return out;
+  }, [items]);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
