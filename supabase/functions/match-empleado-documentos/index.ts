@@ -37,14 +37,32 @@ const normalize = (s: string) =>
 
 const digits = (s: string) => (s || '').replace(/\D+/g, '');
 
+// personal.dni en realidad guarda el CUIT (11 dígitos). Indexamos los dos formatos.
+function dniOf(p: PersonalLite): string {
+  const d = digits(p.dni || '');
+  if (d.length === 11) return d.slice(2, 10).padStart(8, '0');
+  if (d.length >= 7 && d.length <= 8) return d.padStart(8, '0');
+  return '';
+}
+function cuitOf(p: PersonalLite): string {
+  const d = digits(p.dni || '');
+  return d.length === 11 ? d : '';
+}
+
 function findMatch(detected: any, personal: PersonalLite[]): { p: PersonalLite | null; conf: MatchResult['confidence'] } {
   if (!detected) return { p: null, conf: 'sin_match' };
-  const cuitDigits = digits(detected.cuit || '');
-  const dniFromCuit = cuitDigits.length === 11 ? cuitDigits.slice(2, 10) : '';
-  const dniDigits = digits(detected.dni || '') || dniFromCuit;
+  const cuitDoc = digits(detected.cuit || '');
+  const dniDocRaw = digits(detected.dni || '');
+  const dniDoc = dniDocRaw.length >= 7 && dniDocRaw.length <= 8
+    ? dniDocRaw.padStart(8, '0')
+    : (cuitDoc.length === 11 ? cuitDoc.slice(2, 10).padStart(8, '0') : '');
 
-  if (dniDigits.length >= 7) {
-    const found = personal.find((p) => digits(p.dni || '') === dniDigits);
+  if (cuitDoc.length === 11) {
+    const found = personal.find((p) => cuitOf(p) === cuitDoc);
+    if (found) return { p: found, conf: 'alta' };
+  }
+  if (dniDoc) {
+    const found = personal.find((p) => dniOf(p) === dniDoc);
     if (found) return { p: found, conf: 'alta' };
   }
 
@@ -55,7 +73,6 @@ function findMatch(detected: any, personal: PersonalLite[]): { p: PersonalLite |
       (p) => normalize(p.nombre) === nom && normalize(p.apellido) === ape
     );
     if (exact) return { p: exact, conf: 'media' };
-    // fuzzy: ambos contienen
     const fuzzy = personal.find(
       (p) =>
         (normalize(p.apellido).includes(ape) || ape.includes(normalize(p.apellido))) &&
@@ -64,6 +81,15 @@ function findMatch(detected: any, personal: PersonalLite[]): { p: PersonalLite |
     if (fuzzy) return { p: fuzzy, conf: 'baja' };
   } else if (ape) {
     const cand = personal.filter((p) => normalize(p.apellido) === ape);
+    if (cand.length === 1) return { p: cand[0], conf: 'baja' };
+    // último intento: apellido contenido
+    const sub = personal.filter((p) => {
+      const a = normalize(p.apellido);
+      return a.length >= 3 && (a.includes(ape) || ape.includes(a));
+    });
+    if (sub.length === 1) return { p: sub[0], conf: 'baja' };
+  } else if (nom) {
+    const cand = personal.filter((p) => normalize(p.nombre) === nom);
     if (cand.length === 1) return { p: cand[0], conf: 'baja' };
   }
 
