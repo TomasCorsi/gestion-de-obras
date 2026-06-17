@@ -1051,12 +1051,12 @@ export function DocumentosEmpleadoTab() {
                           }} />
                         </TableCell>
                         <TableCell className="max-w-[220px] text-xs">
-                          <div className="truncate">{r.files[0].name}</div>
-                          {extractPageRange(r.files[0].name) && (
-                            <div className="text-[10px] text-muted-foreground">Páginas {extractPageRange(r.files[0].name)}</div>
-                          )}
-                          {r.files.length > 1 && (
-                            <span className="text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                          <div className="truncate">{sourceBaseOf(r.files[0].name) || r.files[0].name}</div>
+                          {groupPageRange(r.files) && (
+                            <div className="text-[10px] text-muted-foreground">
+                              Páginas {groupPageRange(r.files)}
+                              {r.files.length > 1 ? ` · ${r.files.length} hojas` : ""}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
