@@ -959,6 +959,16 @@ export function DocumentosEmpleadoTab() {
               </div>
             )}
 
+            {rows.length > 0 && duplicatePidCount > 0 && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-orange-500/40 bg-orange-500/10 text-xs">
+                <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                <div>
+                  Hay <strong>{duplicatePidCount}</strong> documento(s) asignados a empleados repetidos.
+                  Revisá que cada estudio corresponda al empleado correcto antes de subir.
+                </div>
+              </div>
+            )}
+
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
                 <Table>
@@ -975,7 +985,7 @@ export function DocumentosEmpleadoTab() {
                     {rows.map((r, i) => (
                       <TableRow
                         key={r.key}
-                        className={!r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
+                        className={r.uploadError ? "bg-red-500/10 hover:bg-red-500/15" : !r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
                       >
                         <TableCell>
                           <input type="checkbox" checked={r.selected} onChange={(e) => {
@@ -990,7 +1000,8 @@ export function DocumentosEmpleadoTab() {
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
+                          {r.uploadError ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.uploadError}</span> :
+                            r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
                             r.detected ? (
                               <div>
                                 {r.detected.apellido} {r.detected.nombre}
