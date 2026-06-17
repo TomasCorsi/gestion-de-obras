@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { TopNavbar } from "./TopNavbar";
+import { PushPermissionPrompt } from "@/components/pwa/PushPermissionPrompt";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function MainLayout({ children, title, subtitle }: MainLayoutProps) {
       <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-grid-pattern">
         {children}
       </main>
+      <PushPermissionPrompt />
     </div>
   );
 }
