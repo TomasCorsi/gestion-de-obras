@@ -1,4 +1,4 @@
-import { User, LogOut, Shield, RefreshCw, Loader2, FileText } from "lucide-react";
+import { User, LogOut, Shield, RefreshCw, Loader2, FileText, Receipt } from "lucide-react";
 import { NotificationsBell } from "./NotificationsBell";
 import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "./ThemeToggle";
@@ -47,7 +47,9 @@ const personalRoleLabels: Record<string, string> = {
 };
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
-  const { profile, role, roles, signOut } = useAuth();
+  const { profile, role, roles, user, signOut } = useAuth();
+  const SERGIO_ID = 'c92028bd-dd42-416d-8892-f00b5ef90f8f';
+  const isSergio = user?.id === SERGIO_ID;
   const { rolPersonal } = useEmpleadoProfile();
   const { pendientesCount } = useMisDocumentos();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
@@ -132,8 +134,21 @@ export function TopNavbar({ title, subtitle }: TopNavbarProps) {
         {/* Theme Toggle */}
         <ThemeToggle />
 
-        {/* App Launcher - admin o usuarios con múltiples roles */}
-        {(role === 'admin' || roles.length > 1) && <AppLauncher />}
+        {/* App Launcher - admin o usuarios con múltiples roles (excepto Sergio) */}
+        {(role === 'admin' || (roles.length > 1 && !isSergio)) && <AppLauncher />}
+
+        {/* Acceso directo a Remitos para Sergio */}
+        {isSergio && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/remitos')}
+            aria-label="Remitos"
+            title="Remitos"
+          >
+            <Receipt className="w-5 h-5 text-muted-foreground" />
+          </Button>
+        )}
 
         {/* Mis Documentos - badge para todos */}
         <Button
