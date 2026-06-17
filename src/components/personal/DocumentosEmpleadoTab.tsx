@@ -66,35 +66,42 @@ async function extractZip(file: File): Promise<File[]> {
   return out;
 }
 
-async function extractRar(file: File): Promise<File[]> {
-  const mod: any = await import("libarchive.js");
-  const Archive = mod.Archive || mod.default?.Archive || mod.default;
-  try {
-    Archive.init({
-      workerUrl: (await import("libarchive.js/dist/worker-bundle.js?url")).default,
-    });
-  } catch {
-    // init puede tirar si ya fue inicializado o el url no resuelve: probar sin opciones
-    try { Archive.init(); } catch {}
+let _rarWasmBinaryPromise: Promise<ArrayBuffer> | null = null;
+async function getRarWasmBinary(): Promise<ArrayBuffer> {
+  if (!_rarWasmBinaryPromise) {
+    _rarWasmBinaryPromise = (async () => {
+      const wasmUrl = (await import("node-unrar-js/dist/js/unrar.wasm?url")).default;
+      const res = await fetch(wasmUrl);
+      if (!res.ok) throw new Error(`No se pudo cargar unrar.wasm (${res.status})`);
+      return await res.arrayBuffer();
+    })();
   }
-  const archive = await Archive.open(file);
-  const filesObj = await archive.extractFiles();
+  return _rarWasmBinaryPromise;
+}
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`Tiempo agotado al ${label} (${Math.round(ms / 1000)}s)`)), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+}
+
+async function extractRar(file: File): Promise<File[]> {
+  const { createExtractorFromData } = await import("node-unrar-js");
+  const [wasmBinary, data] = await Promise.all([getRarWasmBinary(), file.arrayBuffer()]);
+  const extractor = await createExtractorFromData({ wasmBinary, data });
+  const result = extractor.extract({
+    files: (h) => !h.flags.directory && !isIgnorable(h.name) && (isPdfName(h.name) || isImageName(h.name)),
+  });
   const out: File[] = [];
-  const walk = async (obj: any, prefix: string) => {
-    for (const key of Object.keys(obj)) {
-      const val = obj[key];
-      const path = prefix ? `${prefix}/${key}` : key;
-      if (val instanceof File) {
-        if (isIgnorable(path)) continue;
-        if (!isPdfName(key) && !isImageName(key)) continue;
-        const type = isPdfName(key) ? "application/pdf" : val.type || "application/octet-stream";
-        out.push(new File([val], path.replace(/\//g, " - "), { type }));
-      } else if (val && typeof val === "object") {
-        await walk(val, path);
-      }
-    }
-  };
-  await walk(filesObj, "");
+  for (const f of result.files) {
+    if (!f.extraction) continue;
+    const name = f.fileHeader.name;
+    const type = isPdfName(name) ? "application/pdf" : isImageName(name) ? `image/${(name.split(".").pop() || "").toLowerCase().replace("jpg", "jpeg")}` : "application/octet-stream";
+    // Copiamos a un ArrayBuffer "normal" para evitar issues con SharedArrayBuffer en algunos navegadores
+    const buf = f.extraction.slice().buffer;
+    out.push(new File([buf], name.replace(/[\\/]/g, " - "), { type }));
+  }
   return out;
 }
 
@@ -226,11 +233,12 @@ export function DocumentosEmpleadoTab() {
         setAnalyzeProgress({ done: extractedCount, total: archives.length });
       } else if (isRar(f)) {
         try {
-          const inner = await extractRar(f);
+          const inner = await withTimeout(extractRar(f), 120_000, `extraer "${f.name}"`);
           if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
           out.push(...inner);
         } catch (e: any) {
-          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}`);
+          console.error("[extractRar]", f.name, e);
+          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}. Probá subiéndolo como ZIP.`);
         }
         extractedCount++;
         setAnalyzeProgress({ done: extractedCount, total: archives.length });
