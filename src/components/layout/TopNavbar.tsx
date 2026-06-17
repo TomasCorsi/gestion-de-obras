@@ -46,7 +46,7 @@ const personalRoleLabels: Record<string, string> = {
 };
 
 export function TopNavbar({ title, subtitle }: TopNavbarProps) {
-  const { profile, role, signOut } = useAuth();
+  const { profile, role, roles, signOut } = useAuth();
   const { rolPersonal } = useEmpleadoProfile();
   const { pendientesCount } = useMisDocumentos();
   const { checkForUpdates, isChecking, needRefresh } = useServiceWorker();
