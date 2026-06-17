@@ -38,19 +38,19 @@ export function useNotificaciones() {
   const { empleado, isMecanico } = useEmpleadoProfile();
 
   const isAdmin = hasRole("admin");
-  const isCapataz = hasRole("capataz");
   const personalId = empleado?.id ?? null;
   const userId = user?.id ?? null;
+  const empleadoRol = (empleado as any)?.rol as string | undefined;
+  const ROLES_EXCLUIDOS_PARTE = ["administrativo", "sereno", "topografo"];
 
-  // 1. Partes diarios pendientes (admin / capataz)
-  const partesQuery = useQuery({
-    queryKey: ["notif-partes-pendientes", todayISO()],
-    enabled: !!userId && (isAdmin || isCapataz),
+  // 1a. Admin: lista global de empleados sin parte hoy
+  const partesAdminQuery = useQuery({
+    queryKey: ["notif-partes-pendientes-admin", todayISO()],
+    enabled: !!userId && isAdmin,
     staleTime: 60_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       const fecha = todayISO();
-      const ROLES_EXCLUIDOS = ["administrativo", "sereno", "topografo"];
       const [empleadosRes, partesRes] = await Promise.all([
         supabase
           .from("personal_selector" as any)
@@ -64,16 +64,40 @@ export function useNotificaciones() {
       if (empleadosRes.error) throw empleadosRes.error;
       if (partesRes.error) throw partesRes.error;
       const conParte = new Set((partesRes.data || []).map((p) => p.personal_id));
-      const sinParte = (empleadosRes.data || [])
-        .filter((e) => !ROLES_EXCLUIDOS.includes(e.rol) && !conParte.has(e.id));
-      return sinParte;
+      return (empleadosRes.data || []).filter(
+        (e) => !ROLES_EXCLUIDOS_PARTE.includes(e.rol) && !conParte.has(e.id),
+      );
     },
   });
 
-  // 2. Observaciones de maquinaria sin atender (admin / capataz / mecánico)
+  // 1b. Resto de usuarios: solo su propio parte de hoy
+  const parteMioQuery = useQuery({
+    queryKey: ["notif-parte-mio", personalId, todayISO()],
+    enabled:
+      !!userId &&
+      !isAdmin &&
+      !!personalId &&
+      !!empleadoRol &&
+      !ROLES_EXCLUIDOS_PARTE.includes(empleadoRol),
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    queryFn: async () => {
+      const fecha = todayISO();
+      const { data, error } = await supabase
+        .from("partes_diarios")
+        .select("id")
+        .eq("fecha", fecha)
+        .eq("personal_id", personalId as string)
+        .limit(1);
+      if (error) throw error;
+      return (data || []).length === 0; // true => pendiente
+    },
+  });
+
+  // 2. Observaciones de maquinaria sin atender (admin / mecánico / ayudante)
   const obsQuery = useQuery({
     queryKey: ["notif-observaciones-maquina"],
-    enabled: !!userId && (isAdmin || isCapataz || isMecanico),
+    enabled: !!userId && (isAdmin || isMecanico),
     staleTime: 60_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -110,10 +134,10 @@ export function useNotificaciones() {
     },
   });
 
-  // 4. Mantenimientos próximos / vencidos (admin / capataz / mecánico)
+  // 4. Mantenimientos próximos / vencidos (admin / mecánico / ayudante)
   const mantQuery = useQuery({
     queryKey: ["notif-mantenimientos"],
-    enabled: !!userId && (isAdmin || isCapataz || isMecanico),
+    enabled: !!userId && (isAdmin || isMecanico),
     staleTime: 60_000,
     refetchOnWindowFocus: true,
     queryFn: async () => {
@@ -134,12 +158,23 @@ export function useNotificaciones() {
   const items: Notificacion[] = useMemo(() => {
     const list: Notificacion[] = [];
 
-    for (const e of partesQuery.data || []) {
+    if (isAdmin) {
+      for (const e of partesAdminQuery.data || []) {
+        list.push({
+          id: `parte:${e.id}`,
+          tipo: "parte_pendiente",
+          titulo: "Parte diario pendiente",
+          descripcion: `${e.apellido ?? ""} ${e.nombre ?? ""}`.trim() || "Empleado sin parte",
+          fecha: new Date().toISOString(),
+          url: "/parte-diario",
+        });
+      }
+    } else if (parteMioQuery.data === true) {
       list.push({
-        id: `parte:${e.id}`,
+        id: `parte-mio:${personalId}:${todayISO()}`,
         tipo: "parte_pendiente",
-        titulo: "Parte diario pendiente",
-        descripcion: `${e.apellido ?? ""} ${e.nombre ?? ""}`.trim() || "Empleado sin parte",
+        titulo: "Tu parte diario está pendiente",
+        descripcion: "Cargá tu parte de hoy",
         fecha: new Date().toISOString(),
         url: "/parte-diario",
       });
@@ -187,7 +222,7 @@ export function useNotificaciones() {
 
     list.sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
     return list;
-  }, [partesQuery.data, obsQuery.data, docsQuery.data, mantQuery.data, isAdmin]);
+  }, [partesAdminQuery.data, parteMioQuery.data, obsQuery.data, docsQuery.data, mantQuery.data, isAdmin, personalId]);
 
   // Leídas en localStorage
   const storageKey = userId ? `notif_read_${userId}` : null;
@@ -221,7 +256,7 @@ export function useNotificaciones() {
 
   const unread = items.filter((i) => !readIds.has(i.id)).length;
   const isLoading =
-    partesQuery.isLoading || obsQuery.isLoading || docsQuery.isLoading || mantQuery.isLoading;
+    partesAdminQuery.isLoading || parteMioQuery.isLoading || obsQuery.isLoading || docsQuery.isLoading || mantQuery.isLoading;
 
   return { items, total: items.length, unread, readIds, markAllRead, isLoading };
 }
