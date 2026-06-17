@@ -24,6 +24,9 @@ import { usePersonal } from "@/hooks/usePersonal";
 import { useEmpleadoDocumentos, type TipoDocumento, type EmpleadoDocumento } from "@/hooks/useEmpleadoDocumentos";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+
+const DOCS_BUCKET = "empleado-documentos";
 import { formatDate } from "@/lib/utils";
 import { createExtractorFromData } from "node-unrar-js";
 import {
