@@ -256,7 +256,7 @@ export function useNotificaciones() {
 
   const unread = items.filter((i) => !readIds.has(i.id)).length;
   const isLoading =
-    partesQuery.isLoading || obsQuery.isLoading || docsQuery.isLoading || mantQuery.isLoading;
+    partesAdminQuery.isLoading || parteMioQuery.isLoading || obsQuery.isLoading || docsQuery.isLoading || mantQuery.isLoading;
 
   return { items, total: items.length, unread, readIds, markAllRead, isLoading };
 }
