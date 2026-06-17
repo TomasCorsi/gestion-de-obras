@@ -180,6 +180,7 @@ const fileToDataUrl = (f: File) =>
     r.onerror = rej;
     r.readAsDataURL(f);
   });
+const getErrorMessage = (e: unknown, fallback: string) => e instanceof Error ? e.message : fallback;
 
 interface MatchRow {
   file: File;
@@ -648,8 +649,8 @@ export function DocumentosEmpleadoTab() {
       for (const f of filesToUpload) {
         try {
           await uploadOne({ personal_id: pid, tipo: masTipo, titulo, periodo: masPeriodo, file: f });
-        } catch (e: any) {
-          errors.push(`${f.name}: ${e?.message || "Error al subir"}`);
+        } catch (e: unknown) {
+          errors.push(`${f.name}: ${getErrorMessage(e, "Error al subir")}`);
         }
       }
       if (errors.length > 0) throw new Error(errors.join(" · "));
@@ -690,7 +691,7 @@ export function DocumentosEmpleadoTab() {
             uploadedRows++;
             continue;
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.warn("[confirmBulk] no se pudo unir PDF, se suben chunks", e);
           await uploadFilesOrThrow(pid, files);
           uploadedRows++;
@@ -706,9 +707,9 @@ export function DocumentosEmpleadoTab() {
           file: fileToUpload,
         });
         uploadedRows++;
-      } catch (e: any) {
+      } catch (e: unknown) {
         failedRows++;
-        markGroupError(group, e?.message || "Error al subir este documento");
+        markGroupError(group, getErrorMessage(e, "Error al subir este documento"));
       }
     }
 
