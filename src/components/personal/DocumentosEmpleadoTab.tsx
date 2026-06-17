@@ -583,7 +583,15 @@ export function DocumentosEmpleadoTab() {
       }
 
       const matched = collected.filter((r) => r.personal_id).length;
-      toast.success(`Analizados ${collected.length} documentos · ${matched} con match`);
+      const sinAsignar = collected.length - matched;
+      if (sinAsignar > 0) {
+        toast.warning(
+          `Analizados ${collected.length} · ${matched} con match · ${sinAsignar} sin asignar`,
+          { description: "Asignalos manualmente antes de confirmar o se descartan." }
+        );
+      } else {
+        toast.success(`Analizados ${collected.length} documentos · ${matched} con match`);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Error al analizar");
     } finally {
