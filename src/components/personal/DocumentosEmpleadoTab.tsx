@@ -292,7 +292,8 @@ export function DocumentosEmpleadoTab() {
         setAnalyzeProgress({ done: extractedCount, total: archives.length });
       } else if (isRar(f)) {
         try {
-          const inner = await withTimeout(extractRar(f), 120_000, `extraer "${f.name}"`);
+          toast.info(`Extrayendo RAR grande "${f.name}". Puede tardar varios minutos.`);
+          const inner = await withTimeout(extractRar(f), 300_000, `extraer "${f.name}"`);
           if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
           out.push(...inner);
         } catch (e: any) {
