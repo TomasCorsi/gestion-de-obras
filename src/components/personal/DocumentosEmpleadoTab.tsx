@@ -544,7 +544,7 @@ export function DocumentosEmpleadoTab() {
             });
             aiDone += batchIdx.length;
             setAnalyzeProgress({ done: aiDone, total: pendingIdx.length });
-            setRows([...collected]);
+            setItems([...collected]);
           }
         );
       }
