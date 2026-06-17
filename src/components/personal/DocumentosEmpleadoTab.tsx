@@ -319,7 +319,17 @@ export function DocumentosEmpleadoTab() {
     return out;
   }, [items]);
   const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
+  const selectedAssignedCount = useMemo(() => rows.filter((r) => r.selected && r.personal_id).length, [rows]);
+  const duplicatePidKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    rows.forEach((r) => {
+      if (r.personal_id) counts.set(r.personal_id, (counts.get(r.personal_id) || 0) + 1);
+    });
+    return new Set(rows.filter((r) => r.personal_id && (counts.get(r.personal_id) || 0) > 1).map((r) => r.key));
+  }, [rows]);
+  const duplicatePidCount = duplicatePidKeys.size;
   const [confirmSkipOpen, setConfirmSkipOpen] = useState(false);
+  const [confirmDupOpen, setConfirmDupOpen] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
