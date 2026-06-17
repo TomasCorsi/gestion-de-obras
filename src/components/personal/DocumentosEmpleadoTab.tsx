@@ -264,6 +264,12 @@ export function DocumentosEmpleadoTab() {
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [items, setItems] = useState<MatchRow[]>([]);
 
+  // Extrae rango "(1-16)" del nombre del chunk si existe
+  const extractPageRange = (name: string): string | null => {
+    const m = name.match(/\((\d+)\s*-\s*(\d+)\)\.pdf$/i);
+    return m ? `${m[1]}-${m[2]}` : null;
+  };
+
   // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
   // pero nunca se fusionan documentos distintos solo por tener el mismo empleado.
   type GroupedRow = {
@@ -278,39 +284,20 @@ export function DocumentosEmpleadoTab() {
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
-    const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
-    const byDocument = new Map<string, GroupedRow>();
-    const out: GroupedRow[] = [];
-    items.forEach((it, idx) => {
-      const sourceKey = normalizeGroupKey(stripChunkSuffix(it.file.name));
-      const key = `${it.personal_id || "sin-asignar"}::${sourceKey}`;
-      const existing = byDocument.get(key);
-      if (existing) {
-        existing.itemIdx.push(idx);
-        existing.files.push(it.file);
-        if (confRank[it.confidence] > confRank[existing.confidence]) {
-          existing.confidence = it.confidence;
-        }
-        if (!existing.detected && it.detected) existing.detected = it.detected;
-        if (!existing.error && it.error) existing.error = it.error;
-        if (!existing.uploadError && it.uploadError) existing.uploadError = it.uploadError;
-        existing.selected = existing.selected || it.selected;
-      } else {
-        const g: GroupedRow = {
-          key: `doc-${idx}-${key}`,
-          itemIdx: [idx],
-          files: [it.file],
-          detected: it.detected,
-          personal_id: it.personal_id,
-          confidence: it.confidence,
-          error: it.error,
-          uploadError: it.uploadError,
-          selected: it.selected,
-        };
-        byDocument.set(key, g);
-        out.push(g);
-      }
-    });
+    // Cada item es su propia fila: no fusionamos chunks de un mismo PDF fuente
+    // ni archivos distintos asignados al mismo empleado. Así, si subís un PDF
+    // único con 22 estudios de 16 páginas, ves 22 filas y subís 22 documentos.
+    const out: GroupedRow[] = items.map((it, idx) => ({
+      key: `doc-${idx}`,
+      itemIdx: [idx],
+      files: [it.file],
+      detected: it.detected,
+      personal_id: it.personal_id,
+      confidence: it.confidence,
+      error: it.error,
+      uploadError: it.uploadError,
+      selected: it.selected,
+    }));
     // Filas sin asignar primero, para que se vean sin scrollear
     out.sort((a, b) => {
       const aSin = a.personal_id ? 1 : 0;
@@ -896,7 +883,7 @@ export function DocumentosEmpleadoTab() {
                   value={masTipo}
                   onValueChange={(v: any) => {
                     setMasTipo(v);
-                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 16);
                     setItems([]);
                   }}
                 >
@@ -994,10 +981,13 @@ export function DocumentosEmpleadoTab() {
                             setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, selected: checked } : x));
                           }} />
                         </TableCell>
-                        <TableCell className="max-w-[200px] truncate text-xs">
-                          {r.files[0].name}
+                        <TableCell className="max-w-[220px] text-xs">
+                          <div className="truncate">{r.files[0].name}</div>
+                          {extractPageRange(r.files[0].name) && (
+                            <div className="text-[10px] text-muted-foreground">Páginas {extractPageRange(r.files[0].name)}</div>
+                          )}
                           {r.files.length > 1 && (
-                            <span className="ml-1 text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                            <span className="text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
