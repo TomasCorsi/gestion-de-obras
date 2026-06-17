@@ -187,6 +187,7 @@ interface MatchRow {
   personal_id: string | null;
   confidence: "alta" | "media" | "baja" | "sin_match";
   error?: string;
+  uploadError?: string;
   selected: boolean;
 }
 
@@ -262,7 +263,8 @@ export function DocumentosEmpleadoTab() {
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [items, setItems] = useState<MatchRow[]>([]);
 
-  // Consolidación visual: una fila por empleado detectado. Los sin_match quedan individuales.
+  // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
+  // pero nunca se fusionan documentos distintos solo por tener el mismo empleado.
   type GroupedRow = {
     key: string;
     itemIdx: number[];
@@ -271,48 +273,41 @@ export function DocumentosEmpleadoTab() {
     personal_id: string | null;
     confidence: MatchRow["confidence"];
     error?: string;
+    uploadError?: string;
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
     const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
-    const byPid = new Map<string, GroupedRow>();
+    const byDocument = new Map<string, GroupedRow>();
     const out: GroupedRow[] = [];
     items.forEach((it, idx) => {
-      if (it.personal_id) {
-        const existing = byPid.get(it.personal_id);
-        if (existing) {
-          existing.itemIdx.push(idx);
-          existing.files.push(it.file);
-          if (confRank[it.confidence] > confRank[existing.confidence]) {
-            existing.confidence = it.confidence;
-          }
-          if (!existing.detected && it.detected) existing.detected = it.detected;
-          existing.selected = existing.selected || it.selected;
-        } else {
-          const g: GroupedRow = {
-            key: `pid-${it.personal_id}`,
-            itemIdx: [idx],
-            files: [it.file],
-            detected: it.detected,
-            personal_id: it.personal_id,
-            confidence: it.confidence,
-            error: it.error,
-            selected: it.selected,
-          };
-          byPid.set(it.personal_id, g);
-          out.push(g);
+      const sourceKey = normalizeGroupKey(stripChunkSuffix(it.file.name));
+      const key = `${it.personal_id || "sin-asignar"}::${sourceKey}`;
+      const existing = byDocument.get(key);
+      if (existing) {
+        existing.itemIdx.push(idx);
+        existing.files.push(it.file);
+        if (confRank[it.confidence] > confRank[existing.confidence]) {
+          existing.confidence = it.confidence;
         }
+        if (!existing.detected && it.detected) existing.detected = it.detected;
+        if (!existing.error && it.error) existing.error = it.error;
+        if (!existing.uploadError && it.uploadError) existing.uploadError = it.uploadError;
+        existing.selected = existing.selected || it.selected;
       } else {
-        out.push({
-          key: `idx-${idx}`,
+        const g: GroupedRow = {
+          key: `doc-${idx}-${key}`,
           itemIdx: [idx],
           files: [it.file],
           detected: it.detected,
-          personal_id: null,
+          personal_id: it.personal_id,
           confidence: it.confidence,
           error: it.error,
+          uploadError: it.uploadError,
           selected: it.selected,
-        });
+        };
+        byDocument.set(key, g);
+        out.push(g);
       }
     });
     // Filas sin asignar primero, para que se vean sin scrollear
