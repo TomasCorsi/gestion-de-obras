@@ -21,11 +21,7 @@ function formatWhatsAppUrl(phone: string, message: string): string | null {
   const cleanPhone = phone.replace(/\D/g, "");
   if (cleanPhone.length < 8) return null;
   const fullPhone = cleanPhone.startsWith("54") ? cleanPhone : `54${cleanPhone}`;
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  if (isMobile) {
-    return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
-  }
-  return `https://web.whatsapp.com/send?phone=${fullPhone}&text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`;
 }
 
 function formatFecha(dateStr: string): string {
