@@ -284,39 +284,20 @@ export function DocumentosEmpleadoTab() {
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
-    const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
-    const byDocument = new Map<string, GroupedRow>();
-    const out: GroupedRow[] = [];
-    items.forEach((it, idx) => {
-      const sourceKey = normalizeGroupKey(stripChunkSuffix(it.file.name));
-      const key = `${it.personal_id || "sin-asignar"}::${sourceKey}`;
-      const existing = byDocument.get(key);
-      if (existing) {
-        existing.itemIdx.push(idx);
-        existing.files.push(it.file);
-        if (confRank[it.confidence] > confRank[existing.confidence]) {
-          existing.confidence = it.confidence;
-        }
-        if (!existing.detected && it.detected) existing.detected = it.detected;
-        if (!existing.error && it.error) existing.error = it.error;
-        if (!existing.uploadError && it.uploadError) existing.uploadError = it.uploadError;
-        existing.selected = existing.selected || it.selected;
-      } else {
-        const g: GroupedRow = {
-          key: `doc-${idx}-${key}`,
-          itemIdx: [idx],
-          files: [it.file],
-          detected: it.detected,
-          personal_id: it.personal_id,
-          confidence: it.confidence,
-          error: it.error,
-          uploadError: it.uploadError,
-          selected: it.selected,
-        };
-        byDocument.set(key, g);
-        out.push(g);
-      }
-    });
+    // Cada item es su propia fila: no fusionamos chunks de un mismo PDF fuente
+    // ni archivos distintos asignados al mismo empleado. Así, si subís un PDF
+    // único con 22 estudios de 16 páginas, ves 22 filas y subís 22 documentos.
+    const out: GroupedRow[] = items.map((it, idx) => ({
+      key: `doc-${idx}`,
+      itemIdx: [idx],
+      files: [it.file],
+      detected: it.detected,
+      personal_id: it.personal_id,
+      confidence: it.confidence,
+      error: it.error,
+      uploadError: it.uploadError,
+      selected: it.selected,
+    }));
     // Filas sin asignar primero, para que se vean sin scrollear
     out.sort((a, b) => {
       const aSin = a.personal_id ? 1 : 0;
