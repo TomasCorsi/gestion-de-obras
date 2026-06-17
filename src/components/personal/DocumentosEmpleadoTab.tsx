@@ -670,13 +670,20 @@ export function DocumentosEmpleadoTab() {
   };
 
   const confirmBulk = async () => {
-    const ok = rows.filter((r) => r.selected && r.personal_id);
+    // Permitir reintentar fallidos: si hay errores previos, reintentar solo esos
+    const hasPrevErrors = rows.some((r) => r.uploadError);
+    const ok = rows.filter((r) =>
+      r.selected && r.personal_id && (!hasPrevErrors || r.uploadError)
+    );
     if (ok.length === 0) {
       toast.error("No hay filas asignadas para subir");
       return;
     }
     setSavingBulk(true);
-    setItems((prev) => prev.map((x) => ({ ...x, uploadError: undefined })));
+    // Limpiar errores de las filas que vamos a reintentar
+    setItems((prev) => prev.map((x, j) =>
+      ok.some((g) => g.itemIdx.includes(j)) ? { ...x, uploadError: undefined } : x
+    ));
 
     const { PDFDocument } = await import("pdf-lib");
     const titulo = masPeriodo
@@ -690,31 +697,68 @@ export function DocumentosEmpleadoTab() {
       setItems((prev) => prev.map((x, j) => group.itemIdx.includes(j) ? { ...x, uploadError: message } : x));
     };
 
-    const uploadFilesOrThrow = async (pid: string, filesToUpload: File[]) => {
-      const errors: string[] = [];
-      for (const f of filesToUpload) {
-        try {
-          await uploadOne({ personal_id: pid, tipo: masTipo, titulo, periodo: masPeriodo, file: f });
-        } catch (e: unknown) {
-          errors.push(`${f.name}: ${getErrorMessage(e, "Error al subir")}`);
-        }
+    // Upload directo a Storage + insert, sin pasar por la mutation (evita spam de toasts y cuellos).
+    const uploadDirect = async (pid: string, file: File) => {
+      const ext = file.name.split(".").pop() || "bin";
+      const path = `${pid}/${masTipo}/${crypto.randomUUID()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from(DOCS_BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false,
+      });
+      if (upErr) throw upErr;
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: insErr } = await supabase.from("empleado_documentos").insert({
+        personal_id: pid,
+        tipo: masTipo,
+        titulo,
+        periodo: masPeriodo || null,
+        descripcion: null,
+        storage_path: path,
+        mime_type: file.type || null,
+        tamano_bytes: file.size,
+        nombre_original: file.name,
+        uploaded_by: user?.id ?? null,
+      });
+      if (insErr) {
+        await supabase.storage.from(DOCS_BUCKET).remove([path]).catch(() => {});
+        throw insErr;
       }
-      if (errors.length > 0) throw new Error(errors.join(" · "));
     };
 
-    for (const group of ok) {
+    const isTransient = (e: unknown) => {
+      const msg = (e instanceof Error ? e.message : String(e || "")).toLowerCase();
+      return /network|fetch|timeout|temporar|rate|429|5\d\d|abort|socket/.test(msg);
+    };
+
+    const uploadWithRetry = async (pid: string, file: File) => {
+      let lastErr: unknown;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await uploadDirect(pid, file);
+          return;
+        } catch (e) {
+          lastErr = e;
+          console.error("[confirmBulk] upload failed", { pid, file: file.name, attempt, error: e });
+          if (attempt === 3 || !isTransient(e)) break;
+          await new Promise((res) => setTimeout(res, 600 * attempt + Math.random() * 400));
+        }
+      }
+      throw lastErr;
+    };
+
+    const processGroup = async (group: GroupedRow) => {
       const pid = group.personal_id!;
       const files = group.files;
       try {
         const allPdf = files.every((f) => f.type.includes("pdf"));
 
         if (files.length === 1 || !allPdf) {
-          await uploadFilesOrThrow(pid, files);
+          for (const f of files) await uploadWithRetry(pid, f);
           uploadedRows++;
-          continue;
+          return;
         }
 
-        // Merge de todos los chunks PDF en un solo documento
+        // Merge de chunks PDF
         let fileToUpload: File | null = null;
         try {
           const merged = await PDFDocument.create();
@@ -732,32 +776,31 @@ export function DocumentosEmpleadoTab() {
           fileToUpload = new File([ab], `${baseName}.pdf`, { type: "application/pdf" });
 
           if (fileToUpload.size > MAX_BYTES) {
-            toast.warning(`PDF unificado de ${files[0].name} supera 10 MB, se suben los chunks por separado`);
-            await uploadFilesOrThrow(pid, files);
+            for (const f of files) await uploadWithRetry(pid, f);
             uploadedRows++;
-            continue;
+            return;
           }
-        } catch (e: unknown) {
-          console.warn("[confirmBulk] no se pudo unir PDF, se suben chunks", e);
-          await uploadFilesOrThrow(pid, files);
+        } catch (e) {
+          console.warn("[confirmBulk] merge fallido, subiendo chunks", e);
+          for (const f of files) await uploadWithRetry(pid, f);
           uploadedRows++;
-          continue;
+          return;
         }
 
-        if (!fileToUpload) throw new Error("No se pudo preparar el PDF para subir");
-        await uploadOne({
-          personal_id: pid,
-          tipo: masTipo,
-          titulo,
-          periodo: masPeriodo,
-          file: fileToUpload,
-        });
+        if (!fileToUpload) throw new Error("No se pudo preparar el PDF");
+        await uploadWithRetry(pid, fileToUpload);
         uploadedRows++;
-      } catch (e: unknown) {
+      } catch (e) {
         failedRows++;
-        markGroupError(group, getErrorMessage(e, "Error al subir este documento"));
+        markGroupError(group, getErrorMessage(e, "Error al subir"));
       }
-    }
+    };
+
+    // Concurrencia controlada
+    await runWithConcurrency(ok, 3, processGroup);
+
+    qc.invalidateQueries({ queryKey: ["empleado_documentos"] });
+    qc.invalidateQueries({ queryKey: ["mis_documentos"] });
 
     setSavingBulk(false);
     if (failedRows === 0) {
@@ -765,8 +808,8 @@ export function DocumentosEmpleadoTab() {
       setOpenMas(false);
       setMasFiles([]); setItems([]); setMasPeriodo("");
     } else {
-      toast.warning(`Subidos ${uploadedRows} de ${ok.length} documentos. Fallaron ${failedRows}.`, {
-        description: "El detalle quedó marcado en la tabla para corregir y reintentar.",
+      toast.warning(`Subidos ${uploadedRows} de ${ok.length}. Fallaron ${failedRows}.`, {
+        description: "Las filas en rojo quedaron marcadas. Tocá 'Reintentar fallidos' para volver a intentar.",
       });
     }
   };
