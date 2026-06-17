@@ -323,7 +323,7 @@ export function DocumentosEmpleadoTab() {
       return true;
     });
     setMasFiles(arr);
-    setRows([]);
+    setItems([]);
   };
 
   // Expande ZIP/RAR en los PDFs/imágenes internos. Resto pasa tal cual.
