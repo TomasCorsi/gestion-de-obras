@@ -70,11 +70,20 @@ let _rarWasmBinaryPromise: Promise<ArrayBuffer> | null = null;
 async function getRarWasmBinary(): Promise<ArrayBuffer> {
   if (!_rarWasmBinaryPromise) {
     _rarWasmBinaryPromise = (async () => {
-      const wasmUrl = (await import("node-unrar-js/dist/js/unrar.wasm?url")).default;
+      let wasmUrl: string;
+      try {
+        wasmUrl = (await import("node-unrar-js/dist/js/unrar.wasm?url")).default;
+      } catch (e) {
+        console.warn("[getRarWasmBinary] import ?url falló, intento fallback", e);
+        wasmUrl = new URL("node-unrar-js/dist/js/unrar.wasm", import.meta.url).toString();
+      }
       const res = await fetch(wasmUrl);
       if (!res.ok) throw new Error(`No se pudo cargar unrar.wasm (${res.status})`);
       return await res.arrayBuffer();
-    })();
+    })().catch((e) => {
+      _rarWasmBinaryPromise = null;
+      throw e;
+    });
   }
   return _rarWasmBinaryPromise;
 }
@@ -88,19 +97,75 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 
 async function extractRar(file: File): Promise<File[]> {
   const { createExtractorFromData } = await import("node-unrar-js");
-  const [wasmBinary, data] = await Promise.all([getRarWasmBinary(), file.arrayBuffer()]);
+  let wasmBinary: ArrayBuffer;
+  try {
+    wasmBinary = await getRarWasmBinary();
+  } catch (e: any) {
+    console.error("[extractRar] WASM load error", e);
+    throw new Error(`No se pudo cargar el módulo RAR (${e?.message || e}). Recargá la app o probá con ZIP.`);
+  }
+  const data = await file.arrayBuffer();
   const extractor = await createExtractorFromData({ wasmBinary, data });
-  const result = extractor.extract({
-    files: (h) => !h.flags.directory && !isIgnorable(h.name) && (isPdfName(h.name) || isImageName(h.name)),
-  });
+
+  // Extraemos TODO y filtramos después (más confiable que pasar `files: fn`).
+  const result = extractor.extract({});
   const out: File[] = [];
-  for (const f of result.files) {
-    if (!f.extraction) continue;
-    const name = f.fileHeader.name;
-    const type = isPdfName(name) ? "application/pdf" : isImageName(name) ? `image/${(name.split(".").pop() || "").toLowerCase().replace("jpg", "jpeg")}` : "application/octet-stream";
-    // Copiamos a un ArrayBuffer "normal" para evitar issues con SharedArrayBuffer en algunos navegadores
-    const buf = f.extraction.slice().buffer;
-    out.push(new File([buf], name.replace(/[\\/]/g, " - "), { type }));
+  const stats = {
+    total: 0,
+    directorios: 0,
+    ignoradas: 0,
+    otras: 0,
+    pdfs: 0,
+    imagenes: 0,
+    sinExtraccion: 0,
+    cifradas: 0,
+    nombres: [] as string[],
+  };
+
+  try {
+    for (const f of result.files) {
+      stats.total++;
+      const name = f.fileHeader?.name || "";
+      if (stats.nombres.length < 20) stats.nombres.push(name);
+      if (f.fileHeader?.flags?.directory) { stats.directorios++; continue; }
+      if (isIgnorable(name)) { stats.ignoradas++; continue; }
+      const isPdf = isPdfName(name);
+      const isImg = isImageName(name);
+      if (!isPdf && !isImg) { stats.otras++; continue; }
+      if (!f.extraction) {
+        stats.sinExtraccion++;
+        if (f.fileHeader?.flags?.encrypted) stats.cifradas++;
+        continue;
+      }
+      const ext = (name.split(".").pop() || "").toLowerCase().replace("jpg", "jpeg");
+      const type = isPdf ? "application/pdf" : `image/${ext}`;
+      const buf = f.extraction.slice().buffer;
+      out.push(new File([buf], name.replace(/[\\/]/g, " - "), { type }));
+      if (isPdf) stats.pdfs++; else stats.imagenes++;
+    }
+  } catch (iterErr: any) {
+    console.error("[extractRar] error iterando entradas", iterErr, stats);
+    if (out.length === 0) {
+      throw new Error(`Formato RAR no soportado o archivo dañado (${iterErr?.message || iterErr})`);
+    }
+  }
+
+  console.info("[extractRar]", file.name, stats);
+
+  if (out.length === 0) {
+    if (stats.cifradas > 0) {
+      throw new Error("El RAR está protegido con contraseña.");
+    }
+    if (stats.total === 0) {
+      throw new Error("El RAR está vacío o el formato no es soportado (probá guardarlo como RAR4 o ZIP).");
+    }
+    if (stats.pdfs === 0 && stats.imagenes === 0 && stats.sinExtraccion === 0) {
+      throw new Error(`El RAR no contiene PDFs ni imágenes (${stats.total} entradas, ${stats.otras} de otros tipos).`);
+    }
+    if (stats.sinExtraccion > 0) {
+      throw new Error(`No se pudo extraer ningún archivo (${stats.sinExtraccion} entradas fallaron). Puede ser RAR sólido/dañado, probá con ZIP.`);
+    }
+    throw new Error("No se obtuvieron archivos del RAR.");
   }
   return out;
 }
