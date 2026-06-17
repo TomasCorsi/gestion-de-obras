@@ -949,6 +949,16 @@ export function DocumentosEmpleadoTab() {
 
 
 
+            {rows.length > 0 && sinAsignarCount > 0 && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-amber-500/40 bg-amber-500/10 text-xs">
+                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <strong>{sinAsignarCount} de {rows.length}</strong> documento(s) sin empleado asignado.
+                  Asignalos manualmente con el selector "Asignar..." o se van a descartar al confirmar.
+                </div>
+              </div>
+            )}
+
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
                 <Table>
@@ -963,7 +973,10 @@ export function DocumentosEmpleadoTab() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((r, i) => (
-                      <TableRow key={r.key}>
+                      <TableRow
+                        key={r.key}
+                        className={!r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
+                      >
                         <TableCell>
                           <input type="checkbox" checked={r.selected} onChange={(e) => {
                             const checked = e.target.checked;
@@ -995,7 +1008,11 @@ export function DocumentosEmpleadoTab() {
                             placeholder="Asignar..."
                           />
                         </TableCell>
-                        <TableCell>{confBadge(r.confidence)}</TableCell>
+                        <TableCell>
+                          {!r.personal_id
+                            ? <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700 dark:text-amber-400">Sin asignar</Badge>
+                            : confBadge(r.confidence)}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1005,11 +1022,21 @@ export function DocumentosEmpleadoTab() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpenMas(false)}>Cancelar</Button>
-            <Button onClick={confirmBulk} disabled={rows.length === 0 || savingBulk}>
+            <Button
+              onClick={() => {
+                if (sinAsignarCount > 0) {
+                  setConfirmSkipOpen(true);
+                } else {
+                  confirmBulk();
+                }
+              }}
+              disabled={rows.length === 0 || savingBulk}
+            >
               {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Confirmar y subir ({rows.filter(r => r.selected && r.personal_id).length})
             </Button>
           </DialogFooter>
+
         </DialogContent>
       </Dialog>
 
