@@ -24,6 +24,7 @@ export interface PersonalDB {
   situacion_laboral: string | null;
   banco: string | null;
   numero_cuenta: string | null;
+  user_id: string | null;
   created_at: string;
   updated_at: string;
 }

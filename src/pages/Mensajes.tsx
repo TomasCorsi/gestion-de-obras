@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, MessageCircle, AlertTriangle, Clock, Send, ExternalLink } from "lucide-react";
+import { CalendarIcon, MessageCircle, AlertTriangle, Clock, Send, ExternalLink, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -142,6 +142,20 @@ export default function Mensajes() {
   const [plantillaPorVencer, setPlantillaPorVencer] = useState(
     "Hola {nombre}, tu registro de conducir vence el {fecha_vencimiento}. Te pedimos que gestiones la renovación."
   );
+  const APP_LINK = "https://gestion-de-obras.lovable.app";
+  const [plantillaSinRegistro, setPlantillaSinRegistro] = useState(
+    "Hola {nombre}, te escribimos de la empresa.\n\n" +
+      "Tu legajo es: {legajo}\n\n" +
+      "Para usar el Parte Diario tenés que registrarte en la app:\n" +
+      "1) Entrá a {link_app}\n" +
+      "2) Tocá \"Registrarme\"\n" +
+      "3) Ingresá tu legajo ({legajo}), email y contraseña\n" +
+      "4) Listo: vas a poder cargar tu parte diario todos los días\n\n" +
+      "Cómo instalarla en el celular:\n" +
+      "- Android (Chrome): abrí el link, tocá el menú (⋮) y \"Agregar a pantalla de inicio\".\n" +
+      "- iPhone (Safari): abrí el link, tocá Compartir y \"Agregar a pantalla de inicio\".\n\n" +
+      "Cualquier duda, avisanos."
+  );
 
   const hoy = useMemo(() => new Date().toISOString().split("T")[0], []);
   const in20Days = useMemo(() => {
@@ -195,6 +209,19 @@ export default function Mensajes() {
       });
   }, [personal, hoy, in20Days, plantillaPorVencer]);
 
+  const sinRegistroRows: EmpleadoRow[] = useMemo(() => {
+    return personal
+      .filter((p) => p.activo && !p.user_id)
+      .map((p) => {
+        const nombre = [p.nombre, p.apellido].filter(Boolean).join(" ");
+        const msg = plantillaSinRegistro
+          .replace(/\{nombre\}/g, nombre || "")
+          .replace(/\{legajo\}/g, p.legajo || "—")
+          .replace(/\{link_app\}/g, APP_LINK);
+        return { nombre, legajo: p.legajo, telefono: p.telefono, mensaje: msg };
+      });
+  }, [personal, plantillaSinRegistro]);
+
   return (
     <MainLayout title="Mensajes">
       <div className="space-y-6">
@@ -204,7 +231,7 @@ export default function Mensajes() {
         </div>
 
         <Tabs defaultValue="partes" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="partes" className="gap-2">
               <ClipboardList className="h-4 w-4" />
               Partes faltantes
@@ -224,6 +251,13 @@ export default function Mensajes() {
               Por vencer
               {licenciaPorVencerRows.length > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{licenciaPorVencerRows.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="sin-registro" className="gap-2">
+              <UserPlus className="h-4 w-4" />
+              Sin registrar
+              {sinRegistroRows.length > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-xs">{sinRegistroRows.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -285,6 +319,19 @@ export default function Mensajes() {
               </CardHeader>
               <CardContent>
                 <EmpleadoTable empleados={licenciaPorVencerRows} plantilla={plantillaPorVencer} onPlantillaChange={setPlantillaPorVencer} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="sin-registro">
+            <Card>
+              <CardHeader>
+                <CardTitle>Empleados sin registrar en la app</CardTitle>
+                <CardDescription>
+                  Activos que todavía no crearon cuenta. Variables: {"{nombre}"}, {"{legajo}"}, {"{link_app}"}.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EmpleadoTable empleados={sinRegistroRows} plantilla={plantillaSinRegistro} onPlantillaChange={setPlantillaSinRegistro} />
               </CardContent>
             </Card>
           </TabsContent>
