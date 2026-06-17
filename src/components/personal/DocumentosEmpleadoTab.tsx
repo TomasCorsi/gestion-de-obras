@@ -847,7 +847,7 @@ export function DocumentosEmpleadoTab() {
                   onValueChange={(v: any) => {
                     setMasTipo(v);
                     setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
-                    setRows([]);
+                    setItems([]);
                   }}
                 >
                   <SelectTrigger><SelectValue /></SelectTrigger>
