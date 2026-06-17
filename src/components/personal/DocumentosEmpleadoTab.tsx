@@ -914,13 +914,19 @@ export function DocumentosEmpleadoTab() {
                   </TableHeader>
                   <TableBody>
                     {rows.map((r, i) => (
-                      <TableRow key={i}>
+                      <TableRow key={r.key}>
                         <TableCell>
-                          <input type="checkbox" checked={r.selected} onChange={(e) =>
-                            setRows((prev) => prev.map((x, j) => j === i ? { ...x, selected: e.target.checked } : x))
-                          } />
+                          <input type="checkbox" checked={r.selected} onChange={(e) => {
+                            const checked = e.target.checked;
+                            setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, selected: checked } : x));
+                          }} />
                         </TableCell>
-                        <TableCell className="max-w-[180px] truncate text-xs">{r.file.name}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-xs">
+                          {r.files[0].name}
+                          {r.files.length > 1 && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-xs">
                           {r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
                             r.detected ? (
@@ -934,7 +940,9 @@ export function DocumentosEmpleadoTab() {
                           <Combobox
                             options={personalOptions}
                             value={r.personal_id || ""}
-                            onValueChange={(v) => setRows((prev) => prev.map((x, j) => j === i ? { ...x, personal_id: v, selected: !!v } : x))}
+                            onValueChange={(v) => {
+                              setItems((prev) => prev.map((x, j) => r.itemIdx.includes(j) ? { ...x, personal_id: v || null, selected: !!v } : x));
+                            }}
                             placeholder="Asignar..."
                           />
                         </TableCell>
