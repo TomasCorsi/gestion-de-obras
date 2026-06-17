@@ -1,4 +1,5 @@
-import { Bell, User, LogOut, Shield, RefreshCw, Loader2, FileText } from "lucide-react";
+import { User, LogOut, Shield, RefreshCw, Loader2, FileText } from "lucide-react";
+import { NotificationsBell } from "./NotificationsBell";
 import logoIcon from "@/assets/logo-icon.png";
 import { ThemeToggle } from "./ThemeToggle";
 import { Button } from "@/components/ui/button";
