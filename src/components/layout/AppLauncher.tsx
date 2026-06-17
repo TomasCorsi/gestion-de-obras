@@ -27,7 +27,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
 
 interface AppItem {
   icon: typeof LayoutDashboard;
@@ -46,47 +46,48 @@ const appCategories: AppCategory[] = [
   {
     name: "Principal",
     apps: [
-      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary", roles: ['admin'] },
+      { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard", color: "bg-primary", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
     name: "Operaciones",
     apps: [
-      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin'] },
-      { icon: ContactRound, label: "Clientes", path: "/clientes", color: "bg-blue-700", roles: ['admin'] },
-      { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin'] },
+      { icon: Building2, label: "Obras", path: "/obras", color: "bg-blue-600", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: ContactRound, label: "Clientes", path: "/clientes", color: "bg-blue-700", roles: ['admin', 'capataz'] },
+      { icon: FileText, label: "Cotizaciones", path: "/cotizaciones", color: "bg-blue-500", roles: ['admin', 'capataz'] },
       { icon: Award, label: "Certificados", path: "/certificados", color: "bg-blue-400", roles: ['admin'] },
-      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin'] },
-      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin'] },
+      { icon: Route, label: "Viajes", path: "/viajes", color: "bg-orange-600", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Receipt, label: "Remitos", path: "/remitos", color: "bg-orange-500", roles: ['admin', 'capataz', 'maquinista', 'remitero'] },
       { icon: Store, label: "Proveedores", path: "/proveedores", color: "bg-indigo-500", roles: ['admin'] },
     ],
   },
   {
     name: "Recursos",
     apps: [
-      { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin'] },
-      { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin'] },
+      { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin', 'capataz'] },
+      { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin', 'capataz'] },
       { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400", roles: ['admin'] },
+      { icon: ClipboardList, label: "Parte Diario", path: "/parte-diario", color: "bg-teal-500", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
     name: "Gastos",
     apps: [
-      { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin'] },
-      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin'] },
-      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin'] },
+      { icon: Wallet, label: "Gastos", path: "/gastos", color: "bg-amber-600", roles: ['admin', 'capataz', 'maquinista', 'ayudante'] },
+      { icon: Wrench, label: "Mantenimiento", path: "/mantenimiento", color: "bg-amber-500", roles: ['admin', 'capataz', 'maquinista'] },
+      { icon: Package, label: "Stock", path: "/stock", color: "bg-amber-400", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
   {
     name: "Comunicación",
     apps: [
-      { icon: MessageCircle, label: "Mensajes", path: "/mensajes", color: "bg-teal-500", roles: ['admin'] },
+      { icon: MessageCircle, label: "Mensajes", path: "/mensajes", color: "bg-teal-500", roles: ['admin', 'capataz'] },
     ],
   },
   {
     name: "Administración",
     apps: [
-      { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin'] },
+      { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin', 'capataz'] },
       { icon: Settings, label: "Configuración", path: "/configuracion", color: "bg-slate-600", roles: ['admin'] },
     ],
   },
