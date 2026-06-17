@@ -53,6 +53,15 @@ const isIgnorable = (path: string) => {
   const base = path.split("/").pop() || "";
   return path.includes("__MACOSX/") || base.startsWith(".");
 };
+const stripChunkSuffix = (name: string) => {
+  const base = (name.split(/[\\/]/).pop() || name)
+    .replace(/\s*\(\d+\s*-\s*\d+\)\.pdf$/i, "")
+    .replace(/\.[^.]+$/i, "")
+    .trim();
+  return base || name;
+};
+const normalizeGroupKey = (value: string) =>
+  value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
 async function extractZip(file: File): Promise<File[]> {
   const JSZip = (await import("jszip")).default;
@@ -171,6 +180,7 @@ const fileToDataUrl = (f: File) =>
     r.onerror = rej;
     r.readAsDataURL(f);
   });
+const getErrorMessage = (e: unknown, fallback: string) => e instanceof Error ? e.message : fallback;
 
 interface MatchRow {
   file: File;
@@ -178,6 +188,7 @@ interface MatchRow {
   personal_id: string | null;
   confidence: "alta" | "media" | "baja" | "sin_match";
   error?: string;
+  uploadError?: string;
   selected: boolean;
 }
 
@@ -253,7 +264,8 @@ export function DocumentosEmpleadoTab() {
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
   const [items, setItems] = useState<MatchRow[]>([]);
 
-  // Consolidación visual: una fila por empleado detectado. Los sin_match quedan individuales.
+  // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
+  // pero nunca se fusionan documentos distintos solo por tener el mismo empleado.
   type GroupedRow = {
     key: string;
     itemIdx: number[];
@@ -262,48 +274,41 @@ export function DocumentosEmpleadoTab() {
     personal_id: string | null;
     confidence: MatchRow["confidence"];
     error?: string;
+    uploadError?: string;
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
     const confRank = { alta: 3, media: 2, baja: 1, sin_match: 0 } as const;
-    const byPid = new Map<string, GroupedRow>();
+    const byDocument = new Map<string, GroupedRow>();
     const out: GroupedRow[] = [];
     items.forEach((it, idx) => {
-      if (it.personal_id) {
-        const existing = byPid.get(it.personal_id);
-        if (existing) {
-          existing.itemIdx.push(idx);
-          existing.files.push(it.file);
-          if (confRank[it.confidence] > confRank[existing.confidence]) {
-            existing.confidence = it.confidence;
-          }
-          if (!existing.detected && it.detected) existing.detected = it.detected;
-          existing.selected = existing.selected || it.selected;
-        } else {
-          const g: GroupedRow = {
-            key: `pid-${it.personal_id}`,
-            itemIdx: [idx],
-            files: [it.file],
-            detected: it.detected,
-            personal_id: it.personal_id,
-            confidence: it.confidence,
-            error: it.error,
-            selected: it.selected,
-          };
-          byPid.set(it.personal_id, g);
-          out.push(g);
+      const sourceKey = normalizeGroupKey(stripChunkSuffix(it.file.name));
+      const key = `${it.personal_id || "sin-asignar"}::${sourceKey}`;
+      const existing = byDocument.get(key);
+      if (existing) {
+        existing.itemIdx.push(idx);
+        existing.files.push(it.file);
+        if (confRank[it.confidence] > confRank[existing.confidence]) {
+          existing.confidence = it.confidence;
         }
+        if (!existing.detected && it.detected) existing.detected = it.detected;
+        if (!existing.error && it.error) existing.error = it.error;
+        if (!existing.uploadError && it.uploadError) existing.uploadError = it.uploadError;
+        existing.selected = existing.selected || it.selected;
       } else {
-        out.push({
-          key: `idx-${idx}`,
+        const g: GroupedRow = {
+          key: `doc-${idx}-${key}`,
           itemIdx: [idx],
           files: [it.file],
           detected: it.detected,
-          personal_id: null,
+          personal_id: it.personal_id,
           confidence: it.confidence,
           error: it.error,
+          uploadError: it.uploadError,
           selected: it.selected,
-        });
+        };
+        byDocument.set(key, g);
+        out.push(g);
       }
     });
     // Filas sin asignar primero, para que se vean sin scrollear
@@ -315,7 +320,17 @@ export function DocumentosEmpleadoTab() {
     return out;
   }, [items]);
   const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
+  const selectedAssignedCount = useMemo(() => rows.filter((r) => r.selected && r.personal_id).length, [rows]);
+  const duplicatePidKeys = useMemo(() => {
+    const counts = new Map<string, number>();
+    rows.forEach((r) => {
+      if (r.personal_id) counts.set(r.personal_id, (counts.get(r.personal_id) || 0) + 1);
+    });
+    return new Set(rows.filter((r) => r.personal_id && (counts.get(r.personal_id) || 0) > 1).map((r) => r.key));
+  }, [rows]);
+  const duplicatePidCount = duplicatePidKeys.size;
   const [confirmSkipOpen, setConfirmSkipOpen] = useState(false);
+  const [confirmDupOpen, setConfirmDupOpen] = useState(false);
   const [savingBulk, setSavingBulk] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -615,14 +630,31 @@ export function DocumentosEmpleadoTab() {
       return;
     }
     setSavingBulk(true);
+    setItems((prev) => prev.map((x) => ({ ...x, uploadError: undefined })));
 
     const { PDFDocument } = await import("pdf-lib");
     const titulo = masPeriodo
       ? `${TIPO_LABEL[masTipo]} - ${masPeriodo}`
       : TIPO_LABEL[masTipo];
 
-    let ko = 0;
-    let okGroups = 0;
+    let uploadedRows = 0;
+    let failedRows = 0;
+
+    const markGroupError = (group: GroupedRow, message: string) => {
+      setItems((prev) => prev.map((x, j) => group.itemIdx.includes(j) ? { ...x, uploadError: message } : x));
+    };
+
+    const uploadFilesOrThrow = async (pid: string, filesToUpload: File[]) => {
+      const errors: string[] = [];
+      for (const f of filesToUpload) {
+        try {
+          await uploadOne({ personal_id: pid, tipo: masTipo, titulo, periodo: masPeriodo, file: f });
+        } catch (e: unknown) {
+          errors.push(`${f.name}: ${getErrorMessage(e, "Error al subir")}`);
+        }
+      }
+      if (errors.length > 0) throw new Error(errors.join(" · "));
+    };
 
     for (const group of ok) {
       const pid = group.personal_id!;
@@ -631,25 +663,13 @@ export function DocumentosEmpleadoTab() {
         const allPdf = files.every((f) => f.type.includes("pdf"));
 
         if (files.length === 1 || !allPdf) {
-          for (const f of files) {
-            try {
-              await uploadOne({
-                personal_id: pid,
-                tipo: masTipo,
-                titulo,
-                periodo: masPeriodo,
-                file: f,
-              });
-            } catch {
-              ko++;
-            }
-          }
-          okGroups++;
+          await uploadFilesOrThrow(pid, files);
+          uploadedRows++;
           continue;
         }
 
         // Merge de todos los chunks PDF en un solo documento
-        let fileToUpload: File;
+        let fileToUpload: File | null = null;
         try {
           const merged = await PDFDocument.create();
           for (const f of files) {
@@ -667,40 +687,18 @@ export function DocumentosEmpleadoTab() {
 
           if (fileToUpload.size > MAX_BYTES) {
             toast.warning(`PDF unificado de ${files[0].name} supera 10 MB, se suben los chunks por separado`);
-            for (const f of files) {
-              try {
-                await uploadOne({
-                  personal_id: pid,
-                  tipo: masTipo,
-                  titulo,
-                  periodo: masPeriodo,
-                  file: f,
-                });
-              } catch {
-                ko++;
-              }
-            }
-            okGroups++;
+            await uploadFilesOrThrow(pid, files);
+            uploadedRows++;
             continue;
           }
-        } catch {
-          for (const f of files) {
-            try {
-              await uploadOne({
-                personal_id: pid,
-                tipo: masTipo,
-                titulo,
-                periodo: masPeriodo,
-                file: f,
-              });
-            } catch {
-              ko++;
-            }
-          }
-          okGroups++;
+        } catch (e: unknown) {
+          console.warn("[confirmBulk] no se pudo unir PDF, se suben chunks", e);
+          await uploadFilesOrThrow(pid, files);
+          uploadedRows++;
           continue;
         }
 
+        if (!fileToUpload) throw new Error("No se pudo preparar el PDF para subir");
         await uploadOne({
           personal_id: pid,
           tipo: masTipo,
@@ -708,20 +706,23 @@ export function DocumentosEmpleadoTab() {
           periodo: masPeriodo,
           file: fileToUpload,
         });
-        okGroups++;
-      } catch {
-        ko++;
+        uploadedRows++;
+      } catch (e: unknown) {
+        failedRows++;
+        markGroupError(group, getErrorMessage(e, "Error al subir este documento"));
       }
     }
 
     setSavingBulk(false);
-    if (ko === 0) {
-      toast.success(`Subidos ${okGroups} empleados`);
+    if (failedRows === 0) {
+      toast.success(`Subidos ${uploadedRows} documentos`);
+      setOpenMas(false);
+      setMasFiles([]); setItems([]); setMasPeriodo("");
     } else {
-      toast.warning(`Procesados ${okGroups} empleados. ${ko} con error.`);
+      toast.warning(`Subidos ${uploadedRows} de ${ok.length} documentos. Fallaron ${failedRows}.`, {
+        description: "El detalle quedó marcado en la tabla para corregir y reintentar.",
+      });
     }
-    setOpenMas(false);
-    setMasFiles([]); setItems([]); setMasPeriodo("");
   };
 
 
@@ -959,6 +960,16 @@ export function DocumentosEmpleadoTab() {
               </div>
             )}
 
+            {rows.length > 0 && duplicatePidCount > 0 && (
+              <div className="flex items-start gap-2 p-3 rounded-lg border border-orange-500/40 bg-orange-500/10 text-xs">
+                <AlertTriangle className="w-4 h-4 text-orange-600 dark:text-orange-400 mt-0.5 shrink-0" />
+                <div>
+                  Hay <strong>{duplicatePidCount}</strong> documento(s) asignados a empleados repetidos.
+                  Revisá que cada estudio corresponda al empleado correcto antes de subir.
+                </div>
+              </div>
+            )}
+
             {rows.length > 0 && (
               <div className="border border-border rounded-lg max-h-[40vh] overflow-auto">
                 <Table>
@@ -975,7 +986,7 @@ export function DocumentosEmpleadoTab() {
                     {rows.map((r, i) => (
                       <TableRow
                         key={r.key}
-                        className={!r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
+                        className={r.uploadError ? "bg-red-500/10 hover:bg-red-500/15" : !r.personal_id ? "bg-amber-500/10 hover:bg-amber-500/15" : undefined}
                       >
                         <TableCell>
                           <input type="checkbox" checked={r.selected} onChange={(e) => {
@@ -990,7 +1001,8 @@ export function DocumentosEmpleadoTab() {
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
-                          {r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
+                          {r.uploadError ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.uploadError}</span> :
+                            r.error ? <span className="text-destructive"><AlertTriangle className="w-3 h-3 inline" /> {r.error}</span> :
                             r.detected ? (
                               <div>
                                 {r.detected.apellido} {r.detected.nombre}
@@ -1011,7 +1023,9 @@ export function DocumentosEmpleadoTab() {
                         <TableCell>
                           {!r.personal_id
                             ? <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700 dark:text-amber-400">Sin asignar</Badge>
-                            : confBadge(r.confidence)}
+                            : duplicatePidKeys.has(r.key)
+                              ? <div className="flex flex-wrap gap-1">{confBadge(r.confidence)}<Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-700 dark:text-orange-400">Repetido</Badge></div>
+                              : confBadge(r.confidence)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1026,6 +1040,8 @@ export function DocumentosEmpleadoTab() {
               onClick={() => {
                 if (sinAsignarCount > 0) {
                   setConfirmSkipOpen(true);
+                } else if (duplicatePidCount > 0) {
+                  setConfirmDupOpen(true);
                 } else {
                   confirmBulk();
                 }
@@ -1033,7 +1049,7 @@ export function DocumentosEmpleadoTab() {
               disabled={rows.length === 0 || savingBulk}
             >
               {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar y subir ({rows.filter(r => r.selected && r.personal_id).length})
+              Confirmar y subir ({selectedAssignedCount})
             </Button>
           </DialogFooter>
 
@@ -1066,8 +1082,30 @@ export function DocumentosEmpleadoTab() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Volver a asignar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => { setConfirmSkipOpen(false); confirmBulk(); }}>
+            <AlertDialogAction onClick={() => {
+              setConfirmSkipOpen(false);
+              if (duplicatePidCount > 0) setConfirmDupOpen(true);
+              else confirmBulk();
+            }}>
               Subir solo asignados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDupOpen} onOpenChange={setConfirmDupOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hay empleados repetidos</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a subir varios documentos para el mismo empleado en {duplicatePidCount} caso(s).
+              Si ya revisaste las asignaciones, podés continuar.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Volver a revisar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConfirmDupOpen(false); confirmBulk(); }}>
+              Continuar y subir
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
