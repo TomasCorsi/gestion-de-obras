@@ -103,7 +103,7 @@ async function extractFromFile(file: InFile, tipo: string): Promise<any | null> 
   const isPdf = file.mime.includes('pdf');
   const promptText = tipo === 'recibo_sueldo'
     ? `Extraé del recibo de sueldo adjunto los datos del EMPLEADO (titular del recibo): nombre (de pila), apellido, DNI y CUIT/CUIL. Devolvé SOLO un JSON {"nombre":"","apellido":"","dni":"","cuit":""}. Si algún dato no aparece dejá string vacío.`
-    : `Extraé del estudio médico adjunto los datos del PACIENTE/EMPLEADO EVALUADO. IMPORTANTE: NO devuelvas datos del médico que firma, ni del laboratorio, ni de la empresa o ART. Buscá las etiquetas "Paciente", "Apellido y Nombre", "Empleado", "Examinado", "DNI", "CUIL" cerca del nombre del trabajador. Devolvé SOLO un JSON {"nombre":"","apellido":"","dni":"","cuit":""}. Si algún dato no aparece dejá string vacío.`;
+    : `Este archivo puede ser UNA hoja de un PDF más grande con varios estudios médicos. Identificá al PACIENTE/EMPLEADO EVALUADO de ESTA hoja. NO devuelvas datos del médico que firma, ni del laboratorio, ni de la empresa o ART. Buscá las etiquetas "Paciente", "Apellido y Nombre", "Empleado", "Examinado", "DNI", "CUIL" cerca del nombre del trabajador. Si la hoja no tiene datos del paciente (ej. solo resultados de un estudio anterior), devolvé los campos vacíos. Devolvé SOLO un JSON {"nombre":"","apellido":"","dni":"","cuit":""}.`;
   const userContent: any[] = [
     { type: 'text', text: promptText },
   ];

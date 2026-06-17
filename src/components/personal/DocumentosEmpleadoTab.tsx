@@ -259,6 +259,7 @@ export function DocumentosEmpleadoTab() {
   const [masPeriodo, setMasPeriodo] = useState("");
   const [masFiles, setMasFiles] = useState<File[]>([]); // archivos fuente (sin partir)
   const [pagesPerDoc, setPagesPerDoc] = useState<number>(2);
+  const [autoSplit, setAutoSplit] = useState<boolean>(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzePhase, setAnalyzePhase] = useState<"extract" | "local" | "ia" | null>(null);
   const [analyzeProgress, setAnalyzeProgress] = useState<{ done: number; total: number } | null>(null);
@@ -268,6 +269,20 @@ export function DocumentosEmpleadoTab() {
   const extractPageRange = (name: string): string | null => {
     const m = name.match(/\((\d+)\s*-\s*(\d+)\)\.pdf$/i);
     return m ? `${m[1]}-${m[2]}` : null;
+  };
+  const sourceBaseOf = (name: string): string =>
+    name.replace(/\s*\(\d+\s*-\s*\d+\)\.pdf$/i, "").replace(/\.pdf$/i, "").trim();
+  const groupPageRange = (files: File[]): string | null => {
+    const nums: number[] = [];
+    for (const f of files) {
+      const r = extractPageRange(f.name);
+      if (!r) continue;
+      r.split("-").forEach((n) => { const v = parseInt(n, 10); if (!isNaN(v)) nums.push(v); });
+    }
+    if (nums.length === 0) return null;
+    const min = Math.min(...nums);
+    const max = Math.max(...nums);
+    return min === max ? `${min}` : `${min}-${max}`;
   };
 
   // Consolidación visual: una fila por documento detectado. Chunks del mismo PDF se unen,
@@ -284,20 +299,55 @@ export function DocumentosEmpleadoTab() {
     selected: boolean;
   };
   const rows: GroupedRow[] = useMemo(() => {
-    // Cada item es su propia fila: no fusionamos chunks de un mismo PDF fuente
-    // ni archivos distintos asignados al mismo empleado. Así, si subís un PDF
-    // único con 22 estudios de 16 páginas, ves 22 filas y subís 22 documentos.
-    const out: GroupedRow[] = items.map((it, idx) => ({
-      key: `doc-${idx}`,
-      itemIdx: [idx],
-      files: [it.file],
-      detected: it.detected,
-      personal_id: it.personal_id,
-      confidence: it.confidence,
-      error: it.error,
-      uploadError: it.uploadError,
-      selected: it.selected,
-    }));
+    const out: GroupedRow[] = [];
+    if (autoSplit) {
+      // Auto: agrupar páginas CONSECUTIVAS del MISMO PDF fuente y MISMO empleado.
+      // Páginas sin asignar quedan como fila propia para asignación manual.
+      let cur: (GroupedRow & { _sourceBase?: string }) | null = null;
+      items.forEach((it, idx) => {
+        const base = sourceBaseOf(it.file.name);
+        const canMerge =
+          !!cur &&
+          !!it.personal_id &&
+          cur._sourceBase === base &&
+          cur.personal_id === it.personal_id;
+        if (canMerge && cur) {
+          cur.itemIdx.push(idx);
+          cur.files.push(it.file);
+          // Mantener la mejor confianza/detected del grupo
+          if (it.detected && !cur.detected) cur.detected = it.detected;
+          cur.selected = cur.selected && it.selected;
+        } else {
+          cur = {
+            key: `g-${idx}`,
+            itemIdx: [idx],
+            files: [it.file],
+            detected: it.detected,
+            personal_id: it.personal_id,
+            confidence: it.confidence,
+            error: it.error,
+            uploadError: it.uploadError,
+            selected: it.selected,
+            _sourceBase: base,
+          };
+          out.push(cur);
+        }
+      });
+    } else {
+      items.forEach((it, idx) => {
+        out.push({
+          key: `doc-${idx}`,
+          itemIdx: [idx],
+          files: [it.file],
+          detected: it.detected,
+          personal_id: it.personal_id,
+          confidence: it.confidence,
+          error: it.error,
+          uploadError: it.uploadError,
+          selected: it.selected,
+        });
+      });
+    }
     // Filas sin asignar primero, para que se vean sin scrollear
     out.sort((a, b) => {
       const aSin = a.personal_id ? 1 : 0;
@@ -305,7 +355,7 @@ export function DocumentosEmpleadoTab() {
       return aSin - bSin;
     });
     return out;
-  }, [items]);
+  }, [items, autoSplit]);
   const sinAsignarCount = useMemo(() => rows.filter((r) => !r.personal_id).length, [rows]);
   const selectedAssignedCount = useMemo(() => rows.filter((r) => r.selected && r.personal_id).length, [rows]);
   const duplicatePidKeys = useMemo(() => {
@@ -469,7 +519,7 @@ export function DocumentosEmpleadoTab() {
         toast.error("No quedaron archivos para analizar");
         return;
       }
-      const chunks = await splitFiles(expanded, pagesPerDoc);
+      const chunks = await splitFiles(expanded, autoSplit ? 1 : pagesPerDoc);
       if (chunks.length === 0) {
         toast.error("No quedaron archivos para analizar");
         return;
@@ -883,7 +933,8 @@ export function DocumentosEmpleadoTab() {
                   value={masTipo}
                   onValueChange={(v: any) => {
                     setMasTipo(v);
-                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 16);
+                    setAutoSplit(true);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
                     setItems([]);
                   }}
                 >
@@ -899,16 +950,31 @@ export function DocumentosEmpleadoTab() {
                 <Input value={masPeriodo} onChange={(e) => setMasPeriodo(e.target.value)} placeholder="Ej: Junio 2026" />
               </div>
               <div>
-                <Label className="text-xs">Páginas por documento</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={pagesPerDoc}
-                  onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
-                />
+                <Label className="text-xs">División de páginas</Label>
+                <Select
+                  value={autoSplit ? "auto" : "manual"}
+                  onValueChange={(v) => setAutoSplit(v === "auto")}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Automática (recomendado)</SelectItem>
+                    <SelectItem value="manual">Fijo: N páginas</SelectItem>
+                  </SelectContent>
+                </Select>
+                {!autoSplit && (
+                  <Input
+                    className="mt-2"
+                    type="number"
+                    min={1}
+                    max={50}
+                    value={pagesPerDoc}
+                    onChange={(e) => setPagesPerDoc(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                )}
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  Si subís un PDF unificado, se parte cada N páginas.
+                  {autoSplit
+                    ? "Analiza cada página y agrupa las consecutivas del mismo empleado."
+                    : "Parte el PDF cada N páginas, sin importar el contenido."}
                 </p>
               </div>
             </div>
@@ -918,7 +984,10 @@ export function DocumentosEmpleadoTab() {
               <Input ref={fileInputRef} type="file" accept={ACCEPT_BULK} multiple onChange={(e) => handlePickMas(e.target.files)} />
               {masFiles.length > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  {masFiles.length} archivo(s) fuente seleccionado(s){pagesPerDoc > 1 ? ` · se partirán cada ${pagesPerDoc} páginas` : ""}
+                  {masFiles.length} archivo(s) fuente seleccionado(s)
+                  {autoSplit
+                    ? " · se analiza página por página y se agrupa por empleado"
+                    : pagesPerDoc > 1 ? ` · se parten cada ${pagesPerDoc} páginas` : ""}
                 </p>
               )}
             </div>
@@ -982,12 +1051,12 @@ export function DocumentosEmpleadoTab() {
                           }} />
                         </TableCell>
                         <TableCell className="max-w-[220px] text-xs">
-                          <div className="truncate">{r.files[0].name}</div>
-                          {extractPageRange(r.files[0].name) && (
-                            <div className="text-[10px] text-muted-foreground">Páginas {extractPageRange(r.files[0].name)}</div>
-                          )}
-                          {r.files.length > 1 && (
-                            <span className="text-[10px] text-muted-foreground">+{r.files.length - 1} archivo(s)</span>
+                          <div className="truncate">{sourceBaseOf(r.files[0].name) || r.files[0].name}</div>
+                          {groupPageRange(r.files) && (
+                            <div className="text-[10px] text-muted-foreground">
+                              Páginas {groupPageRange(r.files)}
+                              {r.files.length > 1 ? ` · ${r.files.length} hojas` : ""}
+                            </div>
                           )}
                         </TableCell>
                         <TableCell className="text-xs">
