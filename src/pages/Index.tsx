@@ -194,14 +194,22 @@ const apps: AppItem[] = [
   },
 ];
 
+const SERGIO_ID = 'c92028bd-dd42-416d-8892-f00b5ef90f8f';
+
 const Index = () => {
-  const { hasRole, loading: loadingAuth, roles } = useAuth();
+  const { hasRole, loading: loadingAuth, roles, user } = useAuth();
   const navigate = useNavigate();
 
+  const isSergio = user?.id === SERGIO_ID;
+
   // Redirigir solo cuando el usuario tiene UN solo rol no-admin.
-  // Usuarios con múltiples roles (ej. capataz + remitero) ven la home con sus tiles.
+  // Excepción: Sergio (capataz + remitero) va directo a /parte-diario.
   useEffect(() => {
     if (loadingAuth) return;
+    if (isSergio) {
+      navigate('/parte-diario', { replace: true });
+      return;
+    }
     if (roles.length !== 1) return;
     const only = roles[0];
     if (only === 'admin') return;
@@ -210,9 +218,9 @@ const Index = () => {
     } else {
       navigate('/parte-diario', { replace: true });
     }
-  }, [roles, loadingAuth, navigate]);
+  }, [roles, loadingAuth, navigate, isSergio]);
 
-  if (loadingAuth || (roles.length === 1 && roles[0] !== 'admin')) {
+  if (loadingAuth || isSergio || (roles.length === 1 && roles[0] !== 'admin')) {
     return <LoadingScreen />;
   }
 
