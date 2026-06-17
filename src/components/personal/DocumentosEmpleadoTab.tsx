@@ -1022,7 +1022,9 @@ export function DocumentosEmpleadoTab() {
                         <TableCell>
                           {!r.personal_id
                             ? <Badge variant="outline" className="text-[10px] border-amber-500/50 text-amber-700 dark:text-amber-400">Sin asignar</Badge>
-                            : confBadge(r.confidence)}
+                            : duplicatePidKeys.has(r.key)
+                              ? <div className="flex flex-wrap gap-1">{confBadge(r.confidence)}<Badge variant="outline" className="text-[10px] border-orange-500/50 text-orange-700 dark:text-orange-400">Repetido</Badge></div>
+                              : confBadge(r.confidence)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1037,6 +1039,8 @@ export function DocumentosEmpleadoTab() {
               onClick={() => {
                 if (sinAsignarCount > 0) {
                   setConfirmSkipOpen(true);
+                } else if (duplicatePidCount > 0) {
+                  setConfirmDupOpen(true);
                 } else {
                   confirmBulk();
                 }
@@ -1044,7 +1048,7 @@ export function DocumentosEmpleadoTab() {
               disabled={rows.length === 0 || savingBulk}
             >
               {savingBulk && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar y subir ({rows.filter(r => r.selected && r.personal_id).length})
+              Confirmar y subir ({selectedAssignedCount})
             </Button>
           </DialogFooter>
 
