@@ -200,6 +200,7 @@ export function DocumentosEmpleadoTab() {
   const [filterTipo, setFilterTipo] = useState<"all" | TipoDocumento>("all");
   const [filterPersonal, setFilterPersonal] = useState<string>("");
   const [filterEstado, setFilterEstado] = useState<"all" | "pendiente" | "visto" | "firmado">("all");
+  const qc = useQueryClient();
 
   const { documentos, isLoading, uploadOne, isUploading, remove, getDownloadUrl } =
     useEmpleadoDocumentos({
