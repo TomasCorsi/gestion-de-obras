@@ -40,17 +40,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
-  const role = pickPrimaryRole(roles);
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [roleLoading, setRoleLoading] = useState(false);
+  const role = pickPrimaryRole(roles);
 
   // Helper: race a promise against a timeout (resolves with null on timeout)
   const raceWithTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
@@ -59,11 +51,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
     ]);
 
+  const hydrateRolesFromCache = (userId: string) => {
+    try {
+      const cachedList = localStorage.getItem(`offline_cache_roles_${userId}`);
+      if (cachedList) {
+        const parsed = JSON.parse(cachedList);
+        if (Array.isArray(parsed)) {
+          setRoles(parsed as AppRole[]);
+          return;
+        }
+      }
+      // Legacy single-role cache
+      const cachedRole = localStorage.getItem(`offline_cache_role_${userId}`);
+      if (cachedRole) setRoles([cachedRole as AppRole]);
+    } catch {}
+  };
+
   const fetchUserData = async (userId: string) => {
     setRoleLoading(true);
     try {
-      // Fetch profile and role in parallel
-      const [profileResult, roleResult] = await Promise.all([
+      const [profileResult, rolesResult] = await Promise.all([
         supabase
           .from('profiles')
           .select('*')
@@ -72,8 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         supabase
           .from('user_roles')
           .select('role')
-          .eq('user_id', userId)
-          .maybeSingle()
+          .eq('user_id', userId),
       ]);
 
       if (profileResult.error) throw profileResult.error;
@@ -82,20 +88,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try { localStorage.setItem(`offline_cache_profile_${userId}`, JSON.stringify(profileResult.data)); } catch {}
       }
 
-      if (roleResult.error) throw roleResult.error;
-      const fetchedRole = roleResult.data?.role as AppRole || null;
-      setRole(fetchedRole);
-      if (fetchedRole) {
-        try { localStorage.setItem(`offline_cache_role_${userId}`, fetchedRole); } catch {}
-      }
+      if (rolesResult.error) throw rolesResult.error;
+      const fetchedRoles = (rolesResult.data ?? [])
+        .map((r: { role: string }) => r.role as AppRole)
+        .filter(Boolean);
+      setRoles(fetchedRoles);
+      try {
+        localStorage.setItem(`offline_cache_roles_${userId}`, JSON.stringify(fetchedRoles));
+        const primary = pickPrimaryRole(fetchedRoles);
+        if (primary) localStorage.setItem(`offline_cache_role_${userId}`, primary);
+      } catch {}
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Offline fallback: serve cached data (may already be hydrated below)
       try {
         const cachedProfile = localStorage.getItem(`offline_cache_profile_${userId}`);
         if (cachedProfile) setProfile(JSON.parse(cachedProfile));
-        const cachedRole = localStorage.getItem(`offline_cache_role_${userId}`);
-        if (cachedRole) setRole(cachedRole as AppRole);
+        hydrateRolesFromCache(userId);
       } catch {}
     } finally {
       setRoleLoading(false);
@@ -107,7 +115,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     const initializeAuth = async () => {
       try {
-        // 1. Hydrate profile/role from cache IMMEDIATELY so ProtectedRoute unblocks fast
         const cachedUserId = (() => {
           try {
             const raw = localStorage.getItem(`sb-euytcvwhrhvtwvppvawd-auth-token`);
@@ -121,12 +128,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           try {
             const cp = localStorage.getItem(`offline_cache_profile_${cachedUserId}`);
             if (cp) setProfile(JSON.parse(cp));
-            const cr = localStorage.getItem(`offline_cache_role_${cachedUserId}`);
-            if (cr) setRole(cr as AppRole);
+            hydrateRolesFromCache(cachedUserId);
           } catch {}
         }
 
-        // 2. Race getSession() with a 3s timeout
         const sessionResult = await raceWithTimeout(
           supabase.auth.getSession(),
           3000
@@ -139,11 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (resolvedSession?.user) {
           setSession(resolvedSession);
           setUser(resolvedSession.user);
-          // 3. Race fetchUserData with a 3s timeout (cache already hydrated above)
           await raceWithTimeout(fetchUserData(resolvedSession.user.id), 3000);
         } else if (sessionResult === null && cachedUserId) {
-          // getSession timed out but we have cached auth — try to build user from cache
-          // The Supabase SDK persists the session in localStorage; read it directly
           try {
             const raw = localStorage.getItem(`sb-euytcvwhrhvtwvppvawd-auth-token`);
             if (raw) {
@@ -154,9 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               }
             }
           } catch {}
-          // profile/role already hydrated from step 1
         } else {
-          // No session at all
           setSession(null);
           setUser(null);
         }
@@ -171,20 +171,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     initializeAuth();
 
-    // Set up auth state listener for subsequent changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!isMounted) return;
 
-        // Evitar “flicker”/recargas visuales: en refresh de token solo actualizamos el session.
-        // Mantener el mismo objeto `user` evita que hooks dependientes (ej: useEmpleadoProfile)
-        // se re-ejecuten al volver a enfocar la pestaña.
         if ((event as unknown as string) === 'TOKEN_REFRESHED') {
           setSession(session);
           return;
         }
         
-        // En refresh de token solo actualizamos la sesión sin disparar re-renders innecesarios
         if (event === 'TOKEN_REFRESHED') {
           console.debug('[Auth] Token refreshed silently');
           setSession(session);
@@ -195,7 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
 
         if (session?.user) {
-          // Use setTimeout to avoid blocking the callback
           setTimeout(() => {
             if (isMounted) {
               fetchUserData(session.user.id);
@@ -203,7 +197,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         } else {
           setProfile(null);
-          setRole(null);
+          setRoles([]);
         }
       }
     );
@@ -255,20 +249,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
     setProfile(null);
-    setRole(null);
+    setRoles([]);
     toast.success('Sesión cerrada');
   };
 
   const hasRole = (requiredRole: AppRole | AppRole[]): boolean => {
-    if (!role) return false;
-    
-    // Admin has access to everything
-    if (role === 'admin') return true;
-    
-    if (Array.isArray(requiredRole)) {
-      return requiredRole.includes(role);
-    }
-    return role === requiredRole;
+    if (roles.length === 0) return false;
+    if (roles.includes('admin')) return true;
+    const required = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    return required.some((r) => roles.includes(r));
   };
 
   return (
@@ -278,6 +267,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         session,
         profile,
         role,
+        roles,
         loading,
         signUp,
         signIn,
