@@ -233,11 +233,12 @@ export function DocumentosEmpleadoTab() {
         setAnalyzeProgress({ done: extractedCount, total: archives.length });
       } else if (isRar(f)) {
         try {
-          const inner = await extractRar(f);
+          const inner = await withTimeout(extractRar(f), 120_000, `extraer "${f.name}"`);
           if (inner.length === 0) toast.warning(`"${f.name}" no contenía PDFs`);
           out.push(...inner);
         } catch (e: any) {
-          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}`);
+          console.error("[extractRar]", f.name, e);
+          toast.error(`No se pudo abrir RAR "${f.name}": ${e?.message || e}. Probá subiéndolo como ZIP.`);
         }
         extractedCount++;
         setAnalyzeProgress({ done: extractedCount, total: archives.length });
