@@ -883,7 +883,7 @@ export function DocumentosEmpleadoTab() {
                   value={masTipo}
                   onValueChange={(v: any) => {
                     setMasTipo(v);
-                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 1);
+                    setPagesPerDoc(v === "recibo_sueldo" ? 2 : 16);
                     setItems([]);
                   }}
                 >
