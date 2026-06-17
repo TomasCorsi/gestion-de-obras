@@ -638,7 +638,7 @@ export function DocumentosEmpleadoTab() {
           const merged = await PDFDocument.create();
           for (const f of files) {
             const bytes = new Uint8Array(await f.arrayBuffer());
-            const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
+            const src = await PDFDocument.load(bytes, { ignoreEncryption: true, throwOnInvalidObject: false, updateMetadata: false });
             const copied = await merged.copyPages(src, src.getPageIndices());
             copied.forEach((p) => merged.addPage(p));
           }
