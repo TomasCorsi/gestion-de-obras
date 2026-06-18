@@ -1,23 +1,16 @@
 import { useState, useMemo, lazy, Suspense } from "react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { format, startOfMonth } from "date-fns";
 import { Loader2, Download, BarChart3, User, Users, ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { useParteDiarioRendimiento } from "@/hooks/useParteDiarioRendimiento";
+import { useObras } from "@/hooks/useObras";
 import { ParteDiarioResumenGeneral } from "./ParteDiarioResumenGeneral";
+import { PeriodoObraFilters } from "./PeriodoObraFilters";
 import type { PersonalDB } from "@/hooks/usePersonal";
 
-// Lazy: recharts (~200KB) only when this tab actually renders a chart
 const ParteDiarioRendimientoChart = lazy(() =>
   import("./ParteDiarioRendimientoChart").then(m => ({ default: m.ParteDiarioRendimientoChart }))
 );
@@ -37,40 +30,24 @@ const ROL_LABELS: Record<string, string> = {
   administrativo: 'Administrativo',
 };
 
-const getMesLabel = (mes: number, anio: number): string => {
-  const date = new Date(anio, mes - 1, 1);
-  return format(date, "MMMM yyyy", { locale: es });
-};
-
 export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTabProps) => {
-  const currentDate = new Date();
+  const today = new Date();
   const [activeSubTab, setActiveSubTab] = useState<string>("general");
   const [selectedEmpleadoId, setSelectedEmpleadoId] = useState<string>("");
-  const [selectedMes, setSelectedMes] = useState<number>(currentDate.getMonth() + 1);
-  const [selectedAnio, setSelectedAnio] = useState<number>(currentDate.getFullYear());
+  const [fechaDesde, setFechaDesde] = useState<Date>(startOfMonth(today));
+  const [fechaHasta, setFechaHasta] = useState<Date>(today);
+  const [obraId, setObraId] = useState<string>("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
+  const { obras } = useObras();
 
   const { data, isLoading } = useParteDiarioRendimiento(
     selectedEmpleadoId || undefined,
-    selectedMes,
-    selectedAnio
+    fechaDesde,
+    fechaHasta,
+    obraId || undefined
   );
 
-  // Generate month options (current and previous 11 months)
-  const monthOptions = useMemo(() => {
-    const options = [];
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      options.push({
-        mes: date.getMonth() + 1,
-        anio: date.getFullYear(),
-        label: format(date, "MMMM yyyy", { locale: es }),
-      });
-    }
-    return options;
-  }, [currentDate]);
-
-  // Generate combobox options for employees
   const empleadoOptions: ComboboxOption[] = useMemo(() => {
     return personal.map(emp => {
       const nombre = [emp.nombre, emp.apellido].filter(Boolean).join(" ");
@@ -79,32 +56,28 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
       return {
         value: emp.id,
         label: `${nombre} (${rol})`,
-        // Include legajo, nombre, apellido in search
         searchValue: `${legajo} ${emp.nombre || ''} ${emp.apellido || ''} ${nombre} ${rol}`,
       };
     });
   }, [personal]);
 
-  const handleMonthChange = (value: string) => {
-    const [mes, anio] = value.split("-").map(Number);
-    setSelectedMes(mes);
-    setSelectedAnio(anio);
-  };
+  const periodoLabel = `${format(fechaDesde, "dd/MM/yyyy")} - ${format(fechaHasta, "dd/MM/yyyy")}`;
 
   const handleDownloadPDF = async () => {
     if (!data.empleado || data.partes.length === 0) return;
 
     setIsGeneratingPDF(true);
     try {
-      // Lazy-load PDF generator (jsPDF + autoTable, ~400KB)
       const { generateParteDiarioPDF } = await import("@/utils/generateParteDiarioPDF");
+      const obraNombre = obraId ? obras.find(o => o.id === obraId)?.nombre : undefined;
       await generateParteDiarioPDF(
         data.empleado,
         data.partes,
         data.totales,
-        selectedMes,
-        selectedAnio,
-        personal
+        fechaDesde,
+        fechaHasta,
+        personal,
+        obraNombre
       );
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -123,11 +96,8 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
     setActiveSubTab("general");
   };
 
-  const selectedEmpleado = personal.find((p) => p.id === selectedEmpleadoId);
-
   return (
     <div className="space-y-6">
-      {/* Sub-tabs */}
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="general" className="gap-2">
@@ -140,17 +110,14 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
           </TabsTrigger>
         </TabsList>
 
-        {/* General Summary Tab */}
         <TabsContent value="general" className="mt-4">
           <ParteDiarioResumenGeneral onSelectEmpleado={handleSelectFromGeneral} />
         </TabsContent>
 
-        {/* Individual Employee Tab */}
         <TabsContent value="empleado" className="mt-4">
           <div className="space-y-6">
-            {/* Filters */}
             <Card>
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-4 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                   <div className="flex items-center gap-2">
                     {selectedEmpleadoId && (
@@ -161,9 +128,8 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                     <BarChart3 className="h-5 w-5 text-primary" />
                     <CardTitle>Detalle por Empleado</CardTitle>
                   </div>
-                  
+
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Employee combobox with search */}
                     <Combobox
                       options={empleadoOptions}
                       value={selectedEmpleadoId}
@@ -173,26 +139,6 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                       emptyText="No se encontraron empleados"
                       className="w-[280px]"
                     />
-                    <Select
-                      value={`${selectedMes}-${selectedAnio}`}
-                      onValueChange={handleMonthChange}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {monthOptions.map((opt) => (
-                          <SelectItem
-                            key={`${opt.mes}-${opt.anio}`}
-                            value={`${opt.mes}-${opt.anio}`}
-                          >
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {/* Download PDF button */}
                     <Button
                       variant="outline"
                       onClick={handleDownloadPDF}
@@ -207,10 +153,19 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                     </Button>
                   </div>
                 </div>
+
+                <PeriodoObraFilters
+                  fechaDesde={fechaDesde}
+                  fechaHasta={fechaHasta}
+                  obraId={obraId}
+                  obras={obras}
+                  onFechaDesdeChange={setFechaDesde}
+                  onFechaHastaChange={setFechaHasta}
+                  onObraChange={setObraId}
+                />
               </CardHeader>
             </Card>
 
-            {/* Content */}
             {!selectedEmpleadoId ? (
               <Card>
                 <CardContent className="py-12">
@@ -229,7 +184,6 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
               </div>
             ) : data.empleado ? (
               <>
-                {/* Employee info banner */}
                 <Card className="bg-muted/50">
                   <CardContent className="py-3 px-4">
                     <div className="flex items-center justify-between">
@@ -248,13 +202,17 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                         </div>
                       </div>
                       <div className="text-right text-sm text-muted-foreground">
-                        {getMesLabel(selectedMes, selectedAnio)}
+                        {periodoLabel}
+                        {obraId && (
+                          <div className="text-xs">
+                            {obras.find(o => o.id === obraId)?.nombre}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Charts */}
                 {data.partes.length === 0 ? (
                   <Card>
                     <CardContent className="py-12">
@@ -270,7 +228,7 @@ export const ParteDiarioRendimientoTab = ({ personal }: ParteDiarioRendimientoTa
                       diasDelMes={data.diasDelMes}
                       totales={data.totales}
                       rol={data.empleado.rol}
-                      mesLabel={getMesLabel(selectedMes, selectedAnio)}
+                      mesLabel={periodoLabel}
                     />
                   </Suspense>
                 )}
