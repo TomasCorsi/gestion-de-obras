@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, parseISO, differenceInMinutes } from 'date-fns';
+import { eachDayOfInterval, format } from 'date-fns';
 import type { ParteDiario } from './useParteDiario';
 
 export type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo';
@@ -83,37 +83,43 @@ function calculateChecklistCumplimiento(partes: ParteDiario[], rol: RolPersonal)
 
 export function useParteDiarioRendimiento(
   empleadoId: string | undefined,
-  mes: number,
-  anio: number
+  fechaDesde: Date,
+  fechaHasta: Date,
+  obraId?: string
 ) {
-  const fechaInicio = startOfMonth(new Date(anio, mes - 1));
-  const fechaFin = endOfMonth(new Date(anio, mes - 1));
+  const desdeStr = format(fechaDesde, 'yyyy-MM-dd');
+  const hastaStr = format(fechaHasta, 'yyyy-MM-dd');
   
   const { data, isLoading, error } = useQuery({
-    queryKey: ['partes_diarios_rendimiento', empleadoId, mes, anio],
+    queryKey: ['partes_diarios_rendimiento', empleadoId, desdeStr, hastaStr, obraId || 'all'],
     enabled: !!empleadoId,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     queryFn: async () => {
-      // Parallelize the two independent fetches
+      let partesQuery = supabase
+        .from('partes_diarios')
+        .select(`
+          *,
+          personal:personal_id (id, nombre, apellido, rol),
+          obras:obra_id (id, nombre),
+          maquinarias:maquinaria_id (id, codigo, tipo, patente)
+        `)
+        .eq('personal_id', empleadoId!)
+        .gte('fecha', desdeStr)
+        .lte('fecha', hastaStr)
+        .order('fecha', { ascending: true });
+
+      if (obraId) {
+        partesQuery = partesQuery.eq('obra_id', obraId);
+      }
+
       const [empleadoRes, partesRes] = await Promise.all([
         supabase
           .from('personal_selector' as any)
           .select('id, nombre, apellido, rol, legajo')
           .eq('id', empleadoId!)
           .single() as unknown as Promise<{ data: EmpleadoRendimiento | null; error: any }>,
-        supabase
-          .from('partes_diarios')
-          .select(`
-            *,
-            personal:personal_id (id, nombre, apellido, rol),
-            obras:obra_id (id, nombre),
-            maquinarias:maquinaria_id (id, codigo, tipo, patente)
-          `)
-          .eq('personal_id', empleadoId!)
-          .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
-          .lte('fecha', format(fechaFin, 'yyyy-MM-dd'))
-          .order('fecha', { ascending: true }),
+        partesQuery,
       ]);
 
       if (empleadoRes.error) throw empleadoRes.error;
@@ -122,16 +128,13 @@ export function useParteDiarioRendimiento(
       const partes = partesRes.data as unknown as ParteDiario[];
       const empleado = empleadoRes.data as EmpleadoRendimiento;
       
-      // Generate all days of the month
-      const diasIntervalo = eachDayOfInterval({ start: fechaInicio, end: fechaFin });
+      const diasIntervalo = eachDayOfInterval({ start: fechaDesde, end: fechaHasta });
       
-      // Map partes by date
       const partesPorFecha = new Map<string, ParteDiario>();
       partes.forEach(parte => {
         partesPorFecha.set(parte.fecha, parte);
       });
       
-      // Build diasDelMes
       const diasDelMes: DiaRendimiento[] = diasIntervalo.map(dia => {
         const fechaStr = format(dia, 'yyyy-MM-dd');
         const parte = partesPorFecha.get(fechaStr);
@@ -166,7 +169,6 @@ export function useParteDiarioRendimiento(
         };
       });
       
-      // Calculate totals
       const partesCompletados = partes.filter(p => p.estado === 'completado').length;
       const partesBorrador = partes.filter(p => p.estado === 'borrador').length;
       
