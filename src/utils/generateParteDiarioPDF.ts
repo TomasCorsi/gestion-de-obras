@@ -153,9 +153,10 @@ export async function generateParteDiarioPDF(
   empleado: EmpleadoRendimiento,
   partes: ParteDiario[],
   totales: TotalesRendimiento,
-  mes: number,
-  anio: number,
-  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>
+  fechaDesde: Date,
+  fechaHasta: Date,
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>,
+  obraNombre?: string
 ): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
