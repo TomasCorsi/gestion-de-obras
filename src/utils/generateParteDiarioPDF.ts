@@ -442,6 +442,6 @@ export async function generateParteDiarioPDF(
 
   // Save PDF
   const empleadoNombre = [empleado.nombre, empleado.apellido].filter(Boolean).join("_") || "Empleado";
-  const fileName = `PartesDiarios_${empleadoNombre}_${getMesNombre(mes)}${anio}.pdf`;
+  const fileName = `PartesDiarios_${empleadoNombre}_${format(fechaDesde, "yyyyMMdd")}-${format(fechaHasta, "yyyyMMdd")}.pdf`;
   doc.save(fileName);
 }
