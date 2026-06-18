@@ -62,13 +62,6 @@ function formatTime(time: string | null): string {
   return time.slice(0, 5);
 }
 
-function getMesNombre(mes: number): string {
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-  ];
-  return meses[mes - 1] || "";
-}
 
 function getTableColumnsForRole(rol: RolPersonal): { header: string[]; keys: string[] } {
   switch (rol) {
