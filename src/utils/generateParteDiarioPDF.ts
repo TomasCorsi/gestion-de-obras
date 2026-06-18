@@ -246,10 +246,17 @@ export async function generateParteDiarioPDF(
   yPos += 6;
 
   // ============== PERIOD ==============
+  const periodoStr = `${format(fechaDesde, "dd/MM/yyyy")} al ${format(fechaHasta, "dd/MM/yyyy")}`;
   doc.setFont("helvetica", "bold");
   doc.text("PERÍODO:", margin, yPos);
   doc.setFont("helvetica", "normal");
-  doc.text(`${getMesNombre(mes)} ${anio}`, margin + 20, yPos);
+  doc.text(periodoStr, margin + 20, yPos);
+  if (obraNombre) {
+    doc.setFont("helvetica", "bold");
+    doc.text("OBRA:", col2X, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(obraNombre, col2X + 14, yPos);
+  }
   yPos += 6;
 
   // ============== SUMMARY (adapted by role) ==============
