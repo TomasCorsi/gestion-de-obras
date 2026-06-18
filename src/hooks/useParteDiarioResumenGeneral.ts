@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { format } from 'date-fns';
 
 export type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo';
 
@@ -58,27 +58,36 @@ function calculateChecklistCumplimiento(partes: any[], rol: RolPersonal): number
   return Math.round((checksCompletos / totalChecks) * 100);
 }
 
-export function useParteDiarioResumenGeneral(mes: number, anio: number) {
-  const fechaInicio = startOfMonth(new Date(anio, mes - 1));
-  const fechaFin = endOfMonth(new Date(anio, mes - 1));
+export function useParteDiarioResumenGeneral(
+  fechaDesde: Date,
+  fechaHasta: Date,
+  obraId?: string
+) {
+  const desdeStr = format(fechaDesde, 'yyyy-MM-dd');
+  const hastaStr = format(fechaHasta, 'yyyy-MM-dd');
   
   const { data, isLoading, error } = useQuery({
-    queryKey: ['partes_diarios_resumen_general', mes, anio],
+    queryKey: ['partes_diarios_resumen_general', desdeStr, hastaStr, obraId || 'all'],
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     queryFn: async () => {
-      // Parallelize independent fetches
+      let partesQuery = supabase
+        .from('partes_diarios')
+        .select('personal_id, obra_id, estado, horometro_inicio, horometro_fin, cantidad_viajes, cantidad_movimiento_interno, combustible, check_filtro_aire, check_aceite_motor, check_aceite_hidraulico, check_liquido_refrigerante, check_uria')
+        .gte('fecha', desdeStr)
+        .lte('fecha', hastaStr);
+
+      if (obraId) {
+        partesQuery = partesQuery.eq('obra_id', obraId);
+      }
+
       const [empleadosRes, partesRes] = await Promise.all([
         supabase
           .from('personal_selector' as any)
           .select('id, nombre, apellido, rol, legajo')
           .eq('activo', true)
           .order('apellido') as unknown as Promise<{ data: { id: string; nombre: string | null; apellido: string | null; rol: string; legajo: string | null }[] | null; error: any }>,
-        supabase
-          .from('partes_diarios')
-          .select('personal_id, estado, horometro_inicio, horometro_fin, cantidad_viajes, cantidad_movimiento_interno, combustible, check_filtro_aire, check_aceite_motor, check_aceite_hidraulico, check_liquido_refrigerante, check_uria')
-          .gte('fecha', format(fechaInicio, 'yyyy-MM-dd'))
-          .lte('fecha', format(fechaFin, 'yyyy-MM-dd')),
+        partesQuery,
       ]);
 
       if (empleadosRes.error) throw empleadosRes.error;
@@ -87,7 +96,6 @@ export function useParteDiarioResumenGeneral(mes: number, anio: number) {
       const empleadosData = empleadosRes.data;
       const partesData = partesRes.data;
       
-      // Group partes by employee
       const partesPorEmpleado = new Map<string, any[]>();
       partesData?.forEach(parte => {
         const current = partesPorEmpleado.get(parte.personal_id) || [];
@@ -95,7 +103,6 @@ export function useParteDiarioResumenGeneral(mes: number, anio: number) {
         partesPorEmpleado.set(parte.personal_id, current);
       });
       
-      // Calculate metrics for each employee
       const empleados: EmpleadoResumen[] = (empleadosData || []).map(emp => {
         const partes = partesPorEmpleado.get(emp.id) || [];
         const partesCompletados = partes.filter(p => p.estado === 'completado').length;
@@ -127,12 +134,10 @@ export function useParteDiarioResumenGeneral(mes: number, anio: number) {
         };
       });
       
-      // Filter only employees who have at least one parte
       const empleadosConPartes = empleados.filter(
         e => e.partesCompletados > 0 || e.partesBorrador > 0
       );
       
-      // Calculate totals
       const totales = {
         totalEmpleados: empleadosConPartes.length,
         totalPartesCompletados: empleadosConPartes.reduce((sum, e) => sum + e.partesCompletados, 0),

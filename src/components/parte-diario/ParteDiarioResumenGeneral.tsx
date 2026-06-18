@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { format, startOfMonth } from "date-fns";
 import { 
   Loader2, 
   Users, 
@@ -15,13 +14,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Table,
   TableBody,
   TableCell,
@@ -31,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useParteDiarioResumenGeneral, type EmpleadoResumen } from "@/hooks/useParteDiarioResumenGeneral";
+import { useObras } from "@/hooks/useObras";
+import { PeriodoObraFilters } from "./PeriodoObraFilters";
 
 const ROL_LABELS: Record<string, string> = {
   maquinista: 'Maquinista',
@@ -48,34 +42,15 @@ interface ParteDiarioResumenGeneralProps {
 }
 
 export const ParteDiarioResumenGeneral = ({ onSelectEmpleado }: ParteDiarioResumenGeneralProps) => {
-  const currentDate = new Date();
-  const [selectedMes, setSelectedMes] = useState<number>(currentDate.getMonth() + 1);
-  const [selectedAnio, setSelectedAnio] = useState<number>(currentDate.getFullYear());
+  const today = new Date();
+  const [fechaDesde, setFechaDesde] = useState<Date>(startOfMonth(today));
+  const [fechaHasta, setFechaHasta] = useState<Date>(today);
+  const [obraId, setObraId] = useState<string>("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { data, isLoading } = useParteDiarioResumenGeneral(selectedMes, selectedAnio);
+  const { obras } = useObras();
+  const { data, isLoading } = useParteDiarioResumenGeneral(fechaDesde, fechaHasta, obraId || undefined);
 
-  // Generate month options
-  const monthOptions = useMemo(() => {
-    const options = [];
-    for (let i = 0; i < 12; i++) {
-      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
-      options.push({
-        mes: date.getMonth() + 1,
-        anio: date.getFullYear(),
-        label: format(date, "MMMM yyyy", { locale: es }),
-      });
-    }
-    return options;
-  }, [currentDate]);
-
-  const handleMonthChange = (value: string) => {
-    const [mes, anio] = value.split("-").map(Number);
-    setSelectedMes(mes);
-    setSelectedAnio(anio);
-  };
-
-  // Filter employees by search term
   const filteredEmpleados = useMemo(() => {
     if (!searchTerm.trim()) return data.empleados;
     
@@ -91,35 +66,29 @@ export const ParteDiarioResumenGeneral = ({ onSelectEmpleado }: ParteDiarioResum
 
   return (
     <div className="space-y-6">
-      {/* Month selector */}
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
               Resumen General
             </CardTitle>
-            <Select
-              value={`${selectedMes}-${selectedAnio}`}
-              onValueChange={handleMonthChange}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {monthOptions.map((opt) => (
-                  <SelectItem
-                    key={`${opt.mes}-${opt.anio}`}
-                    value={`${opt.mes}-${opt.anio}`}
-                  >
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="text-sm text-muted-foreground">
+              {format(fechaDesde, "dd/MM/yyyy")} - {format(fechaHasta, "dd/MM/yyyy")}
+            </div>
           </div>
+          <PeriodoObraFilters
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
+            obraId={obraId}
+            obras={obras}
+            onFechaDesdeChange={setFechaDesde}
+            onFechaHastaChange={setFechaHasta}
+            onObraChange={setObraId}
+          />
         </CardHeader>
       </Card>
+
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">

@@ -62,13 +62,6 @@ function formatTime(time: string | null): string {
   return time.slice(0, 5);
 }
 
-function getMesNombre(mes: number): string {
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-  ];
-  return meses[mes - 1] || "";
-}
 
 function getTableColumnsForRole(rol: RolPersonal): { header: string[]; keys: string[] } {
   switch (rol) {
@@ -160,9 +153,10 @@ export async function generateParteDiarioPDF(
   empleado: EmpleadoRendimiento,
   partes: ParteDiario[],
   totales: TotalesRendimiento,
-  mes: number,
-  anio: number,
-  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>
+  fechaDesde: Date,
+  fechaHasta: Date,
+  personalList?: Array<{ id: string; nombre: string | null; apellido: string | null }>,
+  obraNombre?: string
 ): Promise<void> {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -252,10 +246,17 @@ export async function generateParteDiarioPDF(
   yPos += 6;
 
   // ============== PERIOD ==============
+  const periodoStr = `${format(fechaDesde, "dd/MM/yyyy")} al ${format(fechaHasta, "dd/MM/yyyy")}`;
   doc.setFont("helvetica", "bold");
   doc.text("PERÍODO:", margin, yPos);
   doc.setFont("helvetica", "normal");
-  doc.text(`${getMesNombre(mes)} ${anio}`, margin + 20, yPos);
+  doc.text(periodoStr, margin + 20, yPos);
+  if (obraNombre) {
+    doc.setFont("helvetica", "bold");
+    doc.text("OBRA:", col2X, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(obraNombre, col2X + 14, yPos);
+  }
   yPos += 6;
 
   // ============== SUMMARY (adapted by role) ==============
@@ -441,6 +442,6 @@ export async function generateParteDiarioPDF(
 
   // Save PDF
   const empleadoNombre = [empleado.nombre, empleado.apellido].filter(Boolean).join("_") || "Empleado";
-  const fileName = `PartesDiarios_${empleadoNombre}_${getMesNombre(mes)}${anio}.pdf`;
+  const fileName = `PartesDiarios_${empleadoNombre}_${format(fechaDesde, "yyyyMMdd")}-${format(fechaHasta, "yyyyMMdd")}.pdf`;
   doc.save(fileName);
 }
