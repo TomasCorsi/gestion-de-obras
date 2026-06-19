@@ -135,33 +135,251 @@ export function LiquidacionObraDialog({
     [resumen]
   );
 
-  const exportarExcel = () => {
+  const exportarExcel = async () => {
     if (resumen.length === 0) {
       toast.error("No hay datos para exportar");
       return;
     }
-    const wb = XLSX.utils.book_new();
-    const data = resumen.map((r) => ({
-      "Tipo Material": r.tipo,
-      Viajes: r.viajes,
-      Cantidad: r.cantidad,
-      Unidad: r.unidad,
-      "Precio Total": r.precioTotal,
-    }));
-    data.push({
-      "Tipo Material": "TOTAL",
-      Viajes: totales.viajes,
-      Cantidad: totales.cantidad,
-      Unidad: "",
-      "Precio Total": totales.precioTotal,
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = "Gestión de Obras";
+    wb.created = new Date();
+
+    const COLOR_RED = "FFB00020";
+    const COLOR_BLACK = "FF0F0F0F";
+    const COLOR_GRAY_LIGHT = "FFF7F7F7";
+    const COLOR_GRAY_MED = "FFE5E5E5";
+    const COLOR_WHITE = "FFFFFFFF";
+    const COLOR_BORDER = "FFBFBFBF";
+
+    const thinBorder = {
+      top: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      left: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      bottom: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+      right: { style: "thin" as const, color: { argb: COLOR_BORDER } },
+    };
+
+    const applyHeaderStyle = (row: ExcelJS.Row) => {
+      row.height = 22;
+      row.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 11 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_BLACK } };
+        cell.alignment = { vertical: "middle", horizontal: "center" };
+        cell.border = thinBorder;
+      });
+    };
+
+    const applyTotalStyle = (row: ExcelJS.Row) => {
+      row.height = 22;
+      row.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 11 };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_RED } };
+        cell.alignment = { vertical: "middle" };
+        cell.border = thinBorder;
+      });
+    };
+
+    // ---------- Hoja 1: Liquidación ----------
+    const ws = wb.addWorksheet("Liquidación");
+    ws.columns = [
+      { width: 28 },
+      { width: 12 },
+      { width: 14 },
+      { width: 10 },
+      { width: 18 },
+    ];
+
+    // Título obra
+    const titleRow = ws.addRow([`Obra: ${selectedObra}`]);
+    ws.mergeCells(titleRow.number, 1, titleRow.number, 5);
+    const titleCell = titleRow.getCell(1);
+    titleCell.font = { bold: true, color: { argb: COLOR_WHITE }, size: 12 };
+    titleCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_RED } };
+    titleCell.alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    titleRow.height = 24;
+
+    // Header
+    const headerRow = ws.addRow(["Tipo Material", "Viajes", "Cantidad", "Unidad", "Precio Total"]);
+    applyHeaderStyle(headerRow);
+
+    // Data
+    resumen.forEach((t, idx) => {
+      const dataRow = ws.addRow([t.tipo, t.viajes, t.cantidad, t.unidad, t.precioTotal]);
+      const zebra = idx % 2 === 1;
+      dataRow.eachCell((cell, col) => {
+        cell.border = thinBorder;
+        if (zebra) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_LIGHT } };
+        }
+        if (col === 1) cell.alignment = { vertical: "middle", horizontal: "left" };
+        else if (col === 4) cell.alignment = { vertical: "middle", horizontal: "center" };
+        else cell.alignment = { vertical: "middle", horizontal: "right" };
+      });
+      dataRow.getCell(2).numFmt = "#,##0";
+      dataRow.getCell(3).numFmt = "#,##0.00";
+      dataRow.getCell(5).numFmt = '"$"#,##0.00';
     });
-    const ws = XLSX.utils.json_to_sheet(data);
-    ws["!cols"] = Object.keys(data[0]).map((key) => ({ wch: Math.max(key.length, 14) }));
-    XLSX.utils.book_append_sheet(wb, ws, "Liquidación");
+
+    // Subtotal por obra
+    const unidadesUnicas = new Set(resumen.map((t) => t.unidad));
+    const unidadSubtotal = unidadesUnicas.size === 1 ? [...unidadesUnicas][0] : "";
+    const subRow = ws.addRow([
+      `Subtotal ${selectedObra}`,
+      totales.viajes,
+      totales.cantidad,
+      unidadSubtotal,
+      totales.precioTotal,
+    ]);
+    subRow.height = 20;
+    subRow.eachCell((cell, col) => {
+      cell.font = { bold: true, color: { argb: COLOR_BLACK } };
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_GRAY_MED } };
+      cell.border = {
+        ...thinBorder,
+        top: { style: "medium", color: { argb: COLOR_BLACK } },
+      };
+      if (col === 1) cell.alignment = { vertical: "middle", horizontal: "left" };
+      else if (col === 4) cell.alignment = { vertical: "middle", horizontal: "center" };
+      else cell.alignment = { vertical: "middle", horizontal: "right" };
+    });
+    subRow.getCell(2).numFmt = "#,##0";
+    subRow.getCell(3).numFmt = "#,##0.00";
+    subRow.getCell(5).numFmt = '"$"#,##0.00';
+
+    ws.addRow([]);
+
+    // Total general
+    const totalRow = ws.addRow([
+      "TOTAL GENERAL",
+      totales.viajes,
+      totales.cantidad,
+      "",
+      totales.precioTotal,
+    ]);
+    applyTotalStyle(totalRow);
+    totalRow.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+    totalRow.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(3).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(5).alignment = { vertical: "middle", horizontal: "right" };
+    totalRow.getCell(2).numFmt = "#,##0";
+    totalRow.getCell(3).numFmt = "#,##0.00";
+    totalRow.getCell(5).numFmt = '"$"#,##0.00';
+
+    // ---------- Hoja 2: Liquidación General (por forma de pago) ----------
+    type FormaPagoTotales = {
+      efectivo: number;
+      transferencia: number;
+      cuenta_corriente: number;
+      sin_especificar: number;
+    };
+    const normalizarFormaPago = (fp: string | null | undefined): keyof FormaPagoTotales => {
+      if (!fp) return "sin_especificar";
+      const v = fp.toLowerCase().trim();
+      if (v.includes("efectivo")) return "efectivo";
+      if (v.includes("transfer")) return "transferencia";
+      if (v.includes("cuenta") || v.includes("cta") || v.includes("corriente")) return "cuenta_corriente";
+      return "sin_especificar";
+    };
+
+    const totFP: FormaPagoTotales = {
+      efectivo: 0,
+      transferencia: 0,
+      cuenta_corriente: 0,
+      sin_especificar: 0,
+    };
+    remitosObra
+      .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
+      .forEach((r) => {
+        totFP[normalizarFormaPago((r as any).forma_pago)] += r.precio_total || 0;
+      });
+
+    const hayFormaPago = totFP.efectivo + totFP.transferencia + totFP.cuenta_corriente > 0;
+    const moneyFmt = '"$"#,##0.00;[Red]("$"#,##0.00);"-"';
+
+    const wsGeneral = wb.addWorksheet("Liquidación General", {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
+
+    if (hayFormaPago) {
+      wsGeneral.columns = [
+        { width: 36 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 18 },
+        { width: 20 },
+      ];
+      const genHeader = wsGeneral.addRow([
+        "Obra",
+        "Efectivo",
+        "Transferencia",
+        "Cta. Corriente",
+        "Sin especificar",
+        "Precio Total",
+      ]);
+      applyHeaderStyle(genHeader);
+
+      const r = wsGeneral.addRow([
+        selectedObra,
+        totFP.efectivo,
+        totFP.transferencia,
+        totFP.cuenta_corriente,
+        totFP.sin_especificar,
+        totales.precioTotal,
+      ]);
+      r.eachCell((cell, col) => {
+        cell.border = thinBorder;
+        cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+        if (col >= 2) cell.numFmt = moneyFmt;
+      });
+
+      const genTotal = wsGeneral.addRow([
+        "TOTAL",
+        totFP.efectivo,
+        totFP.transferencia,
+        totFP.cuenta_corriente,
+        totFP.sin_especificar,
+        totales.precioTotal,
+      ]);
+      applyTotalStyle(genTotal);
+      genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      for (let col = 2; col <= 6; col++) {
+        genTotal.getCell(col).alignment = { vertical: "middle", horizontal: "right" };
+        genTotal.getCell(col).numFmt = moneyFmt;
+      }
+    } else {
+      wsGeneral.columns = [{ width: 36 }, { width: 20 }];
+      const genHeader = wsGeneral.addRow(["Obra", "Precio Total"]);
+      applyHeaderStyle(genHeader);
+
+      const r = wsGeneral.addRow([selectedObra, totales.precioTotal]);
+      r.eachCell((cell, col) => {
+        cell.border = thinBorder;
+        cell.alignment = { vertical: "middle", horizontal: col === 1 ? "left" : "right" };
+      });
+      r.getCell(2).numFmt = '"$"#,##0.00';
+
+      const genTotal = wsGeneral.addRow(["TOTAL", totales.precioTotal]);
+      applyTotalStyle(genTotal);
+      genTotal.getCell(1).alignment = { vertical: "middle", horizontal: "left", indent: 1 };
+      genTotal.getCell(2).alignment = { vertical: "middle", horizontal: "right" };
+      genTotal.getCell(2).numFmt = '"$"#,##0.00';
+    }
+
     const fileName = `Liquidacion_Obra_${selectedObra.replace(/\s/g, "_")}_${format(new Date(), "yyyyMMdd")}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
     toast.success("Excel exportado");
   };
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
