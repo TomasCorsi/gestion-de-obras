@@ -34,7 +34,7 @@ import {
 import { Download, FileText } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface LiquidacionObraDialogProps {
   open: boolean;
