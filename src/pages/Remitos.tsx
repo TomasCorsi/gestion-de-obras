@@ -510,14 +510,6 @@ export default function Remitos() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setLiquidacionOpen(true)}
-              className="gap-2"
-            >
-              <FileText className="w-4 h-4" />
-              Liquidar Cliente
-            </Button>
-            <Button
-              variant="outline"
               onClick={() => setPreciosOpen(true)}
               className="gap-2"
             >
@@ -535,14 +527,28 @@ export default function Remitos() {
             </Button>
           </>
         )}
-        <Button
-          variant="outline"
-          onClick={() => setLiquidacionObraOpen(true)}
-          className="gap-2"
-        >
-          <FileText className="w-4 h-4" />
-          Liquidar Obra
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <FileText className="w-4 h-4" />
+              Liquidar
+              <ChevronDown className="w-4 h-4 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {!isOwnOnly && (
+              <DropdownMenuItem onClick={() => setLiquidacionOpen(true)}>
+                <FileText className="w-4 h-4 mr-2" />
+                Por Cliente
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setLiquidacionObraOpen(true)}>
+              <FileText className="w-4 h-4 mr-2" />
+              Por Obra
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
       </div>
 
       {/* Stats */}
