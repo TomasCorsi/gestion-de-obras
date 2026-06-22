@@ -67,6 +67,7 @@ const appCategories: AppCategory[] = [
       { icon: HardHat, label: "Personal", path: "/personal", color: "bg-green-600", roles: ['admin', 'capataz'] },
       { icon: Truck, label: "Maquinarias", path: "/maquinarias", color: "bg-green-500", roles: ['admin', 'capataz'] },
       { icon: ClipboardList, label: "Presentismo", path: "/presentismo", color: "bg-green-400", roles: ['admin'] },
+      { icon: Wallet, label: "Liquidaciones", path: "/liquidaciones", color: "bg-green-700", roles: ['admin'] },
       { icon: ClipboardList, label: "Parte Diario", path: "/parte-diario", color: "bg-teal-500", roles: ['admin', 'capataz', 'maquinista'] },
     ],
   },
