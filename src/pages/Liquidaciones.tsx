@@ -77,7 +77,7 @@ export default function Liquidaciones() {
   };
 
   return (
-    <MainLayout>
+    <MainLayout title="Liquidación de Sueldos" subtitle="Quincena, mes, adelantos y préstamos">
       <div className="p-4 md:p-6 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
