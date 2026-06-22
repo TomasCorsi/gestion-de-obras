@@ -40,6 +40,7 @@ const Configuracion = lazy(() => import("./pages/Configuracion"));
 const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 const MisDocumentos = lazy(() => import("./pages/MisDocumentos"));
 const Clientes = lazy(() => import("./pages/Clientes"));
+const Liquidaciones = lazy(() => import("./pages/Liquidaciones"));
 
 const Presentismo = lazy(() => import("./pages/Presentismo"));
 const Mensajes = lazy(() => import("./pages/Mensajes"));
@@ -169,6 +170,12 @@ const App = () => (
                   <Proveedores />
                 </ProtectedRoute>
               } />
+              <Route path="/liquidaciones" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <Liquidaciones />
+                </ProtectedRoute>
+              } />
+
 
               {/* Parte Diario - accessible to all authenticated roles */}
               <Route path="/parte-diario" element={
