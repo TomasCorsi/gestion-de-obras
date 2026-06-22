@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      adelantos_personal: {
+        Row: {
+          aplicado_at: string | null
+          created_at: string
+          estado: Database["public"]["Enums"]["adelanto_estado"]
+          fecha: string
+          id: string
+          liquidacion_id: string | null
+          monto: number
+          motivo: string | null
+          personal_id: string
+          updated_at: string
+        }
+        Insert: {
+          aplicado_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["adelanto_estado"]
+          fecha?: string
+          id?: string
+          liquidacion_id?: string | null
+          monto: number
+          motivo?: string | null
+          personal_id: string
+          updated_at?: string
+        }
+        Update: {
+          aplicado_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["adelanto_estado"]
+          fecha?: string
+          id?: string
+          liquidacion_id?: string | null
+          monto?: number
+          motivo?: string | null
+          personal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "adelantos_personal_liquidacion_id_fkey"
+            columns: ["liquidacion_id"]
+            isOneToOne: false
+            referencedRelation: "liquidaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adelantos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adelantos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "adelantos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_config: {
         Row: {
           key: string
@@ -835,6 +903,267 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      liquidacion_config_personal: {
+        Row: {
+          banco: string | null
+          cbu: string | null
+          created_at: string
+          embargo: boolean
+          embargo_nota: string | null
+          id: string
+          modalidad: Database["public"]["Enums"]["liquidacion_modalidad"]
+          monto_banco_fijo: number
+          numero_cuenta: string | null
+          personal_id: string
+          presentismo_monto: number
+          presentismo_porcentaje: number
+          resto_efectivo: boolean
+          sueldo_blanco: number
+          sueldo_negro: number
+          updated_at: string
+        }
+        Insert: {
+          banco?: string | null
+          cbu?: string | null
+          created_at?: string
+          embargo?: boolean
+          embargo_nota?: string | null
+          id?: string
+          modalidad?: Database["public"]["Enums"]["liquidacion_modalidad"]
+          monto_banco_fijo?: number
+          numero_cuenta?: string | null
+          personal_id: string
+          presentismo_monto?: number
+          presentismo_porcentaje?: number
+          resto_efectivo?: boolean
+          sueldo_blanco?: number
+          sueldo_negro?: number
+          updated_at?: string
+        }
+        Update: {
+          banco?: string | null
+          cbu?: string | null
+          created_at?: string
+          embargo?: boolean
+          embargo_nota?: string | null
+          id?: string
+          modalidad?: Database["public"]["Enums"]["liquidacion_modalidad"]
+          monto_banco_fijo?: number
+          numero_cuenta?: string | null
+          personal_id?: string
+          presentismo_monto?: number
+          presentismo_porcentaje?: number
+          resto_efectivo?: boolean
+          sueldo_blanco?: number
+          sueldo_negro?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidacion_config_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: true
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_config_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: true
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_config_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: true
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquidacion_items: {
+        Row: {
+          adelantos: number
+          banco_snapshot: string | null
+          bruto_blanco: number
+          bruto_negro: number
+          cbu_snapshot: string | null
+          created_at: string
+          cuota_prestamo: number
+          dias_falta: number
+          dias_licencia: number
+          embargo: boolean
+          horas_extras_100: number
+          horas_extras_50: number
+          id: string
+          importe_he: number
+          liquidacion_id: string
+          monto_banco: number
+          monto_efectivo: number
+          neto_blanco: number
+          neto_negro: number
+          neto_total: number
+          numero_cuenta_snapshot: string | null
+          observaciones: string | null
+          otros_adicionales: number
+          otros_descuentos: number
+          pagado: boolean
+          pagado_at: string | null
+          personal_id: string
+          presentismo: number
+          updated_at: string
+        }
+        Insert: {
+          adelantos?: number
+          banco_snapshot?: string | null
+          bruto_blanco?: number
+          bruto_negro?: number
+          cbu_snapshot?: string | null
+          created_at?: string
+          cuota_prestamo?: number
+          dias_falta?: number
+          dias_licencia?: number
+          embargo?: boolean
+          horas_extras_100?: number
+          horas_extras_50?: number
+          id?: string
+          importe_he?: number
+          liquidacion_id: string
+          monto_banco?: number
+          monto_efectivo?: number
+          neto_blanco?: number
+          neto_negro?: number
+          neto_total?: number
+          numero_cuenta_snapshot?: string | null
+          observaciones?: string | null
+          otros_adicionales?: number
+          otros_descuentos?: number
+          pagado?: boolean
+          pagado_at?: string | null
+          personal_id: string
+          presentismo?: number
+          updated_at?: string
+        }
+        Update: {
+          adelantos?: number
+          banco_snapshot?: string | null
+          bruto_blanco?: number
+          bruto_negro?: number
+          cbu_snapshot?: string | null
+          created_at?: string
+          cuota_prestamo?: number
+          dias_falta?: number
+          dias_licencia?: number
+          embargo?: boolean
+          horas_extras_100?: number
+          horas_extras_50?: number
+          id?: string
+          importe_he?: number
+          liquidacion_id?: string
+          monto_banco?: number
+          monto_efectivo?: number
+          neto_blanco?: number
+          neto_negro?: number
+          neto_total?: number
+          numero_cuenta_snapshot?: string | null
+          observaciones?: string | null
+          otros_adicionales?: number
+          otros_descuentos?: number
+          pagado?: boolean
+          pagado_at?: string | null
+          personal_id?: string
+          presentismo?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "liquidacion_items_liquidacion_id_fkey"
+            columns: ["liquidacion_id"]
+            isOneToOne: false
+            referencedRelation: "liquidaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_items_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_items_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "liquidacion_items_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      liquidaciones: {
+        Row: {
+          anio: number
+          cerrada_at: string | null
+          created_at: string
+          estado: Database["public"]["Enums"]["liquidacion_estado"]
+          fecha_pago: string | null
+          id: string
+          mes: number
+          observaciones: string | null
+          pagada_at: string | null
+          periodo: Database["public"]["Enums"]["liquidacion_periodo"]
+          total_banco: number
+          total_blanco: number
+          total_efectivo: number
+          total_negro: number
+          total_neto: number
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          cerrada_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["liquidacion_estado"]
+          fecha_pago?: string | null
+          id?: string
+          mes: number
+          observaciones?: string | null
+          pagada_at?: string | null
+          periodo: Database["public"]["Enums"]["liquidacion_periodo"]
+          total_banco?: number
+          total_blanco?: number
+          total_efectivo?: number
+          total_negro?: number
+          total_neto?: number
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          cerrada_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["liquidacion_estado"]
+          fecha_pago?: string | null
+          id?: string
+          mes?: number
+          observaciones?: string | null
+          pagada_at?: string | null
+          periodo?: Database["public"]["Enums"]["liquidacion_periodo"]
+          total_banco?: number
+          total_blanco?: number
+          total_efectivo?: number
+          total_negro?: number
+          total_neto?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       mantenimientos: {
         Row: {
@@ -1685,6 +2014,118 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      prestamo_cuotas: {
+        Row: {
+          aplicada_at: string | null
+          created_at: string
+          estado: Database["public"]["Enums"]["cuota_estado"]
+          id: string
+          liquidacion_id: string | null
+          monto: number
+          numero_cuota: number
+          prestamo_id: string
+          updated_at: string
+        }
+        Insert: {
+          aplicada_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["cuota_estado"]
+          id?: string
+          liquidacion_id?: string | null
+          monto: number
+          numero_cuota: number
+          prestamo_id: string
+          updated_at?: string
+        }
+        Update: {
+          aplicada_at?: string | null
+          created_at?: string
+          estado?: Database["public"]["Enums"]["cuota_estado"]
+          id?: string
+          liquidacion_id?: string | null
+          monto?: number
+          numero_cuota?: number
+          prestamo_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prestamo_cuotas_liquidacion_id_fkey"
+            columns: ["liquidacion_id"]
+            isOneToOne: false
+            referencedRelation: "liquidaciones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prestamo_cuotas_prestamo_id_fkey"
+            columns: ["prestamo_id"]
+            isOneToOne: false
+            referencedRelation: "prestamos_personal"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prestamos_personal: {
+        Row: {
+          cantidad_cuotas: number
+          created_at: string
+          estado: Database["public"]["Enums"]["prestamo_estado"]
+          fecha: string
+          id: string
+          monto_cuota: number
+          monto_total: number
+          motivo: string | null
+          personal_id: string
+          updated_at: string
+        }
+        Insert: {
+          cantidad_cuotas: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["prestamo_estado"]
+          fecha?: string
+          id?: string
+          monto_cuota: number
+          monto_total: number
+          motivo?: string | null
+          personal_id: string
+          updated_at?: string
+        }
+        Update: {
+          cantidad_cuotas?: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["prestamo_estado"]
+          fecha?: string
+          id?: string
+          monto_cuota?: number
+          monto_total?: number
+          motivo?: string | null
+          personal_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prestamos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prestamos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prestamos_personal_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -2545,8 +2986,10 @@ export type Database = {
       }
     }
     Enums: {
+      adelanto_estado: "pendiente" | "aplicado" | "cancelado"
       app_role: "admin" | "capataz" | "maquinista" | "ayudante" | "remitero"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
+      cuota_estado: "pendiente" | "aplicada"
       estado_certificado: "borrador" | "emitido" | "cobrado"
       estado_cotizacion:
         | "borrador"
@@ -2568,6 +3011,10 @@ export type Database = {
         | "vacaciones"
         | "enfermedad"
       estado_viaje: "programado" | "en_curso" | "completado" | "cancelado"
+      liquidacion_estado: "borrador" | "cerrada" | "pagada"
+      liquidacion_modalidad: "mensual" | "quincenal" | "ambas"
+      liquidacion_periodo: "quincena_1" | "quincena_2" | "mes"
+      prestamo_estado: "activo" | "saldado" | "cancelado"
       rol_personal:
         | "capataz"
         | "maquinista"
@@ -2731,8 +3178,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      adelanto_estado: ["pendiente", "aplicado", "cancelado"],
       app_role: ["admin", "capataz", "maquinista", "ayudante", "remitero"],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
+      cuota_estado: ["pendiente", "aplicada"],
       estado_certificado: ["borrador", "emitido", "cobrado"],
       estado_cotizacion: [
         "borrador",
@@ -2757,6 +3206,10 @@ export const Constants = {
         "enfermedad",
       ],
       estado_viaje: ["programado", "en_curso", "completado", "cancelado"],
+      liquidacion_estado: ["borrador", "cerrada", "pagada"],
+      liquidacion_modalidad: ["mensual", "quincenal", "ambas"],
+      liquidacion_periodo: ["quincena_1", "quincena_2", "mes"],
+      prestamo_estado: ["activo", "saldado", "cancelado"],
       rol_personal: [
         "capataz",
         "maquinista",
