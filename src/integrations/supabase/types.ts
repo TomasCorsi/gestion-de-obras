@@ -494,6 +494,664 @@ export type Database = {
         }
         Relationships: []
       }
+      contab_asiento_lineas: {
+        Row: {
+          asiento_id: string
+          created_at: string
+          cuenta_id: string | null
+          debe: number
+          descripcion: string | null
+          haber: number
+          id: string
+          maquinaria_id: string | null
+          obra_id: string | null
+          orden: number
+        }
+        Insert: {
+          asiento_id: string
+          created_at?: string
+          cuenta_id?: string | null
+          debe?: number
+          descripcion?: string | null
+          haber?: number
+          id?: string
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          orden?: number
+        }
+        Update: {
+          asiento_id?: string
+          created_at?: string
+          cuenta_id?: string | null
+          debe?: number
+          descripcion?: string | null
+          haber?: number
+          id?: string
+          maquinaria_id?: string | null
+          obra_id?: string | null
+          orden?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_asiento_lineas_asiento_id_fkey"
+            columns: ["asiento_id"]
+            isOneToOne: false
+            referencedRelation: "contab_asientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_asientos: {
+        Row: {
+          comprobante_id: string | null
+          created_at: string
+          created_by: string | null
+          descripcion: string
+          fecha: string
+          id: string
+          numero: number
+          origen: string | null
+          pago_id: string | null
+          total_debe: number
+          total_haber: number
+          updated_at: string
+        }
+        Insert: {
+          comprobante_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion: string
+          fecha: string
+          id?: string
+          numero?: number
+          origen?: string | null
+          pago_id?: string | null
+          total_debe?: number
+          total_haber?: number
+          updated_at?: string
+        }
+        Update: {
+          comprobante_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          descripcion?: string
+          fecha?: string
+          id?: string
+          numero?: number
+          origen?: string | null
+          pago_id?: string | null
+          total_debe?: number
+          total_haber?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_asientos_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "contab_pagos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_comprobante_items: {
+        Row: {
+          alicuota_iva: number
+          cantidad: number
+          comprobante_id: string
+          created_at: string
+          cuenta_id: string | null
+          descripcion: string
+          id: string
+          iva: number
+          maquinaria_id: string | null
+          neto: number
+          obra_id: string | null
+          orden: number
+          precio_unit: number
+          updated_at: string
+        }
+        Insert: {
+          alicuota_iva?: number
+          cantidad?: number
+          comprobante_id: string
+          created_at?: string
+          cuenta_id?: string | null
+          descripcion: string
+          id?: string
+          iva?: number
+          maquinaria_id?: string | null
+          neto?: number
+          obra_id?: string | null
+          orden?: number
+          precio_unit?: number
+          updated_at?: string
+        }
+        Update: {
+          alicuota_iva?: number
+          cantidad?: number
+          comprobante_id?: string
+          created_at?: string
+          cuenta_id?: string | null
+          descripcion?: string
+          id?: string
+          iva?: number
+          maquinaria_id?: string | null
+          neto?: number
+          obra_id?: string | null
+          orden?: number
+          precio_unit?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_comprobante_items_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobante_items_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobante_items_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobante_items_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_comprobantes: {
+        Row: {
+          anulado_at: string | null
+          asiento_id: string | null
+          confirmado_at: string | null
+          confirmado_por: string | null
+          cotizacion: number
+          created_at: string
+          created_by: string | null
+          empresa_id: string | null
+          es_venta: boolean
+          estado: Database["public"]["Enums"]["contab_cbte_estado"]
+          exento: number
+          fecha: string
+          fecha_vto: string | null
+          id: string
+          iva_105: number
+          iva_21: number
+          iva_27: number
+          letra: string | null
+          maquinaria_id: string | null
+          moneda: string
+          neto_0: number
+          neto_105: number
+          neto_21: number
+          neto_27: number
+          no_gravado: number
+          numero: number
+          obra_id: string | null
+          observaciones: string | null
+          perc_iibb: number
+          perc_iva: number
+          perc_otras: number
+          punto_venta: number
+          tercero_id: string | null
+          tipo: Database["public"]["Enums"]["contab_cbte_tipo"]
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          anulado_at?: string | null
+          asiento_id?: string | null
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          cotizacion?: number
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          es_venta?: boolean
+          estado?: Database["public"]["Enums"]["contab_cbte_estado"]
+          exento?: number
+          fecha: string
+          fecha_vto?: string | null
+          id?: string
+          iva_105?: number
+          iva_21?: number
+          iva_27?: number
+          letra?: string | null
+          maquinaria_id?: string | null
+          moneda?: string
+          neto_0?: number
+          neto_105?: number
+          neto_21?: number
+          neto_27?: number
+          no_gravado?: number
+          numero: number
+          obra_id?: string | null
+          observaciones?: string | null
+          perc_iibb?: number
+          perc_iva?: number
+          perc_otras?: number
+          punto_venta?: number
+          tercero_id?: string | null
+          tipo: Database["public"]["Enums"]["contab_cbte_tipo"]
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          anulado_at?: string | null
+          asiento_id?: string | null
+          confirmado_at?: string | null
+          confirmado_por?: string | null
+          cotizacion?: number
+          created_at?: string
+          created_by?: string | null
+          empresa_id?: string | null
+          es_venta?: boolean
+          estado?: Database["public"]["Enums"]["contab_cbte_estado"]
+          exento?: number
+          fecha?: string
+          fecha_vto?: string | null
+          id?: string
+          iva_105?: number
+          iva_21?: number
+          iva_27?: number
+          letra?: string | null
+          maquinaria_id?: string | null
+          moneda?: string
+          neto_0?: number
+          neto_105?: number
+          neto_21?: number
+          neto_27?: number
+          no_gravado?: number
+          numero?: number
+          obra_id?: string | null
+          observaciones?: string | null
+          perc_iibb?: number
+          perc_iva?: number
+          perc_otras?: number
+          punto_venta?: number
+          tercero_id?: string | null
+          tipo?: Database["public"]["Enums"]["contab_cbte_tipo"]
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_comprobantes_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "contab_empresa"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobantes_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobantes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobantes_tercero_id_fkey"
+            columns: ["tercero_id"]
+            isOneToOne: false
+            referencedRelation: "contab_terceros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_empresa: {
+        Row: {
+          activa: boolean
+          condicion_iva: Database["public"]["Enums"]["contab_cond_iva"]
+          cp: string | null
+          created_at: string
+          cuit: string
+          domicilio_fiscal: string | null
+          email: string | null
+          id: string
+          iibb: string | null
+          inicio_actividades: string | null
+          localidad: string | null
+          logo_url: string | null
+          nombre_fantasia: string | null
+          pie_factura: string | null
+          provincia: string | null
+          razon_social: string
+          telefono: string | null
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
+          cp?: string | null
+          created_at?: string
+          cuit: string
+          domicilio_fiscal?: string | null
+          email?: string | null
+          id?: string
+          iibb?: string | null
+          inicio_actividades?: string | null
+          localidad?: string | null
+          logo_url?: string | null
+          nombre_fantasia?: string | null
+          pie_factura?: string | null
+          provincia?: string | null
+          razon_social: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
+          cp?: string | null
+          created_at?: string
+          cuit?: string
+          domicilio_fiscal?: string | null
+          email?: string | null
+          id?: string
+          iibb?: string | null
+          inicio_actividades?: string | null
+          localidad?: string | null
+          logo_url?: string | null
+          nombre_fantasia?: string | null
+          pie_factura?: string | null
+          provincia?: string | null
+          razon_social?: string
+          telefono?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      contab_pagos: {
+        Row: {
+          asiento_id: string | null
+          comprobante_id: string | null
+          created_at: string
+          created_by: string | null
+          cuenta_id: string | null
+          es_cobro: boolean
+          fecha: string
+          id: string
+          maquinaria_id: string | null
+          medio: Database["public"]["Enums"]["contab_pago_medio"]
+          monto: number
+          obra_id: string | null
+          observaciones: string | null
+          referencia: string | null
+          tercero_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          asiento_id?: string | null
+          comprobante_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuenta_id?: string | null
+          es_cobro?: boolean
+          fecha: string
+          id?: string
+          maquinaria_id?: string | null
+          medio?: Database["public"]["Enums"]["contab_pago_medio"]
+          monto?: number
+          obra_id?: string | null
+          observaciones?: string | null
+          referencia?: string | null
+          tercero_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          asiento_id?: string | null
+          comprobante_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          cuenta_id?: string | null
+          es_cobro?: boolean
+          fecha?: string
+          id?: string
+          maquinaria_id?: string | null
+          medio?: Database["public"]["Enums"]["contab_pago_medio"]
+          monto?: number
+          obra_id?: string | null
+          observaciones?: string | null
+          referencia?: string | null
+          tercero_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_pagos_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_pagos_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_pagos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_pagos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_pagos_tercero_id_fkey"
+            columns: ["tercero_id"]
+            isOneToOne: false
+            referencedRelation: "contab_terceros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_plan_cuentas: {
+        Row: {
+          activa: boolean
+          codigo: string
+          created_at: string
+          descripcion: string | null
+          id: string
+          imputable: boolean
+          nombre: string
+          parent_id: string | null
+          tipo: Database["public"]["Enums"]["contab_cuenta_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          activa?: boolean
+          codigo: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          imputable?: boolean
+          nombre: string
+          parent_id?: string | null
+          tipo: Database["public"]["Enums"]["contab_cuenta_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          activa?: boolean
+          codigo?: string
+          created_at?: string
+          descripcion?: string | null
+          id?: string
+          imputable?: boolean
+          nombre?: string
+          parent_id?: string | null
+          tipo?: Database["public"]["Enums"]["contab_cuenta_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_plan_cuentas_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_puntos_venta: {
+        Row: {
+          activo: boolean
+          created_at: string
+          descripcion: string | null
+          empresa_id: string
+          id: string
+          numero: number
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          empresa_id: string
+          id?: string
+          numero: number
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          created_at?: string
+          descripcion?: string | null
+          empresa_id?: string
+          id?: string
+          numero?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_puntos_venta_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "contab_empresa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_terceros: {
+        Row: {
+          activo: boolean
+          banco: string | null
+          cbu: string | null
+          condicion_iva: Database["public"]["Enums"]["contab_cond_iva"]
+          cp: string | null
+          created_at: string
+          cuit: string | null
+          domicilio: string | null
+          email: string | null
+          id: string
+          localidad: string | null
+          notas: string | null
+          numero_cuenta: string | null
+          provincia: string | null
+          razon_social: string
+          telefono: string | null
+          tipo: Database["public"]["Enums"]["contab_tercero_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          activo?: boolean
+          banco?: string | null
+          cbu?: string | null
+          condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
+          cp?: string | null
+          created_at?: string
+          cuit?: string | null
+          domicilio?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          notas?: string | null
+          numero_cuenta?: string | null
+          provincia?: string | null
+          razon_social: string
+          telefono?: string | null
+          tipo?: Database["public"]["Enums"]["contab_tercero_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          activo?: boolean
+          banco?: string | null
+          cbu?: string | null
+          condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
+          cp?: string | null
+          created_at?: string
+          cuit?: string | null
+          domicilio?: string | null
+          email?: string | null
+          id?: string
+          localidad?: string | null
+          notas?: string | null
+          numero_cuenta?: string | null
+          provincia?: string | null
+          razon_social?: string
+          telefono?: string | null
+          tipo?: Database["public"]["Enums"]["contab_tercero_tipo"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cotizacion_categorias: {
         Row: {
           cotizacion_id: string
@@ -2945,6 +3603,14 @@ export type Database = {
     Functions: {
       can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
       can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
+      contab_generar_asiento_cbte: {
+        Args: { _cbte_id: string }
+        Returns: string
+      }
+      contab_generar_asiento_pago: {
+        Args: { _pago_id: string }
+        Returns: string
+      }
       execute_readonly_query: { Args: { query_sql: string }; Returns: Json }
       get_documento_signed_url: {
         Args: { _documento_id: string }
@@ -2995,6 +3661,46 @@ export type Database = {
         | "remitero"
         | "contador"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
+      contab_cbte_estado:
+        | "borrador"
+        | "confirmado"
+        | "anulado"
+        | "pagado"
+        | "parcial"
+      contab_cbte_tipo:
+        | "FA_A"
+        | "FA_B"
+        | "FA_C"
+        | "NC_A"
+        | "NC_B"
+        | "NC_C"
+        | "ND_A"
+        | "ND_B"
+        | "ND_C"
+        | "RECIBO"
+        | "TICKET"
+        | "FA_CPA_A"
+        | "FA_CPA_B"
+        | "FA_CPA_C"
+        | "NC_CPA"
+        | "ND_CPA"
+        | "OTRO"
+      contab_cond_iva: "RI" | "MT" | "EX" | "CF" | "NR"
+      contab_cuenta_tipo:
+        | "activo"
+        | "pasivo"
+        | "patrimonio"
+        | "ingreso"
+        | "egreso"
+        | "resultado"
+      contab_pago_medio:
+        | "efectivo"
+        | "transferencia"
+        | "cheque"
+        | "tarjeta"
+        | "deposito"
+        | "otro"
+      contab_tercero_tipo: "cliente" | "proveedor" | "ambos"
       cuota_estado: "pendiente" | "aplicada"
       estado_certificado: "borrador" | "emitido" | "cobrado"
       estado_cotizacion:
@@ -3194,6 +3900,50 @@ export const Constants = {
         "contador",
       ],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
+      contab_cbte_estado: [
+        "borrador",
+        "confirmado",
+        "anulado",
+        "pagado",
+        "parcial",
+      ],
+      contab_cbte_tipo: [
+        "FA_A",
+        "FA_B",
+        "FA_C",
+        "NC_A",
+        "NC_B",
+        "NC_C",
+        "ND_A",
+        "ND_B",
+        "ND_C",
+        "RECIBO",
+        "TICKET",
+        "FA_CPA_A",
+        "FA_CPA_B",
+        "FA_CPA_C",
+        "NC_CPA",
+        "ND_CPA",
+        "OTRO",
+      ],
+      contab_cond_iva: ["RI", "MT", "EX", "CF", "NR"],
+      contab_cuenta_tipo: [
+        "activo",
+        "pasivo",
+        "patrimonio",
+        "ingreso",
+        "egreso",
+        "resultado",
+      ],
+      contab_pago_medio: [
+        "efectivo",
+        "transferencia",
+        "cheque",
+        "tarjeta",
+        "deposito",
+        "otro",
+      ],
+      contab_tercero_tipo: ["cliente", "proveedor", "ambos"],
       cuota_estado: ["pendiente", "aplicada"],
       estado_certificado: ["borrador", "emitido", "cobrado"],
       estado_cotizacion: [
