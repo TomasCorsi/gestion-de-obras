@@ -2987,7 +2987,13 @@ export type Database = {
     }
     Enums: {
       adelanto_estado: "pendiente" | "aplicado" | "cancelado"
-      app_role: "admin" | "capataz" | "maquinista" | "ayudante" | "remitero"
+      app_role:
+        | "admin"
+        | "capataz"
+        | "maquinista"
+        | "ayudante"
+        | "remitero"
+        | "contador"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
       cuota_estado: "pendiente" | "aplicada"
       estado_certificado: "borrador" | "emitido" | "cobrado"
@@ -3179,7 +3185,14 @@ export const Constants = {
   public: {
     Enums: {
       adelanto_estado: ["pendiente", "aplicado", "cancelado"],
-      app_role: ["admin", "capataz", "maquinista", "ayudante", "remitero"],
+      app_role: [
+        "admin",
+        "capataz",
+        "maquinista",
+        "ayudante",
+        "remitero",
+        "contador",
+      ],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
       cuota_estado: ["pendiente", "aplicada"],
       estado_certificado: ["borrador", "emitido", "cobrado"],
