@@ -75,8 +75,8 @@ const blankItem = (): ItemDraft => ({
 export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Props) {
   const { data: terceros = [] } = useContabTerceros();
   const { data: cuentas = [] } = useContabPlanCuentas();
-  const { data: obras = [] } = useObras();
-  const { data: maquinas = [] } = useMaquinarias();
+  const { obras = [] } = useObras();
+  const { maquinarias: maquinas = [] } = useMaquinarias();
   const save = useSaveComprobante();
 
   // Carga comprobante existente
