@@ -176,6 +176,11 @@ const App = () => (
                   <Liquidaciones />
                 </ProtectedRoute>
               } />
+              <Route path="/contabilidad" element={
+                <ProtectedRoute requiredRoles={['admin', 'contador']}>
+                  <Contabilidad />
+                </ProtectedRoute>
+              } />
 
 
               {/* Parte Diario - accessible to all authenticated roles */}
