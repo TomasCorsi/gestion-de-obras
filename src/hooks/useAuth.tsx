@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
-const ROLE_PRIORITY: AppRole[] = ['admin', 'capataz', 'maquinista', 'ayudante', 'remitero'];
+const ROLE_PRIORITY: AppRole[] = ['admin', 'capataz', 'maquinista', 'ayudante', 'remitero', 'contador'];
 const pickPrimaryRole = (roles: AppRole[]): AppRole | null => {
   for (const r of ROLE_PRIORITY) if (roles.includes(r)) return r;
   return roles[0] ?? null;
