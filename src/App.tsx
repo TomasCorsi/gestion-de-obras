@@ -41,6 +41,7 @@ const MiPerfil = lazy(() => import("./pages/MiPerfil"));
 const MisDocumentos = lazy(() => import("./pages/MisDocumentos"));
 const Clientes = lazy(() => import("./pages/Clientes"));
 const Liquidaciones = lazy(() => import("./pages/Liquidaciones"));
+const Contabilidad = lazy(() => import("./pages/Contabilidad"));
 
 const Presentismo = lazy(() => import("./pages/Presentismo"));
 const Mensajes = lazy(() => import("./pages/Mensajes"));
@@ -173,6 +174,11 @@ const App = () => (
               <Route path="/liquidaciones" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Liquidaciones />
+                </ProtectedRoute>
+              } />
+              <Route path="/contabilidad" element={
+                <ProtectedRoute requiredRoles={['admin', 'contador']}>
+                  <Contabilidad />
                 </ProtectedRoute>
               } />
 

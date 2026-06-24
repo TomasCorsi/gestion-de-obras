@@ -26,7 +26,7 @@ import { TopNavbar } from "@/components/layout/TopNavbar";
 
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
 interface AppItem {
   icon: React.ElementType;

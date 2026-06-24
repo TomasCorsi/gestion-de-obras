@@ -2,7 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
 // Excepciones puntuales por UUID (mismo patrón que las RLS de Sergio/Franco).
 // Permite acceso a rutas específicas sin tocar la lógica de roles general.

@@ -21,6 +21,7 @@ import {
   X,
   ContactRound,
   Store,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
 interface AppItem {
   icon: typeof LayoutDashboard;
@@ -90,6 +91,7 @@ const appCategories: AppCategory[] = [
     name: "Administración",
     apps: [
       { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin', 'capataz'] },
+      { icon: BookOpen, label: "Contabilidad", path: "/contabilidad", color: "bg-purple-700", roles: ['admin', 'contador'] },
       { icon: Settings, label: "Configuración", path: "/configuracion", color: "bg-slate-600", roles: ['admin'] },
     ],
   },
