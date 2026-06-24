@@ -90,6 +90,7 @@ const appCategories: AppCategory[] = [
     name: "Administración",
     apps: [
       { icon: BarChart3, label: "Reportes", path: "/reportes", color: "bg-purple-600", roles: ['admin', 'capataz'] },
+      { icon: BookOpen, label: "Contabilidad", path: "/contabilidad", color: "bg-purple-700", roles: ['admin', 'contador'] },
       { icon: Settings, label: "Configuración", path: "/configuracion", color: "bg-slate-600", roles: ['admin'] },
     ],
   },
