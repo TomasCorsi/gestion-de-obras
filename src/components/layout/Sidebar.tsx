@@ -28,7 +28,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/hooks/useAuth";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
 interface MenuItem {
   icon: typeof LayoutDashboard;

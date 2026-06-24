@@ -28,7 +28,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero';
+type AppRole = 'admin' | 'capataz' | 'maquinista' | 'ayudante' | 'remitero' | 'contador';
 
 interface AppItem {
   icon: typeof LayoutDashboard;
