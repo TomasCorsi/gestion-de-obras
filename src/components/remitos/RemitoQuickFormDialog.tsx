@@ -35,7 +35,7 @@ const TIPO_MATERIAL_OPTIONS = [
   "Movimiento interno", "Tosca", "Cemento", "Hormigon", "Traslado",
   "Cubiertas", "Frezado", "Cobertura de residuos", "Arena", "Hormigon H30",
   "Tierra negra", "Relleno", "Piedra 30/50", "Materiales varios",
-  "Raices", "Traslado interno", "Barro", "Limpieza de obra",
+  "Raices", "Traslado interno", "Barro", "Limpieza de obra", "Cal Vial",
 ];
 
 const TIPO_TRANSPORTE_OPTIONS = [
