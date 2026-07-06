@@ -168,6 +168,7 @@ const tipoMaterialNormalize: Record<string, string> = {
   'raíces': 'Raices',
   'traslado interno': 'Traslado interno',
   'barro': 'Barro',
+  'cal vial': 'Cal Vial',
 };
 
 // Valid material types for validation
