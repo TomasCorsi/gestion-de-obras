@@ -359,6 +359,11 @@ export default function Certificados() {
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
   // State for adding extra concepts to an existing certificate during edit
   const [addExtraConceptoOpen, setAddExtraConceptoOpen] = useState(false);
+  // Collapsed state per category inside "Conceptos de Obra" / "Conceptos de Servicio"
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
+  const toggleCatCollapsed = useCallback((key: string) => {
+    setCollapsedCats((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const isEditing = !!editingCertId;
 
