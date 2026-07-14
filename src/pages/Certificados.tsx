@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { CertificadoServiceGrid } from "@/components/certificados/CertificadoServiceGrid";
 import { useObras } from "@/hooks/useObras";
@@ -97,6 +98,7 @@ import {
   LayoutGrid,
   List as ListIcon,
   Upload,
+  FolderOpen,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
@@ -359,6 +361,11 @@ export default function Certificados() {
   const [acumulados, setAcumulados] = useState<AcumuladoConcepto[]>([]);
   // State for adding extra concepts to an existing certificate during edit
   const [addExtraConceptoOpen, setAddExtraConceptoOpen] = useState(false);
+  // Collapsed state per category inside "Conceptos de Obra" / "Conceptos de Servicio"
+  const [collapsedCats, setCollapsedCats] = useState<Record<string, boolean>>({});
+  const toggleCatCollapsed = useCallback((key: string) => {
+    setCollapsedCats((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const isEditing = !!editingCertId;
 
@@ -1220,27 +1227,39 @@ export default function Certificados() {
                             No hay conceptos de obra. Hacé clic en "Agregar concepto de Obra".
                           </div>
                         ) : (
-                          <div className="space-y-0">
-                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'obra'))).map((group) => (
-                              <div key={group.categoria}>
-                                <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
-                                  {group.categoria}
-                                </div>
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Concepto</TableHead>
-                                      <TableHead>Unidad</TableHead>
-                                      <TableHead className="text-right">P. Unitario</TableHead>
-                                      <TableHead className="text-right">Cant. Total</TableHead>
-                                      <TableHead>Categoría</TableHead>
-                                      <TableHead>Sub Categoría</TableHead>
-                                      <TableHead>Estado</TableHead>
-                                      <TableHead className="text-right">Acciones</TableHead>
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10">
+                              <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead>Unidad</TableHead>
+                                <TableHead className="text-right">P. Unitario</TableHead>
+                                <TableHead className="text-right">Cant. Total</TableHead>
+                                <TableHead>Categoría</TableHead>
+                                <TableHead>Sub Categoría</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'obra'))).map((group) => {
+                                const key = `obra:${group.categoria}`;
+                                const collapsed = !!collapsedCats[key];
+                                return (
+                                  <React.Fragment key={group.categoria}>
+                                    <TableRow
+                                      className="border-l-4 border-primary bg-primary/10 hover:bg-primary/15 cursor-pointer"
+                                      onClick={() => toggleCatCollapsed(key)}
+                                    >
+                                      <TableCell colSpan={8} className="py-2.5">
+                                        <div className="flex items-center gap-2">
+                                          <ChevronDown className={cn("w-4 h-4 text-primary transition-transform", collapsed && "-rotate-90")} />
+                                          <FolderOpen className="w-4 h-4 text-primary" />
+                                          <span className="text-sm font-bold text-primary uppercase tracking-wide">{group.categoria}</span>
+                                          <Badge variant="outline" className="text-[10px] h-5 border-primary/40 text-primary">{group.items.length}</Badge>
+                                        </div>
+                                      </TableCell>
                                     </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {group.items.map((c) => (
+                                    {!collapsed && group.items.map((c) => (
                                       <ConceptoRow
                                         key={c.id}
                                         concepto={c}
@@ -1248,11 +1267,11 @@ export default function Certificados() {
                                         onDelete={() => deleteConcepto(c.id)}
                                       />
                                     ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            ))}
-                          </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
                         )}
                         </CollapsibleContent>
                       </Collapsible>
@@ -1277,27 +1296,39 @@ export default function Certificados() {
                             No hay conceptos de servicio. Hacé clic en "Agregar concepto de Servicio".
                           </div>
                         ) : (
-                          <div className="space-y-0">
-                            {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'servicio'))).map((group) => (
-                              <div key={group.categoria}>
-                                <div className="bg-muted/50 px-4 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-y border-border/50">
-                                  {group.categoria}
-                                </div>
-                                <Table>
-                                  <TableHeader>
-                                    <TableRow>
-                                      <TableHead>Concepto</TableHead>
-                                      <TableHead>Unidad</TableHead>
-                                      <TableHead className="text-right">P. Unitario</TableHead>
-                                      <TableHead className="text-right">Cant. Total</TableHead>
-                                      <TableHead>Categoría</TableHead>
-                                      <TableHead>Sub Categoría</TableHead>
-                                      <TableHead>Estado</TableHead>
-                                      <TableHead className="text-right">Acciones</TableHead>
+                          <Table>
+                            <TableHeader className="sticky top-0 bg-background z-10">
+                              <TableRow>
+                                <TableHead>Concepto</TableHead>
+                                <TableHead>Unidad</TableHead>
+                                <TableHead className="text-right">P. Unitario</TableHead>
+                                <TableHead className="text-right">Cant. Total</TableHead>
+                                <TableHead>Categoría</TableHead>
+                                <TableHead>Sub Categoría</TableHead>
+                                <TableHead>Estado</TableHead>
+                                <TableHead className="text-right">Acciones</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {groupByCategoria(filterConceptos(conceptos.filter(c => c.tipo === 'servicio'))).map((group) => {
+                                const key = `servicio:${group.categoria}`;
+                                const collapsed = !!collapsedCats[key];
+                                return (
+                                  <React.Fragment key={group.categoria}>
+                                    <TableRow
+                                      className="border-l-4 border-foreground/60 bg-muted/60 hover:bg-muted cursor-pointer"
+                                      onClick={() => toggleCatCollapsed(key)}
+                                    >
+                                      <TableCell colSpan={8} className="py-2.5">
+                                        <div className="flex items-center gap-2">
+                                          <ChevronDown className={cn("w-4 h-4 transition-transform", collapsed && "-rotate-90")} />
+                                          <FolderOpen className="w-4 h-4" />
+                                          <span className="text-sm font-bold uppercase tracking-wide">{group.categoria}</span>
+                                          <Badge variant="outline" className="text-[10px] h-5">{group.items.length}</Badge>
+                                        </div>
+                                      </TableCell>
                                     </TableRow>
-                                  </TableHeader>
-                                  <TableBody>
-                                    {group.items.map((c) => (
+                                    {!collapsed && group.items.map((c) => (
                                       <ConceptoRow
                                         key={c.id}
                                         concepto={c}
@@ -1305,11 +1336,11 @@ export default function Certificados() {
                                         onDelete={() => deleteConcepto(c.id)}
                                       />
                                     ))}
-                                  </TableBody>
-                                </Table>
-                              </div>
-                            ))}
-                          </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                            </TableBody>
+                          </Table>
                         )}
                         </CollapsibleContent>
                       </Collapsible>
