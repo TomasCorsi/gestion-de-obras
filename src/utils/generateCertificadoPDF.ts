@@ -133,7 +133,7 @@ function renderCertInfo(
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...WHITE);
   const certNum = certificado.numero.replace("CERT-", "");
-  doc.text(`CERTIFICADO - (${obraNombre}) - N° ${certNum}`, pageWidth / 2, yPos + 6.5, { align: "center" });
+  doc.text(`CERTIFICADO - ${obraNombre} - N° ${certNum}`, pageWidth / 2, yPos + 6.5, { align: "center" });
   doc.setTextColor(0, 0, 0);
   yPos += titleHeight + 4;
 
