@@ -98,6 +98,7 @@ import {
   LayoutGrid,
   List as ListIcon,
   Upload,
+  FolderOpen,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
