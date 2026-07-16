@@ -152,7 +152,7 @@ const ParteDiario = () => {
 
   const rol = rolPersonal as RolPersonal | null;
   const isAdmin = role === 'admin';
-  const isRepartidor = rol === 'repartidor_calecita';
+  const isRepartidor = rol === 'repartidor_calecita' || user?.id === SERGIO_USER_ID;
   const isMecanico = rol === 'mecanico' || rol === 'ayudante';
 
   // For repartidor: query by repartidor_id to get all their loads
