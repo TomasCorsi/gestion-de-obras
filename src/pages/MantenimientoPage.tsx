@@ -112,10 +112,21 @@ export default function MantenimientoPage() {
   const services = useMemo(() => filterItems(mantenimientos.filter(m => m.tipo === "preventivo")), [mantenimientos, filterItems]);
   const reparaciones = useMemo(() => filterItems(mantenimientos.filter(m => m.tipo === "correctivo" || m.tipo === "emergencia")), [mantenimientos, filterItems]);
 
-  // Service alerts: machines close to or past service limits
-  const serviceAlerts = useMemo(() => {
-    const alerts: { maquinaria: string; tipo: "hr" | "km"; actual: number; limite: number }[] = [];
-    // Group latest service per machine
+  // Service alerts: machines close to or past service limits (HR or KM)
+  const UMBRAL_HR = 25;
+  const UMBRAL_KM = 250;
+  type ServiceAlert = {
+    maquinaria: string;
+    maquinariaId: string;
+    unidad: "h" | "km";
+    actual: number;
+    limite: number;
+    diff: number; // positive if overdue, negative if remaining
+    pct: number;
+    estado: "vencido" | "proximo";
+  };
+  const serviceAlerts = useMemo<ServiceAlert[]>(() => {
+    const alerts: ServiceAlert[] = [];
     const latestByMaq = new Map<string, MantenimientoWithRelations>();
     mantenimientos.filter(m => m.tipo === "preventivo").forEach(m => {
       const existing = latestByMaq.get(m.maquinaria_id);
@@ -124,13 +135,44 @@ export default function MantenimientoPage() {
     latestByMaq.forEach((m) => {
       const maq = maquinarias.find(q => q.id === m.maquinaria_id);
       if (!maq) return;
-      const hActual = maq.horas_acumuladas || 0;
-      if (m.proximo_service_hr && hActual >= m.proximo_service_hr) {
-        alerts.push({ maquinaria: maq.codigo || maq.nombre || "?", tipo: "hr", actual: hActual, limite: m.proximo_service_hr });
+      const nombre = maq.codigo || maq.nombre || "?";
+
+      if (m.proximo_service_hr) {
+        const actual = maq.horas_acumuladas || 0;
+        const limite = m.proximo_service_hr;
+        const diff = actual - limite;
+        if (diff >= -UMBRAL_HR) {
+          alerts.push({
+            maquinaria: nombre, maquinariaId: maq.id, unidad: "h",
+            actual, limite, diff,
+            pct: limite > 0 ? (actual / limite) * 100 : 0,
+            estado: diff >= 0 ? "vencido" : "proximo",
+          });
+        }
+      }
+      if (m.proximo_service_km) {
+        const actual = (maq as any).km_acumulados || 0;
+        const limite = m.proximo_service_km;
+        const diff = actual - limite;
+        if (diff >= -UMBRAL_KM) {
+          alerts.push({
+            maquinaria: nombre, maquinariaId: maq.id, unidad: "km",
+            actual, limite, diff,
+            pct: limite > 0 ? (actual / limite) * 100 : 0,
+            estado: diff >= 0 ? "vencido" : "proximo",
+          });
+        }
       }
     });
-    return alerts;
+    // Vencidos primero (mayor exceso), luego próximos (menor faltante)
+    return alerts.sort((a, b) => {
+      if (a.estado !== b.estado) return a.estado === "vencido" ? -1 : 1;
+      return b.diff - a.diff;
+    });
   }, [mantenimientos, maquinarias]);
+
+  const vencidosCount = useMemo(() => serviceAlerts.filter(a => a.estado === "vencido").length, [serviceAlerts]);
+  const proximosCount = serviceAlerts.length - vencidosCount;
 
   const handleNew = (type: "service" | "reparacion") => {
     setFormType(type);
@@ -197,13 +239,22 @@ export default function MantenimientoPage() {
           </div>
         );
       })}
-      {showAlerts && serviceAlerts.length > 0 && (
+      {showAlerts && vencidosCount > 0 && (
         <div className="card-industrial p-4 flex items-center justify-between border-destructive/50">
           <div>
-            <p className="text-2xl font-bold text-destructive">{serviceAlerts.length}</p>
+            <p className="text-2xl font-bold text-destructive">{vencidosCount}</p>
             <p className="text-sm text-destructive">Service vencido</p>
           </div>
           <AlertTriangle className="w-8 h-8 text-destructive" />
+        </div>
+      )}
+      {showAlerts && proximosCount > 0 && (
+        <div className="card-industrial p-4 flex items-center justify-between border-orange-500/50">
+          <div>
+            <p className="text-2xl font-bold text-orange-500">{proximosCount}</p>
+            <p className="text-sm text-orange-500">Service próximo</p>
+          </div>
+          <Clock className="w-8 h-8 text-orange-500" />
         </div>
       )}
     </div>
@@ -212,7 +263,7 @@ export default function MantenimientoPage() {
   const renderCard = (mant: MantenimientoWithRelations, index: number) => {
     const estadoCfg = ESTADO_CONFIG[mant.estado as keyof typeof ESTADO_CONFIG];
     const tipoCfg = TIPO_CONFIG[mant.tipo as keyof typeof TIPO_CONFIG];
-    const isOverdue = serviceAlerts.some(a => a.maquinaria === (mant.maquinaria?.codigo || mant.maquinaria?.nombre));
+    const isOverdue = serviceAlerts.some(a => a.maquinariaId === mant.maquinaria_id && a.estado === "vencido");
 
     return (
       <Card
@@ -380,11 +431,19 @@ export default function MantenimientoPage() {
         <TabsContent value="services">
           {renderFiltersAndActions("service")}
           {serviceAlerts.length > 0 && (
-            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border-b border-destructive/20">
-                <AlertTriangle className="w-4 h-4 text-destructive" />
-                <p className="text-sm font-semibold text-destructive">
-                  Máquinas con service vencido ({serviceAlerts.length})
+            <div className={cn(
+              "mb-4 rounded-lg border overflow-hidden",
+              vencidosCount > 0 ? "border-destructive/30 bg-destructive/5" : "border-orange-500/30 bg-orange-500/5"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2 px-4 py-2.5 border-b",
+                vencidosCount > 0 ? "bg-destructive/10 border-destructive/20" : "bg-orange-500/10 border-orange-500/20"
+              )}>
+                <AlertTriangle className={cn("w-4 h-4", vencidosCount > 0 ? "text-destructive" : "text-orange-500")} />
+                <p className={cn("text-sm font-semibold", vencidosCount > 0 ? "text-destructive" : "text-orange-500")}>
+                  Services vencidos o próximos ({serviceAlerts.length})
+                  {vencidosCount > 0 && ` — ${vencidosCount} vencido${vencidosCount === 1 ? "" : "s"}`}
+                  {proximosCount > 0 && ` · ${proximosCount} próximo${proximosCount === 1 ? "" : "s"}`}
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -392,30 +451,48 @@ export default function MantenimientoPage() {
                   <thead>
                     <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border/50">
                       <th className="px-4 py-2 font-medium">Máquina</th>
-                      <th className="px-4 py-2 font-medium text-right">Horómetro actual</th>
+                      <th className="px-4 py-2 font-medium">Unidad</th>
+                      <th className="px-4 py-2 font-medium text-right">Actual</th>
                       <th className="px-4 py-2 font-medium text-right">Próximo service</th>
-                      <th className="px-4 py-2 font-medium text-right">Excedido</th>
-                      <th className="px-4 py-2 font-medium w-[30%]">Progreso</th>
+                      <th className="px-4 py-2 font-medium text-right">Diferencia</th>
+                      <th className="px-4 py-2 font-medium w-[25%]">Progreso</th>
                       <th className="px-4 py-2 font-medium text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {serviceAlerts.map((a, i) => {
-                      const excedido = Math.max(0, a.actual - a.limite);
-                      const pct = a.limite > 0 ? Math.min(150, (a.actual / a.limite) * 100) : 0;
-                      const barColor = pct >= 100 ? "bg-destructive" : pct >= 90 ? "bg-orange-500" : "bg-green-500";
-                      const maq = maquinarias.find(m => (m.codigo || m.nombre) === a.maquinaria);
+                      const pct = Math.min(150, a.pct);
+                      const vencido = a.estado === "vencido";
+                      const barColor = vencido ? "bg-destructive" : pct >= 90 ? "bg-orange-500" : "bg-green-500";
+                      const maq = maquinarias.find(m => m.id === a.maquinariaId);
+                      const unidadLabel = a.unidad === "h" ? "Horas" : "KM";
+                      const sufijo = a.unidad === "h" ? "h" : "km";
                       return (
-                        <tr key={i} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
+                        <tr key={`${a.maquinariaId}-${a.unidad}`} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
                           <td className="px-4 py-2.5 font-semibold text-foreground">{a.maquinaria}</td>
+                          <td className="px-4 py-2.5">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                vencido ? "border-destructive/40 text-destructive" : "border-orange-500/40 text-orange-500"
+                              )}
+                            >
+                              {unidadLabel} · {vencido ? "Vencido" : "Próximo"}
+                            </Badge>
+                          </td>
                           <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">
-                            {a.actual.toLocaleString()} h
+                            {a.actual.toLocaleString()} {sufijo}
                           </td>
                           <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
-                            {a.limite.toLocaleString()} h
+                            {a.limite.toLocaleString()} {sufijo}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono tabular-nums font-semibold text-destructive">
-                            +{excedido.toLocaleString()} h
+                          <td className={cn(
+                            "px-4 py-2.5 text-right font-mono tabular-nums font-semibold",
+                            vencido ? "text-destructive" : "text-orange-500"
+                          )}>
+                            {vencido ? "+" : ""}{a.diff.toLocaleString()} {sufijo}
+                            {!vencido && <span className="ml-1 text-[10px] text-muted-foreground">restantes</span>}
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
@@ -453,8 +530,9 @@ export default function MantenimientoPage() {
                 </table>
               </div>
               <p className="px-4 py-2 text-[11px] text-muted-foreground bg-muted/30 border-t border-border/50">
-                <strong>Horómetro actual</strong>: horas acumuladas de la máquina (se sincroniza con los partes diarios).{" "}
-                <strong>Próximo service</strong>: horómetro previsto en el último service registrado.
+                <strong>Actual</strong>: horas o kilómetros acumulados (sincronizados con partes diarios).{" "}
+                <strong>Próximo service</strong>: valor previsto en el último service registrado.{" "}
+                Un vehículo aparece por HR, por KM o por ambos según cómo se controle.
               </p>
             </div>
           )}
