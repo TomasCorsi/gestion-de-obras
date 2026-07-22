@@ -112,7 +112,9 @@ const ParteDiario = () => {
   const [obsPreload, setObsPreload] = useState<ObservacionMaquina | null>(null);
   const [editingMantenimiento, setEditingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
   const [deletingMantenimiento, setDeletingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
+  const [preloadMaquinariaId, setPreloadMaquinariaId] = useState<string | undefined>(undefined);
   const [selectedDateMec, setSelectedDateMec] = useState<Date>(new Date());
+
 
   // todayStr needed by both repartidor and mechanic (memoized: stable per mount)
   const todayStr = useMemo(() => {
