@@ -23,6 +23,8 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useObservacionesMaquina } from "@/hooks/useObservacionesMaquina";
 import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 import { useMantenimientos, type MantenimientoWithRelations } from "@/hooks/useMantenimientos";
+import { useServiceAlerts } from "@/hooks/useServiceAlerts";
+
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
@@ -62,6 +64,8 @@ const ParteDiario = () => {
   const { maquinarias: maquinariasFromDB = [] } = useMaquinarias();
   const { pendientes: alertasPendientes } = useObservacionesMaquina();
   const { mantenimientos, deleteMantenimiento } = useMantenimientos();
+  const { alerts: serviceAlerts } = useServiceAlerts();
+
 
   // Offline cache: save when we have fresh data, fall back to cache when empty
   useEffect(() => {
@@ -108,7 +112,9 @@ const ParteDiario = () => {
   const [obsPreload, setObsPreload] = useState<ObservacionMaquina | null>(null);
   const [editingMantenimiento, setEditingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
   const [deletingMantenimiento, setDeletingMantenimiento] = useState<MantenimientoWithRelations | null>(null);
+  const [preloadMaquinariaId, setPreloadMaquinariaId] = useState<string | undefined>(undefined);
   const [selectedDateMec, setSelectedDateMec] = useState<Date>(new Date());
+
 
   // todayStr needed by both repartidor and mechanic (memoized: stable per mount)
   const todayStr = useMemo(() => {
@@ -308,26 +314,38 @@ const ParteDiario = () => {
 
   const handleGoToMantenimiento = (obs?: ObservacionMaquina) => {
     setObsPreload(obs || null);
+    setPreloadMaquinariaId(undefined);
+    setView('mantenimiento');
+  };
+
+  const handleServiceAlertClick = (maquinariaId: string) => {
+    setObsPreload(null);
+    setEditingMantenimiento(null);
+    setPreloadMaquinariaId(maquinariaId);
     setView('mantenimiento');
   };
 
   const handleBackFromMantenimiento = () => {
     setObsPreload(null);
     setEditingMantenimiento(null);
+    setPreloadMaquinariaId(undefined);
     setView('home');
   };
 
   const handleMantenimientoSuccess = () => {
     setObsPreload(null);
     setEditingMantenimiento(null);
+    setPreloadMaquinariaId(undefined);
     setView('home');
   };
 
   const handleRetomarMantenimiento = (mant: MantenimientoWithRelations) => {
     setEditingMantenimiento(mant);
     setObsPreload(null);
+    setPreloadMaquinariaId(undefined);
     setView('mantenimiento');
   };
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -363,7 +381,10 @@ const ParteDiario = () => {
               onVerAlertas={handleGoToAlerts}
               onNuevoMantenimiento={() => handleGoToMantenimiento()}
               mantenimientosPendientes={mantenimientosPendientes}
+              serviceAlerts={serviceAlerts}
+              onServiceAlertClick={handleServiceAlertClick}
               onRetomarMantenimiento={handleRetomarMantenimiento}
+
               isDiscarding={isDeleting}
               selectedDateMecanico={selectedDateMec}
               isTodayMecanico={isTodayMec}
@@ -444,8 +465,10 @@ const ParteDiario = () => {
             nombreMecanico={empleado.nombreCompleto}
             empleadoId={empleado.id}
             editData={editingMantenimiento}
+            preloadMaquinariaId={preloadMaquinariaId}
           />
         )}
+
 
         {view === 'list' && (
           <ParteDiarioListView

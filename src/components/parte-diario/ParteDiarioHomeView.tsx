@@ -10,7 +10,9 @@ import type { ParteDiario } from "@/hooks/useParteDiario";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
 import type { MantenimientoWithRelations } from "@/hooks/useMantenimientos";
+import type { ServiceAlert } from "@/hooks/useServiceAlerts";
 import { TIPO_CONFIG, ESTADO_CONFIG } from "@/components/mantenimiento/mantenimientoConstants";
+
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
@@ -27,6 +29,9 @@ interface ParteDiarioHomeViewProps {
   selectedDate?: Date;
   isToday?: boolean;
   mantenimientosPendientes?: MantenimientoWithRelations[];
+  serviceAlerts?: ServiceAlert[];
+  onServiceAlertClick?: (maquinariaId: string) => void;
+
   // Mechanic history props
   selectedDateMecanico?: Date;
   isTodayMecanico?: boolean;
@@ -68,6 +73,9 @@ export const ParteDiarioHomeView = ({
   selectedDate = new Date(),
   isToday: isTodayProp = true,
   mantenimientosPendientes = [],
+  serviceAlerts = [],
+  onServiceAlertClick,
+
   selectedDateMecanico = new Date(),
   isTodayMecanico = true,
   mantenimientosDia = [],
@@ -215,6 +223,75 @@ export const ParteDiarioHomeView = ({
           </Button>
         </div>
       )}
+
+      {/* Service alerts (mecánicos y ayudantes) */}
+      {isMecanico && serviceAlerts.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
+              <Wrench className="w-3 h-3 inline mr-1" />
+              Services a realizar · {serviceAlerts.length}
+            </p>
+            <div className="flex gap-1">
+              {serviceAlerts.filter(a => a.estado === "vencido").length > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                  {serviceAlerts.filter(a => a.estado === "vencido").length} vencido{serviceAlerts.filter(a => a.estado === "vencido").length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+              {serviceAlerts.filter(a => a.estado === "proximo").length > 0 && (
+                <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-600 border-orange-500/30">
+                  {serviceAlerts.filter(a => a.estado === "proximo").length} próximo{serviceAlerts.filter(a => a.estado === "proximo").length !== 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+          </div>
+          {serviceAlerts.map((a, idx) => {
+            const isVencido = a.estado === "vencido";
+            const barColor = isVencido ? "bg-destructive" : a.pct >= 90 ? "bg-orange-500" : "bg-green-500";
+            const borderColor = isVencido ? "border-l-destructive" : "border-l-orange-500";
+            const badgeColor = isVencido
+              ? "bg-destructive/10 text-destructive border-destructive/30"
+              : "bg-orange-500/10 text-orange-600 border-orange-500/30";
+            const diffAbs = Math.abs(a.diff);
+            const diffLabel = isVencido
+              ? `Excedido +${diffAbs.toLocaleString()} ${a.unidad}`
+              : `Faltan ${diffAbs.toLocaleString()} ${a.unidad}`;
+            return (
+              <button
+                key={`${a.maquinariaId}-${a.unidad}-${idx}`}
+                onClick={() => onServiceAlertClick?.(a.maquinariaId)}
+                className={`w-full text-left bg-card border border-border rounded-xl border-l-4 ${borderColor} p-3 shadow-sm hover:bg-muted/50 transition-colors`}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-foreground truncate">
+                      {a.maquinaria}
+                      {a.patente && <span className="text-muted-foreground font-normal"> · {a.patente}</span>}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Actual <span className="font-semibold text-foreground">{a.actual.toLocaleString()} {a.unidad}</span>
+                      {" · "}
+                      Próx. service <span className="font-semibold text-foreground">{a.limite.toLocaleString()} {a.unidad}</span>
+                    </p>
+                  </div>
+                  <Badge variant="outline" className={`text-[10px] shrink-0 ${badgeColor}`}>
+                    {isVencido ? "Vencido" : "Próximo"}
+                  </Badge>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${barColor} transition-all`}
+                    style={{ width: `${Math.min(100, Math.max(4, a.pct))}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">{diffLabel}</p>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+
 
       {/* Pending mantenimientos for mechanic */}
       {isMecanico && mantenimientosPendientes.length > 0 && (

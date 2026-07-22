@@ -28,7 +28,9 @@ interface MecanicoMantenimientoFormProps {
   nombreMecanico?: string;
   empleadoId?: string;
   editData?: MantenimientoWithRelations | null;
+  preloadMaquinariaId?: string;
 }
+
 
 type TipoOption = { value: TipoMantenimiento; label: string; emoji: string; color: string };
 type EstadoOption = { value: EstadoMantenimiento; label: string; emoji: string; color: string };
@@ -52,7 +54,9 @@ export const MecanicoMantenimientoForm = ({
   nombreMecanico,
   empleadoId,
   editData,
+  preloadMaquinariaId,
 }: MecanicoMantenimientoFormProps) => {
+
   const { createMantenimiento, updateMantenimiento } = useMantenimientos();
   const { maquinarias } = useMaquinarias();
 
@@ -60,7 +64,7 @@ export const MecanicoMantenimientoForm = ({
   const today = format(new Date(), "yyyy-MM-dd");
 
   const [fecha, setFecha] = useState(editData?.fecha || today);
-  const [maquinariaId, setMaquinariaId] = useState(editData?.maquinaria_id || obsPreload?.maquinaria_id || "");
+  const [maquinariaId, setMaquinariaId] = useState(editData?.maquinaria_id || obsPreload?.maquinaria_id || preloadMaquinariaId || "");
   const [tipo, setTipo] = useState<TipoMantenimiento>(editData?.tipo as TipoMantenimiento || (obsPreload ? "correctivo" : "preventivo"));
   const [estado, setEstado] = useState<EstadoMantenimiento>(editData?.estado as EstadoMantenimiento || "pendiente");
   const [descripcion, setDescripcion] = useState(editData?.descripcion === "Pendiente de completar" ? "" : (editData?.descripcion || ""));
