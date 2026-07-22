@@ -64,6 +64,8 @@ const ParteDiario = () => {
   const { maquinarias: maquinariasFromDB = [] } = useMaquinarias();
   const { pendientes: alertasPendientes } = useObservacionesMaquina();
   const { mantenimientos, deleteMantenimiento } = useMantenimientos();
+  const { alerts: serviceAlerts } = useServiceAlerts();
+
 
   // Offline cache: save when we have fresh data, fall back to cache when empty
   useEffect(() => {
