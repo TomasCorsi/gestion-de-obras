@@ -465,8 +465,10 @@ const ParteDiario = () => {
             nombreMecanico={empleado.nombreCompleto}
             empleadoId={empleado.id}
             editData={editingMantenimiento}
+            preloadMaquinariaId={preloadMaquinariaId}
           />
         )}
+
 
         {view === 'list' && (
           <ParteDiarioListView
