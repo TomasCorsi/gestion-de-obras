@@ -28,7 +28,9 @@ interface MecanicoMantenimientoFormProps {
   nombreMecanico?: string;
   empleadoId?: string;
   editData?: MantenimientoWithRelations | null;
+  preloadMaquinariaId?: string;
 }
+
 
 type TipoOption = { value: TipoMantenimiento; label: string; emoji: string; color: string };
 type EstadoOption = { value: EstadoMantenimiento; label: string; emoji: string; color: string };
