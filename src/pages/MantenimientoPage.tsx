@@ -431,11 +431,19 @@ export default function MantenimientoPage() {
         <TabsContent value="services">
           {renderFiltersAndActions("service")}
           {serviceAlerts.length > 0 && (
-            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 overflow-hidden">
-              <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border-b border-destructive/20">
-                <AlertTriangle className="w-4 h-4 text-destructive" />
-                <p className="text-sm font-semibold text-destructive">
-                  Máquinas con service vencido ({serviceAlerts.length})
+            <div className={cn(
+              "mb-4 rounded-lg border overflow-hidden",
+              vencidosCount > 0 ? "border-destructive/30 bg-destructive/5" : "border-orange-500/30 bg-orange-500/5"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2 px-4 py-2.5 border-b",
+                vencidosCount > 0 ? "bg-destructive/10 border-destructive/20" : "bg-orange-500/10 border-orange-500/20"
+              )}>
+                <AlertTriangle className={cn("w-4 h-4", vencidosCount > 0 ? "text-destructive" : "text-orange-500")} />
+                <p className={cn("text-sm font-semibold", vencidosCount > 0 ? "text-destructive" : "text-orange-500")}>
+                  Services vencidos o próximos ({serviceAlerts.length})
+                  {vencidosCount > 0 && ` — ${vencidosCount} vencido${vencidosCount === 1 ? "" : "s"}`}
+                  {proximosCount > 0 && ` · ${proximosCount} próximo${proximosCount === 1 ? "" : "s"}`}
                 </p>
               </div>
               <div className="overflow-x-auto">
@@ -443,30 +451,48 @@ export default function MantenimientoPage() {
                   <thead>
                     <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border/50">
                       <th className="px-4 py-2 font-medium">Máquina</th>
-                      <th className="px-4 py-2 font-medium text-right">Horómetro actual</th>
+                      <th className="px-4 py-2 font-medium">Unidad</th>
+                      <th className="px-4 py-2 font-medium text-right">Actual</th>
                       <th className="px-4 py-2 font-medium text-right">Próximo service</th>
-                      <th className="px-4 py-2 font-medium text-right">Excedido</th>
-                      <th className="px-4 py-2 font-medium w-[30%]">Progreso</th>
+                      <th className="px-4 py-2 font-medium text-right">Diferencia</th>
+                      <th className="px-4 py-2 font-medium w-[25%]">Progreso</th>
                       <th className="px-4 py-2 font-medium text-right">Acción</th>
                     </tr>
                   </thead>
                   <tbody>
                     {serviceAlerts.map((a, i) => {
-                      const excedido = Math.max(0, a.actual - a.limite);
-                      const pct = a.limite > 0 ? Math.min(150, (a.actual / a.limite) * 100) : 0;
-                      const barColor = pct >= 100 ? "bg-destructive" : pct >= 90 ? "bg-orange-500" : "bg-green-500";
-                      const maq = maquinarias.find(m => (m.codigo || m.nombre) === a.maquinaria);
+                      const pct = Math.min(150, a.pct);
+                      const vencido = a.estado === "vencido";
+                      const barColor = vencido ? "bg-destructive" : pct >= 90 ? "bg-orange-500" : "bg-green-500";
+                      const maq = maquinarias.find(m => m.id === a.maquinariaId);
+                      const unidadLabel = a.unidad === "h" ? "Horas" : "KM";
+                      const sufijo = a.unidad === "h" ? "h" : "km";
                       return (
-                        <tr key={i} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
+                        <tr key={`${a.maquinariaId}-${a.unidad}`} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
                           <td className="px-4 py-2.5 font-semibold text-foreground">{a.maquinaria}</td>
+                          <td className="px-4 py-2.5">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px]",
+                                vencido ? "border-destructive/40 text-destructive" : "border-orange-500/40 text-orange-500"
+                              )}
+                            >
+                              {unidadLabel} · {vencido ? "Vencido" : "Próximo"}
+                            </Badge>
+                          </td>
                           <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">
-                            {a.actual.toLocaleString()} h
+                            {a.actual.toLocaleString()} {sufijo}
                           </td>
                           <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
-                            {a.limite.toLocaleString()} h
+                            {a.limite.toLocaleString()} {sufijo}
                           </td>
-                          <td className="px-4 py-2.5 text-right font-mono tabular-nums font-semibold text-destructive">
-                            +{excedido.toLocaleString()} h
+                          <td className={cn(
+                            "px-4 py-2.5 text-right font-mono tabular-nums font-semibold",
+                            vencido ? "text-destructive" : "text-orange-500"
+                          )}>
+                            {vencido ? "+" : ""}{a.diff.toLocaleString()} {sufijo}
+                            {!vencido && <span className="ml-1 text-[10px] text-muted-foreground">restantes</span>}
                           </td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
@@ -504,8 +530,9 @@ export default function MantenimientoPage() {
                 </table>
               </div>
               <p className="px-4 py-2 text-[11px] text-muted-foreground bg-muted/30 border-t border-border/50">
-                <strong>Horómetro actual</strong>: horas acumuladas de la máquina (se sincroniza con los partes diarios).{" "}
-                <strong>Próximo service</strong>: horómetro previsto en el último service registrado.
+                <strong>Actual</strong>: horas o kilómetros acumulados (sincronizados con partes diarios).{" "}
+                <strong>Próximo service</strong>: valor previsto en el último service registrado.{" "}
+                Un vehículo aparece por HR, por KM o por ambos según cómo se controle.
               </p>
             </div>
           )}
