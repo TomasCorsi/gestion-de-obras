@@ -73,6 +73,9 @@ export const ParteDiarioHomeView = ({
   selectedDate = new Date(),
   isToday: isTodayProp = true,
   mantenimientosPendientes = [],
+  serviceAlerts = [],
+  onServiceAlertClick,
+
   selectedDateMecanico = new Date(),
   isTodayMecanico = true,
   mantenimientosDia = [],
