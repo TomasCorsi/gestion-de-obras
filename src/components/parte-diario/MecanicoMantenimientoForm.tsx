@@ -54,7 +54,9 @@ export const MecanicoMantenimientoForm = ({
   nombreMecanico,
   empleadoId,
   editData,
+  preloadMaquinariaId,
 }: MecanicoMantenimientoFormProps) => {
+
   const { createMantenimiento, updateMantenimiento } = useMantenimientos();
   const { maquinarias } = useMaquinarias();
 
