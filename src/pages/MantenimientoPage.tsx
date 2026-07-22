@@ -380,23 +380,82 @@ export default function MantenimientoPage() {
         <TabsContent value="services">
           {renderFiltersAndActions("service")}
           {serviceAlerts.length > 0 && (
-            <div className="mb-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-              <p className="text-sm font-semibold text-destructive flex items-center gap-2 mb-1">
-                <AlertTriangle className="w-4 h-4" /> Máquinas con service vencido
-              </p>
-              <p className="text-xs text-destructive/80 mb-2">
-                Horas actuales del horómetro vs. horómetro previsto para el próximo service.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {serviceAlerts.map((a, i) => {
-                  const excedido = Math.max(0, a.actual - a.limite);
-                  return (
-                    <Badge key={i} className="bg-destructive/20 text-destructive border-destructive/30" title={`Actual ${a.actual}h · Próximo service a los ${a.limite}h · Excedido ${excedido}h`}>
-                      {a.maquinaria} · Actual {a.actual}h · Service {a.limite}h · +{excedido}h
-                    </Badge>
-                  );
-                })}
+            <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-destructive/10 border-b border-destructive/20">
+                <AlertTriangle className="w-4 h-4 text-destructive" />
+                <p className="text-sm font-semibold text-destructive">
+                  Máquinas con service vencido ({serviceAlerts.length})
+                </p>
               </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs uppercase text-muted-foreground border-b border-border/50">
+                      <th className="px-4 py-2 font-medium">Máquina</th>
+                      <th className="px-4 py-2 font-medium text-right">Horómetro actual</th>
+                      <th className="px-4 py-2 font-medium text-right">Próximo service</th>
+                      <th className="px-4 py-2 font-medium text-right">Excedido</th>
+                      <th className="px-4 py-2 font-medium w-[30%]">Progreso</th>
+                      <th className="px-4 py-2 font-medium text-right">Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {serviceAlerts.map((a, i) => {
+                      const excedido = Math.max(0, a.actual - a.limite);
+                      const pct = a.limite > 0 ? Math.min(150, (a.actual / a.limite) * 100) : 0;
+                      const barColor = pct >= 100 ? "bg-destructive" : pct >= 90 ? "bg-orange-500" : "bg-green-500";
+                      const maq = maquinarias.find(m => (m.codigo || m.nombre) === a.maquinaria);
+                      return (
+                        <tr key={i} className="border-b border-border/30 last:border-0 hover:bg-muted/30">
+                          <td className="px-4 py-2.5 font-semibold text-foreground">{a.maquinaria}</td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums text-foreground">
+                            {a.actual.toLocaleString()} h
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums text-muted-foreground">
+                            {a.limite.toLocaleString()} h
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono tabular-nums font-semibold text-destructive">
+                            +{excedido.toLocaleString()} h
+                          </td>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={cn("h-full transition-all", barColor)}
+                                  style={{ width: `${Math.min(100, pct)}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-mono tabular-nums text-muted-foreground w-12 text-right">
+                                {pct.toFixed(0)}%
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-2.5 text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                setFormType("service");
+                                setIsEditing(false);
+                                setSelectedMant(maq ? ({ maquinaria_id: maq.id } as any) : null);
+                                setReparacionPrefill(undefined);
+                                setFormOpen(true);
+                              }}
+                            >
+                              <Plus className="w-3 h-3 mr-1" /> Registrar service
+                            </Button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <p className="px-4 py-2 text-[11px] text-muted-foreground bg-muted/30 border-t border-border/50">
+                <strong>Horómetro actual</strong>: horas acumuladas de la máquina (se sincroniza con los partes diarios).{" "}
+                <strong>Próximo service</strong>: horómetro previsto en el último service registrado.
+              </p>
             </div>
           )}
           {renderStats(services, true)}
