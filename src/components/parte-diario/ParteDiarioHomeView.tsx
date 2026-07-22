@@ -29,6 +29,9 @@ interface ParteDiarioHomeViewProps {
   selectedDate?: Date;
   isToday?: boolean;
   mantenimientosPendientes?: MantenimientoWithRelations[];
+  serviceAlerts?: ServiceAlert[];
+  onServiceAlertClick?: (maquinariaId: string) => void;
+
   // Mechanic history props
   selectedDateMecanico?: Date;
   isTodayMecanico?: boolean;
