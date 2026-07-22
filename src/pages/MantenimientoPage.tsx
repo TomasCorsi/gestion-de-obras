@@ -239,13 +239,22 @@ export default function MantenimientoPage() {
           </div>
         );
       })}
-      {showAlerts && serviceAlerts.length > 0 && (
+      {showAlerts && vencidosCount > 0 && (
         <div className="card-industrial p-4 flex items-center justify-between border-destructive/50">
           <div>
-            <p className="text-2xl font-bold text-destructive">{serviceAlerts.length}</p>
+            <p className="text-2xl font-bold text-destructive">{vencidosCount}</p>
             <p className="text-sm text-destructive">Service vencido</p>
           </div>
           <AlertTriangle className="w-8 h-8 text-destructive" />
+        </div>
+      )}
+      {showAlerts && proximosCount > 0 && (
+        <div className="card-industrial p-4 flex items-center justify-between border-orange-500/50">
+          <div>
+            <p className="text-2xl font-bold text-orange-500">{proximosCount}</p>
+            <p className="text-sm text-orange-500">Service próximo</p>
+          </div>
+          <Clock className="w-8 h-8 text-orange-500" />
         </div>
       )}
     </div>
