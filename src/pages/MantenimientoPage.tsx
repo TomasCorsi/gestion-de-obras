@@ -384,12 +384,18 @@ export default function MantenimientoPage() {
               <p className="text-sm font-semibold text-destructive flex items-center gap-2 mb-1">
                 <AlertTriangle className="w-4 h-4" /> Máquinas con service vencido
               </p>
+              <p className="text-xs text-destructive/80 mb-2">
+                Horas actuales del horómetro vs. horómetro previsto para el próximo service.
+              </p>
               <div className="flex flex-wrap gap-2">
-                {serviceAlerts.map((a, i) => (
-                  <Badge key={i} className="bg-destructive/20 text-destructive border-destructive/30">
-                    {a.maquinaria}: {a.actual}h / {a.limite}h
-                  </Badge>
-                ))}
+                {serviceAlerts.map((a, i) => {
+                  const excedido = Math.max(0, a.actual - a.limite);
+                  return (
+                    <Badge key={i} className="bg-destructive/20 text-destructive border-destructive/30" title={`Actual ${a.actual}h · Próximo service a los ${a.limite}h · Excedido ${excedido}h`}>
+                      {a.maquinaria} · Actual {a.actual}h · Service {a.limite}h · +{excedido}h
+                    </Badge>
+                  );
+                })}
               </div>
             </div>
           )}
