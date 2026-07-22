@@ -254,7 +254,7 @@ export default function MantenimientoPage() {
   const renderCard = (mant: MantenimientoWithRelations, index: number) => {
     const estadoCfg = ESTADO_CONFIG[mant.estado as keyof typeof ESTADO_CONFIG];
     const tipoCfg = TIPO_CONFIG[mant.tipo as keyof typeof TIPO_CONFIG];
-    const isOverdue = serviceAlerts.some(a => a.maquinaria === (mant.maquinaria?.codigo || mant.maquinaria?.nombre));
+    const isOverdue = serviceAlerts.some(a => a.maquinariaId === mant.maquinaria_id && a.estado === "vencido");
 
     return (
       <Card
