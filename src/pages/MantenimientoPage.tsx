@@ -53,6 +53,7 @@ import { FilterBar, FilterState } from "@/components/shared/FilterBar";
 import { useMantenimientos, MantenimientoWithRelations, EstadoMantenimiento } from "@/hooks/useMantenimientos";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useObras } from "@/hooks/useObras";
+import { useServiceAlerts, type ServiceAlert } from "@/hooks/useServiceAlerts";
 import { cn, formatDate } from "@/lib/utils";
 import { ESTADO_CONFIG, TIPO_CONFIG, formatCurrency } from "@/components/mantenimiento/mantenimientoConstants";
 import * as XLSX from "xlsx";
@@ -63,6 +64,8 @@ export default function MantenimientoPage() {
   const { pendientes: obsPendientes } = useObservacionesMaquina();
   const { maquinarias } = useMaquinarias();
   const { obras } = useObras();
+  const { alerts: serviceAlerts, vencidosCount, proximosCount } = useServiceAlerts();
+
 
   const [searchTerm, setSearchTerm] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
