@@ -314,26 +314,38 @@ const ParteDiario = () => {
 
   const handleGoToMantenimiento = (obs?: ObservacionMaquina) => {
     setObsPreload(obs || null);
+    setPreloadMaquinariaId(undefined);
+    setView('mantenimiento');
+  };
+
+  const handleServiceAlertClick = (maquinariaId: string) => {
+    setObsPreload(null);
+    setEditingMantenimiento(null);
+    setPreloadMaquinariaId(maquinariaId);
     setView('mantenimiento');
   };
 
   const handleBackFromMantenimiento = () => {
     setObsPreload(null);
     setEditingMantenimiento(null);
+    setPreloadMaquinariaId(undefined);
     setView('home');
   };
 
   const handleMantenimientoSuccess = () => {
     setObsPreload(null);
     setEditingMantenimiento(null);
+    setPreloadMaquinariaId(undefined);
     setView('home');
   };
 
   const handleRetomarMantenimiento = (mant: MantenimientoWithRelations) => {
     setEditingMantenimiento(mant);
     setObsPreload(null);
+    setPreloadMaquinariaId(undefined);
     setView('mantenimiento');
   };
+
 
   return (
     <div className="min-h-screen bg-background">
