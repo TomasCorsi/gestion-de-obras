@@ -10,7 +10,9 @@ import type { ParteDiario } from "@/hooks/useParteDiario";
 import type { CargaRepartidor } from "@/hooks/useCargasRepartidor";
 import { CargasCombustibleRepartidorList } from "./CargasCombustibleRepartidorList";
 import type { MantenimientoWithRelations } from "@/hooks/useMantenimientos";
+import type { ServiceAlert } from "@/hooks/useServiceAlerts";
 import { TIPO_CONFIG, ESTADO_CONFIG } from "@/components/mantenimiento/mantenimientoConstants";
+
 
 interface ParteDiarioHomeViewProps {
   borradorHoy: ParteDiario | null;
