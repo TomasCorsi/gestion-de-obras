@@ -23,6 +23,8 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { useObservacionesMaquina } from "@/hooks/useObservacionesMaquina";
 import type { ObservacionMaquina } from "@/hooks/useObservacionesMaquina";
 import { useMantenimientos, type MantenimientoWithRelations } from "@/hooks/useMantenimientos";
+import { useServiceAlerts } from "@/hooks/useServiceAlerts";
+
 
 type RolPersonal = 'maquinista' | 'chofer' | 'capataz' | 'mecanico' | 'sereno' | 'topografo' | 'ayudante' | 'administrativo' | 'repartidor_calecita';
 
