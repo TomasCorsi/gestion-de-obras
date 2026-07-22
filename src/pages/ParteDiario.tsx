@@ -381,7 +381,10 @@ const ParteDiario = () => {
               onVerAlertas={handleGoToAlerts}
               onNuevoMantenimiento={() => handleGoToMantenimiento()}
               mantenimientosPendientes={mantenimientosPendientes}
+              serviceAlerts={serviceAlerts}
+              onServiceAlertClick={handleServiceAlertClick}
               onRetomarMantenimiento={handleRetomarMantenimiento}
+
               isDiscarding={isDeleting}
               selectedDateMecanico={selectedDateMec}
               isTodayMecanico={isTodayMec}
