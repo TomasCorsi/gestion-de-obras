@@ -112,10 +112,21 @@ export default function MantenimientoPage() {
   const services = useMemo(() => filterItems(mantenimientos.filter(m => m.tipo === "preventivo")), [mantenimientos, filterItems]);
   const reparaciones = useMemo(() => filterItems(mantenimientos.filter(m => m.tipo === "correctivo" || m.tipo === "emergencia")), [mantenimientos, filterItems]);
 
-  // Service alerts: machines close to or past service limits
-  const serviceAlerts = useMemo(() => {
-    const alerts: { maquinaria: string; tipo: "hr" | "km"; actual: number; limite: number }[] = [];
-    // Group latest service per machine
+  // Service alerts: machines close to or past service limits (HR or KM)
+  const UMBRAL_HR = 25;
+  const UMBRAL_KM = 250;
+  type ServiceAlert = {
+    maquinaria: string;
+    maquinariaId: string;
+    unidad: "h" | "km";
+    actual: number;
+    limite: number;
+    diff: number; // positive if overdue, negative if remaining
+    pct: number;
+    estado: "vencido" | "proximo";
+  };
+  const serviceAlerts = useMemo<ServiceAlert[]>(() => {
+    const alerts: ServiceAlert[] = [];
     const latestByMaq = new Map<string, MantenimientoWithRelations>();
     mantenimientos.filter(m => m.tipo === "preventivo").forEach(m => {
       const existing = latestByMaq.get(m.maquinaria_id);
@@ -124,13 +135,44 @@ export default function MantenimientoPage() {
     latestByMaq.forEach((m) => {
       const maq = maquinarias.find(q => q.id === m.maquinaria_id);
       if (!maq) return;
-      const hActual = maq.horas_acumuladas || 0;
-      if (m.proximo_service_hr && hActual >= m.proximo_service_hr) {
-        alerts.push({ maquinaria: maq.codigo || maq.nombre || "?", tipo: "hr", actual: hActual, limite: m.proximo_service_hr });
+      const nombre = maq.codigo || maq.nombre || "?";
+
+      if (m.proximo_service_hr) {
+        const actual = maq.horas_acumuladas || 0;
+        const limite = m.proximo_service_hr;
+        const diff = actual - limite;
+        if (diff >= -UMBRAL_HR) {
+          alerts.push({
+            maquinaria: nombre, maquinariaId: maq.id, unidad: "h",
+            actual, limite, diff,
+            pct: limite > 0 ? (actual / limite) * 100 : 0,
+            estado: diff >= 0 ? "vencido" : "proximo",
+          });
+        }
+      }
+      if (m.proximo_service_km) {
+        const actual = (maq as any).km_acumulados || 0;
+        const limite = m.proximo_service_km;
+        const diff = actual - limite;
+        if (diff >= -UMBRAL_KM) {
+          alerts.push({
+            maquinaria: nombre, maquinariaId: maq.id, unidad: "km",
+            actual, limite, diff,
+            pct: limite > 0 ? (actual / limite) * 100 : 0,
+            estado: diff >= 0 ? "vencido" : "proximo",
+          });
+        }
       }
     });
-    return alerts;
+    // Vencidos primero (mayor exceso), luego próximos (menor faltante)
+    return alerts.sort((a, b) => {
+      if (a.estado !== b.estado) return a.estado === "vencido" ? -1 : 1;
+      return b.diff - a.diff;
+    });
   }, [mantenimientos, maquinarias]);
+
+  const vencidosCount = useMemo(() => serviceAlerts.filter(a => a.estado === "vencido").length, [serviceAlerts]);
+  const proximosCount = serviceAlerts.length - vencidosCount;
 
   const handleNew = (type: "service" | "reparacion") => {
     setFormType(type);
