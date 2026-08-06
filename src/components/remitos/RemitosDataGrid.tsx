@@ -115,6 +115,7 @@ const tipoMaterialOptions = [
   { value: "Relleno", label: "Relleno" },
   { value: "Piedra 30/50", label: "Piedra 30/50" },
   { value: "Materiales varios", label: "Materiales varios" },
+  { value: "Caños", label: "Caños" },
 ];
 
 const tipoTransporteOptions = [
@@ -131,6 +132,8 @@ const tipoTransporteOptions = [
   { value: "Britcom", label: "Britcom" },
   { value: "Ramon romero gomez", label: "Ramon romero gomez" },
   { value: "Duraez", label: "Duraez" },
+  { value: "BERTONE", label: "BERTONE" },
+  { value: "NARDONI", label: "NARDONI" },
 ];
 
 export function RemitosDataGrid({
