@@ -169,6 +169,9 @@ const tipoMaterialNormalize: Record<string, string> = {
   'traslado interno': 'Traslado interno',
   'barro': 'Barro',
   'cal vial': 'Cal Vial',
+  'caños': 'Caños',
+  'canios': 'Caños',
+  'caños de': 'Caños',
 };
 
 // Valid material types for validation
@@ -194,6 +197,9 @@ const tipoTransporteNormalize: Record<string, string> = {
   'ramon romero gomez': 'Ramon romero gomez',
   'ramon romero': 'Ramon romero gomez',
   'duraez': 'Duraez',
+  'bertone': 'BERTONE',
+  'nardon': 'NARDONI',
+  'nardoni': 'NARDONI',
 };
 
 // Valid transport types for validation

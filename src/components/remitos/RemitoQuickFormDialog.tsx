@@ -36,13 +36,14 @@ const TIPO_MATERIAL_OPTIONS = [
   "Cubiertas", "Frezado", "Cobertura de residuos", "Arena", "Hormigon H30",
   "Tierra negra", "Relleno", "Piedra 30/50", "Materiales varios",
   "Raices", "Traslado interno", "Barro", "Limpieza de obra", "Cal Vial",
+  "Caños",
 ];
 
 const TIPO_TRANSPORTE_OPTIONS = [
   "Calamina Sur", "Geo hermanos", "Diaz Neiva", "japones", "Cato", "Tatu",
   "Patan", "Hormicret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez",
   "Ranelga", "San-vol", "Santino", "Acosta", "Meyer", "Bozzuto", "Legui",
-  "Larraige", "Fidanza", "Transgom", "ARIDO EXPRESS S.A",
+  "Larraige", "Fidanza", "Transgom", "ARIDO EXPRESS S.A", "BERTONE", "NARDONI",
 ];
 
 const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U", "DIA"];
