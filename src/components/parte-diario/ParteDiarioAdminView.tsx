@@ -64,6 +64,15 @@ import { ParteDiarioRendimientoObras } from "./ParteDiarioRendimientoObras";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ParteDiarioEditDialog } from "./ParteDiarioEditDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const ROL_LABELS: Record<string, string> = {
   maquinista: 'Maquinista',
   chofer: 'Chofer',
@@ -99,6 +108,8 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [isExportingAll, setIsExportingAll] = useState(false);
+
   
   // Convert URL filters to ParteDiarioAdminFilters format
   const filters: ParteDiarioAdminFilters = useMemo(() => ({
@@ -183,10 +194,8 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return codigo || tipo + (patente ? ` (${patente})` : "");
   };
 
-  // Export to Excel (lazy-load xlsx)
-  const handleExportExcel = async () => {
-    const XLSX = await import("xlsx");
-    const exportData = filteredPartes.map((p) => ({
+  const buildExportRows = (rows: ParteDiario[]) =>
+    rows.map((p) => ({
       Fecha: format(parseISO(p.fecha), "dd/MM/yyyy"),
       Empleado: getEmpleadoNombre(p),
       Rol: getEmpleadoRol(p),
@@ -218,6 +227,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
       "Obs./Inconvenientes": p.observaciones_inconvenientes || "-",
     }));
 
+  const downloadExcel = async (rows: ParteDiario[], fileName: string) => {
+    const XLSX = await import("xlsx");
+    const exportData = buildExportRows(rows);
+
+
     const ws = XLSX.utils.json_to_sheet(exportData);
     
     // Auto-adjust column widths
@@ -231,8 +245,42 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
 
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Partes Diarios");
-    XLSX.writeFile(wb, `partes_diarios_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(wb, fileName);
   };
+
+  const handleExportExcel = () =>
+    downloadExcel(filteredPartes, `partes_diarios_${new Date().toISOString().split("T")[0]}.xlsx`);
+
+  const handleExportHistorico = async () => {
+    setIsExportingAll(true);
+    try {
+      const all: ParteDiario[] = [];
+      const step = 1000;
+      for (let from = 0; ; from += step) {
+        const { data, error } = await supabase
+          .from("partes_diarios")
+          .select(`*, personal:personal_id (id, nombre, apellido, rol), obras:obra_id (id, nombre), maquinarias:maquinaria_id (id, codigo, tipo, patente)`)
+          .order("fecha", { ascending: false })
+          .range(from, from + step - 1);
+        if (error) throw error;
+        const batch = (data ?? []) as unknown as ParteDiario[];
+        all.push(...batch);
+        if (batch.length < step) break;
+      }
+      if (all.length === 0) {
+        toast.error("No hay partes diarios para exportar");
+        return;
+      }
+      await downloadExcel(all, `partes_diarios_historico_${new Date().toISOString().split("T")[0]}.xlsx`);
+      toast.success(`Histórico exportado (${all.length} partes)`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Error al exportar el histórico completo");
+    } finally {
+      setIsExportingAll(false);
+    }
+  };
+
 
   if (isLoading && activeTab === "listado") {
     return (
@@ -313,15 +361,30 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                       </ToggleGroup>
 
                       {/* Export Excel */}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleExportExcel}
-                        disabled={filteredPartes.length === 0}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Excel
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" disabled={isExportingAll}>
+                            {isExportingAll ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-1" />
+                            )}
+                            Excel
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={handleExportExcel}
+                            disabled={filteredPartes.length === 0}
+                          >
+                            Vista actual ({filteredPartes.length})
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleExportHistorico}>
+                            Histórico completo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                     </div>
                   </div>
 
