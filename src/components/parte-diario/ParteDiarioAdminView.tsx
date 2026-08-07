@@ -64,6 +64,15 @@ import { ParteDiarioRendimientoObras } from "./ParteDiarioRendimientoObras";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ParteDiarioEditDialog } from "./ParteDiarioEditDialog";
 import type { ParteDiario } from "@/hooks/useParteDiario";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 const ROL_LABELS: Record<string, string> = {
   maquinista: 'Maquinista',
   chofer: 'Chofer',
