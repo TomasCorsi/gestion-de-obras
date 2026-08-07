@@ -108,6 +108,8 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
   const [parteToDelete, setParteToDelete] = useState<ParteDiario | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [isExportingAll, setIsExportingAll] = useState(false);
+
   
   // Convert URL filters to ParteDiarioAdminFilters format
   const filters: ParteDiarioAdminFilters = useMemo(() => ({
