@@ -359,15 +359,30 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
                       </ToggleGroup>
 
                       {/* Export Excel */}
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleExportExcel}
-                        disabled={filteredPartes.length === 0}
-                      >
-                        <Download className="h-4 w-4 mr-1" />
-                        Excel
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" disabled={isExportingAll}>
+                            {isExportingAll ? (
+                              <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            ) : (
+                              <Download className="h-4 w-4 mr-1" />
+                            )}
+                            Excel
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={handleExportExcel}
+                            disabled={filteredPartes.length === 0}
+                          >
+                            Vista actual ({filteredPartes.length})
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={handleExportHistorico}>
+                            Histórico completo
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
                     </div>
                   </div>
 
