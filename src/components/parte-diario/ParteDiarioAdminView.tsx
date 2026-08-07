@@ -183,10 +183,8 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
     return codigo || tipo + (patente ? ` (${patente})` : "");
   };
 
-  // Export to Excel (lazy-load xlsx)
-  const handleExportExcel = async () => {
-    const XLSX = await import("xlsx");
-    const exportData = filteredPartes.map((p) => ({
+  const buildExportRows = (rows: ParteDiario[]) =>
+    rows.map((p) => ({
       Fecha: format(parseISO(p.fecha), "dd/MM/yyyy"),
       Empleado: getEmpleadoNombre(p),
       Rol: getEmpleadoRol(p),
@@ -217,6 +215,11 @@ export const ParteDiarioAdminView = ({ onBack }: ParteDiarioAdminViewProps) => {
         : "-",
       "Obs./Inconvenientes": p.observaciones_inconvenientes || "-",
     }));
+
+  const downloadExcel = async (rows: ParteDiario[], fileName: string) => {
+    const XLSX = await import("xlsx");
+    const exportData = buildExportRows(rows);
+
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     
