@@ -553,11 +553,11 @@ export function GastosMaquinaria() {
           costoRemitos,
           cantMantenimientos: mants.length,
           costoMantenimientos,
-          gastoTotal: costoCombustible + costoRemitos + costoMantenimientos,
+          gastoTotal: costoCombustible + costoMantenimientos,
         };
       })
       .filter((f) => f.gastoTotal > 0 || f.litros > 0 || f.cantRemitos > 0 || f.cantMantenimientos > 0)
-      .sort((a, b) => b.gastoTotal - a.gastoTotal);
+      .sort((a, b) => (b.costoRemitos - b.gastoTotal) - (a.costoRemitos - a.gastoTotal));
 
     if (filas.length === 0) {
       toast.error("No hay movimientos en el período seleccionado");
