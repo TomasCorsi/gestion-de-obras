@@ -481,6 +481,54 @@ export function GastosMaquinaria() {
       return true;
     };
 
+    // Conductores por maquinaria en el período (partes diarios completados)
+    const conductoresPorMaquinaria = new Map<string, Map<string, Set<string>>>();
+    try {
+      const pageSize = 1000;
+      let from = 0;
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from('partes_diarios')
+          .select('maquinaria_id, fecha, personal:personal_id (nombre, apellido)')
+          .eq('estado', 'completado')
+          .not('maquinaria_id', 'is', null)
+          .order('fecha', { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (fechaDesde) q = q.gte('fecha', format(fechaDesde, 'yyyy-MM-dd'));
+        if (fechaHasta) q = q.lte('fecha', format(fechaHasta, 'yyyy-MM-dd'));
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as unknown as Array<{
+          maquinaria_id: string | null;
+          fecha: string;
+          personal: { nombre: string | null; apellido: string | null } | null;
+        }>;
+        for (const r of rows) {
+          if (!r.maquinaria_id || !r.personal) continue;
+          const nombre = [r.personal.nombre, r.personal.apellido].filter(Boolean).join(' ').trim();
+          if (!nombre) continue;
+          if (!conductoresPorMaquinaria.has(r.maquinaria_id)) conductoresPorMaquinaria.set(r.maquinaria_id, new Map());
+          const m = conductoresPorMaquinaria.get(r.maquinaria_id)!;
+          if (!m.has(nombre)) m.set(nombre, new Set());
+          m.get(nombre)!.add(r.fecha);
+        }
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+    } catch (e) {
+      console.error('Error cargando conductores:', e);
+    }
+
+    const getConductores = (maquinariaId: string) => {
+      const m = conductoresPorMaquinaria.get(maquinariaId);
+      if (!m) return [];
+      return Array.from(m.entries())
+        .map(([nombre, fechas]) => ({ nombre, dias: fechas.size }))
+        .sort((a, b) => b.dias - a.dias);
+    };
+
+
     const filas = maquinariasFiltradas
       .map((m) => {
         const cargas = cargasRepartidor.filter((c) => c.maquinaria_id === m.id && enRango(c.fecha));
