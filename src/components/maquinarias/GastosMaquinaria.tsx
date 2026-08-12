@@ -89,10 +89,10 @@ export function GastosMaquinaria() {
   };
 
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
-  const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
-  const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>(() => startOfMonth(new Date()));
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
-  const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
+  const [mesActivo, setMesActivo] = useState<string>(() => format(new Date(), "yyyy-MM")); // "todos", "YYYY-MM", "custom"
 
   // Query partes_diarios for the selected maquinaria to get operator and KM data
   const { data: partesDiarios = [] } = useQuery({
