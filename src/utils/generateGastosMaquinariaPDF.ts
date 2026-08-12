@@ -351,3 +351,225 @@ export async function generateGastosMaquinariaPDF(
   const fileName = `Liquidacion_${maquinaria.codigo || "Maquinaria"}_${format(new Date(), "yyyyMMdd")}.pdf`;
   doc.save(fileName);
 }
+
+// ==================================================================
+// PDF CONSOLIDADO: liquidación de todos los vehículos / maquinarias
+// ==================================================================
+
+export interface VehiculoLiquidacionRow {
+  codigo: string | null;
+  nombre: string | null;
+  patente: string | null;
+  tipo: string;
+  litros: number;
+  costoCombustible: number;
+  cantRemitos: number;
+  cantViajes: number;
+  costoRemitos: number;
+  cantMantenimientos: number;
+  costoMantenimientos: number;
+  gastoTotal: number;
+}
+
+export async function generateLiquidacionVehiculosPDF(
+  filas: VehiculoLiquidacionRow[],
+  fechaDesde?: Date,
+  fechaHasta?: Date
+): Promise<void> {
+  const doc = new jsPDF("l", "mm", "a4");
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 10;
+  let yPos = 8;
+
+  let logoData: ImageData | null = null;
+  try {
+    logoData = await loadImageAsBase64(logoCalamina);
+  } catch (e) {
+    console.warn("Could not load logo:", e);
+  }
+
+  // ============== HEADER ==============
+  if (logoData) {
+    const logoWidth = 35;
+    const logoHeight = logoWidth * (logoData.height / logoData.width);
+    doc.addImage(logoData.base64, "PNG", margin, yPos, logoWidth, logoHeight);
+  }
+
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text(EMPRESA_INFO.nombre, pageWidth - margin, yPos + 3, { align: "right" });
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
+  doc.text(`CUIT: ${EMPRESA_INFO.cuit}`, pageWidth - margin, yPos + 7, { align: "right" });
+  doc.text(EMPRESA_INFO.direccion, pageWidth - margin, yPos + 11, { align: "right" });
+  doc.text(EMPRESA_INFO.localidad, pageWidth - margin, yPos + 15, { align: "right" });
+  doc.text(`Cel: ${EMPRESA_INFO.telefono} | ${EMPRESA_INFO.email}`, pageWidth - margin, yPos + 19, { align: "right" });
+
+  yPos += 24;
+  doc.setDrawColor(180, 180, 180);
+  doc.setLineWidth(0.3);
+  doc.line(margin, yPos, pageWidth - margin, yPos);
+  yPos += 5;
+
+  doc.setFontSize(13);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(180, 0, 0);
+  doc.text("LIQUIDACIÓN DE VEHÍCULOS", margin, yPos);
+  doc.setTextColor(0, 0, 0);
+
+  const periodoDesde = fechaDesde ? format(fechaDesde, "dd/MM/yyyy") : "Inicio";
+  const periodoHasta = fechaHasta ? format(fechaHasta, "dd/MM/yyyy") : "Actual";
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Período: ${periodoDesde} - ${periodoHasta}`, pageWidth - margin, yPos, { align: "right" });
+  yPos += 4;
+  doc.setFontSize(7);
+  doc.text(`Vehículos con movimiento: ${filas.length}`, pageWidth - margin, yPos, { align: "right" });
+  yPos += 5;
+
+  // ============== TOTALES ==============
+  const tot = filas.reduce(
+    (a, f) => ({
+      litros: a.litros + f.litros,
+      combustible: a.combustible + f.costoCombustible,
+      remitos: a.remitos + f.cantRemitos,
+      viajes: a.viajes + f.cantViajes,
+      costoRemitos: a.costoRemitos + f.costoRemitos,
+      mant: a.mant + f.cantMantenimientos,
+      costoMant: a.costoMant + f.costoMantenimientos,
+      total: a.total + f.gastoTotal,
+    }),
+    { litros: 0, combustible: 0, remitos: 0, viajes: 0, costoRemitos: 0, mant: 0, costoMant: 0, total: 0 }
+  );
+
+  const body = filas.map((f) => [
+    f.codigo || "S/C",
+    [f.nombre || "", f.patente ? `(${f.patente})` : ""].filter(Boolean).join(" "),
+    f.tipo,
+    f.litros ? f.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }) : "-",
+    f.costoCombustible ? formatCurrency(f.costoCombustible) : "-",
+    f.cantRemitos ? `${f.cantRemitos} / ${f.cantViajes}` : "-",
+    f.costoRemitos ? formatCurrency(f.costoRemitos) : "-",
+    f.cantMantenimientos ? String(f.cantMantenimientos) : "-",
+    f.costoMantenimientos ? formatCurrency(f.costoMantenimientos) : "-",
+    formatCurrency(f.gastoTotal),
+  ]);
+
+  body.push([
+    "TOTALES",
+    "",
+    "",
+    tot.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }),
+    formatCurrency(tot.combustible),
+    `${tot.remitos} / ${tot.viajes}`,
+    formatCurrency(tot.costoRemitos),
+    String(tot.mant),
+    formatCurrency(tot.costoMant),
+    formatCurrency(tot.total),
+  ]);
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [[
+      "Código", "Vehículo", "Tipo", "Litros", "$ Combustible",
+      "Rem./Viajes", "$ Remitos", "Mant.", "$ Mantenim.", "GASTO TOTAL",
+    ]],
+    body,
+    theme: "grid",
+    headStyles: {
+      fillColor: [60, 60, 60],
+      textColor: [255, 255, 255],
+      fontStyle: "bold",
+      fontSize: 7,
+      cellPadding: 2,
+      halign: "center",
+    },
+    bodyStyles: { fontSize: 7, cellPadding: 1.8 },
+    alternateRowStyles: { fillColor: [246, 246, 246] },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 20 },
+      1: { cellWidth: 62 },
+      2: { cellWidth: 28 },
+      3: { halign: "right", cellWidth: 18 },
+      4: { halign: "right", cellWidth: 28 },
+      5: { halign: "center", cellWidth: 22 },
+      6: { halign: "right", cellWidth: 28 },
+      7: { halign: "center", cellWidth: 16 },
+      8: { halign: "right", cellWidth: 28 },
+      9: { halign: "right", fontStyle: "bold" },
+    },
+    margin: { left: margin, right: margin },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.row.index === body.length - 1) {
+        data.cell.styles.fillColor = [225, 225, 225];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.textColor = [0, 0, 0];
+      }
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 8;
+
+  // ============== RESUMEN POR TIPO DE GASTO ==============
+  const pct = (v: number) => (tot.total > 0 ? `${((v / tot.total) * 100).toFixed(1)}%` : "0,0%");
+
+  if (yPos > pageHeight - 55) {
+    doc.addPage();
+    yPos = 15;
+  }
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(180, 0, 0);
+  doc.text("RESUMEN POR TIPO DE GASTO", margin, yPos);
+  doc.setTextColor(0, 0, 0);
+  yPos += 3;
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [["Concepto", "Cantidad", "Importe", "% del total"]],
+    body: [
+      ["Combustible", `${tot.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 })} L`, formatCurrency(tot.combustible), pct(tot.combustible)],
+      ["Remitos / Viajes", `${tot.remitos} rem. / ${tot.viajes} viajes`, formatCurrency(tot.costoRemitos), pct(tot.costoRemitos)],
+      ["Mantenimientos", `${tot.mant} servicios`, formatCurrency(tot.costoMant), pct(tot.costoMant)],
+      ["GASTO TOTAL", "", formatCurrency(tot.total), "100,0%"],
+    ],
+    theme: "grid",
+    headStyles: {
+      fillColor: [60, 60, 60], textColor: [255, 255, 255], fontStyle: "bold", fontSize: 7, cellPadding: 2,
+    },
+    bodyStyles: { fontSize: 7.5, cellPadding: 2 },
+    columnStyles: {
+      0: { fontStyle: "bold", cellWidth: 55 },
+      1: { halign: "center", cellWidth: 55 },
+      2: { halign: "right", cellWidth: 40 },
+      3: { halign: "right", cellWidth: 30 },
+    },
+    margin: { left: margin, right: margin },
+    didParseCell: (data) => {
+      if (data.section === "body" && data.row.index === 3) {
+        data.cell.styles.fillColor = [225, 225, 225];
+        data.cell.styles.fontStyle = "bold";
+      }
+    },
+  });
+
+  // ============== FOOTER + PAGINADO ==============
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(6);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(
+      `${EMPRESA_INFO.nombre} · Generado el ${format(new Date(), "dd/MM/yyyy HH:mm", { locale: es })}`,
+      margin,
+      pageHeight - 6
+    );
+    doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 6, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+  }
+
+  doc.save(`Liquidacion_Vehiculos_${format(new Date(), "yyyyMMdd")}.pdf`);
+}

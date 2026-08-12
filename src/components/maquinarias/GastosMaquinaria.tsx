@@ -27,7 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { generateGastosMaquinariaPDF } from "@/utils/generateGastosMaquinariaPDF";
+import { generateGastosMaquinariaPDF, generateLiquidacionVehiculosPDF } from "@/utils/generateGastosMaquinariaPDF";
 import { VehiculosActivosMesPanel } from "./VehiculosActivosMesPanel";
 
 interface GastoUnificado {
@@ -472,6 +472,58 @@ export function GastosMaquinaria() {
     toast.success("Excel exportado correctamente");
   };
 
+  const exportarPDFTodos = async () => {
+    const enRango = (fecha?: string | null) => {
+      if (!fecha) return false;
+      const f = parseISO(fecha);
+      if (fechaDesde && f < fechaDesde) return false;
+      if (fechaHasta && f > fechaHasta) return false;
+      return true;
+    };
+
+    const filas = maquinariasFiltradas
+      .map((m) => {
+        const cargas = cargasRepartidor.filter((c) => c.maquinaria_id === m.id && enRango(c.fecha));
+        const rems = remitos.filter((r) => r.maquinaria_id === m.id && enRango(r.fecha));
+        const mants = mantenimientos.filter((x) => x.maquinaria_id === m.id && enRango(x.fecha));
+
+        const litros = cargas.reduce((a, c) => a + (Number(c.litros) || 0), 0);
+        const costoCombustible = cargas.reduce((a, c) => a + getCostoCarga(c), 0);
+        const costoRemitos = rems.reduce((a, r) => a + (r.precio_total || 0), 0);
+        const costoMantenimientos = mants.reduce((a, x) => a + (x.costo_total || 0), 0);
+
+        return {
+          codigo: m.codigo,
+          nombre: m.nombre,
+          patente: m.patente,
+          tipo: tiposConfig[m.tipo] || m.tipo,
+          litros,
+          costoCombustible,
+          cantRemitos: rems.length,
+          cantViajes: rems.reduce((a, r) => a + (r.cantidad_viajes || 0), 0),
+          costoRemitos,
+          cantMantenimientos: mants.length,
+          costoMantenimientos,
+          gastoTotal: costoCombustible + costoRemitos + costoMantenimientos,
+        };
+      })
+      .filter((f) => f.gastoTotal > 0 || f.litros > 0 || f.cantRemitos > 0 || f.cantMantenimientos > 0)
+      .sort((a, b) => b.gastoTotal - a.gastoTotal);
+
+    if (filas.length === 0) {
+      toast.error("No hay movimientos en el período seleccionado");
+      return;
+    }
+
+    try {
+      await generateLiquidacionVehiculosPDF(filas, fechaDesde, fechaHasta);
+      toast.success("PDF generado correctamente");
+    } catch (error) {
+      console.error("Error generating consolidated PDF:", error);
+      toast.error("Error al generar el PDF");
+    }
+  };
+
   const exportarPDF = async () => {
     const maquinaria = maquinarias.find((m) => m.id === selectedMaquinariaId);
     if (!maquinaria) { toast.error("Selecciona una maquinaria primero"); return; }
@@ -564,27 +616,33 @@ export function GastosMaquinaria() {
           </Button>
         )}
         <div className="flex-1 hidden lg:block" />
-        {selectedMaquinariaId && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Download className="w-4 h-4" />
-                Exportar
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background z-50" align="end">
-              <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
-                <Download className="w-4 h-4 mr-2" />
-                Excel (.xlsx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
-                <FileText className="w-4 h-4 mr-2" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-background z-50" align="end">
+            {selectedMaquinariaId && (
+              <>
+                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel (.xlsx) - máquina seleccionada
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF - máquina seleccionada
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuItem onClick={exportarPDFTodos} className="cursor-pointer">
+              <FileText className="w-4 h-4 mr-2" />
+              PDF - todos los vehículos
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!selectedMaquinariaId || !maquinariaSeleccionada ? (
