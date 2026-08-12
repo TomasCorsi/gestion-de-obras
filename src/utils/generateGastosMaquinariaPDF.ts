@@ -369,6 +369,15 @@ export interface VehiculoLiquidacionRow {
   cantMantenimientos: number;
   costoMantenimientos: number;
   gastoTotal: number;
+  conductores?: Array<{ nombre: string; dias: number }>;
+}
+
+function formatConductores(conductores?: Array<{ nombre: string; dias: number }>): string {
+  if (!conductores || conductores.length === 0) return "-";
+  const sorted = [...conductores].sort((a, b) => b.dias - a.dias);
+  const shown = sorted.slice(0, 2).map((c) => `${c.nombre} (${c.dias}d)`).join(" | ");
+  const rest = sorted.length - 2;
+  return rest > 0 ? `${shown} +${rest}` : shown;
 }
 
 export async function generateLiquidacionVehiculosPDF(
@@ -447,6 +456,7 @@ export async function generateLiquidacionVehiculosPDF(
     f.codigo || "S/C",
     [f.nombre || "", f.patente ? `(${f.patente})` : ""].filter(Boolean).join(" "),
     f.tipo,
+    formatConductores(f.conductores),
     f.litros ? f.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }) : "-",
     f.costoCombustible ? formatCurrency(f.costoCombustible) : "-",
     f.cantRemitos ? `${f.cantRemitos} / ${f.cantViajes}` : "-",
@@ -458,6 +468,7 @@ export async function generateLiquidacionVehiculosPDF(
 
   body.push([
     "TOTALES",
+    "",
     "",
     "",
     tot.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }),
@@ -472,7 +483,7 @@ export async function generateLiquidacionVehiculosPDF(
   autoTable(doc, {
     startY: yPos,
     head: [[
-      "Código", "Vehículo", "Tipo", "Litros", "$ Combustible",
+      "Código", "Vehículo", "Tipo", "Chofer / Maquinista", "Litros", "$ Combustible",
       "Rem./Viajes", "$ Remitos", "Mant.", "$ Mantenim.", "GASTO TOTAL",
     ]],
     body,
@@ -488,16 +499,17 @@ export async function generateLiquidacionVehiculosPDF(
     bodyStyles: { fontSize: 7, cellPadding: 1.8 },
     alternateRowStyles: { fillColor: [246, 246, 246] },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 20 },
-      1: { cellWidth: 62 },
-      2: { cellWidth: 28 },
-      3: { halign: "right", cellWidth: 18 },
-      4: { halign: "right", cellWidth: 28 },
-      5: { halign: "center", cellWidth: 22 },
-      6: { halign: "right", cellWidth: 28 },
-      7: { halign: "center", cellWidth: 16 },
-      8: { halign: "right", cellWidth: 28 },
-      9: { halign: "right", fontStyle: "bold" },
+      0: { fontStyle: "bold", cellWidth: 17 },
+      1: { cellWidth: 42 },
+      2: { cellWidth: 23 },
+      3: { cellWidth: 48, fontSize: 6.5 },
+      4: { halign: "right", cellWidth: 16 },
+      5: { halign: "right", cellWidth: 25 },
+      6: { halign: "center", cellWidth: 18 },
+      7: { halign: "right", cellWidth: 25 },
+      8: { halign: "center", cellWidth: 14 },
+      9: { halign: "right", cellWidth: 25 },
+      10: { halign: "right", fontStyle: "bold" },
     },
     margin: { left: margin, right: margin },
     didParseCell: (data) => {
