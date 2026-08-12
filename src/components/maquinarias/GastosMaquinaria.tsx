@@ -564,27 +564,33 @@ export function GastosMaquinaria() {
           </Button>
         )}
         <div className="flex-1 hidden lg:block" />
-        {selectedMaquinariaId && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2">
-                <Download className="w-4 h-4" />
-                Exportar
-                <ChevronDown className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-background z-50" align="end">
-              <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
-                <Download className="w-4 h-4 mr-2" />
-                Excel (.xlsx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
-                <FileText className="w-4 h-4 mr-2" />
-                PDF
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <Download className="w-4 h-4" />
+              Exportar
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-background z-50" align="end">
+            {selectedMaquinariaId && (
+              <>
+                <DropdownMenuItem onClick={exportarExcel} className="cursor-pointer">
+                  <Download className="w-4 h-4 mr-2" />
+                  Excel (.xlsx) - máquina seleccionada
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportarPDF} className="cursor-pointer">
+                  <FileText className="w-4 h-4 mr-2" />
+                  PDF - máquina seleccionada
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuItem onClick={exportarPDFTodos} className="cursor-pointer">
+              <FileText className="w-4 h-4 mr-2" />
+              PDF - todos los vehículos
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!selectedMaquinariaId || !maquinariaSeleccionada ? (
