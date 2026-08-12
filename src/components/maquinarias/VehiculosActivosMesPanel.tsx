@@ -61,6 +61,8 @@ const tipoLabel: Partial<Record<TipoMaquinaria, string>> = {
 export function VehiculosActivosMesPanel({
   maquinarias, cargas, remitos, mantenimientos, preciosPorMesProducto,
   selectedId, onSelect,
+  mes, onMesChange, desdeCustom: desdeCustomProp, hastaCustom: hastaCustomProp,
+  onDesdeCustomChange, onHastaCustomChange,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const mesesDisponibles = useMemo(() => {
