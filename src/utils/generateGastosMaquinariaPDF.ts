@@ -433,38 +433,65 @@ export async function generateLiquidacionVehiculosPDF(
   doc.setFont("helvetica", "normal");
   doc.text(`Período: ${periodoDesde} - ${periodoHasta}`, pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
+
+  // Mes / meses del período
+  const mesLabel = (d: Date) => format(d, "MMMM yyyy", { locale: es }).toUpperCase();
+  let mesTexto = "PERÍODO COMPLETO";
+  if (fechaDesde && fechaHasta) {
+    const a = mesLabel(fechaDesde);
+    const b = mesLabel(fechaHasta);
+    mesTexto = a === b ? a : `${a} - ${b}`;
+  } else if (fechaDesde) {
+    mesTexto = `DESDE ${mesLabel(fechaDesde)}`;
+  } else if (fechaHasta) {
+    mesTexto = `HASTA ${mesLabel(fechaHasta)}`;
+  }
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.text(mesTexto, margin, yPos);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.text(`Vehículos con movimiento: ${filas.length}`, pageWidth - margin, yPos, { align: "right" });
   yPos += 5;
 
   // ============== TOTALES ==============
+  const gastoDe = (f: VehiculoLiquidacionRow) => f.costoCombustible + f.costoMantenimientos;
+
   const tot = filas.reduce(
     (a, f) => ({
       litros: a.litros + f.litros,
       combustible: a.combustible + f.costoCombustible,
       remitos: a.remitos + f.cantRemitos,
       viajes: a.viajes + f.cantViajes,
-      costoRemitos: a.costoRemitos + f.costoRemitos,
+      ingresos: a.ingresos + f.costoRemitos,
       mant: a.mant + f.cantMantenimientos,
       costoMant: a.costoMant + f.costoMantenimientos,
-      total: a.total + f.gastoTotal,
+      gasto: a.gasto + gastoDe(f),
     }),
-    { litros: 0, combustible: 0, remitos: 0, viajes: 0, costoRemitos: 0, mant: 0, costoMant: 0, total: 0 }
+    { litros: 0, combustible: 0, remitos: 0, viajes: 0, ingresos: 0, mant: 0, costoMant: 0, gasto: 0 }
   );
+  const resultadoTotal = tot.ingresos - tot.gasto;
 
-  const body = filas.map((f) => [
-    f.codigo || "S/C",
-    [f.nombre || "", f.patente ? `(${f.patente})` : ""].filter(Boolean).join(" "),
-    f.tipo,
-    formatConductores(f.conductores),
-    f.litros ? f.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }) : "-",
-    f.costoCombustible ? formatCurrency(f.costoCombustible) : "-",
-    f.cantRemitos ? `${f.cantRemitos} / ${f.cantViajes}` : "-",
-    f.costoRemitos ? formatCurrency(f.costoRemitos) : "-",
-    f.cantMantenimientos ? String(f.cantMantenimientos) : "-",
-    f.costoMantenimientos ? formatCurrency(f.costoMantenimientos) : "-",
-    formatCurrency(f.gastoTotal),
-  ]);
+  const body = filas.map((f) => {
+    const gasto = gastoDe(f);
+    const resultado = f.costoRemitos - gasto;
+    return [
+      f.codigo || "S/C",
+      [f.nombre || "", f.patente ? `(${f.patente})` : ""].filter(Boolean).join(" "),
+      f.tipo,
+      formatConductores(f.conductores),
+      f.litros ? f.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }) : "-",
+      f.costoCombustible ? formatCurrency(f.costoCombustible) : "-",
+      f.cantMantenimientos ? String(f.cantMantenimientos) : "-",
+      f.costoMantenimientos ? formatCurrency(f.costoMantenimientos) : "-",
+      formatCurrency(gasto),
+      f.cantRemitos ? `${f.cantRemitos} / ${f.cantViajes}` : "-",
+      f.costoRemitos ? formatCurrency(f.costoRemitos) : "-",
+      formatCurrency(resultado),
+    ];
+  });
+
+  const resultadosFila = filas.map((f) => f.costoRemitos - gastoDe(f));
 
   body.push([
     "TOTALES",
@@ -473,18 +500,20 @@ export async function generateLiquidacionVehiculosPDF(
     "",
     tot.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 }),
     formatCurrency(tot.combustible),
-    `${tot.remitos} / ${tot.viajes}`,
-    formatCurrency(tot.costoRemitos),
     String(tot.mant),
     formatCurrency(tot.costoMant),
-    formatCurrency(tot.total),
+    formatCurrency(tot.gasto),
+    `${tot.remitos} / ${tot.viajes}`,
+    formatCurrency(tot.ingresos),
+    formatCurrency(resultadoTotal),
   ]);
+  resultadosFila.push(resultadoTotal);
 
   autoTable(doc, {
     startY: yPos,
     head: [[
       "Código", "Vehículo", "Tipo", "Chofer / Maquinista", "Litros", "$ Combustible",
-      "Rem./Viajes", "$ Remitos", "Mant.", "$ Mantenim.", "GASTO TOTAL",
+      "Mant.", "$ Mantenim.", "GASTO TOTAL", "Rem./Viajes", "INGRESOS", "RESULTADO",
     ]],
     body,
     theme: "grid",
@@ -492,41 +521,50 @@ export async function generateLiquidacionVehiculosPDF(
       fillColor: [60, 60, 60],
       textColor: [255, 255, 255],
       fontStyle: "bold",
-      fontSize: 7,
+      fontSize: 6.5,
       cellPadding: 2,
       halign: "center",
     },
-    bodyStyles: { fontSize: 7, cellPadding: 1.8 },
+    bodyStyles: { fontSize: 6.8, cellPadding: 1.6 },
     alternateRowStyles: { fillColor: [246, 246, 246] },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 17 },
-      1: { cellWidth: 42 },
-      2: { cellWidth: 23 },
-      3: { cellWidth: 48, fontSize: 6.5 },
-      4: { halign: "right", cellWidth: 16 },
-      5: { halign: "right", cellWidth: 25 },
-      6: { halign: "center", cellWidth: 18 },
-      7: { halign: "right", cellWidth: 25 },
-      8: { halign: "center", cellWidth: 14 },
-      9: { halign: "right", cellWidth: 25 },
-      10: { halign: "right", fontStyle: "bold" },
+      0: { fontStyle: "bold", cellWidth: 15 },
+      1: { cellWidth: 36 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 40, fontSize: 6 },
+      4: { halign: "right", cellWidth: 14 },
+      5: { halign: "right", cellWidth: 23 },
+      6: { halign: "center", cellWidth: 12 },
+      7: { halign: "right", cellWidth: 23 },
+      8: { halign: "right", cellWidth: 25, fontStyle: "bold" },
+      9: { halign: "center", cellWidth: 17 },
+      10: { halign: "right", cellWidth: 25, fontStyle: "bold" },
+      11: { halign: "right", fontStyle: "bold" },
     },
     margin: { left: margin, right: margin },
     didParseCell: (data) => {
-      if (data.section === "body" && data.row.index === body.length - 1) {
+      const isTotals = data.section === "body" && data.row.index === body.length - 1;
+      if (isTotals) {
         data.cell.styles.fillColor = [225, 225, 225];
         data.cell.styles.fontStyle = "bold";
         data.cell.styles.textColor = [0, 0, 0];
+      }
+      if (data.section === "body" && data.column.index === 11) {
+        const r = resultadosFila[data.row.index];
+        if (typeof r === "number") {
+          data.cell.styles.textColor = r >= 0 ? [0, 120, 60] : [180, 0, 0];
+        }
       }
     },
   });
 
   yPos = (doc as any).lastAutoTable.finalY + 8;
 
-  // ============== RESUMEN POR TIPO DE GASTO ==============
-  const pct = (v: number) => (tot.total > 0 ? `${((v / tot.total) * 100).toFixed(1)}%` : "0,0%");
+  // ============== RESUMEN INGRESOS VS GASTOS ==============
+  const pct = (v: number) => (tot.gasto > 0 ? `${((v / tot.gasto) * 100).toFixed(1)}%` : "0,0%");
+  const margen = tot.ingresos > 0 ? `${((resultadoTotal / tot.ingresos) * 100).toFixed(1)}%` : "-";
 
-  if (yPos > pageHeight - 55) {
+  if (yPos > pageHeight - 60) {
     doc.addPage();
     yPos = 15;
   }
@@ -534,18 +572,19 @@ export async function generateLiquidacionVehiculosPDF(
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(180, 0, 0);
-  doc.text("RESUMEN POR TIPO DE GASTO", margin, yPos);
+  doc.text("INGRESOS VS GASTOS", margin, yPos);
   doc.setTextColor(0, 0, 0);
   yPos += 3;
 
   autoTable(doc, {
     startY: yPos,
-    head: [["Concepto", "Cantidad", "Importe", "% del total"]],
+    head: [["Concepto", "Cantidad", "Importe", "% s/ gasto"]],
     body: [
+      ["INGRESOS (Remitos / Viajes)", `${tot.remitos} rem. / ${tot.viajes} viajes`, formatCurrency(tot.ingresos), "-"],
       ["Combustible", `${tot.litros.toLocaleString("es-AR", { maximumFractionDigits: 0 })} L`, formatCurrency(tot.combustible), pct(tot.combustible)],
-      ["Remitos / Viajes", `${tot.remitos} rem. / ${tot.viajes} viajes`, formatCurrency(tot.costoRemitos), pct(tot.costoRemitos)],
       ["Mantenimientos", `${tot.mant} servicios`, formatCurrency(tot.costoMant), pct(tot.costoMant)],
-      ["GASTO TOTAL", "", formatCurrency(tot.total), "100,0%"],
+      ["GASTO TOTAL", "", formatCurrency(tot.gasto), "100,0%"],
+      ["RESULTADO DEL PERÍODO", `Margen: ${margen}`, formatCurrency(resultadoTotal), ""],
     ],
     theme: "grid",
     headStyles: {
@@ -553,16 +592,26 @@ export async function generateLiquidacionVehiculosPDF(
     },
     bodyStyles: { fontSize: 7.5, cellPadding: 2 },
     columnStyles: {
-      0: { fontStyle: "bold", cellWidth: 55 },
+      0: { fontStyle: "bold", cellWidth: 60 },
       1: { halign: "center", cellWidth: 55 },
       2: { halign: "right", cellWidth: 40 },
       3: { halign: "right", cellWidth: 30 },
     },
     margin: { left: margin, right: margin },
     didParseCell: (data) => {
-      if (data.section === "body" && data.row.index === 3) {
-        data.cell.styles.fillColor = [225, 225, 225];
+      if (data.section !== "body") return;
+      if (data.row.index === 0) {
+        data.cell.styles.fillColor = [238, 245, 238];
         data.cell.styles.fontStyle = "bold";
+      }
+      if (data.row.index === 3) {
+        data.cell.styles.fillColor = [235, 235, 235];
+        data.cell.styles.fontStyle = "bold";
+      }
+      if (data.row.index === 4) {
+        data.cell.styles.fillColor = [220, 220, 220];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.textColor = resultadoTotal >= 0 ? [0, 120, 60] : [180, 0, 0];
       }
     },
   });
@@ -583,5 +632,7 @@ export async function generateLiquidacionVehiculosPDF(
     doc.setTextColor(0, 0, 0);
   }
 
-  doc.save(`Liquidacion_Vehiculos_${format(new Date(), "yyyyMMdd")}.pdf`);
+  const sufijoMes = fechaDesde ? format(fechaDesde, "yyyy-MM") : format(new Date(), "yyyy-MM");
+  doc.save(`Liquidacion_Vehiculos_${sufijoMes}.pdf`);
+
 }
