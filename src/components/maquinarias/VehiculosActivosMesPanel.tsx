@@ -40,6 +40,13 @@ interface Props {
   preciosPorMesProducto: Record<string, number>;
   selectedId: string;
   onSelect: (id: string, mesYYYYMM: string) => void;
+  /** Mes controlado (YYYY-MM). Si se pasa, el panel usa este valor. */
+  mes?: string;
+  onMesChange?: (mesYYYYMM: string) => void;
+  desdeCustom?: Date;
+  hastaCustom?: Date;
+  onDesdeCustomChange?: (d: Date | undefined) => void;
+  onHastaCustomChange?: (d: Date | undefined) => void;
 }
 
 const TIPOS_VEHICULO: TipoMaquinaria[] = [
@@ -54,6 +61,8 @@ const tipoLabel: Partial<Record<TipoMaquinaria, string>> = {
 export function VehiculosActivosMesPanel({
   maquinarias, cargas, remitos, mantenimientos, preciosPorMesProducto,
   selectedId, onSelect,
+  mes, onMesChange, desdeCustom: desdeCustomProp, hastaCustom: hastaCustomProp,
+  onDesdeCustomChange, onHastaCustomChange,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const mesesDisponibles = useMemo(() => {
@@ -63,9 +72,15 @@ export function VehiculosActivosMesPanel({
       return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
     });
   }, []);
-  const [mesSeleccionado, setMesSeleccionado] = useState<string>(mesesDisponibles[0].value);
-  const [desdeCustom, setDesdeCustom] = useState<Date | undefined>(undefined);
-  const [hastaCustom, setHastaCustom] = useState<Date | undefined>(undefined);
+  const [mesInterno, setMesInterno] = useState<string>(mesesDisponibles[0].value);
+  const [desdeInterno, setDesdeInterno] = useState<Date | undefined>(undefined);
+  const [hastaInterno, setHastaInterno] = useState<Date | undefined>(undefined);
+  const mesSeleccionado = mes ?? mesInterno;
+  const setMesSeleccionado = (v: string) => { setMesInterno(v); onMesChange?.(v); };
+  const desdeCustom = onDesdeCustomChange ? desdeCustomProp : desdeInterno;
+  const hastaCustom = onHastaCustomChange ? hastaCustomProp : hastaInterno;
+  const setDesdeCustom = (d: Date | undefined) => { setDesdeInterno(d); onDesdeCustomChange?.(d); };
+  const setHastaCustom = (d: Date | undefined) => { setHastaInterno(d); onHastaCustomChange?.(d); };
   const mesDate = useMemo(() => parseISO(mesSeleccionado + "-01"), [mesSeleccionado]);
   const mesDesde = startOfMonth(mesDate);
   const mesHasta = endOfMonth(mesDate);

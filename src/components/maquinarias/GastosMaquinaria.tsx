@@ -89,10 +89,10 @@ export function GastosMaquinaria() {
   };
 
   const [selectedMaquinariaId, setSelectedMaquinariaId] = useState<string>("");
-  const [fechaDesde, setFechaDesde] = useState<Date | undefined>();
-  const [fechaHasta, setFechaHasta] = useState<Date | undefined>();
+  const [fechaDesde, setFechaDesde] = useState<Date | undefined>(() => startOfMonth(new Date()));
+  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(() => endOfMonth(new Date()));
   const [tipoFilter, setTipoFilter] = useState<string>("todos");
-  const [mesActivo, setMesActivo] = useState<string>("todos"); // "todos", "actual", "YYYY-MM", "custom"
+  const [mesActivo, setMesActivo] = useState<string>(() => format(new Date(), "yyyy-MM")); // "todos", "YYYY-MM", "custom"
 
   // Query partes_diarios for the selected maquinaria to get operator and KM data
   const { data: partesDiarios = [] } = useQuery({
@@ -612,9 +612,18 @@ export function GastosMaquinaria() {
         mantenimientos={mantenimientos}
         preciosPorMesProducto={preciosPorMesProducto}
         selectedId={selectedMaquinariaId}
-        onSelect={(id, mes) => {
-          setSelectedMaquinariaId(id);
-          seleccionarMes(mes);
+        onSelect={(id) => setSelectedMaquinariaId(id)}
+        mes={/^\d{4}-\d{2}$/.test(mesActivo) ? mesActivo : undefined}
+        onMesChange={(m) => seleccionarMes(m)}
+        desdeCustom={mesActivo === "custom" ? fechaDesde : undefined}
+        hastaCustom={mesActivo === "custom" ? fechaHasta : undefined}
+        onDesdeCustomChange={(d) => {
+          if (d) { setMesActivo("custom"); setFechaDesde(d); }
+          else seleccionarMes(format(new Date(), "yyyy-MM"));
+        }}
+        onHastaCustomChange={(d) => {
+          if (d) { setMesActivo("custom"); setFechaHasta(d); }
+          else seleccionarMes(format(new Date(), "yyyy-MM"));
         }}
       />
 
