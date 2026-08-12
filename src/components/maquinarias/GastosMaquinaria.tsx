@@ -619,11 +619,11 @@ export function GastosMaquinaria() {
         hastaCustom={mesActivo === "custom" ? fechaHasta : undefined}
         onDesdeCustomChange={(d) => {
           if (d) { setMesActivo("custom"); setFechaDesde(d); }
-          else { setFechaDesde(undefined); }
+          else seleccionarMes(format(new Date(), "yyyy-MM"));
         }}
         onHastaCustomChange={(d) => {
           if (d) { setMesActivo("custom"); setFechaHasta(d); }
-          else { setFechaHasta(undefined); }
+          else seleccionarMes(format(new Date(), "yyyy-MM"));
         }}
       />
 
