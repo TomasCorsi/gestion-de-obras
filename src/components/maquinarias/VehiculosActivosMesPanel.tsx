@@ -40,6 +40,13 @@ interface Props {
   preciosPorMesProducto: Record<string, number>;
   selectedId: string;
   onSelect: (id: string, mesYYYYMM: string) => void;
+  /** Mes controlado (YYYY-MM). Si se pasa, el panel usa este valor. */
+  mes?: string;
+  onMesChange?: (mesYYYYMM: string) => void;
+  desdeCustom?: Date;
+  hastaCustom?: Date;
+  onDesdeCustomChange?: (d: Date | undefined) => void;
+  onHastaCustomChange?: (d: Date | undefined) => void;
 }
 
 const TIPOS_VEHICULO: TipoMaquinaria[] = [
