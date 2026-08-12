@@ -545,6 +545,7 @@ export function GastosMaquinaria() {
           nombre: m.nombre,
           patente: m.patente,
           tipo: tiposConfig[m.tipo] || m.tipo,
+          conductores: getConductores(m.id),
           litros,
           costoCombustible,
           cantRemitos: rems.length,
