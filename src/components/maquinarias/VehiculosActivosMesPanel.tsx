@@ -72,9 +72,15 @@ export function VehiculosActivosMesPanel({
       return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
     });
   }, []);
-  const [mesSeleccionado, setMesSeleccionado] = useState<string>(mesesDisponibles[0].value);
-  const [desdeCustom, setDesdeCustom] = useState<Date | undefined>(undefined);
-  const [hastaCustom, setHastaCustom] = useState<Date | undefined>(undefined);
+  const [mesInterno, setMesInterno] = useState<string>(mesesDisponibles[0].value);
+  const [desdeInterno, setDesdeInterno] = useState<Date | undefined>(undefined);
+  const [hastaInterno, setHastaInterno] = useState<Date | undefined>(undefined);
+  const mesSeleccionado = mes ?? mesInterno;
+  const setMesSeleccionado = (v: string) => { setMesInterno(v); onMesChange?.(v); };
+  const desdeCustom = onDesdeCustomChange ? desdeCustomProp : desdeInterno;
+  const hastaCustom = onHastaCustomChange ? hastaCustomProp : hastaInterno;
+  const setDesdeCustom = (d: Date | undefined) => { setDesdeInterno(d); onDesdeCustomChange?.(d); };
+  const setHastaCustom = (d: Date | undefined) => { setHastaInterno(d); onHastaCustomChange?.(d); };
   const mesDate = useMemo(() => parseISO(mesSeleccionado + "-01"), [mesSeleccionado]);
   const mesDesde = startOfMonth(mesDate);
   const mesHasta = endOfMonth(mesDate);
