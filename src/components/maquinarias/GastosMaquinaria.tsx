@@ -27,7 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
-import { generateGastosMaquinariaPDF } from "@/utils/generateGastosMaquinariaPDF";
+import { generateGastosMaquinariaPDF, generateLiquidacionVehiculosPDF } from "@/utils/generateGastosMaquinariaPDF";
 import { VehiculosActivosMesPanel } from "./VehiculosActivosMesPanel";
 
 interface GastoUnificado {
