@@ -612,9 +612,18 @@ export function GastosMaquinaria() {
         mantenimientos={mantenimientos}
         preciosPorMesProducto={preciosPorMesProducto}
         selectedId={selectedMaquinariaId}
-        onSelect={(id, mes) => {
-          setSelectedMaquinariaId(id);
-          seleccionarMes(mes);
+        onSelect={(id) => setSelectedMaquinariaId(id)}
+        mes={/^\d{4}-\d{2}$/.test(mesActivo) ? mesActivo : undefined}
+        onMesChange={(m) => seleccionarMes(m)}
+        desdeCustom={mesActivo === "custom" ? fechaDesde : undefined}
+        hastaCustom={mesActivo === "custom" ? fechaHasta : undefined}
+        onDesdeCustomChange={(d) => {
+          if (d) { setMesActivo("custom"); setFechaDesde(d); }
+          else { setFechaDesde(undefined); }
+        }}
+        onHastaCustomChange={(d) => {
+          if (d) { setMesActivo("custom"); setFechaHasta(d); }
+          else { setFechaHasta(undefined); }
         }}
       />
 
