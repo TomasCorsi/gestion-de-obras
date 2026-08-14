@@ -101,7 +101,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   // Sincronizar estado inicial con el callback
   useEffect(() => {
     if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
-      onFilterChange({
+      emit({
         fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
         fechaHasta: urlFilters.fechaHasta ? parseISO(urlFilters.fechaHasta) : undefined,
         mes: urlFilters.mes,
@@ -115,7 +115,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       const hasta = endOfYear(yearDate);
       setFechaDesde(desde);
       setFechaHasta(hasta);
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -136,7 +136,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     } else {
       setMes(value);
       const monthDate = parseISO(`${selectedYear}-${value}-01`);
@@ -150,7 +150,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
     }
   };
 
@@ -169,7 +169,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
     } else {
       // Sin mes: aplicar rango del año completo
       const yearDate = new Date(year, 0, 1);
@@ -182,7 +182,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     }
   };
 
@@ -194,7 +194,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       fechaDesde: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde: date, fechaHasta, mes: undefined, obraId, maquinariaId });
+    emit({ fechaDesde: date, fechaHasta, mes: undefined, obraId, maquinariaId });
   };
 
   const handleFechaHastaChange = (date: Date | undefined) => {
@@ -204,21 +204,21 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       fechaHasta: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde, fechaHasta: date, mes: undefined, obraId, maquinariaId });
+    emit({ fechaDesde, fechaHasta: date, mes: undefined, obraId, maquinariaId });
   };
 
   const handleObraChange = (value: string) => {
     const newObraId = value === "none" ? undefined : value;
     setObraId(newObraId);
     setUrlFilters({ obraId: newObraId });
-    onFilterChange({ fechaDesde, fechaHasta, mes, obraId: newObraId, maquinariaId });
+    emit({ fechaDesde, fechaHasta, mes, obraId: newObraId, maquinariaId });
   };
 
   const handleMaquinariaChange = (value: string) => {
     const newMaquinariaId = value === "none" ? undefined : value;
     setMaquinariaId(newMaquinariaId);
     setUrlFilters({ maquinariaId: newMaquinariaId });
-    onFilterChange({ fechaDesde, fechaHasta, mes, obraId, maquinariaId: newMaquinariaId });
+    emit({ fechaDesde, fechaHasta, mes, obraId, maquinariaId: newMaquinariaId });
   };
 
   const clearFilters = () => {
@@ -239,7 +239,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       maquinariaId: undefined,
       year: currentYear,
     });
-    onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
+    emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
   };
 
   const hasActiveFilters = mes || obraId || maquinariaId || selectedYear !== currentYear;
