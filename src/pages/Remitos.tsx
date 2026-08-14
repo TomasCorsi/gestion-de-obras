@@ -82,7 +82,7 @@ export default function Remitos() {
   const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
-  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
