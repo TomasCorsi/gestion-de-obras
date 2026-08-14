@@ -364,19 +364,31 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
           <div className="h-6 w-px bg-border mx-1" />
 
           {/* Obra Selector */}
-          <Select value={obraId || "none"} onValueChange={handleObraChange}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Obra" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Todas las obras</SelectItem>
-              {obras.map((obra) => (
-                <SelectItem key={obra.id} value={obra.id}>
-                  {obra.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {multiple ? (
+            <MultiSelectFilter
+              className="w-[200px]"
+              allLabel="Todas las obras"
+              itemsLabel="obras"
+              placeholder="Buscar obra..."
+              options={obras.map((o) => ({ value: o.id, label: o.nombre }))}
+              selected={obraIds}
+              onChange={(vals) => handleObraChange(vals.length ? vals.join(",") : "none")}
+            />
+          ) : (
+            <Select value={obraId || "none"} onValueChange={handleObraChange}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Obra" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Todas las obras</SelectItem>
+                {obras.map((obra) => (
+                  <SelectItem key={obra.id} value={obra.id}>
+                    {obra.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </>
       )}
 
@@ -385,19 +397,32 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
           <div className="h-6 w-px bg-border mx-1" />
 
           {/* Maquinaria Selector */}
-          <Select value={maquinariaId || "none"} onValueChange={handleMaquinariaChange}>
-            <SelectTrigger className="w-[220px] h-9">
-              <SelectValue placeholder="Maquinaria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Todas las maquinarias</SelectItem>
-              {maquinariaOptions.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {multiple ? (
+            <MultiSelectFilter
+              className="w-[220px]"
+              allLabel="Todas las maquinarias"
+              itemsLabel="maquinarias"
+              placeholder="Buscar maquinaria..."
+              options={maquinariaOptions.map((m) => ({ value: m.id, label: m.label }))}
+              selected={maquinariaIds}
+              onChange={(vals) => handleMaquinariaChange(vals.length ? vals.join(",") : "none")}
+            />
+          ) : (
+            <Select value={maquinariaId || "none"} onValueChange={handleMaquinariaChange}>
+              <SelectTrigger className="w-[220px] h-9">
+                <SelectValue placeholder="Maquinaria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Todas las maquinarias</SelectItem>
+                {maquinariaOptions.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
         </>
       )}
 
