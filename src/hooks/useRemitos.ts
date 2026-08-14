@@ -357,6 +357,8 @@ export function useRemitos() {
     fetchRemitos,
     loadAll,
     cargarHistorico,
+    cargandoHistorico,
+
 
     createRemito: async (remito: RemitoForm) => {
       try {
