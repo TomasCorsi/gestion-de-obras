@@ -23,7 +23,10 @@ import {
   FileText,
   RefreshCw,
   ChevronDown,
+  X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +40,8 @@ import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
+import { useRemitosFilterOptions } from "@/hooks/useRemitosFilterOptions";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
@@ -77,7 +82,7 @@ export default function Remitos() {
   const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
-  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico } = useRemitos();
+  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -113,35 +118,44 @@ export default function Remitos() {
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
 
-  // Auto-extender: si el usuario filtra por una fecha anterior al rango cargado (~90 días),
-  // disparar la carga del histórico completo para no mostrar datos vacíos.
+  const hayFiltrosDeValor =
+    tipoFilter.length > 0 ||
+    proveedorFilter.length > 0 ||
+    transporteFilter.length > 0 ||
+    desdeFilter.length > 0 ||
+    hastaFilter.length > 0 ||
+    creadorFilter.length > 0 ||
+    (filters.obraIds?.length ?? 0) > 0 ||
+    (filters.maquinariaIds?.length ?? 0) > 0 ||
+    !!filters.obraId ||
+    !!filters.maquinariaId;
+
+  // Auto-extender: al filtrar por fechas viejas o por cualquier valor (obra, tipo,
+  // proveedor, transporte, origen/destino, usuario) cargamos el histórico completo
+  // para no mostrar resultados incompletos.
   useEffect(() => {
     if (loadAll) return;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     const desde = filters.fechaDesde ? new Date(filters.fechaDesde) : null;
     const mes = filters.mes ? new Date(filters.mes + "-01") : null;
-    if ((desde && desde < cutoff) || (mes && mes < cutoff)) {
+    if ((desde && desde < cutoff) || (mes && mes < cutoff) || hayFiltrosDeValor) {
       cargarHistorico();
     }
-  }, [filters.fechaDesde, filters.mes, loadAll, cargarHistorico]);
+  }, [filters.fechaDesde, filters.mes, hayFiltrosDeValor, loadAll, cargarHistorico]);
 
-  // Distinct created_by ids in remitos
-  const creadorIds = useMemo(
-    () => [...new Set(remitos.map(r => (r as any).created_by).filter(Boolean) as string[])],
-    [remitos]
-  );
+  // Opciones de filtros traídas de la base completa (no solo de lo cargado en pantalla)
+  const { options: filterOptions } = useRemitosFilterOptions(isOwnOnly ? user?.id ?? null : null, !!user);
+
+  const creadorIds = filterOptions.creadores;
   const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
-  // Unique values for filters
-  const uniqueSorted = (vals: (string | null | undefined)[]) =>
-    [...new Set(vals.filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b));
+  const tiposUnicos = filterOptions.tipos;
+  const proveedoresUnicos = filterOptions.proveedores;
+  const transportesUnicos = filterOptions.transportes;
+  const desdeUnicos = filterOptions.desde;
+  const hastaUnicos = filterOptions.hasta;
 
-  const tiposUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_material)), [remitos]);
-  const proveedoresUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.proveedor)), [remitos]);
-  const transportesUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_transporte)), [remitos]);
-  const desdeUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.desde)), [remitos]);
-  const hastaUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.hasta)), [remitos]);
 
 
   // Maps for import dialog
@@ -196,59 +210,12 @@ export default function Remitos() {
     return map;
   }, [maquinarias]);
 
-  const filteredRemitos = useMemo(() => {
-    // Use date filter only (not obra_id / maquinaria_id from filterByDateAndObra)
-    let result = filterByDateAndObra(
+  // Base: filtro por fecha + búsqueda (no incluye los filtros por valor)
+  const baseRemitos = useMemo(() => {
+    const result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       { ...filters, obraId: undefined, maquinariaId: undefined }
     );
-
-    // Filter by obra(s): match selected obra names against desde/hasta
-    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
-    if (obraIds.length > 0) {
-      const nombres = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
-      if (nombres.length > 0) {
-        result = result.filter(r =>
-          nombres.includes(r.desde || "") || nombres.includes(r.hasta || "")
-        );
-      }
-    }
-
-    // Filter by maquinaria(s)
-    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
-    if (maqIds.length > 0) {
-      result = result.filter(r => r.maquinaria_id && maqIds.includes(r.maquinaria_id));
-    }
-
-    // Filter by tipo_material
-    if (tipoFilter.length > 0) {
-      result = result.filter(r => r.tipo_material && tipoFilter.includes(r.tipo_material));
-    }
-
-    // Filter by creator (admin/capataz only)
-    if (creadorFilter.length > 0) {
-      result = result.filter(r => creadorFilter.includes((r as any).created_by));
-    }
-
-    // Filter by proveedor
-    if (proveedorFilter.length > 0) {
-      result = result.filter(r => r.proveedor && proveedorFilter.includes(r.proveedor));
-    }
-
-    // Filter by transporte
-    if (transporteFilter.length > 0) {
-      result = result.filter(r => r.tipo_transporte && transporteFilter.includes(r.tipo_transporte));
-    }
-
-    // Filter by origen / destino
-    if (desdeFilter.length > 0) {
-      result = result.filter(r => r.desde && desdeFilter.includes(r.desde));
-    }
-    if (hastaFilter.length > 0) {
-      result = result.filter(r => r.hasta && hastaFilter.includes(r.hasta));
-    }
-
-
 
     if (!debouncedSearch) return result;
 
@@ -278,7 +245,75 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, debouncedSearch, maquinariasById, tipoFilter, creadorFilter, obras]);
+  }, [remitos, filters, debouncedSearch, maquinariasById]);
+
+  type FiltroKey = "obra" | "maquinaria" | "tipo" | "proveedor" | "transporte" | "desde" | "hasta" | "creador";
+
+  // Predicados por filtro. La obra se compara contra desde/hasta, pero si el usuario
+  // ya eligió Desde y/o Hasta explícitamente, la obra solo se aplica al lado libre
+  // para que los filtros no se pisen entre sí.
+  const matchers = useMemo(() => {
+    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
+    const nombresObra = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
+    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
+
+    const m: Partial<Record<FiltroKey, (r: RemitoWithRelations) => boolean>> = {};
+
+    if (nombresObra.length > 0) {
+      const usaDesde = desdeFilter.length > 0;
+      const usaHasta = hastaFilter.length > 0;
+      m.obra = (r) => {
+        if (usaDesde && usaHasta) return true; // origen y destino ya definidos por el usuario
+        if (usaDesde) return nombresObra.includes(r.hasta || "");
+        if (usaHasta) return nombresObra.includes(r.desde || "");
+        return nombresObra.includes(r.desde || "") || nombresObra.includes(r.hasta || "");
+      };
+    }
+    if (maqIds.length > 0) m.maquinaria = (r) => !!r.maquinaria_id && maqIds.includes(r.maquinaria_id);
+    if (tipoFilter.length > 0) m.tipo = (r) => !!r.tipo_material && tipoFilter.includes(r.tipo_material);
+    if (proveedorFilter.length > 0) m.proveedor = (r) => !!r.proveedor && proveedorFilter.includes(r.proveedor);
+    if (transporteFilter.length > 0) m.transporte = (r) => !!r.tipo_transporte && transporteFilter.includes(r.tipo_transporte);
+    if (desdeFilter.length > 0) m.desde = (r) => !!r.desde && desdeFilter.includes(r.desde);
+    if (hastaFilter.length > 0) m.hasta = (r) => !!r.hasta && hastaFilter.includes(r.hasta);
+    if (creadorFilter.length > 0) m.creador = (r) => creadorFilter.includes((r as any).created_by);
+
+    return m;
+  }, [filters, obras, tipoFilter, proveedorFilter, transporteFilter, desdeFilter, hastaFilter, creadorFilter]);
+
+  const applyMatchers = (rows: RemitoWithRelations[], excluir?: FiltroKey) =>
+    rows.filter(r =>
+      (Object.keys(matchers) as FiltroKey[])
+        .filter(k => k !== excluir)
+        .every(k => matchers[k]!(r))
+    );
+
+  const filteredRemitos = useMemo(
+    () => applyMatchers(baseRemitos as RemitoWithRelations[]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseRemitos, matchers]
+  );
+
+  // Conteos por opción, calculados sobre el resto de filtros activos
+  const conteos = useMemo(() => {
+    const contar = (excluir: FiltroKey, get: (r: RemitoWithRelations) => string | null | undefined) => {
+      const map: Record<string, number> = {};
+      applyMatchers(baseRemitos as RemitoWithRelations[], excluir).forEach(r => {
+        const v = get(r);
+        if (v) map[v] = (map[v] || 0) + 1;
+      });
+      return map;
+    };
+    return {
+      tipo: contar("tipo", r => r.tipo_material),
+      proveedor: contar("proveedor", r => r.proveedor),
+      transporte: contar("transporte", r => r.tipo_transporte),
+      desde: contar("desde", r => r.desde),
+      hasta: contar("hasta", r => r.hasta),
+      creador: contar("creador", r => (r as any).created_by),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseRemitos, matchers]);
+
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
@@ -480,6 +515,7 @@ export default function Remitos() {
           allLabel="Todos los tipos"
           itemsLabel="tipos"
           placeholder="Buscar tipo..."
+          counts={conteos.tipo}
           options={tiposUnicos.map(t => ({ value: t, label: t }))}
           selected={tipoFilter}
           onChange={setTipoFilter}
@@ -489,6 +525,7 @@ export default function Remitos() {
           allLabel="Todos los proveedores"
           itemsLabel="proveedores"
           placeholder="Buscar proveedor..."
+          counts={conteos.proveedor}
           options={proveedoresUnicos.map(p => ({ value: p, label: p }))}
           selected={proveedorFilter}
           onChange={setProveedorFilter}
@@ -498,6 +535,7 @@ export default function Remitos() {
           allLabel="Todos los transportes"
           itemsLabel="transportes"
           placeholder="Buscar transporte..."
+          counts={conteos.transporte}
           options={transportesUnicos.map(t => ({ value: t, label: t }))}
           selected={transporteFilter}
           onChange={setTransporteFilter}
@@ -507,6 +545,7 @@ export default function Remitos() {
           allLabel="Desde (todos)"
           itemsLabel="orígenes"
           placeholder="Buscar origen..."
+          counts={conteos.desde}
           options={desdeUnicos.map(d => ({ value: d, label: d }))}
           selected={desdeFilter}
           onChange={setDesdeFilter}
@@ -516,6 +555,7 @@ export default function Remitos() {
           allLabel="Hasta (todos)"
           itemsLabel="destinos"
           placeholder="Buscar destino..."
+          counts={conteos.hasta}
           options={hastaUnicos.map(h => ({ value: h, label: h }))}
           selected={hastaFilter}
           onChange={setHastaFilter}
@@ -526,6 +566,7 @@ export default function Remitos() {
             allLabel="Todos los usuarios"
             itemsLabel="usuarios"
             placeholder="Buscar usuario..."
+            counts={conteos.creador}
             options={creadorIds.map(uid => ({
               value: uid,
               label: creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`,
@@ -553,6 +594,54 @@ export default function Remitos() {
         )}
 
       </div>
+
+      {/* Chips de filtros activos */}
+      {(() => {
+        const chips: { key: string; label: string; onRemove: () => void }[] = [];
+        const push = (
+          values: string[],
+          setter: (v: string[]) => void,
+          prefijo: string,
+          labelOf: (v: string) => string = (v) => v
+        ) =>
+          values.forEach(v =>
+            chips.push({
+              key: `${prefijo}-${v}`,
+              label: `${prefijo}: ${labelOf(v)}`,
+              onRemove: () => setter(values.filter(x => x !== v)),
+            })
+          );
+        push(tipoFilter, setTipoFilter, "Tipo");
+        push(proveedorFilter, setProveedorFilter, "Proveedor");
+        push(transporteFilter, setTransporteFilter, "Transporte");
+        push(desdeFilter, setDesdeFilter, "Desde");
+        push(hastaFilter, setHastaFilter, "Hasta");
+        push(creadorFilter, setCreadorFilter, "Usuario", (uid) => creadoresMap[uid] || uid.slice(0, 8));
+        if (chips.length === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {chips.map(c => (
+              <Badge key={c.key} variant="secondary" className="gap-1 pr-1">
+                <span className="max-w-[220px] truncate">{c.label}</span>
+                <button
+                  type="button"
+                  onClick={c.onRemove}
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label={`Quitar ${c.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {cargandoHistorico && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Cargando histórico completo...
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
 
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -689,7 +778,17 @@ export default function Remitos() {
       </div>
 
       {/* Read-only Grid */}
+      {filteredRemitos.length === 0 && !loading && (
+        <div className="card-industrial p-4 mb-4 text-sm text-muted-foreground">
+          {cargandoHistorico
+            ? "Cargando histórico completo, un momento..."
+            : !loadAll
+              ? "No hay remitos con estos filtros en los últimos 90 días. Usá 'Cargar histórico' para buscar en todo el historial."
+              : "No hay remitos que cumplan con todos los filtros aplicados. Probá quitar alguno de los chips de arriba."}
+        </div>
+      )}
       <div className="card-industrial p-4">
+
         <RemitosSimpleGrid
           remitos={filteredRemitos}
           maquinarias={maquinarias}
