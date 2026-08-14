@@ -58,6 +58,13 @@ export function MultiSelectFilter({
     return `${selected.length} ${itemsLabel}`;
   }, [selected, options, allLabel, itemsLabel]);
 
+  // Seleccionados primero para no perderlos de vista en listas largas
+  const ordered = useMemo(() => {
+    const sel = options.filter((o) => selected.includes(o.value));
+    const rest = options.filter((o) => !selected.includes(o.value));
+    return [...sel, ...rest];
+  }, [options, selected]);
+
   const toggle = (value: string) => {
     if (selected.includes(value)) {
       onChange(selected.filter((v) => v !== value));
@@ -65,6 +72,7 @@ export function MultiSelectFilter({
       onChange([...selected, value]);
     }
   };
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
