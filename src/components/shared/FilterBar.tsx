@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 import { useUrlFilters, UrlFilterState } from "@/hooks/useUrlState";
+
 
 interface Obra {
   id: string;
