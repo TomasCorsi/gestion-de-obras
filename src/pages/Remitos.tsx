@@ -189,30 +189,58 @@ export default function Remitos() {
   }, [maquinarias]);
 
   const filteredRemitos = useMemo(() => {
-    // Use date filter only (not obra_id from filterByDateAndObra)
+    // Use date filter only (not obra_id / maquinaria_id from filterByDateAndObra)
     let result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
-      { ...filters, obraId: undefined }
+      { ...filters, obraId: undefined, maquinariaId: undefined }
     );
 
-    // Filter by obra: match selected obra name against desde/hasta
-    if (filters.obraId) {
-      const obraSeleccionada = obras.find(o => o.id === filters.obraId);
-      if (obraSeleccionada) {
-        const obraNombre = obraSeleccionada.nombre;
-        result = result.filter(r => r.desde === obraNombre || r.hasta === obraNombre);
+    // Filter by obra(s): match selected obra names against desde/hasta
+    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
+    if (obraIds.length > 0) {
+      const nombres = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
+      if (nombres.length > 0) {
+        result = result.filter(r =>
+          nombres.includes(r.desde || "") || nombres.includes(r.hasta || "")
+        );
       }
     }
 
+    // Filter by maquinaria(s)
+    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
+    if (maqIds.length > 0) {
+      result = result.filter(r => r.maquinaria_id && maqIds.includes(r.maquinaria_id));
+    }
+
     // Filter by tipo_material
-    if (tipoFilter && tipoFilter !== "__all__") {
-      result = result.filter(r => r.tipo_material === tipoFilter);
+    if (tipoFilter.length > 0) {
+      result = result.filter(r => r.tipo_material && tipoFilter.includes(r.tipo_material));
     }
 
     // Filter by creator (admin/capataz only)
-    if (creadorFilter && creadorFilter !== "__all__") {
-      result = result.filter(r => (r as any).created_by === creadorFilter);
+    if (creadorFilter.length > 0) {
+      result = result.filter(r => creadorFilter.includes((r as any).created_by));
     }
+
+    // Filter by proveedor
+    if (proveedorFilter.length > 0) {
+      result = result.filter(r => r.proveedor && proveedorFilter.includes(r.proveedor));
+    }
+
+    // Filter by transporte
+    if (transporteFilter.length > 0) {
+      result = result.filter(r => r.tipo_transporte && transporteFilter.includes(r.tipo_transporte));
+    }
+
+    // Filter by origen / destino
+    if (desdeFilter.length > 0) {
+      result = result.filter(r => r.desde && desdeFilter.includes(r.desde));
+    }
+    if (hastaFilter.length > 0) {
+      result = result.filter(r => r.hasta && hastaFilter.includes(r.hasta));
+    }
+
+
 
     if (!debouncedSearch) return result;
 
