@@ -778,7 +778,17 @@ export default function Remitos() {
       </div>
 
       {/* Read-only Grid */}
+      {filteredRemitos.length === 0 && !loading && (
+        <div className="card-industrial p-4 mb-4 text-sm text-muted-foreground">
+          {cargandoHistorico
+            ? "Cargando histórico completo, un momento..."
+            : !loadAll
+              ? "No hay remitos con estos filtros en los últimos 90 días. Usá 'Cargar histórico' para buscar en todo el historial."
+              : "No hay remitos que cumplan con todos los filtros aplicados. Probá quitar alguno de los chips de arriba."}
+        </div>
+      )}
       <div className="card-industrial p-4">
+
         <RemitosSimpleGrid
           remitos={filteredRemitos}
           maquinarias={maquinarias}
