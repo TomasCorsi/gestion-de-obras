@@ -70,7 +70,7 @@ const MESES = [
   { value: "12", label: "Diciembre" },
 ];
 
-export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter = true, showMaquinariaFilter = false }: FilterBarProps) {
+export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter = true, showMaquinariaFilter = false, multiple = false }: FilterBarProps) {
   const currentYear = new Date().getFullYear();
   
   const years = useMemo(() => {
