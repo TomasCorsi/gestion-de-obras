@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
+
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
@@ -99,8 +101,13 @@ export default function Remitos() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [tipoFilter, setTipoFilter] = useState<string>("__all__");
-  const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
+  const [tipoFilter, setTipoFilter] = useState<string[]>([]);
+  const [creadorFilter, setCreadorFilter] = useState<string[]>([]);
+  const [proveedorFilter, setProveedorFilter] = useState<string[]>([]);
+  const [transporteFilter, setTransporteFilter] = useState<string[]>([]);
+  const [desdeFilter, setDesdeFilter] = useState<string[]>([]);
+  const [hastaFilter, setHastaFilter] = useState<string[]>([]);
+
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
   const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
@@ -126,10 +133,16 @@ export default function Remitos() {
   );
   const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
-  // Unique tipo_material values for filter
-  const tiposUnicos = useMemo(() => {
-    return [...new Set(remitos.map(r => r.tipo_material).filter(Boolean) as string[])].sort();
-  }, [remitos]);
+  // Unique values for filters
+  const uniqueSorted = (vals: (string | null | undefined)[]) =>
+    [...new Set(vals.filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b));
+
+  const tiposUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_material)), [remitos]);
+  const proveedoresUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.proveedor)), [remitos]);
+  const transportesUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_transporte)), [remitos]);
+  const desdeUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.desde)), [remitos]);
+  const hastaUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.hasta)), [remitos]);
+
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
@@ -184,30 +197,58 @@ export default function Remitos() {
   }, [maquinarias]);
 
   const filteredRemitos = useMemo(() => {
-    // Use date filter only (not obra_id from filterByDateAndObra)
+    // Use date filter only (not obra_id / maquinaria_id from filterByDateAndObra)
     let result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
-      { ...filters, obraId: undefined }
+      { ...filters, obraId: undefined, maquinariaId: undefined }
     );
 
-    // Filter by obra: match selected obra name against desde/hasta
-    if (filters.obraId) {
-      const obraSeleccionada = obras.find(o => o.id === filters.obraId);
-      if (obraSeleccionada) {
-        const obraNombre = obraSeleccionada.nombre;
-        result = result.filter(r => r.desde === obraNombre || r.hasta === obraNombre);
+    // Filter by obra(s): match selected obra names against desde/hasta
+    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
+    if (obraIds.length > 0) {
+      const nombres = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
+      if (nombres.length > 0) {
+        result = result.filter(r =>
+          nombres.includes(r.desde || "") || nombres.includes(r.hasta || "")
+        );
       }
     }
 
+    // Filter by maquinaria(s)
+    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
+    if (maqIds.length > 0) {
+      result = result.filter(r => r.maquinaria_id && maqIds.includes(r.maquinaria_id));
+    }
+
     // Filter by tipo_material
-    if (tipoFilter && tipoFilter !== "__all__") {
-      result = result.filter(r => r.tipo_material === tipoFilter);
+    if (tipoFilter.length > 0) {
+      result = result.filter(r => r.tipo_material && tipoFilter.includes(r.tipo_material));
     }
 
     // Filter by creator (admin/capataz only)
-    if (creadorFilter && creadorFilter !== "__all__") {
-      result = result.filter(r => (r as any).created_by === creadorFilter);
+    if (creadorFilter.length > 0) {
+      result = result.filter(r => creadorFilter.includes((r as any).created_by));
     }
+
+    // Filter by proveedor
+    if (proveedorFilter.length > 0) {
+      result = result.filter(r => r.proveedor && proveedorFilter.includes(r.proveedor));
+    }
+
+    // Filter by transporte
+    if (transporteFilter.length > 0) {
+      result = result.filter(r => r.tipo_transporte && transporteFilter.includes(r.tipo_transporte));
+    }
+
+    // Filter by origen / destino
+    if (desdeFilter.length > 0) {
+      result = result.filter(r => r.desde && desdeFilter.includes(r.desde));
+    }
+    if (hastaFilter.length > 0) {
+      result = result.filter(r => r.hasta && hastaFilter.includes(r.hasta));
+    }
+
+
 
     if (!debouncedSearch) return result;
 
@@ -427,38 +468,90 @@ export default function Remitos() {
           obras={obras}
           maquinarias={maquinarias}
           showMaquinariaFilter
+          multiple
           onFilterChange={setFilters}
         />
       </div>
 
-      {/* Tipo Material Filter */}
-      <div className="flex flex-wrap gap-4 mb-4">
-        <Select value={tipoFilter} onValueChange={setTipoFilter}>
-          <SelectTrigger className="w-[200px] bg-card">
-            <SelectValue placeholder="Tipo material" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos los tipos</SelectItem>
-            {tiposUnicos.map((tipo) => (
-              <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Filtros adicionales (selección múltiple) */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los tipos"
+          itemsLabel="tipos"
+          placeholder="Buscar tipo..."
+          options={tiposUnicos.map(t => ({ value: t, label: t }))}
+          selected={tipoFilter}
+          onChange={setTipoFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los proveedores"
+          itemsLabel="proveedores"
+          placeholder="Buscar proveedor..."
+          options={proveedoresUnicos.map(p => ({ value: p, label: p }))}
+          selected={proveedorFilter}
+          onChange={setProveedorFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los transportes"
+          itemsLabel="transportes"
+          placeholder="Buscar transporte..."
+          options={transportesUnicos.map(t => ({ value: t, label: t }))}
+          selected={transporteFilter}
+          onChange={setTransporteFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Desde (todos)"
+          itemsLabel="orígenes"
+          placeholder="Buscar origen..."
+          options={desdeUnicos.map(d => ({ value: d, label: d }))}
+          selected={desdeFilter}
+          onChange={setDesdeFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Hasta (todos)"
+          itemsLabel="destinos"
+          placeholder="Buscar destino..."
+          options={hastaUnicos.map(h => ({ value: h, label: h }))}
+          selected={hastaFilter}
+          onChange={setHastaFilter}
+        />
         {isAdminOrCapataz && (
-          <Select value={creadorFilter} onValueChange={setCreadorFilter}>
-            <SelectTrigger className="w-[220px] bg-card">
-              <SelectValue placeholder="Cargado por" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos los usuarios</SelectItem>
-              {creadorIds.map((uid) => (
-                <SelectItem key={uid} value={uid}>
-                  {creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            className="w-[220px]"
+            allLabel="Todos los usuarios"
+            itemsLabel="usuarios"
+            placeholder="Buscar usuario..."
+            options={creadorIds.map(uid => ({
+              value: uid,
+              label: creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`,
+            }))}
+            selected={creadorFilter}
+            onChange={setCreadorFilter}
+          />
         )}
+        {(tipoFilter.length + proveedorFilter.length + transporteFilter.length + desdeFilter.length + hastaFilter.length + creadorFilter.length) > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 text-muted-foreground"
+            onClick={() => {
+              setTipoFilter([]);
+              setProveedorFilter([]);
+              setTransporteFilter([]);
+              setDesdeFilter([]);
+              setHastaFilter([]);
+              setCreadorFilter([]);
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+
       </div>
 
       {/* Actions Bar */}

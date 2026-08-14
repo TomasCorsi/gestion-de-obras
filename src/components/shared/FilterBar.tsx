@@ -18,7 +18,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 import { useUrlFilters, UrlFilterState } from "@/hooks/useUrlState";
+
 
 interface Obra {
   id: string;
@@ -40,6 +42,8 @@ interface FilterBarProps {
   showObraFilter?: boolean;
   showMaquinariaFilter?: boolean;
   persistKey?: string;
+  /** Habilita selección múltiple en Obra y Maquinaria */
+  multiple?: boolean;
 }
 
 export interface FilterState {
@@ -48,7 +52,10 @@ export interface FilterState {
   mes: string | undefined;
   obraId: string | undefined;
   maquinariaId?: string | undefined;
+  obraIds?: string[];
+  maquinariaIds?: string[];
 }
+
 
 const MESES = [
   { value: "01", label: "Enero" },
@@ -65,7 +72,7 @@ const MESES = [
   { value: "12", label: "Diciembre" },
 ];
 
-export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter = true, showMaquinariaFilter = false }: FilterBarProps) {
+export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter = true, showMaquinariaFilter = false, multiple = false }: FilterBarProps) {
   const currentYear = new Date().getFullYear();
   
   const years = useMemo(() => {
@@ -92,11 +99,29 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   const [obraId, setObraId] = useState<string | undefined>(urlFilters.obraId);
   const [maquinariaId, setMaquinariaId] = useState<string | undefined>(urlFilters.maquinariaId);
   const [selectedYear, setSelectedYear] = useState<number>(urlFilters.year || currentYear);
-  
-  // Sincronizar estado inicial con el callback
+
+  const toList = (v: string | undefined) => (v ? v.split(",").filter(Boolean) : []);
+  const obraIds = toList(obraId);
+  const maquinariaIds = toList(maquinariaId);
+
+  const emit = (f: FilterState) => {
+    if (multiple) {
+      onFilterChange({
+        ...f,
+        obraId: undefined,
+        maquinariaId: undefined,
+        obraIds: toList(f.obraId),
+        maquinariaIds: toList(f.maquinariaId),
+      });
+    } else {
+      onFilterChange(f);
+    }
+  };
+
+
   useEffect(() => {
     if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
-      onFilterChange({
+      emit({
         fechaDesde: urlFilters.fechaDesde ? parseISO(urlFilters.fechaDesde) : undefined,
         fechaHasta: urlFilters.fechaHasta ? parseISO(urlFilters.fechaHasta) : undefined,
         mes: urlFilters.mes,
@@ -110,7 +135,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       const hasta = endOfYear(yearDate);
       setFechaDesde(desde);
       setFechaHasta(hasta);
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -131,7 +156,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     } else {
       setMes(value);
       const monthDate = parseISO(`${selectedYear}-${value}-01`);
@@ -145,7 +170,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: value, obraId, maquinariaId });
     }
   };
 
@@ -164,7 +189,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes, obraId, maquinariaId });
     } else {
       // Sin mes: aplicar rango del año completo
       const yearDate = new Date(year, 0, 1);
@@ -177,7 +202,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
         fechaDesde: format(desde, "yyyy-MM-dd"),
         fechaHasta: format(hasta, "yyyy-MM-dd"),
       });
-      onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
+      emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId, maquinariaId });
     }
   };
 
@@ -189,7 +214,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       fechaDesde: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde: date, fechaHasta, mes: undefined, obraId, maquinariaId });
+    emit({ fechaDesde: date, fechaHasta, mes: undefined, obraId, maquinariaId });
   };
 
   const handleFechaHastaChange = (date: Date | undefined) => {
@@ -199,21 +224,21 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       fechaHasta: date ? date.toISOString().split("T")[0] : undefined,
       mes: undefined,
     });
-    onFilterChange({ fechaDesde, fechaHasta: date, mes: undefined, obraId, maquinariaId });
+    emit({ fechaDesde, fechaHasta: date, mes: undefined, obraId, maquinariaId });
   };
 
   const handleObraChange = (value: string) => {
     const newObraId = value === "none" ? undefined : value;
     setObraId(newObraId);
     setUrlFilters({ obraId: newObraId });
-    onFilterChange({ fechaDesde, fechaHasta, mes, obraId: newObraId, maquinariaId });
+    emit({ fechaDesde, fechaHasta, mes, obraId: newObraId, maquinariaId });
   };
 
   const handleMaquinariaChange = (value: string) => {
     const newMaquinariaId = value === "none" ? undefined : value;
     setMaquinariaId(newMaquinariaId);
     setUrlFilters({ maquinariaId: newMaquinariaId });
-    onFilterChange({ fechaDesde, fechaHasta, mes, obraId, maquinariaId: newMaquinariaId });
+    emit({ fechaDesde, fechaHasta, mes, obraId, maquinariaId: newMaquinariaId });
   };
 
   const clearFilters = () => {
@@ -234,7 +259,7 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
       maquinariaId: undefined,
       year: currentYear,
     });
-    onFilterChange({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
+    emit({ fechaDesde: desde, fechaHasta: hasta, mes: undefined, obraId: undefined, maquinariaId: undefined });
   };
 
   const hasActiveFilters = mes || obraId || maquinariaId || selectedYear !== currentYear;
@@ -341,19 +366,31 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
           <div className="h-6 w-px bg-border mx-1" />
 
           {/* Obra Selector */}
-          <Select value={obraId || "none"} onValueChange={handleObraChange}>
-            <SelectTrigger className="w-[180px] h-9">
-              <SelectValue placeholder="Obra" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Todas las obras</SelectItem>
-              {obras.map((obra) => (
-                <SelectItem key={obra.id} value={obra.id}>
-                  {obra.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {multiple ? (
+            <MultiSelectFilter
+              className="w-[200px]"
+              allLabel="Todas las obras"
+              itemsLabel="obras"
+              placeholder="Buscar obra..."
+              options={obras.map((o) => ({ value: o.id, label: o.nombre }))}
+              selected={obraIds}
+              onChange={(vals) => handleObraChange(vals.length ? vals.join(",") : "none")}
+            />
+          ) : (
+            <Select value={obraId || "none"} onValueChange={handleObraChange}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Obra" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Todas las obras</SelectItem>
+                {obras.map((obra) => (
+                  <SelectItem key={obra.id} value={obra.id}>
+                    {obra.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </>
       )}
 
@@ -362,19 +399,32 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
           <div className="h-6 w-px bg-border mx-1" />
 
           {/* Maquinaria Selector */}
-          <Select value={maquinariaId || "none"} onValueChange={handleMaquinariaChange}>
-            <SelectTrigger className="w-[220px] h-9">
-              <SelectValue placeholder="Maquinaria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Todas las maquinarias</SelectItem>
-              {maquinariaOptions.map((m) => (
-                <SelectItem key={m.id} value={m.id}>
-                  {m.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {multiple ? (
+            <MultiSelectFilter
+              className="w-[220px]"
+              allLabel="Todas las maquinarias"
+              itemsLabel="maquinarias"
+              placeholder="Buscar maquinaria..."
+              options={maquinariaOptions.map((m) => ({ value: m.id, label: m.label }))}
+              selected={maquinariaIds}
+              onChange={(vals) => handleMaquinariaChange(vals.length ? vals.join(",") : "none")}
+            />
+          ) : (
+            <Select value={maquinariaId || "none"} onValueChange={handleMaquinariaChange}>
+              <SelectTrigger className="w-[220px] h-9">
+                <SelectValue placeholder="Maquinaria" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Todas las maquinarias</SelectItem>
+                {maquinariaOptions.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
         </>
       )}
 
