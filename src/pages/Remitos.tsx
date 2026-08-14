@@ -113,35 +113,44 @@ export default function Remitos() {
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
 
-  // Auto-extender: si el usuario filtra por una fecha anterior al rango cargado (~90 días),
-  // disparar la carga del histórico completo para no mostrar datos vacíos.
+  const hayFiltrosDeValor =
+    tipoFilter.length > 0 ||
+    proveedorFilter.length > 0 ||
+    transporteFilter.length > 0 ||
+    desdeFilter.length > 0 ||
+    hastaFilter.length > 0 ||
+    creadorFilter.length > 0 ||
+    (filters.obraIds?.length ?? 0) > 0 ||
+    (filters.maquinariaIds?.length ?? 0) > 0 ||
+    !!filters.obraId ||
+    !!filters.maquinariaId;
+
+  // Auto-extender: al filtrar por fechas viejas o por cualquier valor (obra, tipo,
+  // proveedor, transporte, origen/destino, usuario) cargamos el histórico completo
+  // para no mostrar resultados incompletos.
   useEffect(() => {
     if (loadAll) return;
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 90);
     const desde = filters.fechaDesde ? new Date(filters.fechaDesde) : null;
     const mes = filters.mes ? new Date(filters.mes + "-01") : null;
-    if ((desde && desde < cutoff) || (mes && mes < cutoff)) {
+    if ((desde && desde < cutoff) || (mes && mes < cutoff) || hayFiltrosDeValor) {
       cargarHistorico();
     }
-  }, [filters.fechaDesde, filters.mes, loadAll, cargarHistorico]);
+  }, [filters.fechaDesde, filters.mes, hayFiltrosDeValor, loadAll, cargarHistorico]);
 
-  // Distinct created_by ids in remitos
-  const creadorIds = useMemo(
-    () => [...new Set(remitos.map(r => (r as any).created_by).filter(Boolean) as string[])],
-    [remitos]
-  );
+  // Opciones de filtros traídas de la base completa (no solo de lo cargado en pantalla)
+  const { options: filterOptions } = useRemitosFilterOptions(isOwnOnly ? user?.id ?? null : null, !!user);
+
+  const creadorIds = filterOptions.creadores;
   const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
-  // Unique values for filters
-  const uniqueSorted = (vals: (string | null | undefined)[]) =>
-    [...new Set(vals.filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b));
+  const tiposUnicos = filterOptions.tipos;
+  const proveedoresUnicos = filterOptions.proveedores;
+  const transportesUnicos = filterOptions.transportes;
+  const desdeUnicos = filterOptions.desde;
+  const hastaUnicos = filterOptions.hasta;
 
-  const tiposUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_material)), [remitos]);
-  const proveedoresUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.proveedor)), [remitos]);
-  const transportesUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_transporte)), [remitos]);
-  const desdeUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.desde)), [remitos]);
-  const hastaUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.hasta)), [remitos]);
 
 
   // Maps for import dialog
