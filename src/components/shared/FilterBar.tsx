@@ -97,8 +97,26 @@ export function FilterBar({ obras, maquinarias, onFilterChange, showObraFilter =
   const [obraId, setObraId] = useState<string | undefined>(urlFilters.obraId);
   const [maquinariaId, setMaquinariaId] = useState<string | undefined>(urlFilters.maquinariaId);
   const [selectedYear, setSelectedYear] = useState<number>(urlFilters.year || currentYear);
-  
-  // Sincronizar estado inicial con el callback
+
+  const toList = (v: string | undefined) => (v ? v.split(",").filter(Boolean) : []);
+  const obraIds = toList(obraId);
+  const maquinariaIds = toList(maquinariaId);
+
+  const emit = (f: FilterState) => {
+    if (multiple) {
+      onFilterChange({
+        ...f,
+        obraId: undefined,
+        maquinariaId: undefined,
+        obraIds: toList(f.obraId),
+        maquinariaIds: toList(f.maquinariaId),
+      });
+    } else {
+      onFilterChange(f);
+    }
+  };
+
+
   useEffect(() => {
     if (urlFilters.fechaDesde || urlFilters.fechaHasta || urlFilters.mes || urlFilters.obraId || urlFilters.maquinariaId) {
       emit({
