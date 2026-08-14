@@ -131,10 +131,16 @@ export default function Remitos() {
   );
   const creadoresMap = useRemitosCreators(creadorIds, isAdminOrCapataz);
 
-  // Unique tipo_material values for filter
-  const tiposUnicos = useMemo(() => {
-    return [...new Set(remitos.map(r => r.tipo_material).filter(Boolean) as string[])].sort();
-  }, [remitos]);
+  // Unique values for filters
+  const uniqueSorted = (vals: (string | null | undefined)[]) =>
+    [...new Set(vals.filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b));
+
+  const tiposUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_material)), [remitos]);
+  const proveedoresUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.proveedor)), [remitos]);
+  const transportesUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.tipo_transporte)), [remitos]);
+  const desdeUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.desde)), [remitos]);
+  const hastaUnicos = useMemo(() => uniqueSorted(remitos.map(r => r.hasta)), [remitos]);
+
 
   // Maps for import dialog
   const maquinariasMap = useMemo(() => {
