@@ -40,6 +40,8 @@ interface FilterBarProps {
   showObraFilter?: boolean;
   showMaquinariaFilter?: boolean;
   persistKey?: string;
+  /** Habilita selección múltiple en Obra y Maquinaria */
+  multiple?: boolean;
 }
 
 export interface FilterState {
@@ -48,7 +50,10 @@ export interface FilterState {
   mes: string | undefined;
   obraId: string | undefined;
   maquinariaId?: string | undefined;
+  obraIds?: string[];
+  maquinariaIds?: string[];
 }
+
 
 const MESES = [
   { value: "01", label: "Enero" },
