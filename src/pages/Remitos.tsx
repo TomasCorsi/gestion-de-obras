@@ -37,6 +37,8 @@ import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
+import { useRemitosFilterOptions } from "@/hooks/useRemitosFilterOptions";
+
 import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
