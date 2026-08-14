@@ -512,6 +512,7 @@ export default function Remitos() {
           allLabel="Todos los tipos"
           itemsLabel="tipos"
           placeholder="Buscar tipo..."
+          counts={conteos.tipo}
           options={tiposUnicos.map(t => ({ value: t, label: t }))}
           selected={tipoFilter}
           onChange={setTipoFilter}
@@ -521,6 +522,7 @@ export default function Remitos() {
           allLabel="Todos los proveedores"
           itemsLabel="proveedores"
           placeholder="Buscar proveedor..."
+          counts={conteos.proveedor}
           options={proveedoresUnicos.map(p => ({ value: p, label: p }))}
           selected={proveedorFilter}
           onChange={setProveedorFilter}
@@ -530,6 +532,7 @@ export default function Remitos() {
           allLabel="Todos los transportes"
           itemsLabel="transportes"
           placeholder="Buscar transporte..."
+          counts={conteos.transporte}
           options={transportesUnicos.map(t => ({ value: t, label: t }))}
           selected={transporteFilter}
           onChange={setTransporteFilter}
@@ -539,6 +542,7 @@ export default function Remitos() {
           allLabel="Desde (todos)"
           itemsLabel="orígenes"
           placeholder="Buscar origen..."
+          counts={conteos.desde}
           options={desdeUnicos.map(d => ({ value: d, label: d }))}
           selected={desdeFilter}
           onChange={setDesdeFilter}
@@ -548,6 +552,7 @@ export default function Remitos() {
           allLabel="Hasta (todos)"
           itemsLabel="destinos"
           placeholder="Buscar destino..."
+          counts={conteos.hasta}
           options={hastaUnicos.map(h => ({ value: h, label: h }))}
           selected={hastaFilter}
           onChange={setHastaFilter}
@@ -558,6 +563,7 @@ export default function Remitos() {
             allLabel="Todos los usuarios"
             itemsLabel="usuarios"
             placeholder="Buscar usuario..."
+            counts={conteos.creador}
             options={creadorIds.map(uid => ({
               value: uid,
               label: creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`,
@@ -585,6 +591,54 @@ export default function Remitos() {
         )}
 
       </div>
+
+      {/* Chips de filtros activos */}
+      {(() => {
+        const chips: { key: string; label: string; onRemove: () => void }[] = [];
+        const push = (
+          values: string[],
+          setter: (v: string[]) => void,
+          prefijo: string,
+          labelOf: (v: string) => string = (v) => v
+        ) =>
+          values.forEach(v =>
+            chips.push({
+              key: `${prefijo}-${v}`,
+              label: `${prefijo}: ${labelOf(v)}`,
+              onRemove: () => setter(values.filter(x => x !== v)),
+            })
+          );
+        push(tipoFilter, setTipoFilter, "Tipo");
+        push(proveedorFilter, setProveedorFilter, "Proveedor");
+        push(transporteFilter, setTransporteFilter, "Transporte");
+        push(desdeFilter, setDesdeFilter, "Desde");
+        push(hastaFilter, setHastaFilter, "Hasta");
+        push(creadorFilter, setCreadorFilter, "Usuario", (uid) => creadoresMap[uid] || uid.slice(0, 8));
+        if (chips.length === 0) return null;
+        return (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {chips.map(c => (
+              <Badge key={c.key} variant="secondary" className="gap-1 pr-1">
+                <span className="max-w-[220px] truncate">{c.label}</span>
+                <button
+                  type="button"
+                  onClick={c.onRemove}
+                  className="rounded-sm p-0.5 hover:bg-muted"
+                  aria-label={`Quitar ${c.label}`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+            {cargandoHistorico && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Cargando histórico completo...
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
 
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
