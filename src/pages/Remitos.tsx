@@ -466,38 +466,90 @@ export default function Remitos() {
           obras={obras}
           maquinarias={maquinarias}
           showMaquinariaFilter
+          multiple
           onFilterChange={setFilters}
         />
       </div>
 
-      {/* Tipo Material Filter */}
-      <div className="flex flex-wrap gap-4 mb-4">
-        <Select value={tipoFilter} onValueChange={setTipoFilter}>
-          <SelectTrigger className="w-[200px] bg-card">
-            <SelectValue placeholder="Tipo material" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">Todos los tipos</SelectItem>
-            {tiposUnicos.map((tipo) => (
-              <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      {/* Filtros adicionales (selección múltiple) */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los tipos"
+          itemsLabel="tipos"
+          placeholder="Buscar tipo..."
+          options={tiposUnicos.map(t => ({ value: t, label: t }))}
+          selected={tipoFilter}
+          onChange={setTipoFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los proveedores"
+          itemsLabel="proveedores"
+          placeholder="Buscar proveedor..."
+          options={proveedoresUnicos.map(p => ({ value: p, label: p }))}
+          selected={proveedorFilter}
+          onChange={setProveedorFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Todos los transportes"
+          itemsLabel="transportes"
+          placeholder="Buscar transporte..."
+          options={transportesUnicos.map(t => ({ value: t, label: t }))}
+          selected={transporteFilter}
+          onChange={setTransporteFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Desde (todos)"
+          itemsLabel="orígenes"
+          placeholder="Buscar origen..."
+          options={desdeUnicos.map(d => ({ value: d, label: d }))}
+          selected={desdeFilter}
+          onChange={setDesdeFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
+          allLabel="Hasta (todos)"
+          itemsLabel="destinos"
+          placeholder="Buscar destino..."
+          options={hastaUnicos.map(h => ({ value: h, label: h }))}
+          selected={hastaFilter}
+          onChange={setHastaFilter}
+        />
         {isAdminOrCapataz && (
-          <Select value={creadorFilter} onValueChange={setCreadorFilter}>
-            <SelectTrigger className="w-[220px] bg-card">
-              <SelectValue placeholder="Cargado por" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">Todos los usuarios</SelectItem>
-              {creadorIds.map((uid) => (
-                <SelectItem key={uid} value={uid}>
-                  {creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <MultiSelectFilter
+            className="w-[220px]"
+            allLabel="Todos los usuarios"
+            itemsLabel="usuarios"
+            placeholder="Buscar usuario..."
+            options={creadorIds.map(uid => ({
+              value: uid,
+              label: creadoresMap[uid] || `Usuario ${uid.slice(0, 8)}`,
+            }))}
+            selected={creadorFilter}
+            onChange={setCreadorFilter}
+          />
         )}
+        {(tipoFilter.length + proveedorFilter.length + transporteFilter.length + desdeFilter.length + hastaFilter.length + creadorFilter.length) > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 text-muted-foreground"
+            onClick={() => {
+              setTipoFilter([]);
+              setProveedorFilter([]);
+              setTransporteFilter([]);
+              setDesdeFilter([]);
+              setHastaFilter([]);
+              setCreadorFilter([]);
+            }}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+
       </div>
 
       {/* Actions Bar */}
