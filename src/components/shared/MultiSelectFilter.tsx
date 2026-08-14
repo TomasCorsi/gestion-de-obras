@@ -32,6 +32,8 @@ interface MultiSelectFilterProps {
   itemsLabel?: string;
   placeholder?: string;
   className?: string;
+  /** Cantidad de resultados por opción según el resto de filtros activos */
+  counts?: Record<string, number>;
 }
 
 export function MultiSelectFilter({
@@ -42,7 +44,9 @@ export function MultiSelectFilter({
   itemsLabel = "seleccionados",
   placeholder = "Buscar...",
   className,
+  counts,
 }: MultiSelectFilterProps) {
+
   const [open, setOpen] = useState(false);
 
   const summary = useMemo(() => {
