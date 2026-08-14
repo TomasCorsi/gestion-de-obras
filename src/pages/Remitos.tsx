@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
+
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
