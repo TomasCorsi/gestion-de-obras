@@ -201,6 +201,7 @@ export function useRemitos() {
   const {
     data: remitos = [],
     isLoading: loading,
+    isFetching,
     refetch: fetchRemitos
   } = useQuery<RemitoWithRelations[]>({
     queryKey: ['remitos', filterUserId, fechaDesde],
@@ -211,6 +212,10 @@ export function useRemitos() {
     refetchOnMount: false,
     refetchOnWindowFocus: false,
   });
+
+  // true mientras se está trayendo el histórico completo
+  const cargandoHistorico = loadAll && isFetching;
+
 
 
   const createMutation = useMutation({
