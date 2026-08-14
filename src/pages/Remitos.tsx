@@ -99,8 +99,13 @@ export default function Remitos() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [tipoFilter, setTipoFilter] = useState<string>("__all__");
-  const [creadorFilter, setCreadorFilter] = useState<string>("__all__");
+  const [tipoFilter, setTipoFilter] = useState<string[]>([]);
+  const [creadorFilter, setCreadorFilter] = useState<string[]>([]);
+  const [proveedorFilter, setProveedorFilter] = useState<string[]>([]);
+  const [transporteFilter, setTransporteFilter] = useState<string[]>([]);
+  const [desdeFilter, setDesdeFilter] = useState<string[]>([]);
+  const [hastaFilter, setHastaFilter] = useState<string[]>([]);
+
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
   const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
