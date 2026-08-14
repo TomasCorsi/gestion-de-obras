@@ -108,21 +108,27 @@ export function MultiSelectFilter({
           <CommandList className="max-h-64">
             <CommandEmpty>Sin resultados</CommandEmpty>
             <CommandGroup>
-              {options.map((opt) => {
+              {ordered.map((opt) => {
                 const isSelected = selected.includes(opt.value);
+                const count = counts ? counts[opt.value] ?? 0 : undefined;
+                const sinResultados = counts != null && !isSelected && count === 0;
                 return (
                   <CommandItem
                     key={opt.value}
-                    value={opt.label}
+                    value={`${opt.label} ${opt.value}`}
                     onSelect={() => toggle(opt.value)}
-                    className="gap-2"
+                    className={cn("gap-2", sinResultados && "opacity-40")}
                   >
                     <Checkbox checked={isSelected} className="pointer-events-none" />
                     <span className="flex-1 truncate">{opt.label}</span>
+                    {count !== undefined && (
+                      <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
+                    )}
                     {isSelected && <Check className="h-4 w-4 text-primary" />}
                   </CommandItem>
                 );
               })}
+
             </CommandGroup>
           </CommandList>
         </Command>
