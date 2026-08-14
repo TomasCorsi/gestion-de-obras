@@ -207,59 +207,12 @@ export default function Remitos() {
     return map;
   }, [maquinarias]);
 
-  const filteredRemitos = useMemo(() => {
-    // Use date filter only (not obra_id / maquinaria_id from filterByDateAndObra)
-    let result = filterByDateAndObra(
+  // Base: filtro por fecha + búsqueda (no incluye los filtros por valor)
+  const baseRemitos = useMemo(() => {
+    const result = filterByDateAndObra(
       remitos.map(r => ({ ...r, fecha: r.fecha, obra_id: r.obra_id })),
       { ...filters, obraId: undefined, maquinariaId: undefined }
     );
-
-    // Filter by obra(s): match selected obra names against desde/hasta
-    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
-    if (obraIds.length > 0) {
-      const nombres = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
-      if (nombres.length > 0) {
-        result = result.filter(r =>
-          nombres.includes(r.desde || "") || nombres.includes(r.hasta || "")
-        );
-      }
-    }
-
-    // Filter by maquinaria(s)
-    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
-    if (maqIds.length > 0) {
-      result = result.filter(r => r.maquinaria_id && maqIds.includes(r.maquinaria_id));
-    }
-
-    // Filter by tipo_material
-    if (tipoFilter.length > 0) {
-      result = result.filter(r => r.tipo_material && tipoFilter.includes(r.tipo_material));
-    }
-
-    // Filter by creator (admin/capataz only)
-    if (creadorFilter.length > 0) {
-      result = result.filter(r => creadorFilter.includes((r as any).created_by));
-    }
-
-    // Filter by proveedor
-    if (proveedorFilter.length > 0) {
-      result = result.filter(r => r.proveedor && proveedorFilter.includes(r.proveedor));
-    }
-
-    // Filter by transporte
-    if (transporteFilter.length > 0) {
-      result = result.filter(r => r.tipo_transporte && transporteFilter.includes(r.tipo_transporte));
-    }
-
-    // Filter by origen / destino
-    if (desdeFilter.length > 0) {
-      result = result.filter(r => r.desde && desdeFilter.includes(r.desde));
-    }
-    if (hastaFilter.length > 0) {
-      result = result.filter(r => r.hasta && hastaFilter.includes(r.hasta));
-    }
-
-
 
     if (!debouncedSearch) return result;
 
@@ -289,7 +242,75 @@ export default function Remitos() {
 
       return false;
     });
-  }, [remitos, filters, debouncedSearch, maquinariasById, tipoFilter, creadorFilter, obras]);
+  }, [remitos, filters, debouncedSearch, maquinariasById]);
+
+  type FiltroKey = "obra" | "maquinaria" | "tipo" | "proveedor" | "transporte" | "desde" | "hasta" | "creador";
+
+  // Predicados por filtro. La obra se compara contra desde/hasta, pero si el usuario
+  // ya eligió Desde y/o Hasta explícitamente, la obra solo se aplica al lado libre
+  // para que los filtros no se pisen entre sí.
+  const matchers = useMemo(() => {
+    const obraIds = filters.obraIds ?? (filters.obraId ? [filters.obraId] : []);
+    const nombresObra = obras.filter(o => obraIds.includes(o.id)).map(o => o.nombre);
+    const maqIds = filters.maquinariaIds ?? (filters.maquinariaId ? [filters.maquinariaId] : []);
+
+    const m: Partial<Record<FiltroKey, (r: RemitoWithRelations) => boolean>> = {};
+
+    if (nombresObra.length > 0) {
+      const usaDesde = desdeFilter.length > 0;
+      const usaHasta = hastaFilter.length > 0;
+      m.obra = (r) => {
+        if (usaDesde && usaHasta) return true; // origen y destino ya definidos por el usuario
+        if (usaDesde) return nombresObra.includes(r.hasta || "");
+        if (usaHasta) return nombresObra.includes(r.desde || "");
+        return nombresObra.includes(r.desde || "") || nombresObra.includes(r.hasta || "");
+      };
+    }
+    if (maqIds.length > 0) m.maquinaria = (r) => !!r.maquinaria_id && maqIds.includes(r.maquinaria_id);
+    if (tipoFilter.length > 0) m.tipo = (r) => !!r.tipo_material && tipoFilter.includes(r.tipo_material);
+    if (proveedorFilter.length > 0) m.proveedor = (r) => !!r.proveedor && proveedorFilter.includes(r.proveedor);
+    if (transporteFilter.length > 0) m.transporte = (r) => !!r.tipo_transporte && transporteFilter.includes(r.tipo_transporte);
+    if (desdeFilter.length > 0) m.desde = (r) => !!r.desde && desdeFilter.includes(r.desde);
+    if (hastaFilter.length > 0) m.hasta = (r) => !!r.hasta && hastaFilter.includes(r.hasta);
+    if (creadorFilter.length > 0) m.creador = (r) => creadorFilter.includes((r as any).created_by);
+
+    return m;
+  }, [filters, obras, tipoFilter, proveedorFilter, transporteFilter, desdeFilter, hastaFilter, creadorFilter]);
+
+  const applyMatchers = (rows: RemitoWithRelations[], excluir?: FiltroKey) =>
+    rows.filter(r =>
+      (Object.keys(matchers) as FiltroKey[])
+        .filter(k => k !== excluir)
+        .every(k => matchers[k]!(r))
+    );
+
+  const filteredRemitos = useMemo(
+    () => applyMatchers(baseRemitos as RemitoWithRelations[]),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [baseRemitos, matchers]
+  );
+
+  // Conteos por opción, calculados sobre el resto de filtros activos
+  const conteos = useMemo(() => {
+    const contar = (excluir: FiltroKey, get: (r: RemitoWithRelations) => string | null | undefined) => {
+      const map: Record<string, number> = {};
+      applyMatchers(baseRemitos as RemitoWithRelations[], excluir).forEach(r => {
+        const v = get(r);
+        if (v) map[v] = (map[v] || 0) + 1;
+      });
+      return map;
+    };
+    return {
+      tipo: contar("tipo", r => r.tipo_material),
+      proveedor: contar("proveedor", r => r.proveedor),
+      transporte: contar("transporte", r => r.tipo_transporte),
+      desde: contar("desde", r => r.desde),
+      hasta: contar("hasta", r => r.hasta),
+      creador: contar("creador", r => (r as any).created_by),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseRemitos, matchers]);
+
 
   const generateNumero = () => {
     const year = new Date().getFullYear();
