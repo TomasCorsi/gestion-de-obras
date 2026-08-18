@@ -55,6 +55,9 @@ import { toast } from "sonner";
 const RemitosCSVImportDialog = lazy(() =>
   import("@/components/remitos/CSVImportDialog").then(m => ({ default: m.RemitosCSVImportDialog }))
 );
+const ImportGauchoDialog = lazy(() =>
+  import("@/components/remitos/ImportGauchoDialog").then(m => ({ default: m.ImportGauchoDialog }))
+);
 const RemitoQuickFormDialog = lazy(() =>
   import("@/components/remitos/RemitoQuickFormDialog").then(m => ({ default: m.RemitoQuickFormDialog }))
 );
@@ -103,6 +106,7 @@ export default function Remitos() {
     maquinariaId: undefined,
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [importGauchoOpen, setImportGauchoOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
