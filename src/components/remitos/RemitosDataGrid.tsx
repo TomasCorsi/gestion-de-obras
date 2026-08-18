@@ -116,6 +116,7 @@ const tipoMaterialOptions = [
   { value: "Piedra 30/50", label: "Piedra 30/50" },
   { value: "Materiales varios", label: "Materiales varios" },
   { value: "Caños", label: "Caños" },
+  { value: "Suelo seleccionado", label: "Suelo seleccionado" },
 ];
 
 const tipoTransporteOptions = [

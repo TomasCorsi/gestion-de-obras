@@ -36,7 +36,7 @@ const TIPO_MATERIAL_OPTIONS = [
   "Cubiertas", "Frezado", "Cobertura de residuos", "Arena", "Hormigon H30",
   "Tierra negra", "Relleno", "Piedra 30/50", "Materiales varios",
   "Raices", "Traslado interno", "Barro", "Limpieza de obra", "Cal Vial",
-  "Caños",
+  "Caños", "Suelo seleccionado",
 ];
 
 const TIPO_TRANSPORTE_OPTIONS = [
