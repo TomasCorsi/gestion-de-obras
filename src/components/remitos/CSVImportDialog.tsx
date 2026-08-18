@@ -60,7 +60,7 @@ function detectSeparator(line: string): string {
   return detectedSeparator;
 }
 
-function parseDate(dateStr: string): string | null {
+export function parseDate(dateStr: string): string | null {
   if (!dateStr) return null;
   
   // Try YYYY-MM-DD format
@@ -78,7 +78,7 @@ function parseDate(dateStr: string): string | null {
   return null;
 }
 
-function findMaquinariaId(
+export function findMaquinariaId(
   value: string,
   maquinariasMap: Record<string, string>,
   patentesMap: Record<string, string>
@@ -138,7 +138,7 @@ function findMaquinariaId(
 }
 
 // Material type normalization
-const tipoMaterialNormalize: Record<string, string> = {
+export const tipoMaterialNormalize: Record<string, string> = {
   'residuos': 'Residuos',
   'desmonte': 'Desmonte',
   'cascote': 'Cascote',
@@ -179,7 +179,7 @@ const tipoMaterialNormalize: Record<string, string> = {
 };
 
 // Valid material types for validation
-const validMaterialTypes = new Set(Object.values(tipoMaterialNormalize));
+export const validMaterialTypes = new Set(Object.values(tipoMaterialNormalize));
 
 // Transport type normalization
 const tipoTransporteNormalize: Record<string, string> = {
@@ -228,13 +228,13 @@ const unidadNormalize: Record<string, string> = {
   'unidades': 'U',
 };
 
-function normalizeValue(value: string, map: Record<string, string>): string | undefined {
+export function normalizeValue(value: string, map: Record<string, string>): string | undefined {
   if (!value) return undefined;
   const lower = value.trim().toLowerCase();
   return map[lower];
 }
 
-function matchFromMap(value: string, map: Record<string, string>): { matched: string; found: boolean } {
+export function matchFromMap(value: string, map: Record<string, string>): { matched: string; found: boolean } {
   if (!value) return { matched: '', found: false };
   const lower = value.trim().toLowerCase();
   // Exact match
@@ -248,7 +248,7 @@ function matchFromMap(value: string, map: Record<string, string>): { matched: st
   return { matched: value.trim(), found: false };
 }
 
-function parseNumber(raw: string): number {
+export function parseNumber(raw: string): number {
   if (!raw) return 0;
   // Remove currency symbols, spaces
   let cleaned = raw.replace(/[$\s]/g, '');
