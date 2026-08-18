@@ -841,6 +841,25 @@ export default function Remitos() {
           />
         )}
 
+        {importGauchoOpen && (
+          <ImportGauchoDialog
+            open={importGauchoOpen}
+            onOpenChange={setImportGauchoOpen}
+            onImport={async (remitosToImport) => {
+              const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+              if (results.errors > 0) {
+                throw new Error(`${results.errors} errores durante la importación`);
+              }
+              setTimeout(() => fetchRemitos(), 500);
+            }}
+            maquinariasMap={maquinariasMap}
+            patentesMap={patentesMap}
+            obrasMap={obrasMap}
+            obrasClienteMap={obrasClienteMap}
+          />
+        )}
+
+
         {(formOpen || editingRemito) && (
           <RemitoQuickFormDialog
             open={formOpen}
