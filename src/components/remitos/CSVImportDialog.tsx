@@ -172,6 +172,10 @@ const tipoMaterialNormalize: Record<string, string> = {
   'caños': 'Caños',
   'canios': 'Caños',
   'caños de': 'Caños',
+  'suelo seleccionado': 'Suelo seleccionado',
+  'suelo select.': 'Suelo seleccionado',
+  'suelo select': 'Suelo seleccionado',
+  'suelo': 'Suelo seleccionado',
 };
 
 // Valid material types for validation
