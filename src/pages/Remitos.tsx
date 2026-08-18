@@ -194,6 +194,14 @@ export default function Remitos() {
     return map;
   }, [obras]);
 
+  const obrasClienteMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    obras.forEach(o => {
+      if (o.cliente?.nombre) map[o.nombre] = o.cliente.nombre;
+    });
+    return map;
+  }, [obras]);
+
   const clientesMap = useMemo(() => {
     const map: Record<string, string> = {};
     clientes.filter(c => c.activo).forEach(c => {
@@ -693,6 +701,14 @@ export default function Remitos() {
             >
               <Upload className="w-4 h-4" />
               Importar
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setImportGauchoOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar remitos Canteras del Gaucho
             </Button>
             <Button
               variant="outline"
