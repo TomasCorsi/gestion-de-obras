@@ -55,6 +55,9 @@ import { toast } from "sonner";
 const RemitosCSVImportDialog = lazy(() =>
   import("@/components/remitos/CSVImportDialog").then(m => ({ default: m.RemitosCSVImportDialog }))
 );
+const ImportGauchoDialog = lazy(() =>
+  import("@/components/remitos/ImportGauchoDialog").then(m => ({ default: m.ImportGauchoDialog }))
+);
 const RemitoQuickFormDialog = lazy(() =>
   import("@/components/remitos/RemitoQuickFormDialog").then(m => ({ default: m.RemitoQuickFormDialog }))
 );
@@ -103,6 +106,7 @@ export default function Remitos() {
     maquinariaId: undefined,
   });
   const [importOpen, setImportOpen] = useState(false);
+  const [importGauchoOpen, setImportGauchoOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -186,6 +190,14 @@ export default function Remitos() {
       if (o.numero) {
         map[o.numero.toLowerCase().trim()] = o.nombre;
       }
+    });
+    return map;
+  }, [obras]);
+
+  const obrasClienteMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    obras.forEach(o => {
+      if (o.cliente?.nombre) map[o.nombre] = o.cliente.nombre;
     });
     return map;
   }, [obras]);
@@ -692,6 +704,14 @@ export default function Remitos() {
             </Button>
             <Button
               variant="outline"
+              onClick={() => setImportGauchoOpen(true)}
+              className="gap-2"
+            >
+              <Upload className="w-4 h-4" />
+              Importar remitos Canteras del Gaucho
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setPreciosOpen(true)}
               className="gap-2"
             >
@@ -820,6 +840,25 @@ export default function Remitos() {
             clientesMap={clientesMap}
           />
         )}
+
+        {importGauchoOpen && (
+          <ImportGauchoDialog
+            open={importGauchoOpen}
+            onOpenChange={setImportGauchoOpen}
+            onImport={async (remitosToImport) => {
+              const results = await batchSave({ created: remitosToImport, updated: [], deleted: [] });
+              if (results.errors > 0) {
+                throw new Error(`${results.errors} errores durante la importación`);
+              }
+              setTimeout(() => fetchRemitos(), 500);
+            }}
+            maquinariasMap={maquinariasMap}
+            patentesMap={patentesMap}
+            obrasMap={obrasMap}
+            obrasClienteMap={obrasClienteMap}
+          />
+        )}
+
 
         {(formOpen || editingRemito) && (
           <RemitoQuickFormDialog
