@@ -269,8 +269,8 @@ export function ImportGauchoDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
             Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Destino, m3, precio, importe.
@@ -278,8 +278,9 @@ export function ImportGauchoDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-4 px-6 py-4 overflow-y-auto">
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="w-full">
+
             <Download className="w-4 h-4 mr-2" />
             Descargar plantilla
           </Button>
