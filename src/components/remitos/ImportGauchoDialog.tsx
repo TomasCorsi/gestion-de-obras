@@ -154,7 +154,14 @@ function parseRows(rows: unknown[][], maps: {
 
     const obraMatch = matchFromMap(hastaRaw, maps.obrasMap);
     const hasta = obraMatch.matched;
-    const cliente = obraMatch.found ? maps.obrasClienteMap[hasta] : undefined;
+    const desdeMatch = matchFromMap(desdeRaw, maps.obrasMap);
+    const desde = desdeMatch.matched;
+    const cliente = obraMatch.found
+      ? maps.obrasClienteMap[hasta]
+      : desdeMatch.found
+        ? maps.obrasClienteMap[desde]
+        : undefined;
+
 
     const tipo_material = normalizeValue(materialRaw, tipoMaterialNormalize) || materialRaw || "";
     const materialOk = !materialRaw || validMaterialTypes.has(tipo_material);
