@@ -25,7 +25,6 @@ import {
 } from "./CSVImportDialog";
 
 const PROVEEDOR_FIJO = "Canteras del Gaucho";
-const TRANSPORTE_FIJO = "Calamina Sur";
 
 interface ImportGauchoDialogProps {
   open: boolean;
@@ -61,6 +60,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   patente: ["patente", "dominio", "vehiculo", "vehículo"],
   hasta: ["hasta", "obra"],
   desde: ["desde", "origen"],
+  viajes: ["viajes", "cantidad de viajes", "cant viajes", "cantidad viajes", "cant. viajes", "cant.viajes", "nº viajes", "n° viajes"],
+  transporte: ["transporte", "transport", "empresa transporte"],
   m3: ["m3", "m³", "cantidad", "metros cubicos", "metros cúbicos"],
   precio: ["precio", "precio unitario", "precio uni", "precio uni."],
   importe: ["importe", "total", "precio total", "monto"],
@@ -127,12 +128,14 @@ function parseRows(rows: unknown[][], maps: {
     const patenteRaw = raw("patente");
     const hastaRaw = raw("hasta");
     const desdeRaw = raw("desde");
+    const viajesRaw = raw("viajes");
+    const transporteRaw = raw("transporte");
     const m3Raw = raw("m3");
     const precioRaw = raw("precio");
     const importeRaw = raw("importe");
 
     // Fila vacía
-    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw) continue;
+    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw && !viajesRaw) continue;
 
 
     let fecha: string | null = null;
@@ -170,6 +173,8 @@ function parseRows(rows: unknown[][], maps: {
     const precio_unitario = parseNumber(precioRaw);
     const importe = parseNumber(importeRaw);
     const precio_total = importe || precio_unitario * cantidad;
+    const cantidad_viajes = parseNumber(viajesRaw) || 1;
+    const cantidad_uni = cantidad_viajes > 0 ? cantidad / cantidad_viajes : cantidad;
 
     valid.push({
       data: {
@@ -183,13 +188,13 @@ function parseRows(rows: unknown[][], maps: {
         remito_tercero: remitoRaw || undefined,
         hasta: hasta || undefined,
         desde: desde || undefined,
-        cantidad_viajes: 1,
-        cantidad_uni: cantidad,
+        cantidad_viajes,
+        cantidad_uni,
         tipo_material: tipo_material || undefined,
         precio_unitario,
         precio_calc_mode: "cantidad",
         precio_total,
-        tipo_transporte: TRANSPORTE_FIJO,
+        tipo_transporte: transporteRaw || undefined,
         maquinaria_id: maquinaria_id || undefined,
         proveedor: PROVEEDOR_FIJO,
         cliente: cliente || undefined,
@@ -267,8 +272,8 @@ export function ImportGauchoDialog({
   };
 
   const downloadTemplate = () => {
-    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "m3", "precio", "importe"];
-    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "18", "12000", "216000"];
+    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "viajes", "m3", "precio", "importe"];
+    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "1", "18", "12000", "216000"];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Remitos");
@@ -298,8 +303,8 @@ export function ImportGauchoDialog({
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
-            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, m3, precio, importe.
-            Todos se cargan con unidad M3, 1 viaje, transporte Calamina Sur y proveedor Canteras del Gaucho.
+            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, viajes, m3, precio, importe.
+            La columna "viajes" indica la cantidad de viajes (si está vacía se asume 1). El transporte se toma de la columna "transporte" (si está vacío queda vacío). Todos se cargan con unidad M3 y proveedor Canteras del Gaucho.
           </DialogDescription>
         </DialogHeader>
 
@@ -425,14 +430,14 @@ export function ImportGauchoDialog({
                               <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>
                                 {r.data.hasta || r.obraInput || "-"}
                               </td>
-                              <td className={`p-2 ${r.materialOk ? "" : "text-amber-600"}`}>{r.data.tipo_material || "-"}</td>
-                              <td className={fijoCls}>{TRANSPORTE_FIJO}</td>
+                              <td className="p-2">{r.data.tipo_material || "-"}</td>
+                              <td className="p-2">{r.data.tipo_transporte || "-"}</td>
                               <td className={`p-2 ${r.patenteInput && !r.patenteOk ? "text-amber-600" : ""}`}>
                                 {r.patenteInput || "-"}
                               </td>
                               <td className="p-2">{r.data.cliente || "-"}</td>
-                              <td className={`${fijoCls} text-right`}>1</td>
-                              <td className="p-2 text-right">{r.data.cantidad_uni ?? "-"}</td>
+                              <td className="p-2 text-right">{r.data.cantidad_viajes}</td>
+                              <td className="p-2 text-right">{r.data.cantidad_uni ? Math.round(r.data.cantidad_uni * 100) / 100 : "-"}</td>
                               <td className="p-2 text-right">{r.data.cantidad}</td>
                               <td className={fijoCls}>M3</td>
                               <td className="p-2 text-right">
