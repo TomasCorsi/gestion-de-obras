@@ -286,7 +286,8 @@ export function ImportGauchoDialog({
           </Button>
 
           <div
-            className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors shrink-0"
+
             onClick={() => fileInputRef.current?.click()}
           >
             <input
