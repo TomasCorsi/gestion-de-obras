@@ -182,6 +182,7 @@ function parseRows(rows: unknown[][], maps: {
         firmado: false,
         remito_tercero: remitoRaw || undefined,
         hasta: hasta || undefined,
+        desde: desde || undefined,
         cantidad_viajes: 1,
         cantidad_uni: cantidad,
         tipo_material: tipo_material || undefined,
@@ -198,8 +199,11 @@ function parseRows(rows: unknown[][], maps: {
       patenteOk: !!maquinaria_id,
       obraInput: hastaRaw,
       obraOk: obraMatch.found,
+      desdeInput: desdeRaw,
+      desdeOk: desdeMatch.found,
       materialOk,
     });
+
   }
 
   return { valid, errors };
