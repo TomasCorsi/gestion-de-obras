@@ -418,7 +418,10 @@ export function ImportGauchoDialog({
                               <td className="p-2">{formatDate(r.data.fecha)}</td>
                               <td className="p-2">{r.data.remito_tercero || "-"}</td>
                               <td className="p-2 text-muted-foreground">-</td>
-                              <td className="p-2 text-muted-foreground">-</td>
+                              <td className={`p-2 ${r.desdeInput && !r.desdeOk ? "text-amber-600" : ""}`}>
+                                {r.data.desde || r.desdeInput || "-"}
+                              </td>
+
                               <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>
                                 {r.data.hasta || r.obraInput || "-"}
                               </td>
