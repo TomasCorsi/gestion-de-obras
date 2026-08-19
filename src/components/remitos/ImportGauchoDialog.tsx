@@ -25,7 +25,6 @@ import {
 } from "./CSVImportDialog";
 
 const PROVEEDOR_FIJO = "Canteras del Gaucho";
-const TRANSPORTE_FIJO = "Calamina Sur";
 
 interface ImportGauchoDialogProps {
   open: boolean;
