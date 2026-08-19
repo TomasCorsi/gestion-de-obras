@@ -556,7 +556,7 @@ export function GastosMaquinaria() {
           gastoTotal: costoCombustible + costoMantenimientos,
         };
       })
-      .filter((f) => f.gastoTotal > 0 || f.litros > 0 || f.cantRemitos > 0 || f.cantMantenimientos > 0)
+      .filter((f) => f.cantRemitos > 0)
       .sort((a, b) => (b.costoRemitos - b.gastoTotal) - (a.costoRemitos - a.gastoTotal));
 
     if (filas.length === 0) {
