@@ -267,8 +267,8 @@ export function ImportGauchoDialog({
   };
 
   const downloadTemplate = () => {
-    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Destino", "m3", "precio", "importe"];
-    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Obra", "18", "12000", "216000"];
+    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "m3", "precio", "importe"];
+    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "18", "12000", "216000"];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Remitos");
@@ -276,9 +276,17 @@ export function ImportGauchoDialog({
   };
 
   const sinPatente = parseResult?.valid.filter((r) => r.patenteInput && !r.patenteOk).length ?? 0;
-  const sinObraRows = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk) ?? [];
+  const sinObraRows = parseResult?.valid.filter((r) => (r.obraInput && !r.obraOk) || (r.desdeInput && !r.desdeOk)) ?? [];
   const sinObra = sinObraRows.length;
-  const obrasNoEncontradas = Array.from(new Set(sinObraRows.map((r) => r.obraInput)));
+  const obrasNoEncontradas = Array.from(
+    new Set(
+      parseResult?.valid.flatMap((r) => [
+        ...(r.obraInput && !r.obraOk ? [r.obraInput] : []),
+        ...(r.desdeInput && !r.desdeOk ? [r.desdeInput] : []),
+      ]) ?? []
+    )
+  );
+
   const materialDesconocido = parseResult?.valid.filter((r) => !r.materialOk).length ?? 0;
   const totalM3 = parseResult?.valid.reduce((s, r) => s + (r.data.cantidad || 0), 0) ?? 0;
   const totalImporte = parseResult?.valid.reduce((s, r) => s + (r.data.precio_total || 0), 0) ?? 0;
