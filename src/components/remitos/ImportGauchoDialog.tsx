@@ -61,6 +61,8 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   patente: ["patente", "dominio", "vehiculo", "vehículo"],
   hasta: ["hasta", "obra"],
   desde: ["desde", "origen"],
+  viajes: ["viajes", "cantidad de viajes", "cant viajes", "cantidad viajes", "cant. viajes", "cant.viajes", "nº viajes", "n° viajes"],
+  transporte: ["transporte", "transport", "empresa transporte"],
   m3: ["m3", "m³", "cantidad", "metros cubicos", "metros cúbicos"],
   precio: ["precio", "precio unitario", "precio uni", "precio uni."],
   importe: ["importe", "total", "precio total", "monto"],
@@ -127,12 +129,14 @@ function parseRows(rows: unknown[][], maps: {
     const patenteRaw = raw("patente");
     const hastaRaw = raw("hasta");
     const desdeRaw = raw("desde");
+    const viajesRaw = raw("viajes");
+    const transporteRaw = raw("transporte");
     const m3Raw = raw("m3");
     const precioRaw = raw("precio");
     const importeRaw = raw("importe");
 
     // Fila vacía
-    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw) continue;
+    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw && !viajesRaw) continue;
 
 
     let fecha: string | null = null;
@@ -170,6 +174,8 @@ function parseRows(rows: unknown[][], maps: {
     const precio_unitario = parseNumber(precioRaw);
     const importe = parseNumber(importeRaw);
     const precio_total = importe || precio_unitario * cantidad;
+    const cantidad_viajes = parseNumber(viajesRaw) || 1;
+    const cantidad_uni = cantidad_viajes > 0 ? cantidad / cantidad_viajes : cantidad;
 
     valid.push({
       data: {
@@ -183,13 +189,13 @@ function parseRows(rows: unknown[][], maps: {
         remito_tercero: remitoRaw || undefined,
         hasta: hasta || undefined,
         desde: desde || undefined,
-        cantidad_viajes: 1,
-        cantidad_uni: cantidad,
+        cantidad_viajes,
+        cantidad_uni,
         tipo_material: tipo_material || undefined,
         precio_unitario,
         precio_calc_mode: "cantidad",
         precio_total,
-        tipo_transporte: TRANSPORTE_FIJO,
+        tipo_transporte: transporteRaw || undefined,
         maquinaria_id: maquinaria_id || undefined,
         proveedor: PROVEEDOR_FIJO,
         cliente: cliente || undefined,
