@@ -13,6 +13,7 @@ import { Upload, FileText, AlertCircle, CheckCircle, Download } from "lucide-rea
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { RemitoForm } from "@/hooks/useRemitos";
+import { formatDate } from "@/lib/utils";
 import {
   findMaquinariaId,
   parseDate,
@@ -258,8 +259,13 @@ export function ImportGauchoDialog({
   };
 
   const sinPatente = parseResult?.valid.filter((r) => r.patenteInput && !r.patenteOk).length ?? 0;
-  const sinObra = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk).length ?? 0;
+  const sinObraRows = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk) ?? [];
+  const sinObra = sinObraRows.length;
+  const obrasNoEncontradas = Array.from(new Set(sinObraRows.map((r) => r.obraInput)));
   const materialDesconocido = parseResult?.valid.filter((r) => !r.materialOk).length ?? 0;
+  const totalM3 = parseResult?.valid.reduce((s, r) => s + (r.data.cantidad || 0), 0) ?? 0;
+  const totalImporte = parseResult?.valid.reduce((s, r) => s + (r.data.precio_total || 0), 0) ?? 0;
+  const fijoCls = "p-2 text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -342,39 +348,76 @@ export function ImportGauchoDialog({
                 </ScrollArea>
               )}
 
+              {obrasNoEncontradas.length > 0 && (
+                <p className="text-xs text-amber-600">
+                  Obras no encontradas: {obrasNoEncontradas.slice(0, 5).join(", ")}
+                  {obrasNoEncontradas.length > 5 ? ` y ${obrasNoEncontradas.length - 5} más` : ""}
+                </p>
+              )}
+
               {parseResult.valid.length > 0 && (
-                <ScrollArea className="h-64 rounded border border-border">
-                  <table className="w-full text-xs">
-                    <thead className="sticky top-0 bg-muted">
-                      <tr className="text-left">
-                        <th className="p-2">Fecha</th>
-                        <th className="p-2">Remito</th>
-                        <th className="p-2">Material</th>
-                        <th className="p-2">Patente</th>
-                        <th className="p-2">Hasta</th>
-                        <th className="p-2">Cliente</th>
-                        <th className="p-2 text-right">M3</th>
-                        <th className="p-2 text-right">Precio</th>
-                        <th className="p-2 text-right">Importe</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {parseResult.valid.map((r) => (
-                        <tr key={r.row} className="border-t border-border">
-                          <td className="p-2">{r.data.fecha}</td>
-                          <td className="p-2">{r.data.remito_tercero}</td>
-                          <td className={`p-2 ${r.materialOk ? "" : "text-amber-600"}`}>{r.data.tipo_material}</td>
-                          <td className={`p-2 ${r.patenteInput && !r.patenteOk ? "text-amber-600" : ""}`}>{r.patenteInput || "-"}</td>
-                          <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>{r.data.hasta || "-"}</td>
-                          <td className="p-2">{r.data.cliente || "-"}</td>
-                          <td className="p-2 text-right">{r.data.cantidad}</td>
-                          <td className="p-2 text-right">{r.data.precio_unitario}</td>
-                          <td className="p-2 text-right">{r.data.precio_total}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ScrollArea>
+                <>
+                  <div className="text-xs text-muted-foreground">
+                    {parseResult.valid.length} remitos · {totalM3.toLocaleString("es-AR")} M3 · $
+                    {totalImporte.toLocaleString("es-AR")}
+                  </div>
+                  <ScrollArea className="h-72 rounded border border-border">
+                    <div className="overflow-x-auto">
+                      <table className="text-xs whitespace-nowrap min-w-max">
+                        <thead className="sticky top-0 bg-muted">
+                          <tr className="text-left">
+                            <th className="p-2">Fecha</th>
+                            <th className="p-2">Rem. Tercero</th>
+                            <th className="p-2">Rem. Local</th>
+                            <th className="p-2">Desde</th>
+                            <th className="p-2">Hasta</th>
+                            <th className="p-2">Tipo</th>
+                            <th className="p-2">Transporte</th>
+                            <th className="p-2">Vehículo</th>
+                            <th className="p-2">Cliente</th>
+                            <th className="p-2 text-right">Viajes</th>
+                            <th className="p-2 text-right">C. Uni.</th>
+                            <th className="p-2 text-right">C. Total</th>
+                            <th className="p-2">Unidad</th>
+                            <th className="p-2 text-right">P. Unit.</th>
+                            <th className="p-2 text-right">P. Total</th>
+                            <th className="p-2">Proveedor</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {parseResult.valid.map((r) => (
+                            <tr key={r.row} className="border-t border-border">
+                              <td className="p-2">{formatDate(r.data.fecha)}</td>
+                              <td className="p-2">{r.data.remito_tercero || "-"}</td>
+                              <td className="p-2 text-muted-foreground">-</td>
+                              <td className="p-2 text-muted-foreground">-</td>
+                              <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>
+                                {r.data.hasta || r.obraInput || "-"}
+                              </td>
+                              <td className={`p-2 ${r.materialOk ? "" : "text-amber-600"}`}>{r.data.tipo_material || "-"}</td>
+                              <td className={fijoCls}>{TRANSPORTE_FIJO}</td>
+                              <td className={`p-2 ${r.patenteInput && !r.patenteOk ? "text-amber-600" : ""}`}>
+                                {r.patenteInput || "-"}
+                              </td>
+                              <td className="p-2">{r.data.cliente || "-"}</td>
+                              <td className={`${fijoCls} text-right`}>1</td>
+                              <td className="p-2 text-right">{r.data.cantidad_uni ?? "-"}</td>
+                              <td className="p-2 text-right">{r.data.cantidad}</td>
+                              <td className={fijoCls}>M3</td>
+                              <td className="p-2 text-right">
+                                ${(r.data.precio_unitario || 0).toLocaleString("es-AR")}
+                              </td>
+                              <td className="p-2 text-right">
+                                ${(r.data.precio_total || 0).toLocaleString("es-AR")}
+                              </td>
+                              <td className={fijoCls}>{PROVEEDOR_FIJO}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </ScrollArea>
+                </>
               )}
             </div>
           )}
