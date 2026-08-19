@@ -126,12 +126,14 @@ function parseRows(rows: unknown[][], maps: {
     const materialRaw = raw("material");
     const patenteRaw = raw("patente");
     const hastaRaw = raw("hasta");
+    const desdeRaw = raw("desde");
     const m3Raw = raw("m3");
     const precioRaw = raw("precio");
     const importeRaw = raw("importe");
 
     // Fila vacía
-    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !m3Raw) continue;
+    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw) continue;
+
 
     let fecha: string | null = null;
     if (typeof fechaCell === "number") {
