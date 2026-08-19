@@ -259,8 +259,13 @@ export function ImportGauchoDialog({
   };
 
   const sinPatente = parseResult?.valid.filter((r) => r.patenteInput && !r.patenteOk).length ?? 0;
-  const sinObra = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk).length ?? 0;
+  const sinObraRows = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk) ?? [];
+  const sinObra = sinObraRows.length;
+  const obrasNoEncontradas = Array.from(new Set(sinObraRows.map((r) => r.obraInput)));
   const materialDesconocido = parseResult?.valid.filter((r) => !r.materialOk).length ?? 0;
+  const totalM3 = parseResult?.valid.reduce((s, r) => s + (r.data.cantidad || 0), 0) ?? 0;
+  const totalImporte = parseResult?.valid.reduce((s, r) => s + (r.data.precio_total || 0), 0) ?? 0;
+  const fijoCls = "p-2 text-muted-foreground";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
