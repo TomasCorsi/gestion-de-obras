@@ -298,7 +298,7 @@ export function ImportGauchoDialog({
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
-            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Destino, m3, precio, importe.
+            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, m3, precio, importe.
             Todos se cargan con unidad M3, 1 viaje, transporte Calamina Sur y proveedor Canteras del Gaucho.
           </DialogDescription>
         </DialogHeader>
