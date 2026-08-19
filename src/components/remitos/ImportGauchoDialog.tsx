@@ -44,6 +44,8 @@ interface ParsedRow {
   patenteOk: boolean;
   obraInput: string;
   obraOk: boolean;
+  desdeInput: string;
+  desdeOk: boolean;
   materialOk: boolean;
 }
 
@@ -58,10 +60,12 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   material: ["material", "tipo material", "tipo_material"],
   patente: ["patente", "dominio", "vehiculo", "vehículo"],
   hasta: ["hasta", "obra"],
+  desde: ["desde", "origen"],
   m3: ["m3", "m³", "cantidad", "metros cubicos", "metros cúbicos"],
   precio: ["precio", "precio unitario", "precio uni", "precio uni."],
   importe: ["importe", "total", "precio total", "monto"],
 };
+
 
 function normalizeHeader(h: unknown): string {
   return String(h ?? "").trim().toLowerCase().replace(/['"]/g, "").replace(/\s+/g, " ");
