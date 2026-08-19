@@ -311,7 +311,8 @@ export function ImportGauchoDialog({
           </div>
 
           {parseResult && (
-            <div className="space-y-3">
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
                   <CheckCircle className="w-3 h-3 mr-1" />
