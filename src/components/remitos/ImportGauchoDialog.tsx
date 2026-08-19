@@ -273,8 +273,8 @@ export function ImportGauchoDialog({
   };
 
   const downloadTemplate = () => {
-    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "m3", "precio", "importe"];
-    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "18", "12000", "216000"];
+    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "viajes", "m3", "precio", "importe"];
+    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "1", "18", "12000", "216000"];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Remitos");
@@ -304,8 +304,8 @@ export function ImportGauchoDialog({
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
-            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, m3, precio, importe.
-            Todos se cargan con unidad M3, 1 viaje, transporte Calamina Sur y proveedor Canteras del Gaucho.
+            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, viajes, m3, precio, importe.
+            La columna "viajes" indica la cantidad de viajes (si está vacía se asume 1). El transporte se toma de la columna "transporte" (si está vacío queda vacío). Todos se cargan con unidad M3 y proveedor Canteras del Gaucho.
           </DialogDescription>
         </DialogHeader>
 
@@ -431,14 +431,14 @@ export function ImportGauchoDialog({
                               <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>
                                 {r.data.hasta || r.obraInput || "-"}
                               </td>
-                              <td className={`p-2 ${r.materialOk ? "" : "text-amber-600"}`}>{r.data.tipo_material || "-"}</td>
-                              <td className={fijoCls}>{TRANSPORTE_FIJO}</td>
+                              <td className="p-2">{r.data.tipo_material || "-"}</td>
+                              <td className="p-2">{r.data.tipo_transporte || "-"}</td>
                               <td className={`p-2 ${r.patenteInput && !r.patenteOk ? "text-amber-600" : ""}`}>
                                 {r.patenteInput || "-"}
                               </td>
                               <td className="p-2">{r.data.cliente || "-"}</td>
-                              <td className={`${fijoCls} text-right`}>1</td>
-                              <td className="p-2 text-right">{r.data.cantidad_uni ?? "-"}</td>
+                              <td className="p-2 text-right">{r.data.cantidad_viajes}</td>
+                              <td className="p-2 text-right">{r.data.cantidad_uni ? Math.round(r.data.cantidad_uni * 100) / 100 : "-"}</td>
                               <td className="p-2 text-right">{r.data.cantidad}</td>
                               <td className={fijoCls}>M3</td>
                               <td className="p-2 text-right">
