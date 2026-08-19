@@ -269,8 +269,8 @@ export function ImportGauchoDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
+      <DialogContent className="max-w-[98vw] w-[98vw] h-[95vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
             Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Destino, m3, precio, importe.
@@ -278,14 +278,16 @@ export function ImportGauchoDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 flex flex-col gap-4 px-6 py-4 overflow-y-auto">
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="w-full">
+
             <Download className="w-4 h-4 mr-2" />
             Descargar plantilla
           </Button>
 
           <div
-            className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+            className="border-2 border-dashed border-border rounded-lg p-4 text-center cursor-pointer hover:border-primary/50 transition-colors shrink-0"
+
             onClick={() => fileInputRef.current?.click()}
           >
             <input
@@ -309,7 +311,8 @@ export function ImportGauchoDialog({
           </div>
 
           {parseResult && (
-            <div className="space-y-3">
+            <div className="flex-1 min-h-0 flex flex-col gap-3">
+
               <div className="flex flex-wrap gap-2">
                 <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-500/30">
                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -357,15 +360,15 @@ export function ImportGauchoDialog({
 
               {parseResult.valid.length > 0 && (
                 <>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground shrink-0">
                     {parseResult.valid.length} remitos · {totalM3.toLocaleString("es-AR")} M3 · $
                     {totalImporte.toLocaleString("es-AR")}
                   </div>
-                  <ScrollArea className="h-72 rounded border border-border">
-                    <div className="overflow-x-auto">
-                      <table className="text-xs whitespace-nowrap min-w-max">
-                        <thead className="sticky top-0 bg-muted">
-                          <tr className="text-left">
+                  <div className="flex-1 min-h-[300px] rounded border border-border overflow-auto">
+                    <table className="text-xs whitespace-nowrap w-full">
+                      <thead className="sticky top-0 z-10 bg-muted">
+                        <tr className="text-left">
+
                             <th className="p-2">Fecha</th>
                             <th className="p-2">Rem. Tercero</th>
                             <th className="p-2">Rem. Local</th>
@@ -415,22 +418,22 @@ export function ImportGauchoDialog({
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                  </ScrollArea>
+                  </div>
                 </>
               )}
             </div>
           )}
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isImporting}>
-              Cancelar
-            </Button>
-            <Button onClick={handleImport} disabled={isImporting || !parseResult || parseResult.valid.length === 0}>
-              {isImporting ? "Importando..." : `Importar ${parseResult?.valid.length ?? 0} remitos`}
-            </Button>
-          </div>
         </div>
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border shrink-0 bg-background">
+          <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleImport} disabled={isImporting || !parseResult || parseResult.valid.length === 0}>
+            {isImporting ? "Importando..." : `Importar ${parseResult?.valid.length ?? 0} remitos`}
+          </Button>
+        </div>
+
       </DialogContent>
     </Dialog>
   );
