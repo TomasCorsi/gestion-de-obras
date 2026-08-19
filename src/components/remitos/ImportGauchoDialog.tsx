@@ -44,6 +44,8 @@ interface ParsedRow {
   patenteOk: boolean;
   obraInput: string;
   obraOk: boolean;
+  desdeInput: string;
+  desdeOk: boolean;
   materialOk: boolean;
 }
 
@@ -58,10 +60,12 @@ const COLUMN_ALIASES: Record<string, string[]> = {
   material: ["material", "tipo material", "tipo_material"],
   patente: ["patente", "dominio", "vehiculo", "vehículo"],
   hasta: ["hasta", "obra"],
+  desde: ["desde", "origen"],
   m3: ["m3", "m³", "cantidad", "metros cubicos", "metros cúbicos"],
   precio: ["precio", "precio unitario", "precio uni", "precio uni."],
   importe: ["importe", "total", "precio total", "monto"],
 };
+
 
 function normalizeHeader(h: unknown): string {
   return String(h ?? "").trim().toLowerCase().replace(/['"]/g, "").replace(/\s+/g, " ");
@@ -122,12 +126,14 @@ function parseRows(rows: unknown[][], maps: {
     const materialRaw = raw("material");
     const patenteRaw = raw("patente");
     const hastaRaw = raw("hasta");
+    const desdeRaw = raw("desde");
     const m3Raw = raw("m3");
     const precioRaw = raw("precio");
     const importeRaw = raw("importe");
 
     // Fila vacía
-    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !m3Raw) continue;
+    if (!remitoRaw && !materialRaw && !patenteRaw && !hastaRaw && !desdeRaw && !m3Raw) continue;
+
 
     let fecha: string | null = null;
     if (typeof fechaCell === "number") {
@@ -148,7 +154,14 @@ function parseRows(rows: unknown[][], maps: {
 
     const obraMatch = matchFromMap(hastaRaw, maps.obrasMap);
     const hasta = obraMatch.matched;
-    const cliente = obraMatch.found ? maps.obrasClienteMap[hasta] : undefined;
+    const desdeMatch = matchFromMap(desdeRaw, maps.obrasMap);
+    const desde = desdeMatch.matched;
+    const cliente = obraMatch.found
+      ? maps.obrasClienteMap[hasta]
+      : desdeMatch.found
+        ? maps.obrasClienteMap[desde]
+        : undefined;
+
 
     const tipo_material = normalizeValue(materialRaw, tipoMaterialNormalize) || materialRaw || "";
     const materialOk = !materialRaw || validMaterialTypes.has(tipo_material);
@@ -169,6 +182,7 @@ function parseRows(rows: unknown[][], maps: {
         firmado: false,
         remito_tercero: remitoRaw || undefined,
         hasta: hasta || undefined,
+        desde: desde || undefined,
         cantidad_viajes: 1,
         cantidad_uni: cantidad,
         tipo_material: tipo_material || undefined,
@@ -185,8 +199,11 @@ function parseRows(rows: unknown[][], maps: {
       patenteOk: !!maquinaria_id,
       obraInput: hastaRaw,
       obraOk: obraMatch.found,
+      desdeInput: desdeRaw,
+      desdeOk: desdeMatch.found,
       materialOk,
     });
+
   }
 
   return { valid, errors };
@@ -250,8 +267,8 @@ export function ImportGauchoDialog({
   };
 
   const downloadTemplate = () => {
-    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Destino", "m3", "precio", "importe"];
-    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Obra", "18", "12000", "216000"];
+    const headers = ["fecha", "remito N°", "nombre cliente", "material", "transporte", "patente", "Hasta", "Desde", "m3", "precio", "importe"];
+    const example = ["01/08/2026", "12345", "Cliente Ejemplo", "Suelo seleccionado", "Calamina Sur", "AB629JD", "Ceamse Tristan Suarez", "Cantera Gaucho", "18", "12000", "216000"];
     const ws = XLSX.utils.aoa_to_sheet([headers, example]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Remitos");
@@ -259,9 +276,17 @@ export function ImportGauchoDialog({
   };
 
   const sinPatente = parseResult?.valid.filter((r) => r.patenteInput && !r.patenteOk).length ?? 0;
-  const sinObraRows = parseResult?.valid.filter((r) => r.obraInput && !r.obraOk) ?? [];
+  const sinObraRows = parseResult?.valid.filter((r) => (r.obraInput && !r.obraOk) || (r.desdeInput && !r.desdeOk)) ?? [];
   const sinObra = sinObraRows.length;
-  const obrasNoEncontradas = Array.from(new Set(sinObraRows.map((r) => r.obraInput)));
+  const obrasNoEncontradas = Array.from(
+    new Set(
+      parseResult?.valid.flatMap((r) => [
+        ...(r.obraInput && !r.obraOk ? [r.obraInput] : []),
+        ...(r.desdeInput && !r.desdeOk ? [r.desdeInput] : []),
+      ]) ?? []
+    )
+  );
+
   const materialDesconocido = parseResult?.valid.filter((r) => !r.materialOk).length ?? 0;
   const totalM3 = parseResult?.valid.reduce((s, r) => s + (r.data.cantidad || 0), 0) ?? 0;
   const totalImporte = parseResult?.valid.reduce((s, r) => s + (r.data.precio_total || 0), 0) ?? 0;
@@ -273,7 +298,7 @@ export function ImportGauchoDialog({
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
           <DialogTitle>Importar remitos Canteras del Gaucho</DialogTitle>
           <DialogDescription>
-            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Destino, m3, precio, importe.
+            Subí el Excel (o CSV) con las columnas: fecha, remito N°, nombre cliente, material, transporte, patente, Hasta, Desde, m3, precio, importe.
             Todos se cargan con unidad M3, 1 viaje, transporte Calamina Sur y proveedor Canteras del Gaucho.
           </DialogDescription>
         </DialogHeader>
@@ -393,7 +418,10 @@ export function ImportGauchoDialog({
                               <td className="p-2">{formatDate(r.data.fecha)}</td>
                               <td className="p-2">{r.data.remito_tercero || "-"}</td>
                               <td className="p-2 text-muted-foreground">-</td>
-                              <td className="p-2 text-muted-foreground">-</td>
+                              <td className={`p-2 ${r.desdeInput && !r.desdeOk ? "text-amber-600" : ""}`}>
+                                {r.data.desde || r.desdeInput || "-"}
+                              </td>
+
                               <td className={`p-2 ${r.obraInput && !r.obraOk ? "text-amber-600" : ""}`}>
                                 {r.data.hasta || r.obraInput || "-"}
                               </td>
