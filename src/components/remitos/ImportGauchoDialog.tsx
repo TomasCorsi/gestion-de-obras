@@ -13,6 +13,7 @@ import { Upload, FileText, AlertCircle, CheckCircle, Download } from "lucide-rea
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { RemitoForm } from "@/hooks/useRemitos";
+import { formatDate } from "@/lib/utils";
 import {
   findMaquinariaId,
   parseDate,
