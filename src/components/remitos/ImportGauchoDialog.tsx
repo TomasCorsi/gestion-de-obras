@@ -418,22 +418,22 @@ export function ImportGauchoDialog({
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                  </ScrollArea>
+                  </div>
                 </>
               )}
             </div>
           )}
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleClose} disabled={isImporting}>
-              Cancelar
-            </Button>
-            <Button onClick={handleImport} disabled={isImporting || !parseResult || parseResult.valid.length === 0}>
-              {isImporting ? "Importando..." : `Importar ${parseResult?.valid.length ?? 0} remitos`}
-            </Button>
-          </div>
         </div>
+
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border shrink-0 bg-background">
+          <Button variant="outline" onClick={handleClose} disabled={isImporting}>
+            Cancelar
+          </Button>
+          <Button onClick={handleImport} disabled={isImporting || !parseResult || parseResult.valid.length === 0}>
+            {isImporting ? "Importando..." : `Importar ${parseResult?.valid.length ?? 0} remitos`}
+          </Button>
+        </div>
+
       </DialogContent>
     </Dialog>
   );
