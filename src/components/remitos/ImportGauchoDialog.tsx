@@ -360,15 +360,15 @@ export function ImportGauchoDialog({
 
               {parseResult.valid.length > 0 && (
                 <>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground shrink-0">
                     {parseResult.valid.length} remitos · {totalM3.toLocaleString("es-AR")} M3 · $
                     {totalImporte.toLocaleString("es-AR")}
                   </div>
-                  <ScrollArea className="h-72 rounded border border-border">
-                    <div className="overflow-x-auto">
-                      <table className="text-xs whitespace-nowrap min-w-max">
-                        <thead className="sticky top-0 bg-muted">
-                          <tr className="text-left">
+                  <div className="flex-1 min-h-[300px] rounded border border-border overflow-auto">
+                    <table className="text-xs whitespace-nowrap w-full">
+                      <thead className="sticky top-0 z-10 bg-muted">
+                        <tr className="text-left">
+
                             <th className="p-2">Fecha</th>
                             <th className="p-2">Rem. Tercero</th>
                             <th className="p-2">Rem. Local</th>
