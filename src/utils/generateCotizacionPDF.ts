@@ -209,7 +209,11 @@ export async function generateCotizacionPDF(
     rowIndex++;
 
     // Category items
-    const catItems = itemsByCategory.get(cat.id) || [];
+    const catItems = [...(itemsByCategory.get(cat.id) || [])].sort((a, b) => {
+      const pa = parseInt((a.numero || "").split(".")[1] || "0", 10);
+      const pb = parseInt((b.numero || "").split(".")[1] || "0", 10);
+      return pa - pb;
+    });
     let categorySubtotal = 0;
     
     catItems.forEach((item) => {
