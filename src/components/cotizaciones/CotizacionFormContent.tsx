@@ -229,6 +229,89 @@ export function CotizacionFormContent({
       .filter(item => item.categoria_index === categoriaIndex);
   };
 
+  // Renumber categories (1., 2., ...) and their items (1.1, 1.2, ...)
+  const renumber = (
+    cats: CotizacionCategoriaForm[],
+    its: CotizacionItemForm[]
+  ): { cats: CotizacionCategoriaForm[]; its: CotizacionItemForm[] } => {
+    const newCats = cats.map((cat, i) => ({ ...cat, numero: i + 1, orden: i }));
+    const counters: Record<number, number> = {};
+    const newIts = its.map((item) => {
+      if (item.categoria_index === undefined || !newCats[item.categoria_index]) return item;
+      const ci = item.categoria_index;
+      counters[ci] = (counters[ci] || 0) + 1;
+      return { ...item, numero: `${newCats[ci].numero}.${counters[ci]}` };
+    });
+    return { cats: newCats, its: newIts };
+  };
+
+  // Move a whole category (with its items) to another position
+  const moveCategoria = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= categorias.length) return;
+
+    const newCats = [...categorias];
+    const [moved] = newCats.splice(from, 1);
+    newCats.splice(to, 0, moved);
+
+    // Map old category index -> new category index
+    const indexMap: Record<number, number> = {};
+    categorias.forEach((cat, oldIdx) => {
+      indexMap[oldIdx] = newCats.indexOf(cat);
+    });
+
+    const remapped = items.map((item) =>
+      item.categoria_index !== undefined
+        ? { ...item, categoria_index: indexMap[item.categoria_index] ?? item.categoria_index }
+        : item
+    );
+
+    // Reorder items array so it follows the new category order
+    const ordered: CotizacionItemForm[] = [];
+    newCats.forEach((_, newIdx) => {
+      remapped.forEach((item) => {
+        if (item.categoria_index === newIdx) ordered.push(item);
+      });
+    });
+    remapped.forEach((item) => {
+      if (item.categoria_index === undefined) ordered.push(item);
+    });
+
+    const { cats, its } = renumber(newCats, ordered);
+    setCategorias(cats);
+    setItems(its);
+
+    // Remap collapsed/expanded state
+    const newOpen: Record<number, boolean> = {};
+    Object.entries(openCategories).forEach(([k, v]) => {
+      const mapped = indexMap[Number(k)];
+      if (mapped !== undefined) newOpen[mapped] = v;
+    });
+    setOpenCategories(newOpen);
+  };
+
+  // Move an item within its own category
+  const moveItem = (categoriaIndex: number, fromPos: number, toPos: number) => {
+    const positions = items
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.categoria_index === categoriaIndex)
+      .map(({ idx }) => idx);
+
+    if (fromPos === toPos || toPos < 0 || toPos >= positions.length) return;
+
+    const groupItems = positions.map((idx) => items[idx]);
+    const [moved] = groupItems.splice(fromPos, 1);
+    groupItems.splice(toPos, 0, moved);
+
+    const newItems = [...items];
+    positions.forEach((idx, i) => {
+      newItems[idx] = groupItems[i];
+    });
+
+    const { cats, its } = renumber(categorias, newItems);
+    setCategorias(cats);
+    setItems(its);
+  };
+
   const toggleCategory = (index: number) => {
     setOpenCategories({ ...openCategories, [index]: !openCategories[index] });
   };
