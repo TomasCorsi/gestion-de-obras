@@ -537,7 +537,8 @@ export function CotizacionFormContent({
                   <CollapsibleContent>
                     <div className="p-3 space-y-3">
                       {/* Table Header */}
-                      <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
+                      <div className="grid grid-cols-13 gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
+                        <div className="col-span-1"></div>
                         <div className="col-span-1">Núm.</div>
                         <div className="col-span-3">Descripción</div>
                         <div className="col-span-1">Unidad</div>
@@ -550,8 +551,56 @@ export function CotizacionFormContent({
                       </div>
 
                       {/* Items */}
-                      {getItemsForCategory(catIndex).map((item) => (
-                        <div key={item.originalIndex} className="grid grid-cols-12 gap-2 items-center">
+                      {getItemsForCategory(catIndex).map((item, itemPos, groupArr) => (
+                        <div
+                          key={item.originalIndex}
+                          className="grid grid-cols-13 gap-2 items-center"
+                          onDragOver={(e) => {
+                            if (draggedItem?.cat !== catIndex) return;
+                            e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            if (draggedItem?.cat !== catIndex) return;
+                            e.preventDefault();
+                            moveItem(catIndex, draggedItem.pos, itemPos);
+                            setDraggedItem(null);
+                          }}
+                        >
+                          <div className="col-span-1 flex items-center">
+                            <div
+                              draggable
+                              onDragStart={() => setDraggedItem({ cat: catIndex, pos: itemPos })}
+                              onDragEnd={() => setDraggedItem(null)}
+                              title="Arrastrar para mover el ítem"
+                              className="cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                            <div className="flex flex-col">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-5"
+                                disabled={itemPos === 0}
+                                onClick={() => moveItem(catIndex, itemPos, itemPos - 1)}
+                                title="Subir ítem"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-5"
+                                disabled={itemPos === groupArr.length - 1}
+                                onClick={() => moveItem(catIndex, itemPos, itemPos + 1)}
+                                title="Bajar ítem"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
                           <div className="col-span-1">
                             <Input
                               value={item.numero}
