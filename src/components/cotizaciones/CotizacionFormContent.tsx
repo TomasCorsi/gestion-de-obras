@@ -537,7 +537,7 @@ export function CotizacionFormContent({
                   <CollapsibleContent>
                     <div className="p-3 space-y-3">
                       {/* Table Header */}
-                      <div className="grid grid-cols-13 gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
+                      <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
                         <div className="col-span-1"></div>
                         <div className="col-span-1">Núm.</div>
                         <div className="col-span-3">Descripción</div>
@@ -554,7 +554,7 @@ export function CotizacionFormContent({
                       {getItemsForCategory(catIndex).map((item, itemPos, groupArr) => (
                         <div
                           key={item.originalIndex}
-                          className="grid grid-cols-13 gap-2 items-center"
+                          className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-2 items-center"
                           onDragOver={(e) => {
                             if (draggedItem?.cat !== catIndex) return;
                             e.preventDefault();
