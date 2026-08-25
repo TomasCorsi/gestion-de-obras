@@ -452,9 +452,60 @@ export function CotizacionFormContent({
                 open={openCategories[catIndex] !== false}
                 onOpenChange={() => toggleCategory(catIndex)}
               >
-                <div className="border border-border rounded-lg overflow-hidden">
+                <div
+                  className={`border rounded-lg overflow-hidden transition-colors ${
+                    dragOverCat === catIndex && draggedCat !== null && draggedCat !== catIndex
+                      ? "border-primary border-2"
+                      : "border-border"
+                  }`}
+                  onDragOver={(e) => {
+                    if (draggedCat === null) return;
+                    e.preventDefault();
+                    setDragOverCat(catIndex);
+                  }}
+                  onDrop={(e) => {
+                    if (draggedCat === null) return;
+                    e.preventDefault();
+                    moveCategoria(draggedCat, catIndex);
+                    setDraggedCat(null);
+                    setDragOverCat(null);
+                  }}
+                >
                   {/* Category Header */}
                   <div className="bg-primary/10 p-3 flex items-center justify-between">
+                    <div
+                      draggable
+                      onDragStart={() => setDraggedCat(catIndex)}
+                      onDragEnd={() => { setDraggedCat(null); setDragOverCat(null); }}
+                      title="Arrastrar para mover el rubro"
+                      className="cursor-grab active:cursor-grabbing mr-1"
+                    >
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col mr-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-5"
+                        disabled={catIndex === 0}
+                        onClick={() => moveCategoria(catIndex, catIndex - 1)}
+                        title="Subir rubro"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-5"
+                        disabled={catIndex === categorias.length - 1}
+                        onClick={() => moveCategoria(catIndex, catIndex + 1)}
+                        title="Bajar rubro"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </Button>
+                    </div>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
                         {openCategories[catIndex] !== false ? (
