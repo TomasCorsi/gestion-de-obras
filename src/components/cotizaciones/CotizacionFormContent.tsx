@@ -68,6 +68,9 @@ export function CotizacionFormContent({
 }: CotizacionFormContentProps) {
   const [openCategories, setOpenCategories] = useState<Record<number, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [draggedCat, setDraggedCat] = useState<number | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<number | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
