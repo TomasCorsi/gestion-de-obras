@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus, Sparkles } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus, Sparkles, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { ImportComputoDialog } from "./ImportComputoDialog";
 import {
   CotizacionForm,
