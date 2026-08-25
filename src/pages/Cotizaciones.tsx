@@ -191,20 +191,33 @@ export default function Cotizaciones() {
         };
       });
     
-    // Map items
-    const mappedItems: CotizacionItemForm[] = (cot.items || []).map(item => ({
-      categoria_index: item.categoria_id ? catMap.get(item.categoria_id) : undefined,
-      numero: item.numero || "",
-      descripcion: item.descripcion,
-      unidad: item.unidad,
-      cantidad: item.cantidad,
-      cantidad_m2: item.cantidad_m2 || 0,
-      altura_promedio: item.altura_promedio || 0,
-      cantidad_m3: item.cantidad_m3 || 0,
-      precio_unitario: item.precio_unitario,
-      subtotal: item.subtotal,
-      total: item.total || item.subtotal,
-    }));
+    // Map items (sorted by numero so the saved order is preserved: 1.1, 1.2, 2.1...)
+    const numeroKey = (n: string) =>
+      (n || "").split(".").map((p) => parseInt(p, 10) || 0);
+    const mappedItems: CotizacionItemForm[] = [...(cot.items || [])]
+      .sort((a, b) => {
+        const na = numeroKey(a.numero || "");
+        const nb = numeroKey(b.numero || "");
+        for (let i = 0; i < Math.max(na.length, nb.length); i++) {
+          const diff = (na[i] || 0) - (nb[i] || 0);
+          if (diff !== 0) return diff;
+        }
+        return 0;
+      })
+      .map(item => ({
+        categoria_index: item.categoria_id ? catMap.get(item.categoria_id) : undefined,
+        numero: item.numero || "",
+        descripcion: item.descripcion,
+        unidad: item.unidad,
+        cantidad: item.cantidad,
+        cantidad_m2: item.cantidad_m2 || 0,
+        altura_promedio: item.altura_promedio || 0,
+        cantidad_m3: item.cantidad_m3 || 0,
+        precio_unitario: item.precio_unitario,
+        subtotal: item.subtotal,
+        total: item.total || item.subtotal,
+      }));
+
     
     setCategorias(mappedCategorias);
     setItems(mappedItems);

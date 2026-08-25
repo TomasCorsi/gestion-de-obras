@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus, Sparkles } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, FolderPlus, Sparkles, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import { ImportComputoDialog } from "./ImportComputoDialog";
 import {
   CotizacionForm,
@@ -68,6 +68,9 @@ export function CotizacionFormContent({
 }: CotizacionFormContentProps) {
   const [openCategories, setOpenCategories] = useState<Record<number, boolean>>({});
   const [importOpen, setImportOpen] = useState(false);
+  const [draggedCat, setDraggedCat] = useState<number | null>(null);
+  const [dragOverCat, setDragOverCat] = useState<number | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
@@ -226,6 +229,89 @@ export function CotizacionFormContent({
       .filter(item => item.categoria_index === categoriaIndex);
   };
 
+  // Renumber categories (1., 2., ...) and their items (1.1, 1.2, ...)
+  const renumber = (
+    cats: CotizacionCategoriaForm[],
+    its: CotizacionItemForm[]
+  ): { cats: CotizacionCategoriaForm[]; its: CotizacionItemForm[] } => {
+    const newCats = cats.map((cat, i) => ({ ...cat, numero: i + 1, orden: i }));
+    const counters: Record<number, number> = {};
+    const newIts = its.map((item) => {
+      if (item.categoria_index === undefined || !newCats[item.categoria_index]) return item;
+      const ci = item.categoria_index;
+      counters[ci] = (counters[ci] || 0) + 1;
+      return { ...item, numero: `${newCats[ci].numero}.${counters[ci]}` };
+    });
+    return { cats: newCats, its: newIts };
+  };
+
+  // Move a whole category (with its items) to another position
+  const moveCategoria = (from: number, to: number) => {
+    if (from === to || to < 0 || to >= categorias.length) return;
+
+    const newCats = [...categorias];
+    const [moved] = newCats.splice(from, 1);
+    newCats.splice(to, 0, moved);
+
+    // Map old category index -> new category index
+    const indexMap: Record<number, number> = {};
+    categorias.forEach((cat, oldIdx) => {
+      indexMap[oldIdx] = newCats.indexOf(cat);
+    });
+
+    const remapped = items.map((item) =>
+      item.categoria_index !== undefined
+        ? { ...item, categoria_index: indexMap[item.categoria_index] ?? item.categoria_index }
+        : item
+    );
+
+    // Reorder items array so it follows the new category order
+    const ordered: CotizacionItemForm[] = [];
+    newCats.forEach((_, newIdx) => {
+      remapped.forEach((item) => {
+        if (item.categoria_index === newIdx) ordered.push(item);
+      });
+    });
+    remapped.forEach((item) => {
+      if (item.categoria_index === undefined) ordered.push(item);
+    });
+
+    const { cats, its } = renumber(newCats, ordered);
+    setCategorias(cats);
+    setItems(its);
+
+    // Remap collapsed/expanded state
+    const newOpen: Record<number, boolean> = {};
+    Object.entries(openCategories).forEach(([k, v]) => {
+      const mapped = indexMap[Number(k)];
+      if (mapped !== undefined) newOpen[mapped] = v;
+    });
+    setOpenCategories(newOpen);
+  };
+
+  // Move an item within its own category
+  const moveItem = (categoriaIndex: number, fromPos: number, toPos: number) => {
+    const positions = items
+      .map((item, idx) => ({ item, idx }))
+      .filter(({ item }) => item.categoria_index === categoriaIndex)
+      .map(({ idx }) => idx);
+
+    if (fromPos === toPos || toPos < 0 || toPos >= positions.length) return;
+
+    const groupItems = positions.map((idx) => items[idx]);
+    const [moved] = groupItems.splice(fromPos, 1);
+    groupItems.splice(toPos, 0, moved);
+
+    const newItems = [...items];
+    positions.forEach((idx, i) => {
+      newItems[idx] = groupItems[i];
+    });
+
+    const { cats, its } = renumber(categorias, newItems);
+    setCategorias(cats);
+    setItems(its);
+  };
+
   const toggleCategory = (index: number) => {
     setOpenCategories({ ...openCategories, [index]: !openCategories[index] });
   };
@@ -366,9 +452,60 @@ export function CotizacionFormContent({
                 open={openCategories[catIndex] !== false}
                 onOpenChange={() => toggleCategory(catIndex)}
               >
-                <div className="border border-border rounded-lg overflow-hidden">
+                <div
+                  className={`border rounded-lg overflow-hidden transition-colors ${
+                    dragOverCat === catIndex && draggedCat !== null && draggedCat !== catIndex
+                      ? "border-primary border-2"
+                      : "border-border"
+                  }`}
+                  onDragOver={(e) => {
+                    if (draggedCat === null) return;
+                    e.preventDefault();
+                    setDragOverCat(catIndex);
+                  }}
+                  onDrop={(e) => {
+                    if (draggedCat === null) return;
+                    e.preventDefault();
+                    moveCategoria(draggedCat, catIndex);
+                    setDraggedCat(null);
+                    setDragOverCat(null);
+                  }}
+                >
                   {/* Category Header */}
                   <div className="bg-primary/10 p-3 flex items-center justify-between">
+                    <div
+                      draggable
+                      onDragStart={() => setDraggedCat(catIndex)}
+                      onDragEnd={() => { setDraggedCat(null); setDragOverCat(null); }}
+                      title="Arrastrar para mover el rubro"
+                      className="cursor-grab active:cursor-grabbing mr-1"
+                    >
+                      <GripVertical className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <div className="flex flex-col mr-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-5"
+                        disabled={catIndex === 0}
+                        onClick={() => moveCategoria(catIndex, catIndex - 1)}
+                        title="Subir rubro"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-5"
+                        disabled={catIndex === categorias.length - 1}
+                        onClick={() => moveCategoria(catIndex, catIndex + 1)}
+                        title="Bajar rubro"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </Button>
+                    </div>
                     <CollapsibleTrigger asChild>
                       <Button variant="ghost" size="sm" className="p-0 h-auto hover:bg-transparent">
                         {openCategories[catIndex] !== false ? (
@@ -400,7 +537,8 @@ export function CotizacionFormContent({
                   <CollapsibleContent>
                     <div className="p-3 space-y-3">
                       {/* Table Header */}
-                      <div className="grid grid-cols-12 gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
+                      <div className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-2 text-xs font-semibold text-muted-foreground border-b border-border pb-2">
+                        <div className="col-span-1"></div>
                         <div className="col-span-1">Núm.</div>
                         <div className="col-span-3">Descripción</div>
                         <div className="col-span-1">Unidad</div>
@@ -413,8 +551,56 @@ export function CotizacionFormContent({
                       </div>
 
                       {/* Items */}
-                      {getItemsForCategory(catIndex).map((item) => (
-                        <div key={item.originalIndex} className="grid grid-cols-12 gap-2 items-center">
+                      {getItemsForCategory(catIndex).map((item, itemPos, groupArr) => (
+                        <div
+                          key={item.originalIndex}
+                          className="grid grid-cols-[repeat(13,minmax(0,1fr))] gap-2 items-center"
+                          onDragOver={(e) => {
+                            if (draggedItem?.cat !== catIndex) return;
+                            e.preventDefault();
+                          }}
+                          onDrop={(e) => {
+                            if (draggedItem?.cat !== catIndex) return;
+                            e.preventDefault();
+                            moveItem(catIndex, draggedItem.pos, itemPos);
+                            setDraggedItem(null);
+                          }}
+                        >
+                          <div className="col-span-1 flex items-center">
+                            <div
+                              draggable
+                              onDragStart={() => setDraggedItem({ cat: catIndex, pos: itemPos })}
+                              onDragEnd={() => setDraggedItem(null)}
+                              title="Arrastrar para mover el ítem"
+                              className="cursor-grab active:cursor-grabbing"
+                            >
+                              <GripVertical className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                            <div className="flex flex-col">
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-5"
+                                disabled={itemPos === 0}
+                                onClick={() => moveItem(catIndex, itemPos, itemPos - 1)}
+                                title="Subir ítem"
+                              >
+                                <ArrowUp className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-5"
+                                disabled={itemPos === groupArr.length - 1}
+                                onClick={() => moveItem(catIndex, itemPos, itemPos + 1)}
+                                title="Bajar ítem"
+                              >
+                                <ArrowDown className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
                           <div className="col-span-1">
                             <Input
                               value={item.numero}
