@@ -75,19 +75,26 @@ export function CotizacionFormContent({
   // Anticipo (por porcentaje o monto fijo)
   const anticipoTipo = formData.anticipo_tipo || "ninguno";
   const anticipoValor = formData.anticipo_valor ?? 0;
+  // El anticipo se descuenta del subtotal (base imponible) antes del IVA
   const anticipoMonto =
     anticipoTipo === "porcentaje"
-      ? (formData.total * anticipoValor) / 100
+      ? (formData.subtotal * anticipoValor) / 100
       : anticipoTipo === "monto"
       ? anticipoValor
       : 0;
-  const saldoRestante = formData.total - anticipoMonto;
+  const baseImponible = formData.subtotal - anticipoMonto;
 
   useEffect(() => {
-    if ((formData.anticipo_monto ?? 0) !== anticipoMonto) {
-      setFormData({ ...formData, anticipo_monto: anticipoMonto });
+    const iva = baseImponible * 0.21;
+    const total = baseImponible + iva;
+    if (
+      (formData.anticipo_monto ?? 0) !== anticipoMonto ||
+      formData.iva !== iva ||
+      formData.total !== total
+    ) {
+      setFormData({ ...formData, anticipo_monto: anticipoMonto, iva, total });
     }
-  }, [anticipoMonto]);
+  }, [anticipoMonto, formData.subtotal]);
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
@@ -737,6 +744,14 @@ export function CotizacionFormContent({
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
           </div>
+          {anticipoTipo !== "ninguno" && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+              </span>
+              <span className="font-mono font-semibold text-destructive">- {formatCurrency(anticipoMonto)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">IVA (21%):</span>
             <span className="font-mono">{formatCurrency(formData.iva)}</span>
@@ -784,20 +799,6 @@ export function CotizacionFormContent({
             )}
           </div>
 
-          {anticipoTipo !== "ninguno" && (
-            <div className="space-y-1 pt-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
-                </span>
-                <span className="font-mono font-semibold">{formatCurrency(anticipoMonto)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Saldo restante:</span>
-                <span className="font-mono font-semibold">{formatCurrency(saldoRestante)}</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
