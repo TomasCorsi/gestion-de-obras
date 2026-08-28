@@ -179,13 +179,23 @@ export function CotizacionTable({ items, categorias, subtotal, iva, total, antic
               {formatCurrency(subtotal)}
             </TableCell>
           </TableRow>
-          {anticipoMonto > 0 && (
+{anticipoMonto > 0 && (
             <TableRow className="bg-muted/30">
               <TableCell colSpan={7} className="text-right font-semibold">
                 Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
               </TableCell>
               <TableCell className="text-right font-mono font-bold text-destructive">
                 - {formatCurrency(anticipoMonto)}
+              </TableCell>
+            </TableRow>
+          )}
+          {anticipoMonto > 0 && (
+            <TableRow className="bg-muted/30 border-t-2 border-muted">
+              <TableCell colSpan={7} className="text-right font-semibold">
+                Subtotal - Anticipo:
+              </TableCell>
+              <TableCell className="text-right font-mono font-bold">
+                {formatCurrency(subtotal - anticipoMonto)}
               </TableCell>
             </TableRow>
           )}
