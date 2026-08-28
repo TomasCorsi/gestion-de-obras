@@ -799,20 +799,6 @@ export function CotizacionFormContent({
             )}
           </div>
 
-          {anticipoTipo !== "ninguno" && (
-            <div className="space-y-1 pt-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
-                </span>
-                <span className="font-mono font-semibold">{formatCurrency(anticipoMonto)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Saldo restante:</span>
-                <span className="font-mono font-semibold">{formatCurrency(saldoRestante)}</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
