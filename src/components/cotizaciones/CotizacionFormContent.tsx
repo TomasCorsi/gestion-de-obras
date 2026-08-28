@@ -744,6 +744,14 @@ export function CotizacionFormContent({
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
           </div>
+          {anticipoTipo !== "ninguno" && (
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">
+                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+              </span>
+              <span className="font-mono font-semibold text-destructive">- {formatCurrency(anticipoMonto)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">IVA (21%):</span>
             <span className="font-mono">{formatCurrency(formData.iva)}</span>
