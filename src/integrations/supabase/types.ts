@@ -1255,6 +1255,9 @@ export type Database = {
       }
       cotizaciones: {
         Row: {
+          anticipo_monto: number
+          anticipo_tipo: string
+          anticipo_valor: number
           created_at: string
           descripcion: string | null
           estado: Database["public"]["Enums"]["estado_cotizacion"]
@@ -1272,6 +1275,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          anticipo_monto?: number
+          anticipo_tipo?: string
+          anticipo_valor?: number
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
@@ -1289,6 +1295,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          anticipo_monto?: number
+          anticipo_tipo?: string
+          anticipo_valor?: number
           created_at?: string
           descripcion?: string | null
           estado?: Database["public"]["Enums"]["estado_cotizacion"]
