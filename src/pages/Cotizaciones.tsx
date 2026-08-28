@@ -544,24 +544,10 @@ export default function Cotizaciones() {
                   subtotal={selectedCot.subtotal}
                   iva={selectedCot.iva}
                   total={selectedCot.total}
+                  anticipoMonto={selectedCot.anticipo_monto}
+                  anticipoTipo={selectedCot.anticipo_tipo}
+                  anticipoValor={selectedCot.anticipo_valor}
                 />
-              </div>
-            )}
-            
-            {/* Anticipo */}
-            {(selectedCot.anticipo_monto ?? 0) > 0 && (
-              <div className="bg-muted/20 rounded-lg p-4 space-y-1">
-                <p className="text-xs text-muted-foreground font-semibold uppercase mb-2">Anticipo</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    Anticipo{selectedCot.anticipo_tipo === "porcentaje" ? ` (${selectedCot.anticipo_valor}%)` : ""}:
-                  </span>
-                  <span className="font-mono font-semibold">{formatCurrency(selectedCot.anticipo_monto || 0, selectedCot.moneda)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Saldo restante:</span>
-                  <span className="font-mono font-semibold">{formatCurrency(selectedCot.total - (selectedCot.anticipo_monto || 0), selectedCot.moneda)}</span>
-                </div>
               </div>
             )}
 

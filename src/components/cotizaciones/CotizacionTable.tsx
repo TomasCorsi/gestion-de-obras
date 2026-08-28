@@ -15,6 +15,9 @@ interface CotizacionTableProps {
   subtotal: number;
   iva: number;
   total: number;
+  anticipoMonto?: number;
+  anticipoTipo?: string;
+  anticipoValor?: number;
 }
 
 function formatCurrency(value: number): string {
