@@ -18,6 +18,9 @@ export interface CotizacionDB {
   total: number;
   notas: string | null;
   moneda?: string;
+  anticipo_tipo?: string;
+  anticipo_valor?: number;
+  anticipo_monto?: number;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +70,9 @@ export interface CotizacionForm {
   total: number;
   notas?: string;
   moneda?: string;
+  anticipo_tipo?: string;
+  anticipo_valor?: number;
+  anticipo_monto?: number;
 }
 
 export interface CotizacionCategoriaForm {
@@ -181,6 +187,9 @@ export function useCotizaciones() {
         total: cot.total,
         notas: cot.notas || null,
         moneda: cot.moneda || 'ARS',
+        anticipo_tipo: cot.anticipo_tipo || 'ninguno',
+        anticipo_valor: cot.anticipo_valor ?? 0,
+        anticipo_monto: cot.anticipo_monto ?? 0,
       } as any])
       .select()
       .single();
