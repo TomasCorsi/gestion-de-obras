@@ -36,7 +36,7 @@ function formatNumber(value: number, decimals = 2): string {
   }).format(value);
 }
 
-export function CotizacionTable({ items, categorias, subtotal, iva, total }: CotizacionTableProps) {
+export function CotizacionTable({ items, categorias, subtotal, iva, total, anticipoMonto = 0, anticipoTipo, anticipoValor }: CotizacionTableProps) {
   // Sort categories by numero
   const sortedCategorias = [...categorias].sort((a, b) => a.numero - b.numero);
   
@@ -179,6 +179,16 @@ export function CotizacionTable({ items, categorias, subtotal, iva, total }: Cot
               {formatCurrency(subtotal)}
             </TableCell>
           </TableRow>
+          {anticipoMonto > 0 && (
+            <TableRow className="bg-muted/30">
+              <TableCell colSpan={7} className="text-right font-semibold">
+                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+              </TableCell>
+              <TableCell className="text-right font-mono font-bold text-destructive">
+                - {formatCurrency(anticipoMonto)}
+              </TableCell>
+            </TableRow>
+          )}
           <TableRow className="bg-muted/30">
             <TableCell colSpan={7} className="text-right font-semibold">
               IVA (21%):
