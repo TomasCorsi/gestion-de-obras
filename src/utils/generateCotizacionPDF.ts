@@ -318,6 +318,26 @@ export async function generateCotizacionPDF(
   doc.text(formatCurrency(cotizacion.total, moneda), pageWidth - margin, yPos + 1, { align: "right" });
   yPos += 8;
 
+  // ============== ANTICIPO ==============
+  const anticipoMonto = (cotizacion as any).anticipo_monto || 0;
+  if (anticipoMonto > 0) {
+    const anticipoTipo = (cotizacion as any).anticipo_tipo;
+    const anticipoValor = (cotizacion as any).anticipo_valor || 0;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7);
+    doc.text(
+      anticipoTipo === "porcentaje" ? `Anticipo (${anticipoValor}%):` : "Anticipo:",
+      totalsStartX,
+      yPos
+    );
+    doc.text(formatCurrency(anticipoMonto, moneda), pageWidth - margin, yPos, { align: "right" });
+    yPos += 4;
+    doc.setFont("helvetica", "bold");
+    doc.text("Saldo restante:", totalsStartX, yPos);
+    doc.text(formatCurrency(cotizacion.total - anticipoMonto, moneda), pageWidth - margin, yPos, { align: "right" });
+    yPos += 6;
+  }
+
   // ============== NOTAS ==============
   doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
