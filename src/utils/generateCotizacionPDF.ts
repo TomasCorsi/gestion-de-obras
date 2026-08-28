@@ -298,16 +298,33 @@ export async function generateCotizacionPDF(
   yPos = (doc as any).lastAutoTable.finalY + 3;
 
   // ============== TOTALS ==============
+  // El anticipo se descuenta del subtotal (base imponible) antes del IVA
+  const anticipoMonto = (cotizacion as any).anticipo_monto || 0;
+  const anticipoTipo = (cotizacion as any).anticipo_tipo;
+  const anticipoValor = (cotizacion as any).anticipo_valor || 0;
+  const baseImponible = cotizacion.subtotal - anticipoMonto;
+  const ivaCalc = baseImponible * 0.21;
+  const totalCalc = baseImponible + ivaCalc;
   const totalsStartX = pageWidth - margin - 55;
-  
+
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.text("Subtotal:", totalsStartX, yPos);
   doc.text(formatCurrency(cotizacion.subtotal, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
+  if (anticipoMonto > 0) {
+    doc.text(
+      anticipoTipo === "porcentaje" ? `Anticipo (${anticipoValor}%):` : "Anticipo:",
+      totalsStartX,
+      yPos
+    );
+    doc.text(`- ${formatCurrency(anticipoMonto, moneda)}`, pageWidth - margin, yPos, { align: "right" });
+    yPos += 4;
+  }
+
   doc.text("IVA (21%):", totalsStartX, yPos);
-  doc.text(formatCurrency(cotizacion.iva, moneda), pageWidth - margin, yPos, { align: "right" });
+  doc.text(formatCurrency(ivaCalc, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
   doc.setFont("helvetica", "bold");
@@ -315,28 +332,8 @@ export async function generateCotizacionPDF(
   doc.setFillColor(245, 245, 245);
   doc.rect(totalsStartX - 3, yPos - 3, 60, 7, "F");
   doc.text("TOTAL:", totalsStartX, yPos + 1);
-  doc.text(formatCurrency(cotizacion.total, moneda), pageWidth - margin, yPos + 1, { align: "right" });
+  doc.text(formatCurrency(totalCalc, moneda), pageWidth - margin, yPos + 1, { align: "right" });
   yPos += 8;
-
-  // ============== ANTICIPO ==============
-  const anticipoMonto = (cotizacion as any).anticipo_monto || 0;
-  if (anticipoMonto > 0) {
-    const anticipoTipo = (cotizacion as any).anticipo_tipo;
-    const anticipoValor = (cotizacion as any).anticipo_valor || 0;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(7);
-    doc.text(
-      anticipoTipo === "porcentaje" ? `Anticipo (${anticipoValor}%):` : "Anticipo:",
-      totalsStartX,
-      yPos
-    );
-    doc.text(formatCurrency(anticipoMonto, moneda), pageWidth - margin, yPos, { align: "right" });
-    yPos += 4;
-    doc.setFont("helvetica", "bold");
-    doc.text("Saldo restante:", totalsStartX, yPos);
-    doc.text(formatCurrency(cotizacion.total - anticipoMonto, moneda), pageWidth - margin, yPos, { align: "right" });
-    yPos += 6;
-  }
 
   // ============== NOTAS ==============
   doc.setFontSize(7);
