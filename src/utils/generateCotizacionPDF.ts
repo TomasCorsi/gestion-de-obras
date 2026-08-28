@@ -313,13 +313,17 @@ export async function generateCotizacionPDF(
   doc.text(formatCurrency(cotizacion.subtotal, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
-  if (anticipoMonto > 0) {
+if (anticipoMonto > 0) {
     doc.text(
       anticipoTipo === "porcentaje" ? `Anticipo (${anticipoValor}%):` : "Anticipo:",
       totalsStartX,
       yPos
     );
     doc.text(`- ${formatCurrency(anticipoMonto, moneda)}`, pageWidth - margin, yPos, { align: "right" });
+    yPos += 4;
+
+    doc.text("Subtotal - Anticipo:", totalsStartX, yPos);
+    doc.text(formatCurrency(baseImponible, moneda), pageWidth - margin, yPos, { align: "right" });
     yPos += 4;
   }
 
