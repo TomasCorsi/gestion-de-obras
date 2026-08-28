@@ -75,19 +75,26 @@ export function CotizacionFormContent({
   // Anticipo (por porcentaje o monto fijo)
   const anticipoTipo = formData.anticipo_tipo || "ninguno";
   const anticipoValor = formData.anticipo_valor ?? 0;
+  // El anticipo se descuenta del subtotal (base imponible) antes del IVA
   const anticipoMonto =
     anticipoTipo === "porcentaje"
-      ? (formData.total * anticipoValor) / 100
+      ? (formData.subtotal * anticipoValor) / 100
       : anticipoTipo === "monto"
       ? anticipoValor
       : 0;
-  const saldoRestante = formData.total - anticipoMonto;
+  const baseImponible = formData.subtotal - anticipoMonto;
 
   useEffect(() => {
-    if ((formData.anticipo_monto ?? 0) !== anticipoMonto) {
-      setFormData({ ...formData, anticipo_monto: anticipoMonto });
+    const iva = baseImponible * 0.21;
+    const total = baseImponible + iva;
+    if (
+      (formData.anticipo_monto ?? 0) !== anticipoMonto ||
+      formData.iva !== iva ||
+      formData.total !== total
+    ) {
+      setFormData({ ...formData, anticipo_monto: anticipoMonto, iva, total });
     }
-  }, [anticipoMonto]);
+  }, [anticipoMonto, formData.subtotal]);
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
