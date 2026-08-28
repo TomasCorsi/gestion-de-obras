@@ -109,6 +109,9 @@ export default function Cotizaciones() {
     total: 0,
     estado: "borrador",
     notas: "",
+    anticipo_tipo: "ninguno",
+    anticipo_valor: 0,
+    anticipo_monto: 0,
   });
 
   const [categorias, setCategorias] = useState<CotizacionCategoriaForm[]>([]);
@@ -154,6 +157,9 @@ export default function Cotizaciones() {
       total: 0,
       estado: "borrador",
       notas: "",
+      anticipo_tipo: "ninguno",
+      anticipo_valor: 0,
+      anticipo_monto: 0,
     });
     setCategorias([]);
     setItems([]);
@@ -176,6 +182,9 @@ export default function Cotizaciones() {
       estado: cot.estado,
       notas: cot.notas || "",
       moneda: cot.moneda || "ARS",
+      anticipo_tipo: cot.anticipo_tipo || "ninguno",
+      anticipo_valor: cot.anticipo_valor ?? 0,
+      anticipo_monto: cot.anticipo_monto ?? 0,
     });
     
     // Map categories
@@ -539,6 +548,23 @@ export default function Cotizaciones() {
               </div>
             )}
             
+            {/* Anticipo */}
+            {(selectedCot.anticipo_monto ?? 0) > 0 && (
+              <div className="bg-muted/20 rounded-lg p-4 space-y-1">
+                <p className="text-xs text-muted-foreground font-semibold uppercase mb-2">Anticipo</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">
+                    Anticipo{selectedCot.anticipo_tipo === "porcentaje" ? ` (${selectedCot.anticipo_valor}%)` : ""}:
+                  </span>
+                  <span className="font-mono font-semibold">{formatCurrency(selectedCot.anticipo_monto || 0, selectedCot.moneda)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Saldo restante:</span>
+                  <span className="font-mono font-semibold">{formatCurrency(selectedCot.total - (selectedCot.anticipo_monto || 0), selectedCot.moneda)}</span>
+                </div>
+              </div>
+            )}
+
             {/* Notes */}
             {selectedCot.notas && (
               <div className="bg-muted/20 rounded-lg p-4">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -71,6 +71,23 @@ export function CotizacionFormContent({
   const [draggedCat, setDraggedCat] = useState<number | null>(null);
   const [dragOverCat, setDragOverCat] = useState<number | null>(null);
   const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
+
+  // Anticipo (por porcentaje o monto fijo)
+  const anticipoTipo = formData.anticipo_tipo || "ninguno";
+  const anticipoValor = formData.anticipo_valor ?? 0;
+  const anticipoMonto =
+    anticipoTipo === "porcentaje"
+      ? (formData.total * anticipoValor) / 100
+      : anticipoTipo === "monto"
+      ? anticipoValor
+      : 0;
+  const saldoRestante = formData.total - anticipoMonto;
+
+  useEffect(() => {
+    if ((formData.anticipo_monto ?? 0) !== anticipoMonto) {
+      setFormData({ ...formData, anticipo_monto: anticipoMonto });
+    }
+  }, [anticipoMonto]);
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
@@ -728,6 +745,59 @@ export function CotizacionFormContent({
             <span>Total:</span>
             <span className="font-mono text-primary">{formatCurrency(formData.total)}</span>
           </div>
+
+          {/* Anticipo */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-border">
+            <div className="space-y-2">
+              <Label>Anticipo</Label>
+              <Select
+                value={anticipoTipo}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, anticipo_tipo: value, anticipo_valor: value === "ninguno" ? 0 : anticipoValor })
+                }
+              >
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ninguno">Sin anticipo</SelectItem>
+                  <SelectItem value="porcentaje">Porcentaje (%)</SelectItem>
+                  <SelectItem value="monto">Monto fijo ($)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {anticipoTipo !== "ninguno" && (
+              <div className="space-y-2">
+                <Label>{anticipoTipo === "porcentaje" ? "Porcentaje de anticipo" : "Monto de anticipo"}</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  step={anticipoTipo === "porcentaje" ? "0.01" : "1"}
+                  value={anticipoValor || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, anticipo_valor: parseFloat(e.target.value) || 0 })
+                  }
+                  className="bg-muted border-border"
+                  placeholder={anticipoTipo === "porcentaje" ? "Ej: 30" : "Ej: 1500000"}
+                />
+              </div>
+            )}
+          </div>
+
+          {anticipoTipo !== "ninguno" && (
+            <div className="space-y-1 pt-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+                </span>
+                <span className="font-mono font-semibold">{formatCurrency(anticipoMonto)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Saldo restante:</span>
+                <span className="font-mono font-semibold">{formatCurrency(saldoRestante)}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
