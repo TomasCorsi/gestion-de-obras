@@ -234,7 +234,7 @@ export default function Dashboard() {
         ) : (
           <div className="flex flex-col gap-3 flex-1 min-h-0">
             {kpis}
-            <div className="h-[280px] lg:h-auto lg:flex-[3] min-h-0">{graficos}</div>
+            <div className="lg:flex-[3] min-h-0">{graficos}</div>
             <div className="lg:flex-[2] min-h-0">{paneles}</div>
           </div>
         )}
