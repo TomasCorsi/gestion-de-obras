@@ -8,6 +8,13 @@
       "when": 1787941752639,
       "tag": "0000_add_anticipo_cotizaciones",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788270935243,
+      "tag": "0001_fix_invoke_edge_function_net_http_post",
+      "breakpoints": true
     }
   ]
 }
