@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, eachDayOfInterval, isAfter } from "date-fns";
 
 export type MetricaSerie = "movimientos" | "m3" | "horas";
 
@@ -12,31 +12,35 @@ export interface SeriePunto {
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
 
-const DIAS = 14;
-
-const fetchSeries = async (obraIds: string[]) => {
+const fetchSeries = async (obraIds: string[], mes: string) => {
   if (obraIds.length === 0) return { movimientos: [], m3: [], horas: [] } as Record<MetricaSerie, SeriePunto[]>;
 
-  const desde = format(subDays(new Date(), DIAS - 1), "yyyy-MM-dd");
+  const base = parseISO(`${mes}-01`);
+  const hoy = new Date();
+  const finReal = isAfter(endOfMonth(base), hoy) ? hoy : endOfMonth(base);
+  const desde = format(startOfMonth(base), "yyyy-MM-dd");
+  const hasta = format(finReal, "yyyy-MM-dd");
 
   const [partesRes, remitosRes] = await Promise.all([
     supabase
       .from("partes_diarios")
       .select("obra_id, fecha, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin")
       .in("obra_id", obraIds)
-      .gte("fecha", desde),
+      .gte("fecha", desde)
+      .lte("fecha", hasta),
     supabase
       .from("remitos")
       .select("obra_id, fecha, cantidad")
       .in("obra_id", obraIds)
-      .gte("fecha", desde),
+      .gte("fecha", desde)
+      .lte("fecha", hasta),
   ]);
 
   const partes = (partesRes.data || []) as any[];
   const remitos = (remitosRes.data || []) as any[];
 
-  const dias: string[] = Array.from({ length: DIAS }, (_, i) =>
-    format(subDays(new Date(), DIAS - 1 - i), "yyyy-MM-dd")
+  const dias: string[] = eachDayOfInterval({ start: startOfMonth(base), end: finReal }).map((d) =>
+    format(d, "yyyy-MM-dd")
   );
 
   const build = (calc: (fecha: string, obraId: string) => number): SeriePunto[] =>
@@ -72,10 +76,10 @@ const fetchSeries = async (obraIds: string[]) => {
   return { movimientos, m3, horas } as Record<MetricaSerie, SeriePunto[]>;
 };
 
-export function useTableroSeries(obraIds: string[], refetchInterval?: number) {
+export function useTableroSeries(obraIds: string[], mes: string, refetchInterval?: number) {
   const { data, isLoading } = useQuery({
-    queryKey: ["tablero-series", [...obraIds].sort()],
-    queryFn: () => fetchSeries(obraIds),
+    queryKey: ["tablero-series", [...obraIds].sort(), mes],
+    queryFn: () => fetchSeries(obraIds, mes),
     enabled: obraIds.length > 0,
     refetchInterval,
     refetchOnWindowFocus: true,

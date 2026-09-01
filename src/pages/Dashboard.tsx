@@ -12,7 +12,9 @@ import { Card } from "@/components/ui/card";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
 import { useTableroSeries } from "@/hooks/useTableroSeries";
-import { format } from "date-fns";
+import { format, subMonths, parseISO } from "date-fns";
+import { es } from "date-fns/locale";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Building2,
   Truck,
@@ -42,8 +44,23 @@ export default function Dashboard() {
   const [tv, setTv] = useState(false);
   const [ahora, setAhora] = useState(new Date());
 
-  const { obras, loading, refetch, dataUpdatedAt } = useTableroObras(obraIds, tv ? 60000 : undefined);
-  const { series, loading: loadingSeries } = useTableroSeries(obraIds, tv ? 60000 : undefined);
+  const mesesDisponibles = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: 24 }, (_, i) => {
+      const d = subMonths(now, i);
+      return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: es }) };
+    });
+  }, []);
+  const [mes, setMes] = useState<string>(() => format(new Date(), "yyyy-MM"));
+  const mesLabel = format(parseISO(`${mes}-01`), "MMMM yyyy", { locale: es });
+
+  const { obras, loading, refetch, dataUpdatedAt, esMesActual } = useTableroObras(
+    obraIds,
+    mes,
+    tv ? 60000 : undefined
+  );
+  const { series, loading: loadingSeries } = useTableroSeries(obraIds, mes, tv ? 60000 : undefined);
+  const periodoLabel = esMesActual ? "hoy" : "mes";
 
   useEffect(() => {
     const t = setInterval(() => setAhora(new Date()), 30000);
@@ -101,12 +118,12 @@ export default function Dashboard() {
   const kpis = (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 shrink-0">
       <KPICard title="Obras" value={obras.length} icon={Building2} variant="primary" compact tv={tv} />
-      <KPICard title="Movimientos hoy" value={nf(totales.movimientos)} icon={Route} compact tv={tv} />
-      <KPICard title="m³ hoy" value={nf(totales.m3, 1)} icon={Truck} variant="success" compact tv={tv} />
-      <KPICard title="Horas hoy" value={nf(totales.horas, 1)} icon={Clock} compact tv={tv} />
-      <KPICard title="Personal hoy" value={nf(totales.personal)} icon={Users} compact tv={tv} />
+      <KPICard title={`Movimientos ${periodoLabel}`} value={nf(totales.movimientos)} icon={Route} compact tv={tv} />
+      <KPICard title={`m³ ${periodoLabel}`} value={nf(totales.m3, 1)} icon={Truck} variant="success" compact tv={tv} />
+      <KPICard title={`Horas ${periodoLabel}`} value={nf(totales.horas, 1)} icon={Clock} compact tv={tv} />
+      <KPICard title={`Personal ${periodoLabel}`} value={nf(totales.personal)} icon={Users} compact tv={tv} />
       <KPICard
-        title="Gastos del mes"
+        title="Gastos del período"
         value={formatCurrency(totales.gastos)}
         icon={DollarSign}
         variant="warning"
@@ -133,7 +150,7 @@ export default function Dashboard() {
   const paneles = (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full min-h-0">
       {obras.map((obra, i) => (
-        <ObraPanel key={obra.obraId} obra={obra} index={i} tv={tv} />
+        <ObraPanel key={obra.obraId} obra={obra} index={i} tv={tv} periodoLabel={periodoLabel} />
       ))}
     </div>
   );
@@ -156,7 +173,8 @@ export default function Dashboard() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Centro de Control de Obras</h1>
             <p className="text-muted-foreground">
-              {format(ahora, "dd/MM/yyyy")} · {format(ahora, "HH:mm")}
+              {format(ahora, "dd/MM/yyyy")} · {format(ahora, "HH:mm")} ·{" "}
+              <span className="capitalize">{mesLabel}</span>
             </p>
           </div>
           <Button variant="ghost" size="icon" onClick={salirTV} aria-label="Salir de pantalla completa">
@@ -192,6 +210,19 @@ export default function Dashboard() {
             <ListFilter className="w-4 h-4" />
             Seleccionar obras
           </Button>
+
+          <Select value={mes} onValueChange={setMes}>
+            <SelectTrigger className="h-8 w-44 bg-background text-xs capitalize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-background z-50 max-h-72">
+              {mesesDisponibles.map((m) => (
+                <SelectItem key={m.value} value={m.value} className="capitalize text-xs">
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {obras.map((o) => (
             <Badge key={o.obraId} variant="secondary" className="gap-1 py-1 pl-3 pr-1.5">
