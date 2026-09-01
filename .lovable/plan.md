@@ -22,25 +22,28 @@ Otros hallazgos del mismo período:
 ### 2. Indicadores por obra (con lo que el sistema realmente registra)
 Cada panel de obra muestra: viajes/movimientos, m³, horas de máquina, litros de combustible, personal que cargó parte, maquinaria en uso / total, gastos del período y alertas.
 
-### 3. Gráficos: uno por obra + los generales
-Se mantienen los tres gráficos generales (tendencia, comparativa, distribución de gastos) y se agrega **un mini gráfico dentro del panel de cada obra**: barras diarias del mes elegido con la métrica que el usuario elija para todo el tablero (m³, viajes, horas o litros). Simple, sin leyendas, con el total del período arriba.
+### 3. Gráficos: uno por obra, se sacan los generales
+Se eliminan los tres gráficos generales actuales (tendencia, comparativa y dona de gastos). En su lugar, **cada obra seleccionada tiene su propio gráfico**: barras diarias del mes elegido, con un selector de métrica compartido (m³, viajes/movimientos, horas o litros de combustible), el total del período arriba y sin leyendas ni ejes recargados.
 
 ```text
 ┌ KPIs (6) ─────────────────────────────────────────────┐
-├ Tendencia (área)   │ Comparativa │ Gastos (dona)      │
-├ Obra 1 + mini bar  │ Obra 2 + mini bar │ Obra 3 + ... │
+├ Obra 1            │ Obra 2            │ Obra 3        │
+│  gráfico diario   │  gráfico diario   │  gráfico      │
+│  métricas         │  métricas         │  métricas     │
 └───────────────────────────────────────────────────────┘
 ```
 
 Todo sigue entrando en una pantalla, sin scroll, y respeta el mes seleccionado y el modo TV.
 
+
 ## Detalles técnicos
 
 - `src/hooks/useTableroObras.ts`: traer remitos del período sin filtrar por obra y asignarlos por `obra_id` o por `desde`/`hasta` normalizado contra el nombre de la obra; agregar consulta a `cargas_combustible_repartidor` (por `obra_id`) y a `precios_productos_mes` para valorizar litros; nuevos campos `litros`, `costoCombustible`, `viajes`, y flags de "sin datos".
-- `src/hooks/useTableroSeries.ts`: mismo criterio de asignación de remitos; agregar la serie `litros` y devolver también las series por obra para los mini gráficos.
+- `src/hooks/useTableroSeries.ts`: mismo criterio de asignación de remitos; agregar la serie `litros`; las series ya vienen por obra y día, se usan para el gráfico de cada panel.
 - Nuevo helper de normalización de nombres de obra reutilizable (minúsculas, sin acentos, trim).
-- `src/components/dashboard/ObraPanel.tsx`: mini gráfico de barras (recharts `BarChart`, sin ejes en modo compacto) + métrica de litros.
-- `src/components/dashboard/TendenciaObrasChart.tsx` y `ComparativaObrasChart.tsx`: agregar la métrica "Litros".
-- `src/pages/Dashboard.tsx`: selector de métrica compartido para los mini gráficos y KPI de combustible.
+- `src/components/dashboard/ObraPanel.tsx`: gráfico de barras diario (recharts `BarChart`, ejes mínimos) + métrica de litros.
+- Se eliminan `TendenciaObrasChart.tsx`, `ComparativaObrasChart.tsx` y `GastosDistribucionChart.tsx` y sus usos.
+- `src/pages/Dashboard.tsx`: quitar la franja de gráficos generales, dar más alto a los paneles por obra y agregar el selector de métrica compartido y el KPI de combustible.
 
 Nota: esto no modifica los datos existentes; los remitos siguen sin `obra_id` y se resuelven por nombre al momento de leerlos.
+
