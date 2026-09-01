@@ -3,15 +3,12 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ObraPanel } from "@/components/dashboard/ObraPanel";
 import { ObraSelectorDialog } from "@/components/dashboard/ObraSelectorDialog";
-import { TendenciaObrasChart } from "@/components/dashboard/TendenciaObrasChart";
-import { ComparativaObrasChart } from "@/components/dashboard/ComparativaObrasChart";
-import { GastosDistribucionChart } from "@/components/dashboard/GastosDistribucionChart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
-import { useTableroSeries } from "@/hooks/useTableroSeries";
+import { useTableroSeries, MetricaSerie } from "@/hooks/useTableroSeries";
 import { format, subMonths, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -59,7 +56,12 @@ export default function Dashboard() {
     mes,
     tv ? 60000 : undefined
   );
-  const { series, loading: loadingSeries } = useTableroSeries(obraIds, mes, tv ? 60000 : undefined);
+  const obrasMeta = useMemo(
+    () => obras.map((o) => ({ obraId: o.obraId, nombre: o.nombre })),
+    [obras]
+  );
+  const { series, loading: loadingSeries } = useTableroSeries(obrasMeta, mes, tv ? 60000 : undefined);
+  const [metrica, setMetrica] = useState<MetricaSerie>("m3");
   const periodoLabel = esMesActual ? "hoy" : "mes";
 
   useEffect(() => {
@@ -108,11 +110,6 @@ export default function Dashboard() {
     [obras]
   );
 
-  const obrasMeta = useMemo(
-    () => obras.map((o) => ({ obraId: o.obraId, nombre: o.nombre })),
-    [obras]
-  );
-
   const ultimaActualizacion = dataUpdatedAt ? format(new Date(dataUpdatedAt), "HH:mm:ss") : "--:--";
 
   const kpis = (
@@ -133,24 +130,47 @@ export default function Dashboard() {
     </div>
   );
 
-  const graficos = (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-full min-h-0">
-      <div className="lg:col-span-2 min-h-0 h-[260px] lg:h-full">
-        <TendenciaObrasChart series={series} obras={obrasMeta} loading={loadingSeries} tv={tv} />
-      </div>
-      <div className="min-h-0 h-[240px] lg:h-full">
-        <ComparativaObrasChart obras={obras} loading={loading} tv={tv} />
-      </div>
-      <div className="min-h-0 h-[240px] lg:h-full">
-        <GastosDistribucionChart obras={obras} loading={loading} tv={tv} />
-      </div>
+  const OPCIONES_METRICA: { key: MetricaSerie; label: string }[] = [
+    { key: "m3", label: "m³" },
+    { key: "movimientos", label: "Movimientos" },
+    { key: "horas", label: "Horas" },
+    { key: "litros", label: "Litros" },
+  ];
+
+  const selectorMetrica = (
+    <div className="flex gap-1 shrink-0">
+      {OPCIONES_METRICA.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => setMetrica(o.key)}
+          className={
+            "px-2 py-0.5 rounded text-xs border border-border transition-colors " +
+            (tv ? "text-base px-3 py-1 " : "") +
+            (metrica === o.key
+              ? "bg-primary text-primary-foreground border-primary"
+              : "text-muted-foreground hover:bg-muted")
+          }
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 
   const paneles = (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full min-h-0">
       {obras.map((obra, i) => (
-        <ObraPanel key={obra.obraId} obra={obra} index={i} tv={tv} periodoLabel={periodoLabel} />
+        <ObraPanel
+          key={obra.obraId}
+          obra={obra}
+          index={i}
+          tv={tv}
+          periodoLabel={periodoLabel}
+          metrica={metrica}
+          serie={series[metrica] || []}
+          loadingSerie={loadingSeries}
+        />
       ))}
     </div>
   );
@@ -177,17 +197,19 @@ export default function Dashboard() {
               <span className="capitalize">{mesLabel}</span>
             </p>
           </div>
-          <Button variant="ghost" size="icon" onClick={salirTV} aria-label="Salir de pantalla completa">
-            <Minimize2 className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectorMetrica}
+            <Button variant="ghost" size="icon" onClick={salirTV} aria-label="Salir de pantalla completa">
+              <Minimize2 className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         {kpis}
 
         {obras.length > 0 ? (
           <>
-            <div className="flex-[3] min-h-0">{graficos}</div>
-            <div className="flex-[2] min-h-0">{paneles}</div>
+            <div className="flex-1 min-h-0">{paneles}</div>
           </>
 
         ) : (
@@ -242,6 +264,7 @@ export default function Dashboard() {
             <span className="text-xs text-muted-foreground hidden sm:inline">
               Actualizado {ultimaActualizacion}
             </span>
+              {selectorMetrica}
             <Button variant="ghost" size="icon" onClick={() => refetch()} aria-label="Actualizar">
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -265,8 +288,7 @@ export default function Dashboard() {
         ) : (
           <div className="flex flex-col gap-3 flex-1 min-h-0">
             {kpis}
-            <div className="lg:flex-[3] min-h-0">{graficos}</div>
-            <div className="lg:flex-[2] min-h-0">{paneles}</div>
+            <div className="flex-1 min-h-0 lg:min-h-[420px]">{paneles}</div>
           </div>
         )}
       </div>
