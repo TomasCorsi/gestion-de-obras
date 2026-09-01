@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, startOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 
 export interface ObraTableroData {
   obraId: string;
@@ -21,11 +21,15 @@ export interface ObraTableroData {
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v) || 0);
 
-const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
+const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTableroData[]> => {
   if (obraIds.length === 0) return [];
 
-  const hoy = format(new Date(), "yyyy-MM-dd");
-  const inicioMes = format(startOfMonth(new Date()), "yyyy-MM-dd");
+  const base = parseISO(`${mes}-01`);
+  const mesActual = mes === format(new Date(), "yyyy-MM");
+  const inicioMes = format(startOfMonth(base), "yyyy-MM-dd");
+  const finMes = format(endOfMonth(base), "yyyy-MM-dd");
+  // En el mes actual las métricas "del día" son de hoy; en meses pasados, del mes completo.
+  const esDelPeriodo = (fecha: string) => (mesActual ? fecha === format(new Date(), "yyyy-MM-dd") : true);
 
   const [obrasRes, partesRes, remitosRes, maqRes, gastosRes] = await Promise.all([
     supabase.from("obras").select("id, nombre, estado, ubicacion").in("id", obraIds),
@@ -33,12 +37,14 @@ const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
       .from("partes_diarios")
       .select("obra_id, fecha, personal_id, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin, estado_maquina, observacion_maquina")
       .in("obra_id", obraIds)
-      .gte("fecha", inicioMes),
+      .gte("fecha", inicioMes)
+      .lte("fecha", finMes),
     supabase
       .from("remitos")
       .select("obra_id, fecha, cantidad, precio_total")
       .in("obra_id", obraIds)
-      .gte("fecha", inicioMes),
+      .gte("fecha", inicioMes)
+      .lte("fecha", finMes),
     supabase
       .from("maquinarias")
       .select("id, obra_id, estado")
@@ -47,7 +53,8 @@ const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
       .from("otros_gastos")
       .select("obra_id, fecha, monto")
       .in("obra_id", obraIds)
-      .gte("fecha", inicioMes),
+      .gte("fecha", inicioMes)
+      .lte("fecha", finMes),
   ]);
 
   const maquinarias = (maqRes.data || []) as { id: string; obra_id: string | null; estado: string }[];
@@ -59,7 +66,8 @@ const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
       .from("mantenimientos")
       .select("maquinaria_id, costo_total")
       .in("maquinaria_id", maqIds)
-      .gte("fecha", inicioMes);
+      .gte("fecha", inicioMes)
+      .lte("fecha", finMes);
     mantenimientos = (data || []) as typeof mantenimientos;
   }
 
@@ -72,9 +80,9 @@ const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
 
   return ((obrasRes.data || []) as any[]).map((obra) => {
     const partesObra = partes.filter((p) => p.obra_id === obra.id);
-    const partesHoy = partesObra.filter((p) => p.fecha === hoy);
+    const partesHoy = partesObra.filter((p) => esDelPeriodo(p.fecha));
     const remitosObra = remitos.filter((r) => r.obra_id === obra.id);
-    const remitosHoy = remitosObra.filter((r) => r.fecha === hoy);
+    const remitosHoy = remitosObra.filter((r) => esDelPeriodo(r.fecha));
     const maqObraList = maquinarias.filter((m) => m.obra_id === obra.id);
 
     const horas = (arr: any[]) =>
@@ -117,10 +125,10 @@ const fetchTablero = async (obraIds: string[]): Promise<ObraTableroData[]> => {
   });
 };
 
-export function useTableroObras(obraIds: string[], refetchInterval?: number) {
+export function useTableroObras(obraIds: string[], mes: string, refetchInterval?: number) {
   const { data, isLoading, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["tablero-obras", [...obraIds].sort()],
-    queryFn: () => fetchTablero(obraIds),
+    queryKey: ["tablero-obras", [...obraIds].sort(), mes],
+    queryFn: () => fetchTablero(obraIds, mes),
     enabled: obraIds.length > 0,
     refetchInterval,
     refetchOnWindowFocus: true,
@@ -131,5 +139,11 @@ export function useTableroObras(obraIds: string[], refetchInterval?: number) {
     .map((id) => (data || []).find((o) => o.obraId === id))
     .filter(Boolean) as ObraTableroData[];
 
-  return { obras: ordenadas, loading: isLoading, refetch, dataUpdatedAt };
+  return {
+    obras: ordenadas,
+    loading: isLoading,
+    refetch,
+    dataUpdatedAt,
+    esMesActual: mes === format(new Date(), "yyyy-MM"),
+  };
 }
