@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { format, subDays, startOfMonth, endOfMonth, parseISO, eachDayOfInterval, isAfter } from "date-fns";
+import { format, startOfMonth, endOfMonth, parseISO, eachDayOfInterval, isAfter } from "date-fns";
 
 export type MetricaSerie = "movimientos" | "m3" | "horas";
 

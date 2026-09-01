@@ -10,7 +10,7 @@ type Metrica = "m3" | "horas" | "movimientos";
 const OPCIONES: { key: Metrica; label: string }[] = [
   { key: "m3", label: "m³ mes" },
   { key: "horas", label: "Horas mes" },
-  { key: "movimientos", label: "Mov. hoy" },
+  { key: "movimientos", label: "Movimientos" },
 ];
 
 interface Props {

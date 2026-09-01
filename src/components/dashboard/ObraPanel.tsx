@@ -41,9 +41,10 @@ interface Props {
   obra: ObraTableroData;
   index: number;
   tv?: boolean;
+  periodoLabel?: string;
 }
 
-export function ObraPanel({ obra, index, tv }: Props) {
+export function ObraPanel({ obra, index, tv, periodoLabel = "hoy" }: Props) {
   return (
     <Card className={cn("card-industrial p-3 flex flex-col gap-2 h-full min-h-0", tv && "p-4 gap-3")}>
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
@@ -78,9 +79,9 @@ export function ObraPanel({ obra, index, tv }: Props) {
       </div>
 
       <div className={cn("grid grid-cols-3 gap-2 flex-1 min-h-0", tv && "gap-3")}>
-        <Metric icon={Activity} label="Movim. hoy" value={nf(obra.movimientosHoy)} tv={tv} />
-        <Metric icon={Boxes} label="m³ hoy" value={nf(obra.m3Hoy, 1)} tv={tv} />
-        <Metric icon={Clock} label="Horas hoy" value={nf(obra.horasHoy, 1)} tv={tv} />
+        <Metric icon={Activity} label={`Movim. ${periodoLabel}`} value={nf(obra.movimientosHoy)} tv={tv} />
+        <Metric icon={Boxes} label={`m³ ${periodoLabel}`} value={nf(obra.m3Hoy, 1)} tv={tv} />
+        <Metric icon={Clock} label={`Horas ${periodoLabel}`} value={nf(obra.horasHoy, 1)} tv={tv} />
         <Metric
           icon={Truck}
           label="Maquinaria"
@@ -88,7 +89,7 @@ export function ObraPanel({ obra, index, tv }: Props) {
           tv={tv}
         />
         <Metric icon={Users} label="Personal" value={nf(obra.personalHoy)} tv={tv} />
-        <Metric icon={DollarSign} label="Gastos mes" value={formatCurrency(obra.gastosMes)} tv={tv} />
+        <Metric icon={DollarSign} label="Gastos período" value={formatCurrency(obra.gastosMes)} tv={tv} />
       </div>
     </Card>
   );
