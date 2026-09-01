@@ -117,21 +117,21 @@ export default function Dashboard() {
   );
 
   const graficos = (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 flex-[3] min-h-0">
-      <div className="lg:col-span-2 min-h-0">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-full min-h-0">
+      <div className="lg:col-span-2 min-h-0 h-[260px] lg:h-full">
         <TendenciaObrasChart series={series} obras={obrasMeta} loading={loadingSeries} tv={tv} />
       </div>
-      <div className="min-h-0">
+      <div className="min-h-0 h-[240px] lg:h-full">
         <ComparativaObrasChart obras={obras} loading={loading} tv={tv} />
       </div>
-      <div className="min-h-0">
+      <div className="min-h-0 h-[240px] lg:h-full">
         <GastosDistribucionChart obras={obras} loading={loading} tv={tv} />
       </div>
     </div>
   );
 
   const paneles = (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-[2] min-h-0">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full min-h-0">
       {obras.map((obra, i) => (
         <ObraPanel key={obra.obraId} obra={obra} index={i} tv={tv} />
       ))}
