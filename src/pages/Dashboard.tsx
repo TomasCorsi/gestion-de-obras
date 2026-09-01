@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ObraPanel } from "@/components/dashboard/ObraPanel";
@@ -6,9 +6,12 @@ import { ObraSelectorDialog } from "@/components/dashboard/ObraSelectorDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
 import { useTableroSeries, MetricaSerie } from "@/hooks/useTableroSeries";
+import { useTableroRealtime } from "@/hooks/useTableroRealtime";
+import { useAutoRotacion } from "@/hooks/useAutoRotacion";
 import { format, subMonths, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +27,8 @@ import {
   ListFilter,
   X,
   RefreshCw,
+  Pause,
+  Play,
 } from "lucide-react";
 
 function formatCurrency(value: number): string {
@@ -35,11 +40,20 @@ function formatCurrency(value: number): string {
 const nf = (v: number, d = 0) =>
   v.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
+const OPCIONES_METRICA: { key: MetricaSerie; label: string }[] = [
+  { key: "m3", label: "m³" },
+  { key: "movimientos", label: "Movimientos" },
+  { key: "horas", label: "Horas" },
+  { key: "litros", label: "Litros" },
+];
+
 export default function Dashboard() {
   const { obraIds, guardar, quitar, loading: loadingSeleccion } = useObrasSeleccionadas();
   const [selectorOpen, setSelectorOpen] = useState(false);
   const [tv, setTv] = useState(false);
   const [ahora, setAhora] = useState(new Date());
+  const [cursorVisible, setCursorVisible] = useState(true);
+  const [ayudaVisible, setAyudaVisible] = useState(false);
 
   const mesesDisponibles = useMemo(() => {
     const now = new Date();
@@ -51,18 +65,41 @@ export default function Dashboard() {
   const [mes, setMes] = useState<string>(() => format(new Date(), "yyyy-MM"));
   const mesLabel = format(parseISO(`${mes}-01`), "MMMM yyyy", { locale: es });
 
+  const { conectado } = useTableroRealtime(true);
+
   const { obras, loading, refetch, dataUpdatedAt, esMesActual } = useTableroObras(
     obraIds,
     mes,
-    tv ? 60000 : undefined
+    conectado ? 300000 : 60000
   );
   const obrasMeta = useMemo(
     () => obras.map((o) => ({ obraId: o.obraId, nombre: o.nombre })),
     [obras]
   );
-  const { series, loading: loadingSeries } = useTableroSeries(obrasMeta, mes, tv ? 60000 : undefined);
+  const { series, loading: loadingSeries } = useTableroSeries(
+    obrasMeta,
+    mes,
+    conectado ? 300000 : 60000
+  );
   const [metrica, setMetrica] = useState<MetricaSerie>("m3");
   const periodoLabel = esMesActual ? "hoy" : "mes";
+
+  // Rotación automática de métrica (y de obra destacada)
+  const rot = useAutoRotacion({
+    total: OPCIONES_METRICA.length,
+    intervalo: 20000,
+    enabled: obras.length > 0,
+    onTick: (i) => setMetrica(OPCIONES_METRICA[i].key),
+  });
+  const obraDestacada = obras.length > 1 ? rot.indice % obras.length : -1;
+
+  const seleccionarMetrica = useCallback(
+    (key: MetricaSerie) => {
+      setMetrica(key);
+      rot.irA(OPCIONES_METRICA.findIndex((o) => o.key === key));
+    },
+    [rot]
+  );
 
   useEffect(() => {
     const t = setInterval(() => setAhora(new Date()), 30000);
@@ -78,8 +115,30 @@ export default function Dashboard() {
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
 
+  // Oculta el cursor tras 3s de inactividad en modo TV
+  const cursorTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!tv) {
+      setCursorVisible(true);
+      return;
+    }
+    const mover = () => {
+      setCursorVisible(true);
+      if (cursorTimer.current) clearTimeout(cursorTimer.current);
+      cursorTimer.current = setTimeout(() => setCursorVisible(false), 3000);
+    };
+    mover();
+    window.addEventListener("mousemove", mover);
+    return () => {
+      if (cursorTimer.current) clearTimeout(cursorTimer.current);
+      window.removeEventListener("mousemove", mover);
+    };
+  }, [tv]);
+
   const entrarTV = useCallback(async () => {
     setTv(true);
+    setAyudaVisible(true);
+    setTimeout(() => setAyudaVisible(false), 5000);
     try {
       await document.documentElement.requestFullscreen?.();
     } catch {
@@ -96,6 +155,37 @@ export default function Dashboard() {
     }
   }, []);
 
+  // Atajos de teclado (operación sin mouse)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+      const k = e.key.toLowerCase();
+      if (k === "f") {
+        e.preventDefault();
+        tv ? salirTV() : entrarTV();
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        rot.avanzar(1);
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        rot.avanzar(-1);
+      } else if (e.key === " ") {
+        e.preventDefault();
+        rot.togglePausa();
+      } else if (k === "r") {
+        e.preventDefault();
+        refetch();
+      } else if (["1", "2", "3", "4"].includes(e.key)) {
+        e.preventDefault();
+        const i = Number(e.key) - 1;
+        if (OPCIONES_METRICA[i]) seleccionarMetrica(OPCIONES_METRICA[i].key);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [tv, salirTV, entrarTV, rot, refetch, seleccionarMetrica]);
+
   const totales = useMemo(
     () => ({
       movimientos: obras.reduce((s, o) => s + o.movimientosHoy, 0),
@@ -111,6 +201,20 @@ export default function Dashboard() {
   );
 
   const ultimaActualizacion = dataUpdatedAt ? format(new Date(dataUpdatedAt), "HH:mm:ss") : "--:--";
+
+  const indicadorVivo = (
+    <span className="inline-flex items-center gap-1.5 text-xs">
+      <span
+        className={cn(
+          "w-2 h-2 rounded-full",
+          conectado ? "bg-success animate-pulse" : "bg-muted-foreground"
+        )}
+      />
+      <span className={conectado ? "text-success" : "text-muted-foreground"}>
+        {conectado ? "En vivo" : "Reconectando"}
+      </span>
+    </span>
+  );
 
   const kpis = (
     <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 shrink-0">
@@ -130,20 +234,13 @@ export default function Dashboard() {
     </div>
   );
 
-  const OPCIONES_METRICA: { key: MetricaSerie; label: string }[] = [
-    { key: "m3", label: "m³" },
-    { key: "movimientos", label: "Movimientos" },
-    { key: "horas", label: "Horas" },
-    { key: "litros", label: "Litros" },
-  ];
-
   const selectorMetrica = (
-    <div className="flex gap-1 shrink-0">
+    <div className="flex items-center gap-1 shrink-0">
       {OPCIONES_METRICA.map((o) => (
         <button
           key={o.key}
           type="button"
-          onClick={() => setMetrica(o.key)}
+          onClick={() => seleccionarMetrica(o.key)}
           className={
             "px-2 py-0.5 rounded text-xs border border-border transition-colors " +
             (tv ? "text-base px-3 py-1 " : "") +
@@ -155,6 +252,24 @@ export default function Dashboard() {
           {o.label}
         </button>
       ))}
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={rot.togglePausa}
+        aria-label={rot.pausado ? "Reanudar rotación" : "Pausar rotación"}
+        className="h-7 w-7"
+      >
+        {rot.pausado ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+      </Button>
+    </div>
+  );
+
+  const barraProgreso = (
+    <div className="h-1 w-full bg-muted rounded overflow-hidden shrink-0">
+      <div
+        className="h-full bg-primary transition-[width] duration-200 ease-linear"
+        style={{ width: `${rot.activo ? rot.progreso * 100 : 0}%` }}
+      />
     </div>
   );
 
@@ -170,6 +285,7 @@ export default function Dashboard() {
           metrica={metrica}
           serie={series[metrica] || []}
           loadingSerie={loadingSeries}
+          destacada={obraDestacada < 0 || !rot.activo ? undefined : obraDestacada === i}
         />
       ))}
     </div>
@@ -188,13 +304,20 @@ export default function Dashboard() {
 
   if (tv) {
     return (
-      <div className="h-screen overflow-hidden bg-background p-4 flex flex-col gap-3">
+      <div
+        className={cn(
+          "h-screen overflow-hidden bg-background p-4 flex flex-col gap-3",
+          !cursorVisible && "cursor-none"
+        )}
+      >
+        {barraProgreso}
         <div className="flex items-center justify-between shrink-0">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Centro de Control de Obras</h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground flex items-center gap-2">
               {format(ahora, "dd/MM/yyyy")} · {format(ahora, "HH:mm")} ·{" "}
               <span className="capitalize">{mesLabel}</span>
+              {indicadorVivo}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -208,17 +331,20 @@ export default function Dashboard() {
         {kpis}
 
         {obras.length > 0 ? (
-          <>
-            <div className="flex-1 min-h-0">{paneles}</div>
-          </>
-
+          <div className="flex-1 min-h-0">{paneles}</div>
         ) : (
           <div className="flex-1 flex items-center justify-center">{vacio}</div>
         )}
 
         <div className="flex items-center justify-between text-muted-foreground text-sm border-t border-border pt-2 shrink-0">
           <span>{totales.alertas > 0 ? `${totales.alertas} alerta(s) activas` : "Sin alertas activas"}</span>
-          <span>Última actualización: {ultimaActualizacion}</span>
+          {ayudaVisible ? (
+            <span className="text-xs">
+              F pantalla completa · ← → métrica · Espacio pausa · R actualizar · 1-4 métrica
+            </span>
+          ) : (
+            <span>Última actualización: {ultimaActualizacion}</span>
+          )}
         </div>
       </div>
     );
@@ -261,10 +387,11 @@ export default function Dashboard() {
           ))}
 
           <div className="ml-auto flex items-center gap-2">
+            {indicadorVivo}
             <span className="text-xs text-muted-foreground hidden sm:inline">
               Actualizado {ultimaActualizacion}
             </span>
-              {selectorMetrica}
+            {selectorMetrica}
             <Button variant="ghost" size="icon" onClick={() => refetch()} aria-label="Actualizar">
               <RefreshCw className="w-4 h-4" />
             </Button>
@@ -274,6 +401,8 @@ export default function Dashboard() {
             </Button>
           </div>
         </div>
+
+        {barraProgreso}
 
         {(loading || loadingSeleccion) && obras.length === 0 ? (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-0">
@@ -302,4 +431,3 @@ export default function Dashboard() {
     </MainLayout>
   );
 }
-
