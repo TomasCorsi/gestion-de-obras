@@ -62,6 +62,7 @@ interface Props {
   metrica: MetricaSerie;
   serie: SeriePunto[];
   loadingSerie?: boolean;
+  destacada?: boolean;
 }
 
 export function ObraPanel({
@@ -72,6 +73,7 @@ export function ObraPanel({
   metrica,
   serie,
   loadingSerie,
+  destacada,
 }: Props) {
   const color = SERIE_COLORS[index % SERIE_COLORS.length];
   const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
@@ -79,7 +81,15 @@ export function ObraPanel({
   const decimales = metrica === "movimientos" ? 0 : 1;
 
   return (
-    <Card className={cn("card-industrial p-3 flex flex-col gap-2 h-full min-h-0", tv && "p-4 gap-3")}>
+    <Card
+      className={cn(
+        "card-industrial p-3 flex flex-col gap-2 h-full min-h-0 transition-all duration-500",
+        tv && "p-4 gap-3",
+        destacada && "ring-2 ring-primary shadow-lg shadow-primary/20 scale-[1.01]",
+        destacada === false && "opacity-70"
+      )}
+    >
+
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
         <div className="min-w-0">
           <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>OBRA {index + 1}</p>
