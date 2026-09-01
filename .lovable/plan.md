@@ -22,17 +22,19 @@ Otros hallazgos del mismo período:
 ### 2. Indicadores por obra (con lo que el sistema realmente registra)
 Cada panel de obra muestra: viajes/movimientos, m³, horas de máquina, litros de combustible, personal que cargó parte, maquinaria en uso / total, gastos del período y alertas.
 
-### 3. Gráficos: uno por obra + los generales
-Se mantienen los tres gráficos generales (tendencia, comparativa, distribución de gastos) y se agrega **un mini gráfico dentro del panel de cada obra**: barras diarias del mes elegido con la métrica que el usuario elija para todo el tablero (m³, viajes, horas o litros). Simple, sin leyendas, con el total del período arriba.
+### 3. Gráficos: uno por obra, se sacan los generales
+Se eliminan los tres gráficos generales actuales (tendencia, comparativa y dona de gastos). En su lugar, **cada obra seleccionada tiene su propio gráfico**: barras diarias del mes elegido, con un selector de métrica compartido (m³, viajes/movimientos, horas o litros de combustible), el total del período arriba y sin leyendas ni ejes recargados.
 
 ```text
 ┌ KPIs (6) ─────────────────────────────────────────────┐
-├ Tendencia (área)   │ Comparativa │ Gastos (dona)      │
-├ Obra 1 + mini bar  │ Obra 2 + mini bar │ Obra 3 + ... │
+├ Obra 1            │ Obra 2            │ Obra 3        │
+│  gráfico diario   │  gráfico diario   │  gráfico      │
+│  métricas         │  métricas         │  métricas     │
 └───────────────────────────────────────────────────────┘
 ```
 
 Todo sigue entrando en una pantalla, sin scroll, y respeta el mes seleccionado y el modo TV.
+
 
 ## Detalles técnicos
 
