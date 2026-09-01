@@ -11,6 +11,8 @@ interface KPICardProps {
     isPositive: boolean;
   };
   variant?: "default" | "primary" | "success" | "warning";
+  compact?: boolean;
+  tv?: boolean;
 }
 
 export function KPICard({
@@ -20,6 +22,8 @@ export function KPICard({
   icon: Icon,
   trend,
   variant = "default",
+  compact,
+  tv,
 }: KPICardProps) {
   const iconColors = {
     default: "bg-muted text-muted-foreground",
@@ -27,6 +31,35 @@ export function KPICard({
     success: "bg-success/20 text-success",
     warning: "bg-warning/20 text-warning",
   };
+
+  if (compact) {
+    return (
+      <div className="kpi-card !p-3 animate-fade-in">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "rounded-lg flex items-center justify-center flex-shrink-0",
+              tv ? "w-11 h-11" : "w-9 h-9",
+              iconColors[variant]
+            )}
+          >
+            <Icon className={cn(tv ? "w-6 h-6" : "w-4 h-4")} />
+          </div>
+          <div className="min-w-0">
+            <p className={cn("text-muted-foreground truncate", tv ? "text-sm" : "text-xs")}>{title}</p>
+            <p
+              className={cn(
+                "font-bold text-foreground font-mono-numbers leading-tight",
+                tv ? "text-3xl" : "text-lg"
+              )}
+            >
+              {value}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="kpi-card animate-fade-in">

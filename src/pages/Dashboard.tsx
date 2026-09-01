@@ -3,11 +3,15 @@ import { MainLayout } from "@/components/layout/MainLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ObraPanel } from "@/components/dashboard/ObraPanel";
 import { ObraSelectorDialog } from "@/components/dashboard/ObraSelectorDialog";
+import { TendenciaObrasChart } from "@/components/dashboard/TendenciaObrasChart";
+import { ComparativaObrasChart } from "@/components/dashboard/ComparativaObrasChart";
+import { GastosDistribucionChart } from "@/components/dashboard/GastosDistribucionChart";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
+import { useTableroSeries } from "@/hooks/useTableroSeries";
 import { format } from "date-fns";
 import {
   Building2,
@@ -39,6 +43,7 @@ export default function Dashboard() {
   const [ahora, setAhora] = useState(new Date());
 
   const { obras, loading, refetch, dataUpdatedAt } = useTableroObras(obraIds, tv ? 60000 : undefined);
+  const { series, loading: loadingSeries } = useTableroSeries(obraIds, tv ? 60000 : undefined);
 
   useEffect(() => {
     const t = setInterval(() => setAhora(new Date()), 30000);
@@ -86,21 +91,47 @@ export default function Dashboard() {
     [obras]
   );
 
+  const obrasMeta = useMemo(
+    () => obras.map((o) => ({ obraId: o.obraId, nombre: o.nombre })),
+    [obras]
+  );
+
   const ultimaActualizacion = dataUpdatedAt ? format(new Date(dataUpdatedAt), "HH:mm:ss") : "--:--";
 
   const kpis = (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-      <KPICard title="Obras en tablero" value={obras.length} subtitle={`Máximo ${MAX_OBRAS}`} icon={Building2} variant="primary" />
-      <KPICard title="Movimientos hoy" value={nf(totales.movimientos)} subtitle="Viajes e internos" icon={Route} variant="default" />
-      <KPICard title="m³ hoy" value={nf(totales.m3, 1)} subtitle="Según remitos" icon={Truck} variant="success" />
-      <KPICard title="Horas hoy" value={nf(totales.horas, 1)} subtitle="Horómetro partes diarios" icon={Clock} variant="default" />
-      <KPICard title="Personal hoy" value={nf(totales.personal)} subtitle="Reportaron parte" icon={Users} variant="default" />
-      <KPICard title="Gastos del mes" value={formatCurrency(totales.gastos)} subtitle="Gastos + mantenimiento" icon={DollarSign} variant="warning" />
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2 shrink-0">
+      <KPICard title="Obras" value={obras.length} icon={Building2} variant="primary" compact tv={tv} />
+      <KPICard title="Movimientos hoy" value={nf(totales.movimientos)} icon={Route} compact tv={tv} />
+      <KPICard title="m³ hoy" value={nf(totales.m3, 1)} icon={Truck} variant="success" compact tv={tv} />
+      <KPICard title="Horas hoy" value={nf(totales.horas, 1)} icon={Clock} compact tv={tv} />
+      <KPICard title="Personal hoy" value={nf(totales.personal)} icon={Users} compact tv={tv} />
+      <KPICard
+        title="Gastos del mes"
+        value={formatCurrency(totales.gastos)}
+        icon={DollarSign}
+        variant="warning"
+        compact
+        tv={tv}
+      />
+    </div>
+  );
+
+  const graficos = (
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 h-full min-h-0">
+      <div className="lg:col-span-2 min-h-0 h-[260px] lg:h-full">
+        <TendenciaObrasChart series={series} obras={obrasMeta} loading={loadingSeries} tv={tv} />
+      </div>
+      <div className="min-h-0 h-[240px] lg:h-full">
+        <ComparativaObrasChart obras={obras} loading={loading} tv={tv} />
+      </div>
+      <div className="min-h-0 h-[240px] lg:h-full">
+        <GastosDistribucionChart obras={obras} loading={loading} tv={tv} />
+      </div>
     </div>
   );
 
   const paneles = (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full min-h-0">
       {obras.map((obra, i) => (
         <ObraPanel key={obra.obraId} obra={obra} index={i} tv={tv} />
       ))}
@@ -120,11 +151,11 @@ export default function Dashboard() {
 
   if (tv) {
     return (
-      <div className="min-h-screen bg-background p-6 flex flex-col gap-6">
-        <div className="flex items-center justify-between">
+      <div className="h-screen overflow-hidden bg-background p-4 flex flex-col gap-3">
+        <div className="flex items-center justify-between shrink-0">
           <div>
-            <h1 className="text-4xl font-bold tracking-tight">Centro de Control de Obras</h1>
-            <p className="text-muted-foreground text-lg">
+            <h1 className="text-3xl font-bold tracking-tight">Centro de Control de Obras</h1>
+            <p className="text-muted-foreground">
               {format(ahora, "dd/MM/yyyy")} · {format(ahora, "HH:mm")}
             </p>
           </div>
@@ -135,9 +166,17 @@ export default function Dashboard() {
 
         {kpis}
 
-        <div className="flex-1">{obras.length > 0 ? paneles : vacio}</div>
+        {obras.length > 0 ? (
+          <>
+            <div className="flex-[3] min-h-0">{graficos}</div>
+            <div className="flex-[2] min-h-0">{paneles}</div>
+          </>
 
-        <div className="flex items-center justify-between text-muted-foreground text-sm border-t border-border pt-3">
+        ) : (
+          <div className="flex-1 flex items-center justify-center">{vacio}</div>
+        )}
+
+        <div className="flex items-center justify-between text-muted-foreground text-sm border-t border-border pt-2 shrink-0">
           <span>{totales.alertas > 0 ? `${totales.alertas} alerta(s) activas` : "Sin alertas activas"}</span>
           <span>Última actualización: {ultimaActualizacion}</span>
         </div>
@@ -147,56 +186,59 @@ export default function Dashboard() {
 
   return (
     <MainLayout title="Tablero de Obras" subtitle="Centro de control por obra">
-      <div className="flex flex-wrap items-center gap-2 mb-6">
-        <Button variant="outline" onClick={() => setSelectorOpen(true)} className="gap-2">
-          <ListFilter className="w-4 h-4" />
-          Seleccionar obras
-        </Button>
-
-        {obras.map((o) => (
-          <Badge key={o.obraId} variant="secondary" className="gap-1 py-1.5 pl-3 pr-1.5">
-            {o.nombre}
-            <button
-              type="button"
-              onClick={() => quitar(o.obraId)}
-              className="rounded p-0.5 hover:bg-muted"
-              aria-label={`Quitar ${o.nombre}`}
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </Badge>
-        ))}
-
-        <div className="ml-auto flex items-center gap-2">
-          <span className="text-xs text-muted-foreground hidden sm:inline">
-            Actualizado {ultimaActualizacion}
-          </span>
-          <Button variant="ghost" size="icon" onClick={() => refetch()} aria-label="Actualizar">
-            <RefreshCw className="w-4 h-4" />
+      <div className="flex flex-col lg:h-[calc(100vh-8.5rem)] lg:overflow-hidden gap-3">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => setSelectorOpen(true)} className="gap-2">
+            <ListFilter className="w-4 h-4" />
+            Seleccionar obras
           </Button>
-          <Button onClick={entrarTV} className="gap-2" disabled={obras.length === 0}>
-            <Maximize2 className="w-4 h-4" />
-            Pantalla completa
-          </Button>
-        </div>
-      </div>
 
-      {(loading || loadingSeleccion) && obras.length === 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="card-industrial p-6">
-              <div className="h-56 bg-muted/50 rounded animate-pulse" />
-            </Card>
+          {obras.map((o) => (
+            <Badge key={o.obraId} variant="secondary" className="gap-1 py-1 pl-3 pr-1.5">
+              {o.nombre}
+              <button
+                type="button"
+                onClick={() => quitar(o.obraId)}
+                className="rounded p-0.5 hover:bg-muted"
+                aria-label={`Quitar ${o.nombre}`}
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
           ))}
+
+          <div className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Actualizado {ultimaActualizacion}
+            </span>
+            <Button variant="ghost" size="icon" onClick={() => refetch()} aria-label="Actualizar">
+              <RefreshCw className="w-4 h-4" />
+            </Button>
+            <Button size="sm" onClick={entrarTV} className="gap-2" disabled={obras.length === 0}>
+              <Maximize2 className="w-4 h-4" />
+              Pantalla completa
+            </Button>
+          </div>
         </div>
-      ) : obras.length === 0 ? (
-        vacio
-      ) : (
-        <div className="space-y-6">
-          {kpis}
-          {paneles}
-        </div>
-      )}
+
+        {(loading || loadingSeleccion) && obras.length === 0 ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 flex-1 min-h-0">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="card-industrial p-6">
+                <div className="h-56 bg-muted/50 rounded animate-pulse" />
+              </Card>
+            ))}
+          </div>
+        ) : obras.length === 0 ? (
+          vacio
+        ) : (
+          <div className="flex flex-col gap-3 flex-1 min-h-0">
+            {kpis}
+            <div className="lg:flex-[3] min-h-0">{graficos}</div>
+            <div className="lg:flex-[2] min-h-0">{paneles}</div>
+          </div>
+        )}
+      </div>
 
       <ObraSelectorDialog
         open={selectorOpen}
@@ -207,3 +249,4 @@ export default function Dashboard() {
     </MainLayout>
   );
 }
+
