@@ -1,9 +1,19 @@
 import { ObraTableroData } from "@/hooks/useTableroObras";
+import { MetricaSerie, SeriePunto, SERIE_COLORS } from "@/hooks/useTableroSeries";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertTriangle, Truck, Clock, Users, DollarSign, Boxes, Activity } from "lucide-react";
+import { AlertTriangle, Truck, Clock, Users, DollarSign, Boxes, Activity, Fuel } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 function formatCurrency(value: number): string {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
@@ -37,14 +47,37 @@ function Metric({ icon: Icon, label, value, tv }: MetricProps) {
   );
 }
 
+const METRICA_LABEL: Record<MetricaSerie, string> = {
+  m3: "m³",
+  movimientos: "Movimientos",
+  horas: "Horas",
+  litros: "Litros",
+};
+
 interface Props {
   obra: ObraTableroData;
   index: number;
   tv?: boolean;
   periodoLabel?: string;
+  metrica: MetricaSerie;
+  serie: SeriePunto[];
+  loadingSerie?: boolean;
 }
 
-export function ObraPanel({ obra, index, tv, periodoLabel = "hoy" }: Props) {
+export function ObraPanel({
+  obra,
+  index,
+  tv,
+  periodoLabel = "hoy",
+  metrica,
+  serie,
+  loadingSerie,
+}: Props) {
+  const color = SERIE_COLORS[index % SERIE_COLORS.length];
+  const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
+  const totalSerie = data.reduce((s, d) => s + d.valor, 0);
+  const decimales = metrica === "movimientos" ? 0 : 1;
+
   return (
     <Card className={cn("card-industrial p-3 flex flex-col gap-2 h-full min-h-0", tv && "p-4 gap-3")}>
       <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
@@ -78,17 +111,65 @@ export function ObraPanel({ obra, index, tv, periodoLabel = "hoy" }: Props) {
         </div>
       </div>
 
-      <div className={cn("grid grid-cols-3 gap-2 flex-1 min-h-0", tv && "gap-3")}>
+      {/* Gráfico diario de la obra */}
+      <div className="flex flex-col min-h-0 flex-1">
+        <div className="flex items-center justify-between">
+          <span className={cn("text-muted-foreground uppercase tracking-wide", tv ? "text-xs" : "text-[10px]")}>
+            {METRICA_LABEL[metrica]} por día
+          </span>
+          <span className={cn("font-mono-numbers font-semibold text-foreground", tv ? "text-base" : "text-xs")}>
+            {nf(totalSerie, decimales)}
+          </span>
+        </div>
+        <div className="flex-1 min-h-[70px]">
+          {loadingSerie ? (
+            <div className="h-full bg-muted/40 rounded animate-pulse" />
+          ) : totalSerie === 0 ? (
+            <div className="h-full flex items-center justify-center text-[11px] text-muted-foreground">
+              Sin datos en el período
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="hsl(var(--muted-foreground))"
+                  tick={{ fontSize: tv ? 12 : 9 }}
+                  interval="preserveStartEnd"
+                  minTickGap={12}
+                />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 12 : 9 }} width={38} />
+                <RTooltip
+                  cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    fontSize: tv ? 14 : 12,
+                  }}
+                  formatter={(v: number) => [nf(v, decimales), METRICA_LABEL[metrica]]}
+                />
+                <Bar dataKey="valor" fill={color} radius={[3, 3, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      <div className={cn("grid grid-cols-4 gap-2 shrink-0", tv && "gap-3")}>
         <Metric icon={Activity} label={`Movim. ${periodoLabel}`} value={nf(obra.movimientosHoy)} tv={tv} />
-        <Metric icon={Boxes} label={`m³ ${periodoLabel}`} value={nf(obra.m3Hoy, 1)} tv={tv} />
-        <Metric icon={Clock} label={`Horas ${periodoLabel}`} value={nf(obra.horasHoy, 1)} tv={tv} />
+        <Metric icon={Boxes} label="m³ período" value={nf(obra.m3Mes, 1)} tv={tv} />
+        <Metric icon={Clock} label="Horas período" value={nf(obra.horasMes, 1)} tv={tv} />
+        <Metric icon={Fuel} label="Litros" value={nf(obra.litrosMes)} tv={tv} />
         <Metric
           icon={Truck}
           label="Maquinaria"
           value={`${nf(obra.maquinariasEnUso)}/${nf(obra.maquinariasTotal)}`}
           tv={tv}
         />
-        <Metric icon={Users} label="Personal" value={nf(obra.personalHoy)} tv={tv} />
+        <Metric icon={Users} label={`Personal ${periodoLabel}`} value={nf(obra.personalHoy)} tv={tv} />
+        <Metric icon={Activity} label="Viajes remitos" value={nf(obra.viajesMes)} tv={tv} />
         <Metric icon={DollarSign} label="Gastos período" value={formatCurrency(obra.gastosMes)} tv={tv} />
       </div>
     </Card>
