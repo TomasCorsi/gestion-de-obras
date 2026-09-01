@@ -168,9 +168,10 @@ export default function Dashboard() {
 
         {obras.length > 0 ? (
           <>
-            {graficos}
-            {paneles}
+            <div className="flex-[3] min-h-0">{graficos}</div>
+            <div className="flex-[2] min-h-0">{paneles}</div>
           </>
+
         ) : (
           <div className="flex-1 flex items-center justify-center">{vacio}</div>
         )}
