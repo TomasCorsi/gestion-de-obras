@@ -39,10 +39,11 @@ Todo sigue entrando en una pantalla, sin scroll, y respeta el mes seleccionado y
 ## Detalles técnicos
 
 - `src/hooks/useTableroObras.ts`: traer remitos del período sin filtrar por obra y asignarlos por `obra_id` o por `desde`/`hasta` normalizado contra el nombre de la obra; agregar consulta a `cargas_combustible_repartidor` (por `obra_id`) y a `precios_productos_mes` para valorizar litros; nuevos campos `litros`, `costoCombustible`, `viajes`, y flags de "sin datos".
-- `src/hooks/useTableroSeries.ts`: mismo criterio de asignación de remitos; agregar la serie `litros` y devolver también las series por obra para los mini gráficos.
+- `src/hooks/useTableroSeries.ts`: mismo criterio de asignación de remitos; agregar la serie `litros`; las series ya vienen por obra y día, se usan para el gráfico de cada panel.
 - Nuevo helper de normalización de nombres de obra reutilizable (minúsculas, sin acentos, trim).
-- `src/components/dashboard/ObraPanel.tsx`: mini gráfico de barras (recharts `BarChart`, sin ejes en modo compacto) + métrica de litros.
-- `src/components/dashboard/TendenciaObrasChart.tsx` y `ComparativaObrasChart.tsx`: agregar la métrica "Litros".
-- `src/pages/Dashboard.tsx`: selector de métrica compartido para los mini gráficos y KPI de combustible.
+- `src/components/dashboard/ObraPanel.tsx`: gráfico de barras diario (recharts `BarChart`, ejes mínimos) + métrica de litros.
+- Se eliminan `TendenciaObrasChart.tsx`, `ComparativaObrasChart.tsx` y `GastosDistribucionChart.tsx` y sus usos.
+- `src/pages/Dashboard.tsx`: quitar la franja de gráficos generales, dar más alto a los paneles por obra y agregar el selector de métrica compartido y el KPI de combustible.
 
 Nota: esto no modifica los datos existentes; los remitos siguen sin `obra_id` y se resuelven por nombre al momento de leerlos.
+
