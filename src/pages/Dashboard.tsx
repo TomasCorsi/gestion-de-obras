@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
 import { useTableroSeries, MetricaSerie } from "@/hooks/useTableroSeries";
+import { useTableroHistorico } from "@/hooks/useTableroHistorico";
 import { useTableroRealtime } from "@/hooks/useTableroRealtime";
 import { useAutoRotacion } from "@/hooks/useAutoRotacion";
 import { format, subMonths, parseISO } from "date-fns";
