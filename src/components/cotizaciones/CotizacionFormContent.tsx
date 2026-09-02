@@ -760,12 +760,19 @@ export function CotizacionFormContent({
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
           </div>
-          {anticipoTipo !== "ninguno" && (
-            <div className="flex justify-between text-sm">
+          {anticiposCalc.map((a, i) => (
+            <div key={i} className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+                {a.descripcion || "Anticipo"}
+                {a.tipo === "porcentaje" ? ` (${a.valor}%)` : ""}:
               </span>
-              <span className="font-mono font-semibold text-destructive">- {formatCurrency(anticipoMonto)}</span>
+              <span className="font-mono font-semibold text-destructive">- {formatCurrency(a.monto)}</span>
+            </div>
+          ))}
+          {anticipoMonto > 0 && (
+            <div className="flex justify-between text-sm font-semibold">
+              <span className="text-muted-foreground">Subtotal - Anticipos:</span>
+              <span className="font-mono">{formatCurrency(baseImponible)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -777,43 +784,50 @@ export function CotizacionFormContent({
             <span className="font-mono text-primary">{formatCurrency(formData.total)}</span>
           </div>
 
-          {/* Anticipo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-border">
-            <div className="space-y-2">
-              <Label>Anticipo</Label>
-              <Select
-                value={anticipoTipo}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, anticipo_tipo: value, anticipo_valor: value === "ninguno" ? 0 : anticipoValor })
-                }
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguno">Sin anticipo</SelectItem>
-                  <SelectItem value="porcentaje">Porcentaje (%)</SelectItem>
-                  <SelectItem value="monto">Monto fijo ($)</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Anticipos */}
+          <div className="pt-3 border-t border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Anticipos</Label>
+              <Button type="button" size="sm" variant="outline" onClick={addAnticipo}>
+                <Plus className="w-4 h-4 mr-1" /> Agregar anticipo
+              </Button>
             </div>
-            {anticipoTipo !== "ninguno" && (
-              <div className="space-y-2">
-                <Label>{anticipoTipo === "porcentaje" ? "Porcentaje de anticipo" : "Monto de anticipo"}</Label>
+            {anticipos.length === 0 && (
+              <p className="text-xs text-muted-foreground">Sin anticipos cargados.</p>
+            )}
+            {anticipos.map((a, i) => (
+              <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_180px_auto] gap-2 items-center">
+                <Input
+                  value={a.descripcion}
+                  onChange={(e) => updateAnticipo(i, { descripcion: e.target.value })}
+                  className="bg-muted border-border"
+                  placeholder="Descripción (ej: Lote entregado en pago)"
+                />
+                <Select value={a.tipo} onValueChange={(value) => updateAnticipo(i, { tipo: value })}>
+                  <SelectTrigger className="bg-muted border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="porcentaje">Porcentaje (%)</SelectItem>
+                    <SelectItem value="monto">Monto fijo ($)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   type="number"
                   min={0}
-                  step={anticipoTipo === "porcentaje" ? "0.01" : "1"}
-                  value={anticipoValor || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, anticipo_valor: parseFloat(e.target.value) || 0 })
-                  }
-                  className="bg-muted border-border"
-                  placeholder={anticipoTipo === "porcentaje" ? "Ej: 30" : "Ej: 1500000"}
+                  step="0.01"
+                  value={a.valor || ""}
+                  onChange={(e) => updateAnticipo(i, { valor: parseFloat(e.target.value) || 0 })}
+                  className="bg-muted border-border font-mono"
+                  placeholder={a.tipo === "porcentaje" ? "Ej: 30" : "Ej: 1500000.50"}
                 />
+                <Button type="button" size="icon" variant="ghost" onClick={() => removeAnticipo(i)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
-            )}
+            ))}
           </div>
+
 
         </div>
       </div>
