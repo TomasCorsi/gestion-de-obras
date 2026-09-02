@@ -14,6 +14,8 @@ import {
   Activity,
   Fuel,
   Route,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   BarChart,
@@ -28,7 +30,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
+  LabelList,
 } from "recharts";
 
 const nf = (v: number, d = 0) =>
@@ -47,7 +49,30 @@ const METRICA_LABEL: Record<MetricaSerie, string> = {
   litros: "Litros",
 };
 
-const GASTO_COLORS = ["#B00020", "#E4A11B", "#6B7280"];
+const GASTO_COLORS = ["#B00020", "#E4A11B", "#6B7280", "#2563EB", "#16A34A", "#9333EA"];
+
+const CATEGORIA_LABEL: Record<string, string> = {
+  combustible: "Combustible",
+  mantenimiento: "Mantenimiento",
+  servicios: "Servicios",
+  materiales: "Materiales",
+  repuestos: "Repuestos",
+  herramientas: "Herramientas",
+  fletes: "Fletes",
+  varios: "Varios",
+};
+
+const nombreCategoria = (c: string) =>
+  CATEGORIA_LABEL[c.toLowerCase()] || c.charAt(0).toUpperCase() + c.slice(1);
+
+/** Agrupa las categorías chicas para que el gráfico siga siendo legible en la TV. */
+function armarGastos(items: { categoria: string; monto: number }[]) {
+  const orden = [...items].filter((g) => g.monto > 0).sort((a, b) => b.monto - a.monto);
+  const top = orden.slice(0, 5).map((g) => ({ name: nombreCategoria(g.categoria), value: Math.round(g.monto) }));
+  const resto = orden.slice(5).reduce((s, g) => s + g.monto, 0);
+  if (resto > 0) top.push({ name: "Otras", value: Math.round(resto) });
+  return top;
+}
 
 interface KPIProps {
   icon: typeof Truck;
@@ -159,11 +184,19 @@ export function ObraDashboard({
     return { label: d.label, acumulado: Number(acumulado.toFixed(1)) };
   });
 
-  const gastos = [
-    { name: "Combustible", value: Math.round(obra.costoCombustible) },
-    { name: "Mantenimiento", value: Math.round(obra.costoMantenimiento) },
-    { name: "Otros gastos", value: Math.round(obra.costoOtros) },
-  ].filter((g) => g.value > 0);
+  const gastos = armarGastos(obra.gastosPorCategoria || []);
+  const totalGastos = gastos.reduce((s, g) => s + g.value, 0);
+
+  // Rentabilidad: lo cotizado (aprobado) contra el gasto acumulado histórico de la obra
+  const cotizado = obra.montoCotizado || 0;
+  const gastadoHistorico = historico?.gastos ?? obra.gastosMes;
+  const beneficio = cotizado - gastadoHistorico;
+  const margen = cotizado > 0 ? (beneficio / cotizado) * 100 : 0;
+  const consumido = cotizado > 0 ? Math.min(100, (gastadoHistorico / cotizado) * 100) : 0;
+
+  // En la TV no hay mouse: los valores se dibujan sobre el gráfico y se ocultan los tooltips.
+  const mostrarTooltip = !tv;
+  const pasoEtiquetas = data.length > 16 ? 2 : 1;
 
   return (
     <div className="flex flex-col gap-2 h-full min-h-0">
@@ -300,12 +333,24 @@ export function ObraDashboard({
                     minTickGap={10}
                   />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 13 : 10 }} width={42} />
-                  <RTooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, decimales), METRICA_LABEL[metrica]]}
-                  />
-                  <Bar dataKey="valor" fill="#B00020" radius={[3, 3, 0, 0]} />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, decimales), METRICA_LABEL[metrica]]}
+                    />
+                  )}
+                  <Bar dataKey="valor" fill="#B00020" radius={[3, 3, 0, 0]}>
+                    <LabelList
+                      dataKey="valor"
+                      position="top"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number, _e?: unknown, i?: number) =>
+                        !v || (typeof i === "number" && i % pasoEtiquetas !== 0) ? "" : nf(v, decimales)
+                      }
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -334,17 +379,29 @@ export function ObraDashboard({
                     minTickGap={10}
                   />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 13 : 10 }} width={42} />
-                  <RTooltip
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, decimales), "Acumulado"]}
-                  />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, decimales), "Acumulado"]}
+                    />
+                  )}
                   <Area
                     type="monotone"
                     dataKey="acumulado"
                     stroke="#E4A11B"
                     strokeWidth={2}
                     fill="url(#gradAcum)"
-                  />
+                  >
+                    <LabelList
+                      dataKey="acumulado"
+                      position="top"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number, _e?: unknown, i?: number) =>
+                        typeof i === "number" && i === dataAcum.length - 1 ? nf(v, decimales) : ""
+                      }
+                    />
+                  </Area>
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -407,12 +464,22 @@ export function ObraDashboard({
                     stroke="hsl(var(--muted-foreground))"
                     tick={{ fontSize: tv ? 13 : 10 }}
                   />
-                  <RTooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, 1), "Horas"]}
-                  />
-                  <Bar dataKey="horas" fill="#6B7280" radius={[0, 3, 3, 0]} />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, 1), "Horas"]}
+                    />
+                  )}
+                  <Bar dataKey="horas" fill="#6B7280" radius={[0, 3, 3, 0]}>
+                    <LabelList
+                      dataKey="horas"
+                      position="right"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number) => nf(v, 1)}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
