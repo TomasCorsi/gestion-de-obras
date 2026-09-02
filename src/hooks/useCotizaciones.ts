@@ -51,11 +51,30 @@ export interface CotizacionItemDB {
   created_at: string;
 }
 
+export interface CotizacionAnticipoDB {
+  id: string;
+  cotizacion_id: string;
+  descripcion: string;
+  tipo: string; // 'porcentaje' | 'monto'
+  valor: number;
+  monto: number;
+  orden: number;
+}
+
+export interface CotizacionAnticipoForm {
+  descripcion: string;
+  tipo: string; // 'porcentaje' | 'monto'
+  valor: number;
+  monto: number;
+}
+
 export interface CotizacionWithRelations extends CotizacionDB {
   obra?: { nombre: string };
   items?: CotizacionItemDB[];
   categorias?: CotizacionCategoriaDB[];
+  anticipos?: CotizacionAnticipoDB[];
 }
+
 
 export interface CotizacionForm {
   numero: string;
