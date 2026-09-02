@@ -5,7 +5,6 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-  AlertTriangle,
   Truck,
   Clock,
   Users,
@@ -74,6 +73,21 @@ function armarGastos(items: { categoria: string; monto: number }[]) {
   return top;
 }
 
+/** Deja los materiales principales y agrupa el resto en "Otros". */
+function armarMateriales(items: { nombre: string; cantidad: number; viajes: number }[]) {
+  const orden = items.filter((m) => m.cantidad > 0).sort((a, b) => b.cantidad - a.cantidad);
+  const top = orden.slice(0, 6).map((m) => ({ ...m, cantidad: Number(m.cantidad.toFixed(1)) }));
+  const resto = orden.slice(6);
+  if (resto.length > 0) {
+    top.push({
+      nombre: "Otros",
+      cantidad: Number(resto.reduce((s, m) => s + m.cantidad, 0).toFixed(1)),
+      viajes: resto.reduce((s, m) => s + m.viajes, 0),
+    });
+  }
+  return top;
+}
+
 interface KPIProps {
   icon: typeof Truck;
   label: string;
@@ -106,9 +120,26 @@ function KPI({ icon: Icon, label, value, sub, tv, destacado }: KPIProps) {
         {value}
       </p>
       {sub !== undefined && (
-        <p className={cn("text-muted-foreground font-mono-numbers mt-0.5", tv ? "text-sm" : "text-[11px]")}>
-          Hist. {sub}
-        </p>
+        <div
+          className={cn(
+            "mt-1.5 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/60 px-2",
+            tv ? "py-1" : "py-0.5"
+          )}
+        >
+          <span
+            className={cn(
+              "uppercase tracking-widest text-muted-foreground font-semibold",
+              tv ? "text-xs" : "text-[9px]"
+            )}
+          >
+            Histórico
+          </span>
+          <span
+            className={cn("font-bold font-mono-numbers text-foreground", tv ? "text-2xl" : "text-base")}
+          >
+            {sub}
+          </span>
+        </div>
       )}
     </Card>
   );
@@ -184,6 +215,13 @@ export function ObraDashboard({
     return { label: d.label, acumulado: Number(acumulado.toFixed(1)) };
   });
 
+  const materiales = armarMateriales(obra.materiales || []);
+  const materialesHist: Record<string, number> = {};
+  (historico?.materiales || []).forEach((m) => {
+    materialesHist[m.nombre.toLowerCase()] = m.cantidad;
+  });
+  const totalMateriales = materiales.reduce((s, m) => s + m.cantidad, 0);
+
   const gastos = armarGastos(obra.gastosPorCategoria || []);
   const totalGastos = gastos.reduce((s, g) => s + g.value, 0);
 
@@ -211,17 +249,6 @@ export function ObraDashboard({
           </h2>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {obra.alertas.length > 0 && (
-            <span
-              className={cn(
-                "flex items-center gap-1 rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1 text-destructive font-semibold",
-                tv ? "text-base" : "text-xs"
-              )}
-            >
-              <AlertTriangle className={cn(tv ? "w-5 h-5" : "w-4 h-4")} />
-              {obra.alertas.length} alerta{obra.alertas.length > 1 ? "s" : ""}
-            </span>
-          )}
           <Badge
             variant={obra.estado === "activa" ? "default" : "secondary"}
             className={cn("capitalize", tv && "text-base px-3 py-1")}
@@ -408,7 +435,7 @@ export function ObraDashboard({
           </ChartCard>
         </div>
 
-        <div className="grid grid-rows-[auto_1fr_1fr] gap-2 min-h-0">
+        <div className="grid grid-rows-[auto_1fr_1fr_1fr] gap-2 min-h-0">
           {/* Rentabilidad: cotizado vs gastado */}
           <Card className="card-industrial p-2">
             <div className="flex items-center justify-between px-1 pb-1">
@@ -565,15 +592,71 @@ export function ObraDashboard({
           </ChartCard>
 
 
-          <ChartCard titulo="Horas por maquinaria" tv={tv}>
-            {obra.horasPorMaquina.length === 0 ? (
+          <ChartCard
+            titulo="Materiales movidos"
+            extra={totalMateriales > 0 ? `${nf(totalMateriales, 1)} m³` : undefined}
+            tv={tv}
+          >
+            {materiales.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
+                Sin materiales registrados
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={materiales}
+                  layout="vertical"
+                  margin={{ top: 2, right: 46, left: 4, bottom: 2 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 13 : 10 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="nombre"
+                    width={tv ? 140 : 96}
+                    stroke="hsl(var(--muted-foreground))"
+                    tick={{ fontSize: tv ? 13 : 10 }}
+                  />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number, _n: string, p: any) => [
+                        `${nf(v, 1)} · ${nf(p?.payload?.viajes || 0)} viajes`,
+                        p?.payload?.nombre,
+                      ]}
+                    />
+                  )}
+                  <Bar dataKey="cantidad" fill="#2563EB" radius={[0, 3, 3, 0]}>
+                    <LabelList
+                      dataKey="cantidad"
+                      position="right"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number, _e?: unknown, i?: number) => {
+                        const m = typeof i === "number" ? materiales[i] : undefined;
+                        const hist = m ? materialesHist[m.nombre.toLowerCase()] : undefined;
+                        return hist ? `${nf(v, 1)}  (H ${nf(hist, 0)})` : nf(v, 1);
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          <ChartCard titulo="Horas por tipo de máquina" tv={tv}>
+            {(obra.horasPorTipoMaquina || []).length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 Sin horas registradas
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
-                  data={obra.horasPorMaquina}
+                  data={(obra.horasPorTipoMaquina || []).map((t) => ({
+                    ...t,
+                    nombre: `${t.tipo} (${t.maquinas})`,
+                  }))}
                   layout="vertical"
                   margin={{ top: 2, right: 12, left: 4, bottom: 2 }}
                 >
@@ -609,16 +692,6 @@ export function ObraDashboard({
         </div>
       </div>
 
-      {obra.alertas.length > 0 && (
-        <div
-          className={cn(
-            "shrink-0 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-1.5 text-destructive truncate",
-            tv ? "text-base" : "text-xs"
-          )}
-        >
-          {obra.alertas.join(" · ")}
-        </div>
-      )}
     </div>
   );
 }
