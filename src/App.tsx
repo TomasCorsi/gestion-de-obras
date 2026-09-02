@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 // Lazy loaded pages (code splitting)
 const Index = lazy(() => import("./pages/Index"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const TableroTV = lazy(() => import("./pages/TableroTV"));
 const Obras = lazy(() => import("./pages/Obras"));
 const Cotizaciones = lazy(() => import("./pages/Cotizaciones"));
 const CertificadosPage = lazy(() => import("./pages/Certificados"));
@@ -94,6 +95,11 @@ const App = () => (
               <Route path="/dashboard" element={
                 <ProtectedRoute requiredRoles={['admin']}>
                   <Dashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/tablero/tv" element={
+                <ProtectedRoute requiredRoles={['admin']}>
+                  <TableroTV />
                 </ProtectedRoute>
               } />
               <Route path="/obras" element={

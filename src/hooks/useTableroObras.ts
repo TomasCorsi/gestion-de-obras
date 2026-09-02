@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { normalizarNombre, remitoEsDeObra } from "@/lib/obraMatch";
 
+export interface MaquinaHoras {
+  nombre: string;
+  horas: number;
+}
+
 export interface ObraTableroData {
   obraId: string;
   nombre: string;
@@ -14,12 +19,15 @@ export interface ObraTableroData {
   viajesMes: number;
   litrosMes: number;
   costoCombustible: number;
+  costoMantenimiento: number;
+  costoOtros: number;
   maquinariasTotal: number;
   maquinariasEnUso: number;
   horasHoy: number;
   horasMes: number;
   personalHoy: number;
   gastosMes: number;
+  horasPorMaquina: MaquinaHoras[];
   sinDatos: boolean;
   alertas: string[];
 }
@@ -89,28 +97,41 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
   );
 
   const maquinarias = (maqRes.data || []) as { id: string; obra_id: string | null; estado: string }[];
-  const maqIds = maquinarias.map((m) => m.id);
+  const partes = (partesRes.data || []) as any[];
+  const maqIds = Array.from(
+    new Set([...maquinarias.map((m) => m.id), ...partes.map((p) => p.maquinaria_id).filter(Boolean)])
+  ) as string[];
 
   let mantenimientos: { maquinaria_id: string; costo_total: number | null }[] = [];
+  const maqNombres: Record<string, string> = {};
   if (maqIds.length > 0) {
-    const { data } = await supabase
-      .from("mantenimientos")
-      .select("maquinaria_id, costo_total")
-      .in("maquinaria_id", maqIds)
-      .gte("fecha", inicioMes)
-      .lte("fecha", finMes);
-    mantenimientos = (data || []) as typeof mantenimientos;
+    const [mantRes, nombresRes] = await Promise.all([
+      supabase
+        .from("mantenimientos")
+        .select("maquinaria_id, costo_total")
+        .in("maquinaria_id", maqIds)
+        .gte("fecha", inicioMes)
+        .lte("fecha", finMes),
+      supabase.from("maquinarias").select("id, nombre, codigo, patente").in("id", maqIds),
+    ]);
+    mantenimientos = (mantRes.data || []) as typeof mantenimientos;
+    ((nombresRes.data || []) as any[]).forEach((m) => {
+      maqNombres[m.id] = m.nombre || m.codigo || m.patente || "Sin identificar";
+    });
   }
 
   const maqObra: Record<string, string | null> = {};
   maquinarias.forEach((m) => (maqObra[m.id] = m.obra_id));
+  // Si la máquina no tiene obra en su ficha, se usa la obra de su parte diario
+  partes.forEach((p) => {
+    if (p.maquinaria_id && !maqObra[p.maquinaria_id]) maqObra[p.maquinaria_id] = p.obra_id;
+  });
 
   const precios: Record<string, number> = {};
   ((preciosRes.data || []) as any[]).forEach((p) => {
     precios[p.producto] = num(p.precio_unitario);
   });
 
-  const partes = (partesRes.data || []) as any[];
   const gastos = (gastosRes.data || []) as any[];
   const combustible = (combRes.data || []) as any[];
 
@@ -142,12 +163,22 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       0
     );
 
-    const gastosMes =
-      gastos.filter((g) => g.obra_id === obra.id).reduce((s, g) => s + num(g.monto), 0) +
-      mantenimientos
-        .filter((m) => maqObra[m.maquinaria_id] === obra.id)
-        .reduce((s, m) => s + num(m.costo_total), 0) +
-      costoCombustible;
+    const costoOtros = gastos.filter((g) => g.obra_id === obra.id).reduce((s, g) => s + num(g.monto), 0);
+    const costoMantenimiento = mantenimientos
+      .filter((m) => maqObra[m.maquinaria_id] === obra.id)
+      .reduce((s, m) => s + num(m.costo_total), 0);
+    const gastosMes = costoOtros + costoMantenimiento + costoCombustible;
+
+    const horasMaq: Record<string, number> = {};
+    partesObra.forEach((p) => {
+      if (!p.maquinaria_id) return;
+      const h = num(p.horometro_fin) - num(p.horometro_inicio);
+      if (h > 0 && h < 24) horasMaq[p.maquinaria_id] = (horasMaq[p.maquinaria_id] || 0) + h;
+    });
+    const horasPorMaquina = Object.entries(horasMaq)
+      .map(([id, h]) => ({ nombre: maqNombres[id] || "Sin identificar", horas: Number(h.toFixed(1)) }))
+      .sort((a, b) => b.horas - a.horas)
+      .slice(0, 6);
 
     const alertas = partesHoy
       .filter((p) => p.estado_maquina === "OBSERVACION")
@@ -165,6 +196,9 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       viajesMes: viajesRemitos(remitosObra),
       litrosMes,
       costoCombustible,
+      costoMantenimiento,
+      costoOtros,
+      horasPorMaquina,
       maquinariasTotal: new Set([
         ...partesObra.map((p) => p.maquinaria_id).filter(Boolean),
         ...maqObraList.map((m) => m.id),

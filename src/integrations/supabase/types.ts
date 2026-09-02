@@ -3238,6 +3238,54 @@ export type Database = {
         }
         Relationships: []
       }
+      tablero_sesiones: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          mes: string
+          metrica: string
+          nombre: string
+          obra_activa: string | null
+          obra_ids: string[]
+          refresh_token: number
+          rotacion_activa: boolean
+          rotacion_segundos: number
+          tv_ping_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mes?: string
+          metrica?: string
+          nombre?: string
+          obra_activa?: string | null
+          obra_ids?: string[]
+          refresh_token?: number
+          rotacion_activa?: boolean
+          rotacion_segundos?: number
+          tv_ping_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          mes?: string
+          metrica?: string
+          nombre?: string
+          obra_activa?: string | null
+          obra_ids?: string[]
+          refresh_token?: number
+          rotacion_activa?: boolean
+          rotacion_segundos?: number
+          tv_ping_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
