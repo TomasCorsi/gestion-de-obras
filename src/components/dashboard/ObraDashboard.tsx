@@ -408,40 +408,162 @@ export function ObraDashboard({
           </ChartCard>
         </div>
 
-        <div className="grid grid-rows-2 gap-2 min-h-0">
-          <ChartCard titulo="Composición de gastos" extra={formatCurrency(obra.gastosMes)} tv={tv}>
+        <div className="grid grid-rows-[auto_1fr_1fr] gap-2 min-h-0">
+          {/* Rentabilidad: cotizado vs gastado */}
+          <Card className="card-industrial p-2">
+            <div className="flex items-center justify-between px-1 pb-1">
+              <span
+                className={cn(
+                  "uppercase tracking-wide text-muted-foreground",
+                  tv ? "text-sm" : "text-[11px]"
+                )}
+              >
+                Rentabilidad de la obra
+              </span>
+              {cotizado > 0 && (
+                <span
+                  className={cn(
+                    "font-mono-numbers font-bold",
+                    beneficio >= 0 ? "text-success" : "text-destructive",
+                    tv ? "text-base" : "text-xs"
+                  )}
+                >
+                  {beneficio >= 0 ? "+" : ""}
+                  {margen.toFixed(0)}%
+                </span>
+              )}
+            </div>
+
+            {cotizado === 0 ? (
+              <p
+                className={cn(
+                  "px-1 py-2 text-muted-foreground",
+                  tv ? "text-base" : "text-xs"
+                )}
+              >
+                Sin cotización aprobada
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2 px-1">
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Cotizado</p>
+                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
+                      {formatCurrency(cotizado)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Gastado</p>
+                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
+                      {formatCurrency(gastadoHistorico)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Beneficio</p>
+                    <p
+                      className={cn(
+                        "font-bold font-mono-numbers flex items-center gap-1",
+                        beneficio >= 0 ? "text-success" : "text-destructive",
+                        tv ? "text-2xl" : "text-base"
+                      )}
+                    >
+                      {beneficio >= 0 ? (
+                        <TrendingUp className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
+                      ) : (
+                        <TrendingDown className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
+                      )}
+                      {formatCurrency(beneficio)}
+                    </p>
+                  </div>
+                </div>
+                <div className="px-1 mt-2">
+                  <div className={cn("w-full rounded-full bg-muted overflow-hidden", tv ? "h-3" : "h-2")}>
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        consumido >= 100 ? "bg-destructive" : consumido >= 80 ? "bg-warning" : "bg-success"
+                      )}
+                      style={{ width: `${consumido}%` }}
+                    />
+                  </div>
+                  <p className={cn("text-muted-foreground mt-1", tv ? "text-sm" : "text-[10px]")}>
+                    {consumido.toFixed(0)}% del monto cotizado ya consumido en gastos
+                  </p>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <ChartCard titulo="Gastos por categoría" extra={formatCurrency(obra.gastosMes)} tv={tv}>
             {gastos.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 Sin gastos cargados
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={gastos}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius="45%"
-                    outerRadius="75%"
-                    paddingAngle={2}
-                  >
-                    {gastos.map((g, i) => (
-                      <Cell key={g.name} fill={GASTO_COLORS[i % GASTO_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    verticalAlign="bottom"
-                    height={tv ? 28 : 20}
-                    wrapperStyle={{ fontSize: tv ? 13 : 10 }}
-                  />
-                  <RTooltip
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number, n: string) => [formatCurrency(v), n]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="h-full flex items-stretch gap-2 min-h-0">
+                <div className="w-1/2 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={gastos}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="42%"
+                        outerRadius="78%"
+                        paddingAngle={2}
+                        isAnimationActive={false}
+                        labelLine={false}
+                        label={({ percent }: { percent?: number }) =>
+                          (percent || 0) >= 0.08 ? `${Math.round((percent || 0) * 100)}%` : ""
+                        }
+                        fontSize={tv ? 14 : 10}
+                      >
+                        {gastos.map((g, i) => (
+                          <Cell key={g.name} fill={GASTO_COLORS[i % GASTO_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      {mostrarTooltip && (
+                        <RTooltip
+                          contentStyle={tooltipStyle(tv)}
+                          formatter={(v: number, n: string) => [formatCurrency(v), n]}
+                        />
+                      )}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Detalle siempre visible: no depende del mouse */}
+                <div className="w-1/2 flex flex-col justify-center gap-1 min-w-0 overflow-hidden">
+                  {gastos.map((g, i) => (
+                    <div key={g.name} className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: GASTO_COLORS[i % GASTO_COLORS.length] }}
+                      />
+                      <span className={cn("truncate flex-1", tv ? "text-base" : "text-[11px]")}>{g.name}</span>
+                      <span
+                        className={cn(
+                          "font-mono-numbers font-semibold shrink-0",
+                          tv ? "text-base" : "text-[11px]"
+                        )}
+                      >
+                        {formatCurrency(g.value)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-muted-foreground font-mono-numbers shrink-0 w-9 text-right",
+                          tv ? "text-sm" : "text-[10px]"
+                        )}
+                      >
+                        {totalGastos > 0 ? Math.round((g.value / totalGastos) * 100) : 0}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </ChartCard>
+
 
           <ChartCard titulo="Horas por maquinaria" tv={tv}>
             {obra.horasPorMaquina.length === 0 ? (
