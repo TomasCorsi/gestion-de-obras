@@ -89,14 +89,27 @@ export function CotizacionFormContent({
   useEffect(() => {
     const iva = baseImponible * 0.21;
     const total = baseImponible + iva;
+    const primero = anticiposCalc[0];
+    const tipoLegacy = primero ? primero.tipo : "ninguno";
+    const valorLegacy = primero ? primero.valor || 0 : 0;
     if (
       (formData.anticipo_monto ?? 0) !== anticipoMonto ||
       formData.iva !== iva ||
-      formData.total !== total
+      formData.total !== total ||
+      (formData.anticipo_tipo || "ninguno") !== tipoLegacy ||
+      (formData.anticipo_valor ?? 0) !== valorLegacy
     ) {
-      setFormData({ ...formData, anticipo_monto: anticipoMonto, iva, total });
+      setFormData({
+        ...formData,
+        anticipo_monto: anticipoMonto,
+        anticipo_tipo: tipoLegacy,
+        anticipo_valor: valorLegacy,
+        iva,
+        total,
+      });
     }
-  }, [anticipoMonto, formData.subtotal]);
+  }, [anticipoMonto, formData.subtotal, anticipos]);
+
 
   // Mantener sincronizados los montos calculados en el estado de anticipos
   useEffect(() => {
