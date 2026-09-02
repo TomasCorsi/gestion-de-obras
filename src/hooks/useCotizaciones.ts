@@ -187,11 +187,30 @@ export function useCotizaciones() {
     setLoading(false);
   };
 
+  const guardarAnticipos = async (cotizacionId: string, anticipos: CotizacionAnticipoForm[]) => {
+    await supabase.from("cotizacion_anticipos").delete().eq("cotizacion_id", cotizacionId);
+    const validos = (anticipos || []).filter((a) => (a.valor || 0) > 0);
+    if (validos.length === 0) return;
+    const { error } = await supabase.from("cotizacion_anticipos").insert(
+      validos.map((a, i) => ({
+        cotizacion_id: cotizacionId,
+        descripcion: a.descripcion || "Anticipo",
+        tipo: a.tipo,
+        valor: a.valor,
+        monto: a.monto,
+        orden: i,
+      }))
+    );
+    if (error) console.error("Error guardando anticipos:", error);
+  };
+
   const createCotizacion = async (
     cot: CotizacionForm, 
     categorias: CotizacionCategoriaForm[], 
-    items: CotizacionItemForm[]
+    items: CotizacionItemForm[],
+    anticipos: CotizacionAnticipoForm[] = []
   ) => {
+
     // 1. Create the cotizacion
     const { data: cotData, error: cotError } = await supabase
       .from("cotizaciones")
