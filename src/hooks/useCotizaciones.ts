@@ -395,6 +395,12 @@ export function useCotizaciones() {
       }
     }
 
+    if (anticipos !== undefined) {
+      await guardarAnticipos(id, anticipos);
+    }
+
+
+
     toast.success("Cotización actualizada correctamente");
     await fetchCotizaciones();
     return true;
