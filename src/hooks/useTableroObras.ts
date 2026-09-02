@@ -58,7 +58,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     supabase.from("obras").select("id, nombre, estado, ubicacion").in("id", obraIds),
     supabase
       .from("partes_diarios")
-      .select("obra_id, fecha, personal_id, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin, estado_maquina, observacion_maquina")
+      .select("obra_id, fecha, personal_id, maquinaria_id, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin, estado_maquina, observacion_maquina")
       .in("obra_id", obraIds)
       .gte("fecha", inicioMes)
       .lte("fecha", finMes),
