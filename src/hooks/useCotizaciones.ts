@@ -293,6 +293,9 @@ export function useCotizaciones() {
       }
     }
 
+    // 4. Anticipos
+    await guardarAnticipos(cotData.id, anticipos);
+
     toast.success("Cotización creada correctamente");
     await fetchCotizaciones();
     return cotData;
@@ -302,7 +305,9 @@ export function useCotizaciones() {
     id: string, 
     cot: Partial<CotizacionForm>,
     categorias?: CotizacionCategoriaForm[],
-    items?: CotizacionItemForm[]
+    items?: CotizacionItemForm[],
+    anticipos?: CotizacionAnticipoForm[]
+
   ) => {
     // Update the cotizacion
     const sanitized: Record<string, any> = { ...cot };
