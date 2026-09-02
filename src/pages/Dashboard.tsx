@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { useObrasSeleccionadas, MAX_OBRAS } from "@/hooks/useObrasSeleccionadas";
 import { useTableroObras } from "@/hooks/useTableroObras";
 import { useTableroSeries, MetricaSerie } from "@/hooks/useTableroSeries";
+import { useTableroHistorico } from "@/hooks/useTableroHistorico";
 import { useTableroRealtime } from "@/hooks/useTableroRealtime";
 import { useAutoRotacion } from "@/hooks/useAutoRotacion";
 import { format, subMonths, parseISO } from "date-fns";
@@ -81,6 +82,7 @@ export default function Dashboard() {
     mes,
     conectado ? 300000 : 60000
   );
+  const { historico } = useTableroHistorico(obrasMeta);
   const [metrica, setMetrica] = useState<MetricaSerie>("m3");
   const periodoLabel = esMesActual ? "hoy" : "mes";
 
@@ -274,7 +276,12 @@ export default function Dashboard() {
   );
 
   const paneles = (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 h-full min-h-0">
+    <div
+      className={cn(
+        "grid gap-3 h-full min-h-0",
+        obras.length === 1 ? "grid-cols-1" : obras.length === 2 ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1 lg:grid-cols-3"
+      )}
+    >
       {obras.map((obra, i) => (
         <ObraPanel
           key={obra.obraId}
@@ -285,6 +292,8 @@ export default function Dashboard() {
           metrica={metrica}
           serie={series[metrica] || []}
           loadingSerie={loadingSeries}
+          columnas={obras.length}
+          historico={historico[obra.obraId]}
           destacada={obraDestacada < 0 || !rot.activo ? undefined : obraDestacada === i}
         />
       ))}

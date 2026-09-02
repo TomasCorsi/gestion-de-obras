@@ -1,5 +1,6 @@
 import { ObraTableroData } from "@/hooks/useTableroObras";
 import { MetricaSerie, SeriePunto, SERIE_COLORS } from "@/hooks/useTableroSeries";
+import { HistoricoObra } from "@/hooks/useTableroHistorico";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -28,21 +29,33 @@ interface MetricProps {
   icon: typeof Truck;
   label: string;
   value: string;
+  sub?: string;
   tv?: boolean;
+  grande?: boolean;
 }
 
-function Metric({ icon: Icon, label, value, tv }: MetricProps) {
+function Metric({ icon: Icon, label, value, sub, tv, grande }: MetricProps) {
   return (
     <div className="rounded-lg border border-border bg-card/60 px-2 py-1.5 min-w-0">
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Icon className={cn("w-3.5 h-3.5 shrink-0", tv && "w-4 h-4")} />
-        <span className={cn("truncate uppercase tracking-wide", tv ? "text-xs" : "text-[10px]")}>
+        <Icon className={cn("w-3.5 h-3.5 shrink-0", (tv || grande) && "w-4 h-4")} />
+        <span className={cn("truncate uppercase tracking-wide", tv || grande ? "text-xs" : "text-[10px]")}>
           {label}
         </span>
       </div>
-      <p className={cn("font-bold font-mono-numbers text-foreground leading-tight", tv ? "text-2xl" : "text-base")}>
+      <p
+        className={cn(
+          "font-bold font-mono-numbers text-foreground leading-tight",
+          tv ? "text-2xl" : grande ? "text-xl" : "text-base"
+        )}
+      >
         {value}
       </p>
+      {sub !== undefined && (
+        <p className={cn("text-muted-foreground font-mono-numbers leading-tight", tv ? "text-sm" : "text-[10px]")}>
+          Hist. {sub}
+        </p>
+      )}
     </div>
   );
 }
@@ -63,6 +76,8 @@ interface Props {
   serie: SeriePunto[];
   loadingSerie?: boolean;
   destacada?: boolean;
+  columnas?: number;
+  historico?: HistoricoObra;
 }
 
 export function ObraPanel({
@@ -74,11 +89,16 @@ export function ObraPanel({
   serie,
   loadingSerie,
   destacada,
+  columnas = 3,
+  historico,
 }: Props) {
   const color = SERIE_COLORS[index % SERIE_COLORS.length];
   const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
   const totalSerie = data.reduce((s, d) => s + d.valor, 0);
   const decimales = metrica === "movimientos" ? 0 : 1;
+  const grande = columnas < 3;
+  const gridMetricas =
+    columnas === 1 ? "grid-cols-4 xl:grid-cols-8" : columnas === 2 ? "grid-cols-4" : "grid-cols-4";
 
   return (
     <Card
@@ -131,7 +151,7 @@ export function ObraPanel({
             {nf(totalSerie, decimales)}
           </span>
         </div>
-        <div className="flex-1 min-h-[70px]">
+        <div className={cn("flex-1", grande ? "min-h-[140px]" : "min-h-[70px]")}>
           {loadingSerie ? (
             <div className="h-full bg-muted/40 rounded animate-pulse" />
           ) : totalSerie === 0 ? (
@@ -145,7 +165,7 @@ export function ObraPanel({
                 <XAxis
                   dataKey="label"
                   stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: tv ? 12 : 9 }}
+                  tick={{ fontSize: tv ? 12 : grande ? 11 : 9 }}
                   interval="preserveStartEnd"
                   minTickGap={12}
                 />
@@ -167,20 +187,71 @@ export function ObraPanel({
         </div>
       </div>
 
-      <div className={cn("grid grid-cols-4 gap-2 shrink-0", tv && "gap-3")}>
-        <Metric icon={Activity} label={`Movim. ${periodoLabel}`} value={nf(obra.movimientosHoy)} tv={tv} />
-        <Metric icon={Boxes} label="m³ período" value={nf(obra.m3Mes, 1)} tv={tv} />
-        <Metric icon={Clock} label="Horas período" value={nf(obra.horasMes, 1)} tv={tv} />
-        <Metric icon={Fuel} label="Litros" value={nf(obra.litrosMes)} tv={tv} />
+      <div className={cn("grid gap-2 shrink-0", gridMetricas, tv && "gap-3")}>
+        <Metric
+          icon={Activity}
+          label={`Movim. ${periodoLabel}`}
+          value={nf(obra.movimientosHoy)}
+          sub={historico && nf(historico.movimientos)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Boxes}
+          label="m³ período"
+          value={nf(obra.m3Mes, 1)}
+          sub={historico && nf(historico.m3, 1)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Clock}
+          label="Horas período"
+          value={nf(obra.horasMes, 1)}
+          sub={historico && nf(historico.horas, 1)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Fuel}
+          label="Litros"
+          value={nf(obra.litrosMes)}
+          sub={historico && nf(historico.litros)}
+          tv={tv}
+          grande={grande}
+        />
         <Metric
           icon={Truck}
           label="Maquinaria"
           value={`${nf(obra.maquinariasEnUso)}/${nf(obra.maquinariasTotal)}`}
+          sub={historico && nf(historico.maquinarias)}
           tv={tv}
+          grande={grande}
         />
-        <Metric icon={Users} label={`Personal ${periodoLabel}`} value={nf(obra.personalHoy)} tv={tv} />
-        <Metric icon={Activity} label="Viajes remitos" value={nf(obra.viajesMes)} tv={tv} />
-        <Metric icon={DollarSign} label="Gastos período" value={formatCurrency(obra.gastosMes)} tv={tv} />
+        <Metric
+          icon={Users}
+          label={`Personal ${periodoLabel}`}
+          value={nf(obra.personalHoy)}
+          sub={historico && nf(historico.personal)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Activity}
+          label="Viajes remitos"
+          value={nf(obra.viajesMes)}
+          sub={historico && nf(historico.viajes)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={DollarSign}
+          label="Gastos período"
+          value={formatCurrency(obra.gastosMes)}
+          sub={historico && formatCurrency(historico.gastos)}
+          tv={tv}
+          grande={grande}
+        />
       </div>
     </Card>
   );

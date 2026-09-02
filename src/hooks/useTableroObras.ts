@@ -58,7 +58,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     supabase.from("obras").select("id, nombre, estado, ubicacion").in("id", obraIds),
     supabase
       .from("partes_diarios")
-      .select("obra_id, fecha, personal_id, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin, estado_maquina, observacion_maquina")
+      .select("obra_id, fecha, personal_id, maquinaria_id, cantidad_viajes, cantidad_movimiento_interno, horometro_inicio, horometro_fin, estado_maquina, observacion_maquina")
       .in("obra_id", obraIds)
       .gte("fecha", inicioMes)
       .lte("fecha", finMes),
@@ -165,8 +165,11 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       viajesMes: viajesRemitos(remitosObra),
       litrosMes,
       costoCombustible,
-      maquinariasTotal: maqObraList.length,
-      maquinariasEnUso: maqObraList.filter((m) => m.estado === "en_uso" || m.estado === "operativa").length,
+      maquinariasTotal: new Set([
+        ...partesObra.map((p) => p.maquinaria_id).filter(Boolean),
+        ...maqObraList.map((m) => m.id),
+      ]).size,
+      maquinariasEnUso: new Set(partesHoy.map((p) => p.maquinaria_id).filter(Boolean)).size,
       horasHoy: horas(partesHoy),
       horasMes: horas(partesObra),
       personalHoy: new Set(partesHoy.map((p) => p.personal_id)).size,
