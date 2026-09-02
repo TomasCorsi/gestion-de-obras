@@ -151,7 +151,7 @@ export function ObraPanel({
             {nf(totalSerie, decimales)}
           </span>
         </div>
-        <div className="flex-1 min-h-[70px]">
+        <div className={cn("flex-1", grande ? "min-h-[140px]" : "min-h-[70px]")}>
           {loadingSerie ? (
             <div className="h-full bg-muted/40 rounded animate-pulse" />
           ) : totalSerie === 0 ? (
@@ -165,7 +165,7 @@ export function ObraPanel({
                 <XAxis
                   dataKey="label"
                   stroke="hsl(var(--muted-foreground))"
-                  tick={{ fontSize: tv ? 12 : 9 }}
+                  tick={{ fontSize: tv ? 12 : grande ? 11 : 9 }}
                   interval="preserveStartEnd"
                   minTickGap={12}
                 />
@@ -187,20 +187,71 @@ export function ObraPanel({
         </div>
       </div>
 
-      <div className={cn("grid grid-cols-4 gap-2 shrink-0", tv && "gap-3")}>
-        <Metric icon={Activity} label={`Movim. ${periodoLabel}`} value={nf(obra.movimientosHoy)} tv={tv} />
-        <Metric icon={Boxes} label="m³ período" value={nf(obra.m3Mes, 1)} tv={tv} />
-        <Metric icon={Clock} label="Horas período" value={nf(obra.horasMes, 1)} tv={tv} />
-        <Metric icon={Fuel} label="Litros" value={nf(obra.litrosMes)} tv={tv} />
+      <div className={cn("grid gap-2 shrink-0", gridMetricas, tv && "gap-3")}>
+        <Metric
+          icon={Activity}
+          label={`Movim. ${periodoLabel}`}
+          value={nf(obra.movimientosHoy)}
+          sub={historico && nf(historico.movimientos)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Boxes}
+          label="m³ período"
+          value={nf(obra.m3Mes, 1)}
+          sub={historico && nf(historico.m3, 1)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Clock}
+          label="Horas período"
+          value={nf(obra.horasMes, 1)}
+          sub={historico && nf(historico.horas, 1)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Fuel}
+          label="Litros"
+          value={nf(obra.litrosMes)}
+          sub={historico && nf(historico.litros)}
+          tv={tv}
+          grande={grande}
+        />
         <Metric
           icon={Truck}
           label="Maquinaria"
           value={`${nf(obra.maquinariasEnUso)}/${nf(obra.maquinariasTotal)}`}
+          sub={historico && nf(historico.maquinarias)}
           tv={tv}
+          grande={grande}
         />
-        <Metric icon={Users} label={`Personal ${periodoLabel}`} value={nf(obra.personalHoy)} tv={tv} />
-        <Metric icon={Activity} label="Viajes remitos" value={nf(obra.viajesMes)} tv={tv} />
-        <Metric icon={DollarSign} label="Gastos período" value={formatCurrency(obra.gastosMes)} tv={tv} />
+        <Metric
+          icon={Users}
+          label={`Personal ${periodoLabel}`}
+          value={nf(obra.personalHoy)}
+          sub={historico && nf(historico.personal)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={Activity}
+          label="Viajes remitos"
+          value={nf(obra.viajesMes)}
+          sub={historico && nf(historico.viajes)}
+          tv={tv}
+          grande={grande}
+        />
+        <Metric
+          icon={DollarSign}
+          label="Gastos período"
+          value={formatCurrency(obra.gastosMes)}
+          sub={historico && formatCurrency(historico.gastos)}
+          tv={tv}
+          grande={grande}
+        />
       </div>
     </Card>
   );
