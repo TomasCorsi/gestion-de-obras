@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, subDays } from "date-fns";
 
 const STORAGE_KEY = "tablero_obras_seleccionadas";
-export const MAX_OBRAS = 3;
+export const MAX_OBRAS = 12;
+/** Cantidad de obras que se sugieren automáticamente la primera vez */
+export const MAX_SUGERIDAS = 3;
 
 function readStored(): string[] | null {
   try {
@@ -47,7 +49,7 @@ const fetchObrasSugeridas = async (): Promise<string[]> => {
     return (b.created_at || "").localeCompare(a.created_at || "");
   });
 
-  return ordenadas.slice(0, MAX_OBRAS).map((o) => o.id);
+  return ordenadas.slice(0, MAX_SUGERIDAS).map((o) => o.id);
 };
 
 export function useObrasSeleccionadas() {
