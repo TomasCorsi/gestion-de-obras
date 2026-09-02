@@ -50,6 +50,7 @@ import {
   CotizacionForm, 
   CotizacionItemForm, 
   CotizacionCategoriaForm,
+  CotizacionAnticipoForm,
   EstadoCotizacion 
 } from "@/hooks/useCotizaciones";
 import { useObras } from "@/hooks/useObras";
@@ -116,6 +117,7 @@ export default function Cotizaciones() {
 
   const [categorias, setCategorias] = useState<CotizacionCategoriaForm[]>([]);
   const [items, setItems] = useState<CotizacionItemForm[]>([]);
+  const [anticipos, setAnticipos] = useState<CotizacionAnticipoForm[]>([]);
 
   const filteredCotizaciones = cotizaciones.filter((cot) => {
     const term = searchTerm.toLowerCase();
@@ -163,6 +165,7 @@ export default function Cotizaciones() {
     });
     setCategorias([]);
     setItems([]);
+    setAnticipos([]);
     setFormOpen(true);
   };
 
@@ -230,6 +233,16 @@ export default function Cotizaciones() {
     
     setCategorias(mappedCategorias);
     setItems(mappedItems);
+    setAnticipos(
+      [...(cot.anticipos || [])]
+        .sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+        .map((a) => ({
+          descripcion: a.descripcion || "",
+          tipo: a.tipo || "monto",
+          valor: Number(a.valor) || 0,
+          monto: Number(a.monto) || 0,
+        }))
+    );
     setFormOpen(true);
   };
 
@@ -255,9 +268,9 @@ export default function Cotizaciones() {
     setIsSubmitting(true);
     
     if (isEditing && selectedCot) {
-      await updateCotizacion(selectedCot.id, formData, categorias, items);
+      await updateCotizacion(selectedCot.id, formData, categorias, items, anticipos);
     } else {
-      await createCotizacion(formData, categorias, items);
+      await createCotizacion(formData, categorias, items, anticipos);
     }
     
     setIsSubmitting(false);
@@ -470,6 +483,8 @@ export default function Cotizaciones() {
           setCategorias={setCategorias}
           items={items}
           setItems={setItems}
+          anticipos={anticipos}
+          setAnticipos={setAnticipos}
           obras={obras}
           isEditing={isEditing}
           isSubmitting={isSubmitting}
@@ -547,6 +562,7 @@ export default function Cotizaciones() {
                   anticipoMonto={selectedCot.anticipo_monto}
                   anticipoTipo={selectedCot.anticipo_tipo}
                   anticipoValor={selectedCot.anticipo_valor}
+                  anticipos={selectedCot.anticipos}
                 />
               </div>
             )}

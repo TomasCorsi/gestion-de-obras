@@ -1152,6 +1152,47 @@ export type Database = {
         }
         Relationships: []
       }
+      cotizacion_anticipos: {
+        Row: {
+          cotizacion_id: string
+          created_at: string
+          descripcion: string
+          id: string
+          monto: number
+          orden: number
+          tipo: string
+          valor: number
+        }
+        Insert: {
+          cotizacion_id: string
+          created_at?: string
+          descripcion?: string
+          id?: string
+          monto?: number
+          orden?: number
+          tipo?: string
+          valor?: number
+        }
+        Update: {
+          cotizacion_id?: string
+          created_at?: string
+          descripcion?: string
+          id?: string
+          monto?: number
+          orden?: number
+          tipo?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cotizacion_anticipos_cotizacion_id_fkey"
+            columns: ["cotizacion_id"]
+            isOneToOne: false
+            referencedRelation: "cotizaciones"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cotizacion_categorias: {
         Row: {
           cotizacion_id: string

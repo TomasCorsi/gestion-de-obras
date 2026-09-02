@@ -51,11 +51,30 @@ export interface CotizacionItemDB {
   created_at: string;
 }
 
+export interface CotizacionAnticipoDB {
+  id: string;
+  cotizacion_id: string;
+  descripcion: string;
+  tipo: string; // 'porcentaje' | 'monto'
+  valor: number;
+  monto: number;
+  orden: number;
+}
+
+export interface CotizacionAnticipoForm {
+  descripcion: string;
+  tipo: string; // 'porcentaje' | 'monto'
+  valor: number;
+  monto: number;
+}
+
 export interface CotizacionWithRelations extends CotizacionDB {
   obra?: { nombre: string };
   items?: CotizacionItemDB[];
   categorias?: CotizacionCategoriaDB[];
+  anticipos?: CotizacionAnticipoDB[];
 }
+
 
 export interface CotizacionForm {
   numero: string;
@@ -153,7 +172,9 @@ export function useCotizaciones() {
         *,
         obra:obras(nombre),
         items:cotizacion_items(*),
-        categorias:cotizacion_categorias(*)
+        categorias:cotizacion_categorias(*),
+        anticipos:cotizacion_anticipos(*)
+
       `)
       .order("created_at", { ascending: false }) as any);
 
@@ -166,11 +187,30 @@ export function useCotizaciones() {
     setLoading(false);
   };
 
+  const guardarAnticipos = async (cotizacionId: string, anticipos: CotizacionAnticipoForm[]) => {
+    await supabase.from("cotizacion_anticipos").delete().eq("cotizacion_id", cotizacionId);
+    const validos = (anticipos || []).filter((a) => (a.valor || 0) > 0);
+    if (validos.length === 0) return;
+    const { error } = await supabase.from("cotizacion_anticipos").insert(
+      validos.map((a, i) => ({
+        cotizacion_id: cotizacionId,
+        descripcion: a.descripcion || "Anticipo",
+        tipo: a.tipo,
+        valor: a.valor,
+        monto: a.monto,
+        orden: i,
+      }))
+    );
+    if (error) console.error("Error guardando anticipos:", error);
+  };
+
   const createCotizacion = async (
     cot: CotizacionForm, 
     categorias: CotizacionCategoriaForm[], 
-    items: CotizacionItemForm[]
+    items: CotizacionItemForm[],
+    anticipos: CotizacionAnticipoForm[] = []
   ) => {
+
     // 1. Create the cotizacion
     const { data: cotData, error: cotError } = await supabase
       .from("cotizaciones")
@@ -253,6 +293,9 @@ export function useCotizaciones() {
       }
     }
 
+    // 4. Anticipos
+    await guardarAnticipos(cotData.id, anticipos);
+
     toast.success("Cotización creada correctamente");
     await fetchCotizaciones();
     return cotData;
@@ -262,7 +305,9 @@ export function useCotizaciones() {
     id: string, 
     cot: Partial<CotizacionForm>,
     categorias?: CotizacionCategoriaForm[],
-    items?: CotizacionItemForm[]
+    items?: CotizacionItemForm[],
+    anticipos?: CotizacionAnticipoForm[]
+
   ) => {
     // Update the cotizacion
     const sanitized: Record<string, any> = { ...cot };
@@ -349,6 +394,12 @@ export function useCotizaciones() {
         }
       }
     }
+
+    if (anticipos !== undefined) {
+      await guardarAnticipos(id, anticipos);
+    }
+
+
 
     toast.success("Cotización actualizada correctamente");
     await fetchCotizaciones();

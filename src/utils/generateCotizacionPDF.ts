@@ -298,10 +298,16 @@ export async function generateCotizacionPDF(
   yPos = (doc as any).lastAutoTable.finalY + 3;
 
   // ============== TOTALS ==============
-  // El anticipo se descuenta del subtotal (base imponible) antes del IVA
-  const anticipoMonto = (cotizacion as any).anticipo_monto || 0;
+  // Los anticipos se descuentan del subtotal (base imponible) antes del IVA
+  const anticiposRaw: any[] = (cotizacion as any).anticipos || [];
   const anticipoTipo = (cotizacion as any).anticipo_tipo;
   const anticipoValor = (cotizacion as any).anticipo_valor || 0;
+  const listaAnticipos = anticiposRaw.length > 0
+    ? [...anticiposRaw].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    : ((cotizacion as any).anticipo_monto || 0) > 0
+      ? [{ descripcion: "Anticipo", tipo: anticipoTipo, valor: anticipoValor, monto: (cotizacion as any).anticipo_monto }]
+      : [];
+  const anticipoMonto = listaAnticipos.reduce((s, a) => s + Number(a.monto || 0), 0);
   const baseImponible = cotizacion.subtotal - anticipoMonto;
   const ivaCalc = baseImponible * 0.21;
   const totalCalc = baseImponible + ivaCalc;
@@ -313,19 +319,19 @@ export async function generateCotizacionPDF(
   doc.text(formatCurrency(cotizacion.subtotal, moneda), pageWidth - margin, yPos, { align: "right" });
   yPos += 4;
 
-if (anticipoMonto > 0) {
-    doc.text(
-      anticipoTipo === "porcentaje" ? `Anticipo (${anticipoValor}%):` : "Anticipo:",
-      totalsStartX,
-      yPos
-    );
-    doc.text(`- ${formatCurrency(anticipoMonto, moneda)}`, pageWidth - margin, yPos, { align: "right" });
-    yPos += 4;
+  if (anticipoMonto > 0) {
+    listaAnticipos.forEach((a) => {
+      const label = `${a.descripcion || "Anticipo"}${a.tipo === "porcentaje" ? ` (${a.valor}%)` : ""}:`;
+      doc.text(label, totalsStartX, yPos);
+      doc.text(`- ${formatCurrency(Number(a.monto || 0), moneda)}`, pageWidth - margin, yPos, { align: "right" });
+      yPos += 4;
+    });
 
-    doc.text("Subtotal - Anticipo:", totalsStartX, yPos);
+    doc.text("Subtotal - Anticipos:", totalsStartX, yPos);
     doc.text(formatCurrency(baseImponible, moneda), pageWidth - margin, yPos, { align: "right" });
     yPos += 4;
   }
+
 
   doc.text("IVA (21%):", totalsStartX, yPos);
   doc.text(formatCurrency(ivaCalc, moneda), pageWidth - margin, yPos, { align: "right" });

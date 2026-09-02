@@ -16,11 +16,13 @@ import {
   CotizacionForm,
   CotizacionCategoriaForm,
   CotizacionItemForm,
+  CotizacionAnticipoForm,
   EstadoCotizacion,
   UNIDADES,
   calcularM3,
   calcularTotalItem,
 } from "@/hooks/useCotizaciones";
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const estadoConfig: Record<string, { label: string }> = {
@@ -46,6 +48,8 @@ interface CotizacionFormContentProps {
   setCategorias: (cats: CotizacionCategoriaForm[]) => void;
   items: CotizacionItemForm[];
   setItems: (items: CotizacionItemForm[]) => void;
+  anticipos: CotizacionAnticipoForm[];
+  setAnticipos: (a: CotizacionAnticipoForm[]) => void;
   obras: { id: string; nombre: string }[];
   isEditing: boolean;
   isSubmitting: boolean;
@@ -60,6 +64,8 @@ export function CotizacionFormContent({
   setCategorias,
   items,
   setItems,
+  anticipos,
+  setAnticipos,
   obras,
   isEditing,
   isSubmitting,
@@ -72,29 +78,52 @@ export function CotizacionFormContent({
   const [dragOverCat, setDragOverCat] = useState<number | null>(null);
   const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
 
-  // Anticipo (por porcentaje o monto fijo)
-  const anticipoTipo = formData.anticipo_tipo || "ninguno";
-  const anticipoValor = formData.anticipo_valor ?? 0;
+  // Anticipos (varios; cada uno por porcentaje o monto fijo)
+  const calcMonto = (a: CotizacionAnticipoForm) =>
+    a.tipo === "porcentaje" ? (formData.subtotal * (a.valor || 0)) / 100 : a.valor || 0;
+  const anticiposCalc = anticipos.map((a) => ({ ...a, monto: calcMonto(a) }));
+  const anticipoMonto = anticiposCalc.reduce((s, a) => s + a.monto, 0);
   // El anticipo se descuenta del subtotal (base imponible) antes del IVA
-  const anticipoMonto =
-    anticipoTipo === "porcentaje"
-      ? (formData.subtotal * anticipoValor) / 100
-      : anticipoTipo === "monto"
-      ? anticipoValor
-      : 0;
   const baseImponible = formData.subtotal - anticipoMonto;
 
   useEffect(() => {
     const iva = baseImponible * 0.21;
     const total = baseImponible + iva;
+    const primero = anticiposCalc[0];
+    const tipoLegacy = primero ? primero.tipo : "ninguno";
+    const valorLegacy = primero ? primero.valor || 0 : 0;
     if (
       (formData.anticipo_monto ?? 0) !== anticipoMonto ||
       formData.iva !== iva ||
-      formData.total !== total
+      formData.total !== total ||
+      (formData.anticipo_tipo || "ninguno") !== tipoLegacy ||
+      (formData.anticipo_valor ?? 0) !== valorLegacy
     ) {
-      setFormData({ ...formData, anticipo_monto: anticipoMonto, iva, total });
+      setFormData({
+        ...formData,
+        anticipo_monto: anticipoMonto,
+        anticipo_tipo: tipoLegacy,
+        anticipo_valor: valorLegacy,
+        iva,
+        total,
+      });
     }
+  }, [anticipoMonto, formData.subtotal, anticipos]);
+
+
+  // Mantener sincronizados los montos calculados en el estado de anticipos
+  useEffect(() => {
+    const cambio = anticipos.some((a, i) => (a.monto || 0) !== anticiposCalc[i].monto);
+    if (cambio) setAnticipos(anticiposCalc);
   }, [anticipoMonto, formData.subtotal]);
+
+  const addAnticipo = () =>
+    setAnticipos([...anticipos, { descripcion: "", tipo: "monto", valor: 0, monto: 0 }]);
+  const updateAnticipo = (index: number, patch: Partial<CotizacionAnticipoForm>) =>
+    setAnticipos(anticipos.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  const removeAnticipo = (index: number) =>
+    setAnticipos(anticipos.filter((_, i) => i !== index));
+
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
@@ -744,12 +773,19 @@ export function CotizacionFormContent({
             <span className="text-muted-foreground">Subtotal:</span>
             <span className="font-mono">{formatCurrency(formData.subtotal)}</span>
           </div>
-          {anticipoTipo !== "ninguno" && (
-            <div className="flex justify-between text-sm">
+          {anticiposCalc.map((a, i) => (
+            <div key={i} className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+                {a.descripcion || "Anticipo"}
+                {a.tipo === "porcentaje" ? ` (${a.valor}%)` : ""}:
               </span>
-              <span className="font-mono font-semibold text-destructive">- {formatCurrency(anticipoMonto)}</span>
+              <span className="font-mono font-semibold text-destructive">- {formatCurrency(a.monto)}</span>
+            </div>
+          ))}
+          {anticipoMonto > 0 && (
+            <div className="flex justify-between text-sm font-semibold">
+              <span className="text-muted-foreground">Subtotal - Anticipos:</span>
+              <span className="font-mono">{formatCurrency(baseImponible)}</span>
             </div>
           )}
           <div className="flex justify-between text-sm">
@@ -761,43 +797,50 @@ export function CotizacionFormContent({
             <span className="font-mono text-primary">{formatCurrency(formData.total)}</span>
           </div>
 
-          {/* Anticipo */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-border">
-            <div className="space-y-2">
-              <Label>Anticipo</Label>
-              <Select
-                value={anticipoTipo}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, anticipo_tipo: value, anticipo_valor: value === "ninguno" ? 0 : anticipoValor })
-                }
-              >
-                <SelectTrigger className="bg-muted border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ninguno">Sin anticipo</SelectItem>
-                  <SelectItem value="porcentaje">Porcentaje (%)</SelectItem>
-                  <SelectItem value="monto">Monto fijo ($)</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Anticipos */}
+          <div className="pt-3 border-t border-border space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Anticipos</Label>
+              <Button type="button" size="sm" variant="outline" onClick={addAnticipo}>
+                <Plus className="w-4 h-4 mr-1" /> Agregar anticipo
+              </Button>
             </div>
-            {anticipoTipo !== "ninguno" && (
-              <div className="space-y-2">
-                <Label>{anticipoTipo === "porcentaje" ? "Porcentaje de anticipo" : "Monto de anticipo"}</Label>
+            {anticipos.length === 0 && (
+              <p className="text-xs text-muted-foreground">Sin anticipos cargados.</p>
+            )}
+            {anticipos.map((a, i) => (
+              <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_140px_180px_auto] gap-2 items-center">
+                <Input
+                  value={a.descripcion}
+                  onChange={(e) => updateAnticipo(i, { descripcion: e.target.value })}
+                  className="bg-muted border-border"
+                  placeholder="Descripción (ej: Lote entregado en pago)"
+                />
+                <Select value={a.tipo} onValueChange={(value) => updateAnticipo(i, { tipo: value })}>
+                  <SelectTrigger className="bg-muted border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="porcentaje">Porcentaje (%)</SelectItem>
+                    <SelectItem value="monto">Monto fijo ($)</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Input
                   type="number"
                   min={0}
-                  step={anticipoTipo === "porcentaje" ? "0.01" : "1"}
-                  value={anticipoValor || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, anticipo_valor: parseFloat(e.target.value) || 0 })
-                  }
-                  className="bg-muted border-border"
-                  placeholder={anticipoTipo === "porcentaje" ? "Ej: 30" : "Ej: 1500000"}
+                  step="0.01"
+                  value={a.valor || ""}
+                  onChange={(e) => updateAnticipo(i, { valor: parseFloat(e.target.value) || 0 })}
+                  className="bg-muted border-border font-mono"
+                  placeholder={a.tipo === "porcentaje" ? "Ej: 30" : "Ej: 1500000.50"}
                 />
+                <Button type="button" size="icon" variant="ghost" onClick={() => removeAnticipo(i)}>
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
               </div>
-            )}
+            ))}
           </div>
+
 
         </div>
       </div>

@@ -29,6 +29,13 @@
       "when": 1788362505779,
       "tag": "0003_create_tablero_sesiones",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788374348590,
+      "tag": "0004_create_cotizacion_anticipos",
+      "breakpoints": true
     }
   ]
 }
