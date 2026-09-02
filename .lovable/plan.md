@@ -9,7 +9,7 @@
 
 Se crea una "sesión de tablero" guardada en la base de datos que la TV escucha en vivo. Lo que se toca en el control aparece en la TV en menos de un segundo.
 
-**Pantalla de control** (nueva pestaña "Control TV" dentro del Tablero, pensada para celular):
+**Pantalla de control** (nueva pestaña "Control TV" dentro del Tablero, con diseño responsive: se usa igual desde la PC de escritorio, una notebook o el celular):
 - Elegir obras del tablero (mismo selector actual, pero sin límite de 3: se pueden cargar todas las que quiera y la TV las va pasando).
 - Botón grande por obra: al tocarla, la TV salta a esa obra.
 - Elegir la métrica del gráfico principal (m³ / Movimientos / Horas / Litros).
