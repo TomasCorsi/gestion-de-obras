@@ -46,6 +46,8 @@ interface CotizacionFormContentProps {
   setCategorias: (cats: CotizacionCategoriaForm[]) => void;
   items: CotizacionItemForm[];
   setItems: (items: CotizacionItemForm[]) => void;
+  anticipos: CotizacionAnticipoForm[];
+  setAnticipos: (a: CotizacionAnticipoForm[]) => void;
   obras: { id: string; nombre: string }[];
   isEditing: boolean;
   isSubmitting: boolean;
@@ -60,6 +62,8 @@ export function CotizacionFormContent({
   setCategorias,
   items,
   setItems,
+  anticipos,
+  setAnticipos,
   obras,
   isEditing,
   isSubmitting,
@@ -72,16 +76,12 @@ export function CotizacionFormContent({
   const [dragOverCat, setDragOverCat] = useState<number | null>(null);
   const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
 
-  // Anticipo (por porcentaje o monto fijo)
-  const anticipoTipo = formData.anticipo_tipo || "ninguno";
-  const anticipoValor = formData.anticipo_valor ?? 0;
+  // Anticipos (varios; cada uno por porcentaje o monto fijo)
+  const calcMonto = (a: CotizacionAnticipoForm) =>
+    a.tipo === "porcentaje" ? (formData.subtotal * (a.valor || 0)) / 100 : a.valor || 0;
+  const anticiposCalc = anticipos.map((a) => ({ ...a, monto: calcMonto(a) }));
+  const anticipoMonto = anticiposCalc.reduce((s, a) => s + a.monto, 0);
   // El anticipo se descuenta del subtotal (base imponible) antes del IVA
-  const anticipoMonto =
-    anticipoTipo === "porcentaje"
-      ? (formData.subtotal * anticipoValor) / 100
-      : anticipoTipo === "monto"
-      ? anticipoValor
-      : 0;
   const baseImponible = formData.subtotal - anticipoMonto;
 
   useEffect(() => {
@@ -95,6 +95,20 @@ export function CotizacionFormContent({
       setFormData({ ...formData, anticipo_monto: anticipoMonto, iva, total });
     }
   }, [anticipoMonto, formData.subtotal]);
+
+  // Mantener sincronizados los montos calculados en el estado de anticipos
+  useEffect(() => {
+    const cambio = anticipos.some((a, i) => (a.monto || 0) !== anticiposCalc[i].monto);
+    if (cambio) setAnticipos(anticiposCalc);
+  }, [anticipoMonto, formData.subtotal]);
+
+  const addAnticipo = () =>
+    setAnticipos([...anticipos, { descripcion: "", tipo: "monto", valor: 0, monto: 0 }]);
+  const updateAnticipo = (index: number, patch: Partial<CotizacionAnticipoForm>) =>
+    setAnticipos(anticipos.map((a, i) => (i === index ? { ...a, ...patch } : a)));
+  const removeAnticipo = (index: number) =>
+    setAnticipos(anticipos.filter((_, i) => i !== index));
+
 
   const handleImportComplete = (
     newCategorias: CotizacionCategoriaForm[],
