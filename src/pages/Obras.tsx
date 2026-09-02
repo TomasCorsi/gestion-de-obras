@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { FormDialog } from "@/components/shared/FormDialog";
 import { DetailDialog } from "@/components/shared/DetailDialog";
+import { AvanceObraTab } from "@/components/obras/AvanceObraTab";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { DetailRow, DetailSection } from "@/components/shared/DetailRow";
 import { useObras, ObraWithRelations, ObraForm, EstadoObra } from "@/hooks/useObras";
@@ -63,6 +65,7 @@ export default function Obras() {
   const [estadoFilter, setEstadoFilter] = useState<string>("todos");
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [avanceOpen, setAvanceOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedObra, setSelectedObra] = useState<ObraWithRelations | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -288,6 +291,16 @@ export default function Obras() {
                           <Eye className="w-4 h-4 mr-2" />
                           Ver detalle
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setSelectedObra(obra);
+                            setAvanceOpen(true);
+                          }}
+                          className="text-foreground cursor-pointer"
+                        >
+                          <TrendingUp className="w-4 h-4 mr-2" />
+                          Avance y certificados
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => handleEdit(obra)} className="text-foreground cursor-pointer">
                           <Edit className="w-4 h-4 mr-2" />
                           Editar
@@ -442,6 +455,15 @@ export default function Obras() {
       </FormDialog>
 
       {/* Detail Dialog */}
+      <Dialog open={avanceOpen} onOpenChange={setAvanceOpen}>
+        <DialogContent className="max-w-6xl max-h-[92vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Avance de obra · {selectedObra?.nombre}</DialogTitle>
+          </DialogHeader>
+          {selectedObra && <AvanceObraTab obraId={selectedObra.id} />}
+        </DialogContent>
+      </Dialog>
+
       <DetailDialog
         open={detailOpen}
         onOpenChange={setDetailOpen}
