@@ -75,6 +75,8 @@ interface Props {
   serie: SeriePunto[];
   loadingSerie?: boolean;
   destacada?: boolean;
+  columnas?: number;
+  historico?: HistoricoObra;
 }
 
 export function ObraPanel({
@@ -86,11 +88,16 @@ export function ObraPanel({
   serie,
   loadingSerie,
   destacada,
+  columnas = 3,
+  historico,
 }: Props) {
   const color = SERIE_COLORS[index % SERIE_COLORS.length];
   const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
   const totalSerie = data.reduce((s, d) => s + d.valor, 0);
   const decimales = metrica === "movimientos" ? 0 : 1;
+  const grande = columnas < 3;
+  const gridMetricas =
+    columnas === 1 ? "grid-cols-4 xl:grid-cols-8" : columnas === 2 ? "grid-cols-4" : "grid-cols-4";
 
   return (
     <Card
