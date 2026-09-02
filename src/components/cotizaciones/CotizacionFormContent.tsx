@@ -16,11 +16,13 @@ import {
   CotizacionForm,
   CotizacionCategoriaForm,
   CotizacionItemForm,
+  CotizacionAnticipoForm,
   EstadoCotizacion,
   UNIDADES,
   calcularM3,
   calcularTotalItem,
 } from "@/hooks/useCotizaciones";
+
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const estadoConfig: Record<string, { label: string }> = {
