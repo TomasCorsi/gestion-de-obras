@@ -3,6 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { normalizarNombre, remitoEsDeObra } from "@/lib/obraMatch";
 
+export interface GastoCategoria {
+  categoria: string;
+  monto: number;
+}
+
 export interface MaquinaHoras {
   nombre: string;
   horas: number;
@@ -21,6 +26,8 @@ export interface ObraTableroData {
   costoCombustible: number;
   costoMantenimiento: number;
   costoOtros: number;
+  gastosPorCategoria: GastoCategoria[];
+  montoCotizado: number;
   maquinariasTotal: number;
   maquinariasEnUso: number;
   horasHoy: number;
@@ -62,7 +69,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
   // En el mes actual las métricas "del día" son de hoy; en meses pasados, del mes completo.
   const esDelPeriodo = (fecha: string) => (mesActual ? fecha === format(new Date(), "yyyy-MM-dd") : true);
 
-  const [obrasRes, partesRes, maqRes, gastosRes, combRes, preciosRes] = await Promise.all([
+  const [obrasRes, partesRes, maqRes, gastosRes, combRes, preciosRes, cotizRes] = await Promise.all([
     supabase.from("obras").select("id, nombre, estado, ubicacion").in("id", obraIds),
     supabase
       .from("partes_diarios")
@@ -73,7 +80,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     supabase.from("maquinarias").select("id, obra_id, estado").in("obra_id", obraIds),
     supabase
       .from("otros_gastos")
-      .select("obra_id, fecha, monto")
+      .select("obra_id, fecha, monto, categoria")
       .in("obra_id", obraIds)
       .gte("fecha", inicioMes)
       .lte("fecha", finMes),
@@ -84,6 +91,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .gte("fecha", inicioMes)
       .lte("fecha", finMes),
     supabase.from("precios_productos_mes").select("producto, precio_unitario, mes, anio").eq("anio", anio).eq("mes", mesNum),
+    supabase.from("cotizaciones").select("obra_id, subtotal, total, anticipo_monto, estado").in("obra_id", obraIds).eq("estado", "aprobada"),
   ]);
 
   // Los remitos no tienen obra_id cargado: se traen todos del período y se asignan por nombre.
@@ -133,6 +141,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
   });
 
   const gastos = (gastosRes.data || []) as any[];
+  const cotizaciones = (cotizRes.data || []) as any[];
   const combustible = (combRes.data || []) as any[];
 
   return ((obrasRes.data || []) as any[]).map((obra) => {
@@ -163,11 +172,29 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       0
     );
 
-    const costoOtros = gastos.filter((g) => g.obra_id === obra.id).reduce((s, g) => s + num(g.monto), 0);
+    const gastosObra = gastos.filter((g) => g.obra_id === obra.id);
+    const costoOtros = gastosObra.reduce((s, g) => s + num(g.monto), 0);
+    const porCategoria: Record<string, number> = {};
+    gastosObra.forEach((g) => {
+      const cat = (g.categoria || "varios").toString();
+      porCategoria[cat] = (porCategoria[cat] || 0) + num(g.monto);
+    });
     const costoMantenimiento = mantenimientos
       .filter((m) => maqObra[m.maquinaria_id] === obra.id)
       .reduce((s, m) => s + num(m.costo_total), 0);
     const gastosMes = costoOtros + costoMantenimiento + costoCombustible;
+
+    const gastosPorCategoria: GastoCategoria[] = [
+      { categoria: "Combustible", monto: costoCombustible },
+      { categoria: "Mantenimiento", monto: costoMantenimiento },
+      ...Object.entries(porCategoria).map(([categoria, monto]) => ({ categoria, monto })),
+    ]
+      .filter((g) => g.monto > 0)
+      .sort((a, b) => b.monto - a.monto);
+
+    const montoCotizado = cotizaciones
+      .filter((c) => c.obra_id === obra.id)
+      .reduce((s, c) => s + num(c.subtotal), 0);
 
     const horasMaq: Record<string, number> = {};
     partesObra.forEach((p) => {
@@ -198,6 +225,8 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       costoCombustible,
       costoMantenimiento,
       costoOtros,
+      gastosPorCategoria,
+      montoCotizado,
       horasPorMaquina,
       maquinariasTotal: new Set([
         ...partesObra.map((p) => p.maquinaria_id).filter(Boolean),

@@ -14,6 +14,8 @@ import {
   Activity,
   Fuel,
   Route,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
 import {
   BarChart,
@@ -28,7 +30,7 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
+  LabelList,
 } from "recharts";
 
 const nf = (v: number, d = 0) =>
@@ -47,7 +49,30 @@ const METRICA_LABEL: Record<MetricaSerie, string> = {
   litros: "Litros",
 };
 
-const GASTO_COLORS = ["#B00020", "#E4A11B", "#6B7280"];
+const GASTO_COLORS = ["#B00020", "#E4A11B", "#6B7280", "#2563EB", "#16A34A", "#9333EA"];
+
+const CATEGORIA_LABEL: Record<string, string> = {
+  combustible: "Combustible",
+  mantenimiento: "Mantenimiento",
+  servicios: "Servicios",
+  materiales: "Materiales",
+  repuestos: "Repuestos",
+  herramientas: "Herramientas",
+  fletes: "Fletes",
+  varios: "Varios",
+};
+
+const nombreCategoria = (c: string) =>
+  CATEGORIA_LABEL[c.toLowerCase()] || c.charAt(0).toUpperCase() + c.slice(1);
+
+/** Agrupa las categorías chicas para que el gráfico siga siendo legible en la TV. */
+function armarGastos(items: { categoria: string; monto: number }[]) {
+  const orden = [...items].filter((g) => g.monto > 0).sort((a, b) => b.monto - a.monto);
+  const top = orden.slice(0, 5).map((g) => ({ name: nombreCategoria(g.categoria), value: Math.round(g.monto) }));
+  const resto = orden.slice(5).reduce((s, g) => s + g.monto, 0);
+  if (resto > 0) top.push({ name: "Otras", value: Math.round(resto) });
+  return top;
+}
 
 interface KPIProps {
   icon: typeof Truck;
@@ -159,11 +184,19 @@ export function ObraDashboard({
     return { label: d.label, acumulado: Number(acumulado.toFixed(1)) };
   });
 
-  const gastos = [
-    { name: "Combustible", value: Math.round(obra.costoCombustible) },
-    { name: "Mantenimiento", value: Math.round(obra.costoMantenimiento) },
-    { name: "Otros gastos", value: Math.round(obra.costoOtros) },
-  ].filter((g) => g.value > 0);
+  const gastos = armarGastos(obra.gastosPorCategoria || []);
+  const totalGastos = gastos.reduce((s, g) => s + g.value, 0);
+
+  // Rentabilidad: lo cotizado (aprobado) contra el gasto acumulado histórico de la obra
+  const cotizado = obra.montoCotizado || 0;
+  const gastadoHistorico = historico?.gastos ?? obra.gastosMes;
+  const beneficio = cotizado - gastadoHistorico;
+  const margen = cotizado > 0 ? (beneficio / cotizado) * 100 : 0;
+  const consumido = cotizado > 0 ? Math.min(100, (gastadoHistorico / cotizado) * 100) : 0;
+
+  // En la TV no hay mouse: los valores se dibujan sobre el gráfico y se ocultan los tooltips.
+  const mostrarTooltip = !tv;
+  const pasoEtiquetas = data.length > 16 ? 2 : 1;
 
   return (
     <div className="flex flex-col gap-2 h-full min-h-0">
@@ -300,12 +333,24 @@ export function ObraDashboard({
                     minTickGap={10}
                   />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 13 : 10 }} width={42} />
-                  <RTooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, decimales), METRICA_LABEL[metrica]]}
-                  />
-                  <Bar dataKey="valor" fill="#B00020" radius={[3, 3, 0, 0]} />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, decimales), METRICA_LABEL[metrica]]}
+                    />
+                  )}
+                  <Bar dataKey="valor" fill="#B00020" radius={[3, 3, 0, 0]}>
+                    <LabelList
+                      dataKey="valor"
+                      position="top"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number, _e?: unknown, i?: number) =>
+                        !v || (typeof i === "number" && i % pasoEtiquetas !== 0) ? "" : nf(v, decimales)
+                      }
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -334,57 +379,191 @@ export function ObraDashboard({
                     minTickGap={10}
                   />
                   <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fontSize: tv ? 13 : 10 }} width={42} />
-                  <RTooltip
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, decimales), "Acumulado"]}
-                  />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, decimales), "Acumulado"]}
+                    />
+                  )}
                   <Area
                     type="monotone"
                     dataKey="acumulado"
                     stroke="#E4A11B"
                     strokeWidth={2}
                     fill="url(#gradAcum)"
-                  />
+                  >
+                    <LabelList
+                      dataKey="acumulado"
+                      position="top"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number, _e?: unknown, i?: number) =>
+                        typeof i === "number" && i === dataAcum.length - 1 ? nf(v, decimales) : ""
+                      }
+                    />
+                  </Area>
                 </AreaChart>
               </ResponsiveContainer>
             )}
           </ChartCard>
         </div>
 
-        <div className="grid grid-rows-2 gap-2 min-h-0">
-          <ChartCard titulo="Composición de gastos" extra={formatCurrency(obra.gastosMes)} tv={tv}>
+        <div className="grid grid-rows-[auto_1fr_1fr] gap-2 min-h-0">
+          {/* Rentabilidad: cotizado vs gastado */}
+          <Card className="card-industrial p-2">
+            <div className="flex items-center justify-between px-1 pb-1">
+              <span
+                className={cn(
+                  "uppercase tracking-wide text-muted-foreground",
+                  tv ? "text-sm" : "text-[11px]"
+                )}
+              >
+                Rentabilidad de la obra
+              </span>
+              {cotizado > 0 && (
+                <span
+                  className={cn(
+                    "font-mono-numbers font-bold",
+                    beneficio >= 0 ? "text-success" : "text-destructive",
+                    tv ? "text-base" : "text-xs"
+                  )}
+                >
+                  {beneficio >= 0 ? "+" : ""}
+                  {margen.toFixed(0)}%
+                </span>
+              )}
+            </div>
+
+            {cotizado === 0 ? (
+              <p
+                className={cn(
+                  "px-1 py-2 text-muted-foreground",
+                  tv ? "text-base" : "text-xs"
+                )}
+              >
+                Sin cotización aprobada
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2 px-1">
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Cotizado</p>
+                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
+                      {formatCurrency(cotizado)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Gastado</p>
+                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
+                      {formatCurrency(gastadoHistorico)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Beneficio</p>
+                    <p
+                      className={cn(
+                        "font-bold font-mono-numbers flex items-center gap-1",
+                        beneficio >= 0 ? "text-success" : "text-destructive",
+                        tv ? "text-2xl" : "text-base"
+                      )}
+                    >
+                      {beneficio >= 0 ? (
+                        <TrendingUp className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
+                      ) : (
+                        <TrendingDown className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
+                      )}
+                      {formatCurrency(beneficio)}
+                    </p>
+                  </div>
+                </div>
+                <div className="px-1 mt-2">
+                  <div className={cn("w-full rounded-full bg-muted overflow-hidden", tv ? "h-3" : "h-2")}>
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        consumido >= 100 ? "bg-destructive" : consumido >= 80 ? "bg-warning" : "bg-success"
+                      )}
+                      style={{ width: `${consumido}%` }}
+                    />
+                  </div>
+                  <p className={cn("text-muted-foreground mt-1", tv ? "text-sm" : "text-[10px]")}>
+                    {consumido.toFixed(0)}% del monto cotizado ya consumido en gastos
+                  </p>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <ChartCard titulo="Gastos por categoría" extra={formatCurrency(obra.gastosMes)} tv={tv}>
             {gastos.length === 0 ? (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
                 Sin gastos cargados
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={gastos}
-                    dataKey="value"
-                    nameKey="name"
-                    innerRadius="45%"
-                    outerRadius="75%"
-                    paddingAngle={2}
-                  >
-                    {gastos.map((g, i) => (
-                      <Cell key={g.name} fill={GASTO_COLORS[i % GASTO_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Legend
-                    verticalAlign="bottom"
-                    height={tv ? 28 : 20}
-                    wrapperStyle={{ fontSize: tv ? 13 : 10 }}
-                  />
-                  <RTooltip
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number, n: string) => [formatCurrency(v), n]}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              <div className="h-full flex items-stretch gap-2 min-h-0">
+                <div className="w-1/2 min-h-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={gastos}
+                        dataKey="value"
+                        nameKey="name"
+                        innerRadius="42%"
+                        outerRadius="78%"
+                        paddingAngle={2}
+                        isAnimationActive={false}
+                        labelLine={false}
+                        label={({ percent }: { percent?: number }) =>
+                          (percent || 0) >= 0.08 ? `${Math.round((percent || 0) * 100)}%` : ""
+                        }
+                        fontSize={tv ? 14 : 10}
+                      >
+                        {gastos.map((g, i) => (
+                          <Cell key={g.name} fill={GASTO_COLORS[i % GASTO_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      {mostrarTooltip && (
+                        <RTooltip
+                          contentStyle={tooltipStyle(tv)}
+                          formatter={(v: number, n: string) => [formatCurrency(v), n]}
+                        />
+                      )}
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Detalle siempre visible: no depende del mouse */}
+                <div className="w-1/2 flex flex-col justify-center gap-1 min-w-0 overflow-hidden">
+                  {gastos.map((g, i) => (
+                    <div key={g.name} className="flex items-center gap-1.5 min-w-0">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: GASTO_COLORS[i % GASTO_COLORS.length] }}
+                      />
+                      <span className={cn("truncate flex-1", tv ? "text-base" : "text-[11px]")}>{g.name}</span>
+                      <span
+                        className={cn(
+                          "font-mono-numbers font-semibold shrink-0",
+                          tv ? "text-base" : "text-[11px]"
+                        )}
+                      >
+                        {formatCurrency(g.value)}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-muted-foreground font-mono-numbers shrink-0 w-9 text-right",
+                          tv ? "text-sm" : "text-[10px]"
+                        )}
+                      >
+                        {totalGastos > 0 ? Math.round((g.value / totalGastos) * 100) : 0}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </ChartCard>
+
 
           <ChartCard titulo="Horas por maquinaria" tv={tv}>
             {obra.horasPorMaquina.length === 0 ? (
@@ -407,12 +586,22 @@ export function ObraDashboard({
                     stroke="hsl(var(--muted-foreground))"
                     tick={{ fontSize: tv ? 13 : 10 }}
                   />
-                  <RTooltip
-                    cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
-                    contentStyle={tooltipStyle(tv)}
-                    formatter={(v: number) => [nf(v, 1), "Horas"]}
-                  />
-                  <Bar dataKey="horas" fill="#6B7280" radius={[0, 3, 3, 0]} />
+                  {mostrarTooltip && (
+                    <RTooltip
+                      cursor={{ fill: "hsl(var(--muted) / 0.3)" }}
+                      contentStyle={tooltipStyle(tv)}
+                      formatter={(v: number) => [nf(v, 1), "Horas"]}
+                    />
+                  )}
+                  <Bar dataKey="horas" fill="#6B7280" radius={[0, 3, 3, 0]}>
+                    <LabelList
+                      dataKey="horas"
+                      position="right"
+                      fontSize={tv ? 13 : 10}
+                      fill="hsl(var(--foreground))"
+                      formatter={(v: number) => nf(v, 1)}
+                    />
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             )}
