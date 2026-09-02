@@ -172,7 +172,9 @@ export function useCotizaciones() {
         *,
         obra:obras(nombre),
         items:cotizacion_items(*),
-        categorias:cotizacion_categorias(*)
+        categorias:cotizacion_categorias(*),
+        anticipos:cotizacion_anticipos(*)
+
       `)
       .order("created_at", { ascending: false }) as any);
 
