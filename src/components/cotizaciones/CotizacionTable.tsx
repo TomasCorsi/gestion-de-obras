@@ -7,7 +7,7 @@ import {
   TableRow,
   TableFooter,
 } from "@/components/ui/table";
-import { CotizacionItemDB, CotizacionCategoriaDB } from "@/hooks/useCotizaciones";
+import { CotizacionItemDB, CotizacionCategoriaDB, CotizacionAnticipoDB } from "@/hooks/useCotizaciones";
 
 interface CotizacionTableProps {
   items: CotizacionItemDB[];
@@ -18,6 +18,7 @@ interface CotizacionTableProps {
   anticipoMonto?: number;
   anticipoTipo?: string;
   anticipoValor?: number;
+  anticipos?: CotizacionAnticipoDB[];
 }
 
 function formatCurrency(value: number): string {
@@ -36,7 +37,13 @@ function formatNumber(value: number, decimals = 2): string {
   }).format(value);
 }
 
-export function CotizacionTable({ items, categorias, subtotal, iva, total, anticipoMonto = 0, anticipoTipo, anticipoValor }: CotizacionTableProps) {
+export function CotizacionTable({ items, categorias, subtotal, iva, total, anticipoMonto = 0, anticipoTipo, anticipoValor, anticipos }: CotizacionTableProps) {
+  const listaAnticipos = (anticipos && anticipos.length > 0)
+    ? [...anticipos].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0))
+    : anticipoMonto > 0
+      ? [{ id: "legacy", cotizacion_id: "", descripcion: "Anticipo", tipo: anticipoTipo || "monto", valor: anticipoValor || 0, monto: anticipoMonto, orden: 0 }]
+      : [];
+  const totalAnticipos = listaAnticipos.reduce((s, a) => s + Number(a.monto || 0), 0);
   // Sort categories by numero
   const sortedCategorias = [...categorias].sort((a, b) => a.numero - b.numero);
   
@@ -179,23 +186,23 @@ export function CotizacionTable({ items, categorias, subtotal, iva, total, antic
               {formatCurrency(subtotal)}
             </TableCell>
           </TableRow>
-{anticipoMonto > 0 && (
-            <TableRow className="bg-muted/30">
+          {listaAnticipos.map((a) => (
+            <TableRow key={a.id} className="bg-muted/30">
               <TableCell colSpan={7} className="text-right font-semibold">
-                Anticipo{anticipoTipo === "porcentaje" ? ` (${anticipoValor}%)` : ""}:
+                {a.descripcion || "Anticipo"}{a.tipo === "porcentaje" ? ` (${a.valor}%)` : ""}:
               </TableCell>
               <TableCell className="text-right font-mono font-bold text-destructive">
-                - {formatCurrency(anticipoMonto)}
+                - {formatCurrency(Number(a.monto || 0))}
               </TableCell>
             </TableRow>
-          )}
-          {anticipoMonto > 0 && (
+          ))}
+          {totalAnticipos > 0 && (
             <TableRow className="bg-muted/30 border-t-2 border-muted">
               <TableCell colSpan={7} className="text-right font-semibold">
-                Subtotal - Anticipo:
+                Subtotal - Anticipos:
               </TableCell>
               <TableCell className="text-right font-mono font-bold">
-                {formatCurrency(subtotal - anticipoMonto)}
+                {formatCurrency(subtotal - totalAnticipos)}
               </TableCell>
             </TableRow>
           )}
