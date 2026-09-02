@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizarNombre, remitoEsDeObra } from "@/lib/obraMatch";
+import { agruparMateriales, MaterialMovido } from "@/hooks/useTableroObras";
 
 export interface HistoricoObra {
   gastosPorCategoria: { categoria: string; monto: number }[];
@@ -12,6 +13,7 @@ export interface HistoricoObra {
   gastos: number;
   maquinarias: number;
   personal: number;
+  materiales: MaterialMovido[];
 }
 
 export type HistoricoTablero = Record<string, HistoricoObra>;
@@ -50,7 +52,10 @@ const fetchHistorico = async (
         .range(from, to)
     ),
     fetchAll<any>((from, to) =>
-      supabase.from("remitos").select("obra_id, cantidad, cantidad_viajes, desde, hasta").range(from, to)
+      supabase
+        .from("remitos")
+        .select("obra_id, cantidad, cantidad_viajes, desde, hasta, tipo_material")
+        .range(from, to)
     ),
     fetchAll<any>((from, to) =>
       supabase
@@ -141,6 +146,7 @@ const fetchHistorico = async (
       gastosPorCategoria,
       maquinarias: new Set(p.map((x) => x.maquinaria_id).filter(Boolean)).size,
       personal: new Set(p.map((x) => x.personal_id).filter(Boolean)).size,
+      materiales: agruparMateriales(r),
     };
   });
 
