@@ -28,21 +28,33 @@ interface MetricProps {
   icon: typeof Truck;
   label: string;
   value: string;
+  sub?: string;
   tv?: boolean;
+  grande?: boolean;
 }
 
-function Metric({ icon: Icon, label, value, tv }: MetricProps) {
+function Metric({ icon: Icon, label, value, sub, tv, grande }: MetricProps) {
   return (
     <div className="rounded-lg border border-border bg-card/60 px-2 py-1.5 min-w-0">
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <Icon className={cn("w-3.5 h-3.5 shrink-0", tv && "w-4 h-4")} />
-        <span className={cn("truncate uppercase tracking-wide", tv ? "text-xs" : "text-[10px]")}>
+        <Icon className={cn("w-3.5 h-3.5 shrink-0", (tv || grande) && "w-4 h-4")} />
+        <span className={cn("truncate uppercase tracking-wide", tv || grande ? "text-xs" : "text-[10px]")}>
           {label}
         </span>
       </div>
-      <p className={cn("font-bold font-mono-numbers text-foreground leading-tight", tv ? "text-2xl" : "text-base")}>
+      <p
+        className={cn(
+          "font-bold font-mono-numbers text-foreground leading-tight",
+          tv ? "text-2xl" : grande ? "text-xl" : "text-base"
+        )}
+      >
         {value}
       </p>
+      {sub !== undefined && (
+        <p className={cn("text-muted-foreground font-mono-numbers leading-tight", tv ? "text-sm" : "text-[10px]")}>
+          Hist. {sub}
+        </p>
+      )}
     </div>
   );
 }
