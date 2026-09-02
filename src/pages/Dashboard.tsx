@@ -81,6 +81,7 @@ export default function Dashboard() {
     mes,
     conectado ? 300000 : 60000
   );
+  const { historico } = useTableroHistorico(obrasMeta);
   const [metrica, setMetrica] = useState<MetricaSerie>("m3");
   const periodoLabel = esMesActual ? "hoy" : "mes";
 
