@@ -1,5 +1,6 @@
 import { ObraTableroData } from "@/hooks/useTableroObras";
 import { MetricaSerie, SeriePunto, SERIE_COLORS } from "@/hooks/useTableroSeries";
+import { HistoricoObra } from "@/hooks/useTableroHistorico";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
