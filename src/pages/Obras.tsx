@@ -31,6 +31,7 @@ import {
   Eye,
   Edit,
   Trash2,
+  TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu,

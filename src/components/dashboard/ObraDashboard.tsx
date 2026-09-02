@@ -35,6 +35,18 @@ import {
 const nf = (v: number, d = 0) =>
   v.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
 
+/** Importe completo con separador de miles (para datos clave que deben leerse enteros). */
+function formatCurrencyFull(value: number): string {
+  const signo = value < 0 ? "-" : "";
+  return `${signo}$${Math.round(Math.abs(value)).toLocaleString("es-AR")}`;
+}
+
+function formatMillones(value: number): string {
+  if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1)} millones`;
+  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)} mil`;
+  return "";
+}
+
 function formatCurrency(value: number): string {
   if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
   if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -338,6 +350,97 @@ export function ObraDashboard({
         />
       </div>
 
+      {/* Rentabilidad: dato clave, ancho completo y con importes enteros */}
+      <Card className="card-industrial p-3 shrink-0 border-primary/30">
+        <div className="flex items-center justify-between px-1 pb-1">
+          <span
+            className={cn(
+              "uppercase tracking-wide text-muted-foreground font-semibold",
+              tv ? "text-base" : "text-xs"
+            )}
+          >
+            Rentabilidad de la obra
+          </span>
+          {cotizado > 0 && (
+            <span
+              className={cn(
+                "font-mono-numbers font-bold",
+                beneficio >= 0 ? "text-success" : "text-destructive",
+                tv ? "text-3xl" : "text-xl"
+              )}
+            >
+              {beneficio >= 0 ? "+" : ""}
+              {margen.toFixed(0)}%
+            </span>
+          )}
+        </div>
+
+        {cotizado === 0 ? (
+          <p className={cn("px-1 py-2 text-muted-foreground", tv ? "text-lg" : "text-sm")}>
+            Sin cotización aprobada
+          </p>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 px-1">
+              {[
+                { label: "Cotizado", valor: cotizado, tone: "" },
+                { label: "Gastado", valor: gastadoHistorico, tone: "" },
+                {
+                  label: "Beneficio",
+                  valor: beneficio,
+                  tone: beneficio >= 0 ? "text-success" : "text-destructive",
+                },
+              ].map((b) => (
+                <div key={b.label} className="rounded-md bg-muted/40 px-3 py-2">
+                  <p
+                    className={cn(
+                      "uppercase tracking-wide text-muted-foreground",
+                      tv ? "text-sm" : "text-[11px]"
+                    )}
+                  >
+                    {b.label}
+                  </p>
+                  <p
+                    className={cn(
+                      "font-bold font-mono-numbers leading-tight flex items-center gap-2",
+                      b.tone,
+                      tv ? "text-4xl" : "text-2xl"
+                    )}
+                  >
+                    {b.label === "Beneficio" &&
+                      (beneficio >= 0 ? (
+                        <TrendingUp className={cn(tv ? "w-7 h-7" : "w-5 h-5")} />
+                      ) : (
+                        <TrendingDown className={cn(tv ? "w-7 h-7" : "w-5 h-5")} />
+                      ))}
+                    {formatCurrencyFull(b.valor)}
+                  </p>
+                  {formatMillones(b.valor) && (
+                    <p className={cn("text-muted-foreground", tv ? "text-base" : "text-xs")}>
+                      {formatMillones(b.valor)}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="px-1 mt-2">
+              <div className={cn("w-full rounded-full bg-muted overflow-hidden", tv ? "h-4" : "h-3")}>
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    consumido >= 100 ? "bg-destructive" : consumido >= 80 ? "bg-warning" : "bg-success"
+                  )}
+                  style={{ width: `${consumido}%` }}
+                />
+              </div>
+              <p className={cn("text-muted-foreground mt-1", tv ? "text-base" : "text-xs")}>
+                {consumido.toFixed(0)}% del monto cotizado ya consumido en gastos
+              </p>
+            </div>
+          </>
+        )}
+      </Card>
+
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 flex-1 min-h-0">
         <div className="lg:col-span-2 grid grid-rows-2 gap-2 min-h-0">
@@ -435,163 +538,7 @@ export function ObraDashboard({
           </ChartCard>
         </div>
 
-        <div className="grid grid-rows-[auto_1fr_1fr_1fr] gap-2 min-h-0">
-          {/* Rentabilidad: cotizado vs gastado */}
-          <Card className="card-industrial p-2">
-            <div className="flex items-center justify-between px-1 pb-1">
-              <span
-                className={cn(
-                  "uppercase tracking-wide text-muted-foreground",
-                  tv ? "text-sm" : "text-[11px]"
-                )}
-              >
-                Rentabilidad de la obra
-              </span>
-              {cotizado > 0 && (
-                <span
-                  className={cn(
-                    "font-mono-numbers font-bold",
-                    beneficio >= 0 ? "text-success" : "text-destructive",
-                    tv ? "text-base" : "text-xs"
-                  )}
-                >
-                  {beneficio >= 0 ? "+" : ""}
-                  {margen.toFixed(0)}%
-                </span>
-              )}
-            </div>
-
-            {cotizado === 0 ? (
-              <p
-                className={cn(
-                  "px-1 py-2 text-muted-foreground",
-                  tv ? "text-base" : "text-xs"
-                )}
-              >
-                Sin cotización aprobada
-              </p>
-            ) : (
-              <>
-                <div className="grid grid-cols-3 gap-2 px-1">
-                  <div>
-                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Cotizado</p>
-                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
-                      {formatCurrency(cotizado)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Gastado</p>
-                    <p className={cn("font-bold font-mono-numbers", tv ? "text-2xl" : "text-base")}>
-                      {formatCurrency(gastadoHistorico)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className={cn("text-muted-foreground", tv ? "text-sm" : "text-[10px]")}>Beneficio</p>
-                    <p
-                      className={cn(
-                        "font-bold font-mono-numbers flex items-center gap-1",
-                        beneficio >= 0 ? "text-success" : "text-destructive",
-                        tv ? "text-2xl" : "text-base"
-                      )}
-                    >
-                      {beneficio >= 0 ? (
-                        <TrendingUp className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
-                      ) : (
-                        <TrendingDown className={cn(tv ? "w-5 h-5" : "w-3.5 h-3.5")} />
-                      )}
-                      {formatCurrency(beneficio)}
-                    </p>
-                  </div>
-                </div>
-                <div className="px-1 mt-2">
-                  <div className={cn("w-full rounded-full bg-muted overflow-hidden", tv ? "h-3" : "h-2")}>
-                    <div
-                      className={cn(
-                        "h-full rounded-full",
-                        consumido >= 100 ? "bg-destructive" : consumido >= 80 ? "bg-warning" : "bg-success"
-                      )}
-                      style={{ width: `${consumido}%` }}
-                    />
-                  </div>
-                  <p className={cn("text-muted-foreground mt-1", tv ? "text-sm" : "text-[10px]")}>
-                    {consumido.toFixed(0)}% del monto cotizado ya consumido en gastos
-                  </p>
-                </div>
-              </>
-            )}
-          </Card>
-
-          <ChartCard titulo="Gastos por categoría" extra={formatCurrency(obra.gastosMes)} tv={tv}>
-            {gastos.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-xs text-muted-foreground">
-                Sin gastos cargados
-              </div>
-            ) : (
-              <div className="h-full flex items-stretch gap-2 min-h-0">
-                <div className="w-1/2 min-h-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={gastos}
-                        dataKey="value"
-                        nameKey="name"
-                        innerRadius="42%"
-                        outerRadius="78%"
-                        paddingAngle={2}
-                        isAnimationActive={false}
-                        labelLine={false}
-                        label={({ percent }: { percent?: number }) =>
-                          (percent || 0) >= 0.08 ? `${Math.round((percent || 0) * 100)}%` : ""
-                        }
-                        fontSize={tv ? 14 : 10}
-                      >
-                        {gastos.map((g, i) => (
-                          <Cell key={g.name} fill={GASTO_COLORS[i % GASTO_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      {mostrarTooltip && (
-                        <RTooltip
-                          contentStyle={tooltipStyle(tv)}
-                          formatter={(v: number, n: string) => [formatCurrency(v), n]}
-                        />
-                      )}
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Detalle siempre visible: no depende del mouse */}
-                <div className="w-1/2 flex flex-col justify-center gap-1 min-w-0 overflow-hidden">
-                  {gastos.map((g, i) => (
-                    <div key={g.name} className="flex items-center gap-1.5 min-w-0">
-                      <span
-                        className="w-2.5 h-2.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: GASTO_COLORS[i % GASTO_COLORS.length] }}
-                      />
-                      <span className={cn("truncate flex-1", tv ? "text-base" : "text-[11px]")}>{g.name}</span>
-                      <span
-                        className={cn(
-                          "font-mono-numbers font-semibold shrink-0",
-                          tv ? "text-base" : "text-[11px]"
-                        )}
-                      >
-                        {formatCurrency(g.value)}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-muted-foreground font-mono-numbers shrink-0 w-9 text-right",
-                          tv ? "text-sm" : "text-[10px]"
-                        )}
-                      >
-                        {totalGastos > 0 ? Math.round((g.value / totalGastos) * 100) : 0}%
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </ChartCard>
-
-
+        <div className="grid grid-rows-3 gap-2 min-h-0">
           <ChartCard
             titulo="Materiales movidos"
             extra={totalMateriales > 0 ? `${nf(totalMateriales, 1)} m³` : undefined}
