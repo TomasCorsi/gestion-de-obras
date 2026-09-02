@@ -165,8 +165,11 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       viajesMes: viajesRemitos(remitosObra),
       litrosMes,
       costoCombustible,
-      maquinariasTotal: maqObraList.length,
-      maquinariasEnUso: maqObraList.filter((m) => m.estado === "en_uso" || m.estado === "operativa").length,
+      maquinariasTotal: new Set([
+        ...partesObra.map((p) => p.maquinaria_id).filter(Boolean),
+        ...maqObraList.map((m) => m.id),
+      ]).size,
+      maquinariasEnUso: new Set(partesHoy.map((p) => p.maquinaria_id).filter(Boolean)).size,
       horasHoy: horas(partesHoy),
       horasMes: horas(partesObra),
       personalHoy: new Set(partesHoy.map((p) => p.personal_id)).size,
