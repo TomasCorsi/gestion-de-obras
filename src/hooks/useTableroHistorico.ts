@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { normalizarNombre, remitoEsDeObra } from "@/lib/obraMatch";
 
 export interface HistoricoObra {
+  gastosPorCategoria: { categoria: string; monto: number }[];
   movimientos: number;
   m3: number;
   horas: number;
@@ -38,7 +39,7 @@ const fetchHistorico = async (
   if (obras.length === 0) return {};
   const obraIds = obras.map((o) => o.obraId);
 
-  const [partes, remitos, cargas, gastos] = await Promise.all([
+  const [partes, remitos, cargas, gastos, maqRes, preciosRes] = await Promise.all([
     fetchAll<any>((from, to) =>
       supabase
         .from("partes_diarios")
@@ -52,12 +53,50 @@ const fetchHistorico = async (
       supabase.from("remitos").select("obra_id, cantidad, cantidad_viajes, desde, hasta").range(from, to)
     ),
     fetchAll<any>((from, to) =>
-      supabase.from("cargas_combustible_repartidor").select("obra_id, litros").in("obra_id", obraIds).range(from, to)
+      supabase
+        .from("cargas_combustible_repartidor")
+        .select("obra_id, litros, fecha, tipo_producto")
+        .in("obra_id", obraIds)
+        .range(from, to)
     ),
     fetchAll<any>((from, to) =>
-      supabase.from("otros_gastos").select("obra_id, monto").in("obra_id", obraIds).range(from, to)
+      supabase.from("otros_gastos").select("obra_id, monto, categoria").in("obra_id", obraIds).range(from, to)
     ),
+    supabase.from("maquinarias").select("id, obra_id").in("obra_id", obraIds),
+    supabase.from("precios_productos_mes").select("producto, precio_unitario, mes, anio"),
   ]);
+
+  // Costo histórico de combustible: litros valuados al precio del mes de la carga
+  const precios: Record<string, number> = {};
+  ((preciosRes.data || []) as any[]).forEach((p) => {
+    precios[`${p.anio}-${String(p.mes).padStart(2, "0")}|${p.producto}`] = num(p.precio_unitario);
+  });
+  const precioCarga = (c: any) => {
+    const ym = (c.fecha || "").slice(0, 7);
+    return (
+      precios[`${ym}|${c.tipo_producto || "combustible"}`] ??
+      precios[`${ym}|combustible`] ??
+      0
+    );
+  };
+
+  // Mantenimientos históricos de las máquinas asignadas a cada obra
+  const maqObra: Record<string, string | null> = {};
+  ((maqRes.data || []) as any[]).forEach((m) => (maqObra[m.id] = m.obra_id));
+  partes.forEach((p) => {
+    if (p.maquinaria_id && !maqObra[p.maquinaria_id]) maqObra[p.maquinaria_id] = p.obra_id;
+  });
+  const maqIds = Object.keys(maqObra);
+  const mantenimientos =
+    maqIds.length > 0
+      ? await fetchAll<any>((from, to) =>
+          supabase
+            .from("mantenimientos")
+            .select("maquinaria_id, costo_total")
+            .in("maquinaria_id", maqIds)
+            .range(from, to)
+        )
+      : [];
 
   const out: HistoricoTablero = {};
 
@@ -68,6 +107,26 @@ const fetchHistorico = async (
 
     const viajes = r.reduce((s, x) => s + (num(x.cantidad_viajes) || 1), 0);
 
+    const cargasObra = cargas.filter((x) => x.obra_id === o.obraId);
+    const costoCombustible = cargasObra.reduce((s, x) => s + num(x.litros) * precioCarga(x), 0);
+    const costoMantenimiento = mantenimientos
+      .filter((m) => maqObra[m.maquinaria_id] === o.obraId)
+      .reduce((s, m) => s + num(m.costo_total), 0);
+    const gastosObra = gastos.filter((x) => x.obra_id === o.obraId);
+    const costoOtros = gastosObra.reduce((s, x) => s + num(x.monto), 0);
+    const porCategoria: Record<string, number> = {};
+    gastosObra.forEach((g) => {
+      const cat = (g.categoria || "varios").toString();
+      porCategoria[cat] = (porCategoria[cat] || 0) + num(g.monto);
+    });
+    const gastosPorCategoria = [
+      { categoria: "Combustible", monto: costoCombustible },
+      { categoria: "Mantenimiento", monto: costoMantenimiento },
+      ...Object.entries(porCategoria).map(([categoria, monto]) => ({ categoria, monto })),
+    ]
+      .filter((g) => g.monto > 0)
+      .sort((a, b) => b.monto - a.monto);
+
     out[o.obraId] = {
       movimientos:
         p.reduce((s, x) => s + num(x.cantidad_viajes) + num(x.cantidad_movimiento_interno), 0) + viajes,
@@ -76,9 +135,10 @@ const fetchHistorico = async (
         const h = num(x.horometro_fin) - num(x.horometro_inicio);
         return s + (h > 0 && h < 24 ? h : 0);
       }, 0),
-      litros: cargas.filter((x) => x.obra_id === o.obraId).reduce((s, x) => s + num(x.litros), 0),
+      litros: cargasObra.reduce((s, x) => s + num(x.litros), 0),
       viajes,
-      gastos: gastos.filter((x) => x.obra_id === o.obraId).reduce((s, x) => s + num(x.monto), 0),
+      gastos: costoOtros + costoCombustible + costoMantenimiento,
+      gastosPorCategoria,
       maquinarias: new Set(p.map((x) => x.maquinaria_id).filter(Boolean)).size,
       personal: new Set(p.map((x) => x.personal_id).filter(Boolean)).size,
     };
