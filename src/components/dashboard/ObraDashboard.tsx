@@ -205,6 +205,7 @@ interface Props {
   mesLabel?: string;
   tv?: boolean;
   posicion?: { actual: number; total: number };
+  avance?: AvanceObra;
 }
 
 export function ObraDashboard({
