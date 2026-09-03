@@ -297,43 +297,8 @@ export function ObraDashboard({
         </div>
       </div>
 
-      {/* KPIs principales */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
-        <KPI
-          icon={Route}
-          label={`Movimientos ${periodoLabel}`}
-          value={nf(obra.movimientosHoy)}
-          sub={historico && nf(historico.movimientos)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={Boxes}
-          label="m³ del período"
-          value={nf(obra.m3Mes, 1)}
-          sub={historico && nf(historico.m3, 1)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={Clock}
-          label="Horas del período"
-          value={nf(obra.horasMes, 1)}
-          sub={historico && nf(historico.horas, 1)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={DollarSign}
-          label="Gastos del período"
-          value={formatCurrency(obra.gastosMes)}
-          sub={historico && formatCurrency(historico.gastos)}
-          tv={tv}
-          destacado
-        />
-      </div>
-
       {/* KPIs secundarios */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
         <KPI icon={Fuel} label="Litros" value={nf(obra.litrosMes)} sub={historico && nf(historico.litros)} tv={tv} />
         <KPI
