@@ -5,15 +5,8 @@ import { AvanceObra } from "@/hooks/useAvanceObra";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Truck,
-  Users,
-  DollarSign,
-  Activity,
-  Fuel,
-  TrendingUp,
-  TrendingDown,
-} from "lucide-react";
+import { Truck, Users, DollarSign, Activity, Fuel } from "lucide-react";
+
 
 import {
   BarChart,
