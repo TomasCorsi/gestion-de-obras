@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Building2 } from "lucide-react";
 import { ObraDashboard } from "@/components/dashboard/ObraDashboard";
 import { useTableroObras } from "@/hooks/useTableroObras";
+import { useAvanceObra } from "@/hooks/useAvanceObra";
 import { useTableroSeries } from "@/hooks/useTableroSeries";
 import { useTableroHistorico } from "@/hooks/useTableroHistorico";
 import { useTableroRealtime } from "@/hooks/useTableroRealtime";
