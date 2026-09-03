@@ -170,7 +170,7 @@ function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <Card className="card-industrial p-2 flex flex-col min-h-0">
+    <Card className={cn("card-industrial p-2 flex flex-col min-h-0", tv ? "min-h-[180px]" : "min-h-[150px]")}>
       <div className="flex items-center justify-between px-1 pb-1 shrink-0">
         <span
           className={cn("uppercase tracking-wide text-muted-foreground", tv ? "text-sm" : "text-[11px]")}
@@ -566,8 +566,13 @@ export function ObraDashboard({
       </Card>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 flex-1 min-h-0">
-        <div className="lg:col-span-2 grid grid-rows-2 gap-2 min-h-0">
+      <div
+        className={cn(
+          "grid grid-cols-1 lg:grid-cols-3 gap-2 min-h-0",
+          tv ? "flex-1" : "min-h-[460px] lg:flex-1"
+        )}
+      >
+        <div className={cn("lg:col-span-2 grid grid-rows-2 auto-rows-fr gap-2 min-h-0")}>
           <ChartCard titulo={`${METRICA_LABEL[metrica]} por día`} extra={nf(total, decimales)} tv={tv}>
             {loadingSerie ? (
               <div className="h-full bg-muted/40 rounded animate-pulse" />
@@ -662,7 +667,7 @@ export function ObraDashboard({
           </ChartCard>
         </div>
 
-        <div className="grid grid-rows-3 gap-2 min-h-0">
+        <div className="grid grid-rows-3 auto-rows-fr gap-2 min-h-0">
           <ChartCard
             titulo="Materiales movidos"
             extra={totalMateriales > 0 ? `${nf(totalMateriales, 1)} m³` : undefined}
