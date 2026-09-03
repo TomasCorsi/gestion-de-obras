@@ -1,33 +1,31 @@
-# Tablero: rentabilidad protagonista, sin gráficos
+# Tablero: menos KPIs, rentabilidad más legible
 
 ## Qué cambia
 
-1. **Se sacan todos los gráficos del tablero de obra**: la serie diaria de la métrica, el acumulado, la torta de gastos por categoría y las barras de materiales/horas dejan de dibujarse con Recharts.
-2. **La tarjeta de Rentabilidad vuelve a su versión grande**, centrada en la pantalla y con más aire: importes enteros (Cotizado / Gastado / Beneficio) con su equivalente en millones, badge de margen, barra de consumo, chips de Anticipo / Certificado / Cobrado y el avance de obra con número grande y barra gruesa. Al no competir con los gráficos, ocupa el centro del tablero con tipografías más grandes (y aún mayores en modo TV).
-3. **Abajo de todo, dos vistas en texto**:
-   - **Materiales movidos**: lista de materiales (Tosca, Tierra, Desmonte, etc.) con m³ del período, viajes y el acumulado histórico al costado.
-   - **Horas por tipo de máquina**: lista por tipo con cantidad de máquinas y horas del período.
-   Se muestran como filas legibles (rótulo a la izquierda, valores a la derecha, barra de proporción fina), en dos columnas en pantallas anchas y apiladas en móvil.
+1. **Se sacan las 4 tarjetas grandes de KPIs** que aparecen en la captura (Movimientos mes, m³ del período, Horas del período, Gastos del período). Esa información clave ya se lee en la tarjeta de Rentabilidad y en los gráficos de abajo.
+2. **Se mantienen los gráficos** tal como están hoy (serie diaria, acumulado, gastos por categoría, materiales movidos y horas por tipo de máquina), que ahora ganan todo el espacio que dejan las tarjetas.
+3. **Dentro de la tarjeta de Rentabilidad, los datos de Anticipo, Certificado, Cobrado y Avance de obra se agrandan**: dejan de ser chips chicos y pasan a ser bloques con rótulo legible e importe grande (mismo peso visual que Cotizado / Gastado / Beneficio), y el % de avance de obra se muestra con número grande y barra gruesa al lado. Todo con los colores del sistema (primary, success, warning, destructive) y tamaños aún mayores en modo TV.
 
-Los KPIs de arriba (movimientos, m³, horas, gastos, litros, maquinaria, personal, viajes) se mantienen igual.
+## Duda a confirmar
+
+La fila secundaria de KPIs (Litros, Maquinaria en uso, Personal, Viajes de remitos) se mantiene. Si también querés sacarla, avisame y la quito.
 
 ## Estructura resultante
 
 ```text
 Encabezado de obra
-KPIs principales (4)
-KPIs secundarios (4)
-RENTABILIDAD DE LA OBRA  (grande, centrada)
-Materiales movidos        |  Horas por tipo de máquina
+KPIs secundarios (Litros / Maquinaria / Personal / Viajes)
+RENTABILIDAD DE LA OBRA
+  Cotizado | Gastado | Beneficio     + barra de consumo
+  Anticipo | Certificado | Cobrado   + AVANCE (número grande + barra)
+Gráficos (columna izquierda: serie + acumulado | derecha: gastos, materiales, horas)
 ```
 
 ## Detalles técnicos
 
 - `src/components/dashboard/ObraDashboard.tsx`
-  - Eliminar el bloque de gráficos completo (contenedor `grid-cols-1 lg:grid-cols-3` con `ChartCard`), el componente `ChartCard`, `tooltipStyle`, `armarGastos`, `GASTO_COLORS`, `CATEGORIA_LABEL`/`nombreCategoria`, los cálculos `data`/`dataAcum`/`total`/`gastos`, y todas las importaciones de `recharts`.
-  - Mantener `armarMateriales`, `materialesHist` y `obra.horasPorTipoMaquina` para las nuevas listas.
-  - Rentabilidad: mismo cálculo (`cotizado`, `gastadoHistorico`, `beneficio`, `margen`, `consumido`, `anticipoCobrado`, `cobradoTotal`, `saldoPendiente`), sólo cambia el layout: `max-w-5xl mx-auto w-full`, padding mayor y tamaños tipo `text-2xl`/`text-5xl` (TV).
-  - Nuevo bloque final con dos `Card` simples (sin Recharts) renderizando filas de materiales y de horas por tipo, con estado vacío ("Sin materiales registrados" / "Sin horas registradas").
-  - Las props `metrica`, `serie`, `loadingSerie` quedan sin uso en el render; se conservan en la interfaz para no romper llamadores, o se limpian junto con `TableroVista` si no se usan en otro lado.
-- `src/pages/Dashboard.tsx`: sin cambios de datos; se revisa la altura mínima del contenedor ahora que no hay gráficos que necesiten piso de altura.
+  - Eliminar el bloque `{/* KPIs principales */}` (grid de 4 `KPI` con `destacado`). El componente `KPI` se conserva para la fila secundaria.
+  - En la Card de Rentabilidad: reemplazar la fila de chips de Anticipo / Certificado / Cobrado por una grilla de bloques con el mismo estilo que Cotizado / Gastado / Beneficio (borde, fondo tonal, `formatCurrencyFull` + `formatMillones`), y agrandar el bloque de avance (`avance.avanceGeneral`) con número grande (`text-4xl`, `text-6xl` en TV) y barra de progreso gruesa.
+  - Sin cambios en cálculos: `cotizado`, `gastadoHistorico`, `beneficio`, `consumido`, `anticipoCobrado`, `cobradoTotal`, `saldoPendiente`, `avance`.
+  - Contenedor de gráficos: al liberarse espacio, se mantienen los mínimos actuales (`min-h-[460px]` en app, `flex-1 min-h-0` en TV) y los gráficos crecen solos.
 - Sin cambios en hooks, consultas ni lógica de negocio.
