@@ -5,18 +5,9 @@ import { AvanceObra } from "@/hooks/useAvanceObra";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import {
-  Truck,
-  Clock,
-  Users,
-  DollarSign,
-  Boxes,
-  Activity,
-  Fuel,
-  Route,
-  TrendingUp,
-  TrendingDown,
-} from "lucide-react";
+import { Truck, Users, DollarSign, Activity, Fuel } from "lucide-react";
+
+
 import {
   BarChart,
   Bar,
@@ -48,11 +39,6 @@ function formatMillones(value: number): string {
   return "";
 }
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${Math.round(value)}`;
-}
 
 const METRICA_LABEL: Record<MetricaSerie, string> = {
   m3: "m³",
@@ -297,43 +283,8 @@ export function ObraDashboard({
         </div>
       </div>
 
-      {/* KPIs principales */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
-        <KPI
-          icon={Route}
-          label={`Movimientos ${periodoLabel}`}
-          value={nf(obra.movimientosHoy)}
-          sub={historico && nf(historico.movimientos)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={Boxes}
-          label="m³ del período"
-          value={nf(obra.m3Mes, 1)}
-          sub={historico && nf(historico.m3, 1)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={Clock}
-          label="Horas del período"
-          value={nf(obra.horasMes, 1)}
-          sub={historico && nf(historico.horas, 1)}
-          tv={tv}
-          destacado
-        />
-        <KPI
-          icon={DollarSign}
-          label="Gastos del período"
-          value={formatCurrency(obra.gastosMes)}
-          sub={historico && formatCurrency(historico.gastos)}
-          tv={tv}
-          destacado
-        />
-      </div>
-
       {/* KPIs secundarios */}
+
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0">
         <KPI icon={Fuel} label="Litros" value={nf(obra.litrosMes)} sub={historico && nf(historico.litros)} tv={tv} />
         <KPI
@@ -467,71 +418,82 @@ export function ObraDashboard({
 
             {/* Avance y cobranzas (desde certificados + anticipo de la cotización) */}
             {(cobradoTotal > 0 || (avance?.totalCertificado ?? 0) > 0) && (
-              <div className="px-1 mt-1.5 flex flex-wrap items-center gap-2">
-                {anticipoCobrado > 0 && (
-                  <div className="rounded-md border border-primary/40 bg-primary/10 px-2 py-1 leading-tight">
-                    <span
-                      className={cn(
-                        "uppercase tracking-wide text-primary font-semibold mr-1.5",
-                        tv ? "text-sm" : "text-[10px]"
-                      )}
-                    >
-                      Anticipo
-                    </span>
-                    <span
-                      className={cn("font-bold font-mono-numbers text-primary", tv ? "text-xl" : "text-sm")}
-                    >
-                      {formatCurrencyFull(anticipoCobrado)}
-                    </span>
-                  </div>
-                )}
-                {avance && avance.totalCertificado > 0 && (
-                  <div className="rounded-md border border-border bg-muted/50 px-2 py-1 leading-tight">
-                    <span
-                      className={cn(
-                        "uppercase tracking-wide text-muted-foreground font-semibold mr-1.5",
-                        tv ? "text-sm" : "text-[10px]"
-                      )}
-                    >
-                      Certificado
-                    </span>
-                    <span
-                      className={cn("font-bold font-mono-numbers text-foreground", tv ? "text-xl" : "text-sm")}
-                    >
-                      {formatCurrencyFull(avance.totalCertificado)}
-                    </span>
-                  </div>
-                )}
-                <div className="rounded-md border border-success/40 bg-success/10 px-2 py-1 leading-tight">
-                  <span
-                    className={cn(
-                      "uppercase tracking-wide text-success font-semibold mr-1.5",
-                      tv ? "text-sm" : "text-[10px]"
-                    )}
-                  >
-                    Cobrado
-                  </span>
-                  <span className={cn("font-bold font-mono-numbers text-success", tv ? "text-xl" : "text-sm")}>
-                    {formatCurrencyFull(cobradoTotal)}
-                  </span>
-                  {saldoPendiente > 0 && (
-                    <span
-                      className={cn(
-                        "ml-1.5 font-semibold text-destructive font-mono-numbers",
-                        tv ? "text-sm" : "text-[10px]"
-                      )}
-                    >
-                      saldo {formatCurrencyFull(saldoPendiente)}
-                    </span>
-                  )}
+              <div className="px-1 mt-2 grid grid-cols-1 lg:grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      label: "Anticipo",
+                      valor: anticipoCobrado,
+                      tone: "text-primary",
+                      box: "bg-primary/10 border-primary/40",
+                      mostrar: anticipoCobrado > 0,
+                    },
+                    {
+                      label: "Certificado",
+                      valor: avance?.totalCertificado || 0,
+                      tone: "text-foreground",
+                      box: "bg-muted/50 border-border",
+                      mostrar: (avance?.totalCertificado ?? 0) > 0,
+                    },
+                    {
+                      label: "Cobrado",
+                      valor: cobradoTotal,
+                      tone: "text-success",
+                      box: "bg-success/10 border-success/40",
+                      mostrar: true,
+                    },
+                  ]
+                    .filter((b) => b.mostrar)
+                    .map((b) => (
+                      <div key={b.label} className={cn("rounded-md border px-2 py-1", b.box)}>
+                        <p
+                          className={cn(
+                            "uppercase tracking-wide font-semibold leading-none",
+                            b.tone,
+                            tv ? "text-sm" : "text-[10px]"
+                          )}
+                        >
+                          {b.label}
+                        </p>
+                        <p
+                          className={cn(
+                            "font-bold font-mono-numbers leading-tight flex items-baseline gap-1.5 flex-wrap",
+                            b.tone,
+                            tv ? "text-3xl" : "text-lg"
+                          )}
+                        >
+                          {formatCurrencyFull(b.valor)}
+                          {formatMillones(b.valor) && (
+                            <span
+                              className={cn(
+                                "font-normal text-muted-foreground",
+                                tv ? "text-sm" : "text-[10px]"
+                              )}
+                            >
+                              {formatMillones(b.valor)}
+                            </span>
+                          )}
+                        </p>
+                        {b.label === "Cobrado" && saldoPendiente > 0 && (
+                          <p
+                            className={cn(
+                              "font-semibold text-destructive font-mono-numbers leading-none",
+                              tv ? "text-sm" : "text-[10px]"
+                            )}
+                          >
+                            saldo {formatCurrencyFull(saldoPendiente)}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                 </div>
 
                 {avance && avance.montoContratado > 0 && (
-                  <div className="flex-1 min-w-[180px] rounded-md border border-primary/40 bg-primary/[0.07] px-2 py-1 flex items-center gap-2">
+                  <div className="rounded-md border-2 border-primary/40 bg-primary/[0.07] px-3 py-2 flex items-center gap-3">
                     <p
                       className={cn(
                         "font-bold font-mono-numbers text-primary leading-none shrink-0",
-                        tv ? "text-4xl" : "text-2xl"
+                        tv ? "text-6xl" : "text-4xl"
                       )}
                     >
                       {avance.avanceGeneral.toFixed(0)}%
@@ -539,8 +501,8 @@ export function ObraDashboard({
                     <div className="flex-1 min-w-0">
                       <p
                         className={cn(
-                          "uppercase tracking-wide text-muted-foreground font-semibold leading-none mb-1",
-                          tv ? "text-sm" : "text-[10px]"
+                          "uppercase tracking-wide text-primary font-bold leading-none mb-1.5",
+                          tv ? "text-base" : "text-xs"
                         )}
                       >
                         Avance de obra
@@ -548,7 +510,7 @@ export function ObraDashboard({
                       <div
                         className={cn(
                           "w-full rounded-full bg-muted/80 border border-border overflow-hidden",
-                          tv ? "h-4" : "h-3"
+                          tv ? "h-6" : "h-4"
                         )}
                       >
                         <div
@@ -561,6 +523,7 @@ export function ObraDashboard({
                 )}
               </div>
             )}
+
           </>
         )}
       </Card>
