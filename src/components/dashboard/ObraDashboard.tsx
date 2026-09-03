@@ -1,6 +1,7 @@
 import { ObraTableroData } from "@/hooks/useTableroObras";
 import { MetricaSerie, SeriePunto } from "@/hooks/useTableroSeries";
 import { HistoricoObra } from "@/hooks/useTableroHistorico";
+import { AvanceObra } from "@/hooks/useAvanceObra";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
