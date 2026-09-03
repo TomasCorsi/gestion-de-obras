@@ -109,6 +109,7 @@ export function TableroVista({ sesion, tv, onObraEnPantalla, onEstado }: Props) 
         mesLabel={mesLabel}
         tv={tv}
         posicion={{ actual: indice, total: obras.length }}
+        avance={avance}
       />
     </div>
   );
