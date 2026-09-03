@@ -41,7 +41,7 @@ const fetchHistorico = async (
   if (obras.length === 0) return {};
   const obraIds = obras.map((o) => o.obraId);
 
-  const [partes, remitos, cargas, gastos, maqRes, preciosRes] = await Promise.all([
+  const [partes, remitos, cargas, gastos, ordenesCompra, maqRes, preciosRes] = await Promise.all([
     fetchAll<any>((from, to) =>
       supabase
         .from("partes_diarios")
@@ -66,6 +66,14 @@ const fetchHistorico = async (
     ),
     fetchAll<any>((from, to) =>
       supabase.from("otros_gastos").select("obra_id, monto, categoria").in("obra_id", obraIds).range(from, to)
+    ),
+    fetchAll<any>((from, to) =>
+      supabase
+        .from("ordenes_compra")
+        .select("obra_id, total, estado")
+        .in("obra_id", obraIds)
+        .in("estado", ["emitida", "recibida"])
+        .range(from, to)
     ),
     supabase.from("maquinarias").select("id, obra_id").in("obra_id", obraIds),
     supabase.from("precios_productos_mes").select("producto, precio_unitario, mes, anio"),
@@ -124,8 +132,12 @@ const fetchHistorico = async (
       const cat = (g.categoria || "varios").toString();
       porCategoria[cat] = (porCategoria[cat] || 0) + num(g.monto);
     });
+    const costoOrdenes = ordenesCompra
+      .filter((x) => x.obra_id === o.obraId)
+      .reduce((s, x) => s + num(x.total), 0);
     const gastosPorCategoria = [
       { categoria: "Combustible", monto: costoCombustible },
+      { categoria: "Órdenes de compra", monto: costoOrdenes },
       { categoria: "Mantenimiento", monto: costoMantenimiento },
       ...Object.entries(porCategoria).map(([categoria, monto]) => ({ categoria, monto })),
     ]
@@ -142,7 +154,7 @@ const fetchHistorico = async (
       }, 0),
       litros: cargasObra.reduce((s, x) => s + num(x.litros), 0),
       viajes,
-      gastos: costoOtros + costoCombustible + costoMantenimiento,
+      gastos: costoOtros + costoCombustible + costoMantenimiento + costoOrdenes,
       gastosPorCategoria,
       maquinarias: new Set(p.map((x) => x.maquinaria_id).filter(Boolean)).size,
       personal: new Set(p.map((x) => x.personal_id).filter(Boolean)).size,

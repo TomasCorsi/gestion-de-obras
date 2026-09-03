@@ -135,7 +135,7 @@ export default function Dashboard() {
         </div>
 
         <TabsContent value="tablero" className="m-0">
-          <div className="lg:h-[calc(100vh-11rem)] min-h-[520px]">
+          <div className="lg:min-h-[calc(100vh-11rem)] min-h-[520px]">
             <TableroVista sesion={sesion} onEstado={setEstado} />
           </div>
         </TabsContent>

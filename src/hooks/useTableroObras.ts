@@ -109,7 +109,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
   // En el mes actual las métricas "del día" son de hoy; en meses pasados, del mes completo.
   const esDelPeriodo = (fecha: string) => (mesActual ? fecha === format(new Date(), "yyyy-MM-dd") : true);
 
-  const [obrasRes, partesRes, maqRes, gastosRes, combRes, preciosRes, cotizRes] = await Promise.all([
+  const [obrasRes, partesRes, maqRes, gastosRes, combRes, preciosRes, cotizRes, ocRes] = await Promise.all([
     supabase.from("obras").select("id, nombre, estado, ubicacion").in("id", obraIds),
     supabase
       .from("partes_diarios")
@@ -132,6 +132,13 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .lte("fecha", finMes),
     supabase.from("precios_productos_mes").select("producto, precio_unitario, mes, anio").eq("anio", anio).eq("mes", mesNum),
     supabase.from("cotizaciones").select("id, obra_id, subtotal, total, anticipo_monto, estado").in("obra_id", obraIds).eq("estado", "aprobada"),
+    supabase
+      .from("ordenes_compra")
+      .select("obra_id, fecha, total, estado")
+      .in("obra_id", obraIds)
+      .in("estado", ["emitida", "recibida"])
+      .gte("fecha", inicioMes)
+      .lte("fecha", finMes),
   ]);
 
   // Los remitos no tienen obra_id cargado: se traen todos del período y se asignan por nombre.
@@ -198,6 +205,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     });
   }
   const combustible = (combRes.data || []) as any[];
+  const ordenesCompra = (ocRes.data || []) as any[];
 
   return ((obrasRes.data || []) as any[]).map((obra) => {
     const nombreNorm = normalizarNombre(obra.nombre);
@@ -237,10 +245,14 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     const costoMantenimiento = mantenimientos
       .filter((m) => maqObra[m.maquinaria_id] === obra.id)
       .reduce((s, m) => s + num(m.costo_total), 0);
-    const gastosMes = costoOtros + costoMantenimiento + costoCombustible;
+    const costoOrdenes = ordenesCompra
+      .filter((o) => o.obra_id === obra.id)
+      .reduce((s, o) => s + num(o.total), 0);
+    const gastosMes = costoOtros + costoMantenimiento + costoCombustible + costoOrdenes;
 
     const gastosPorCategoria: GastoCategoria[] = [
       { categoria: "Combustible", monto: costoCombustible },
+      { categoria: "Órdenes de compra", monto: costoOrdenes },
       { categoria: "Mantenimiento", monto: costoMantenimiento },
       ...Object.entries(porCategoria).map(([categoria, monto]) => ({ categoria, monto })),
     ]
