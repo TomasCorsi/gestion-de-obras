@@ -39,11 +39,6 @@ function formatMillones(value: number): string {
   return "";
 }
 
-function formatCurrency(value: number): string {
-  if (Math.abs(value) >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1000) return `$${(value / 1000).toFixed(0)}K`;
-  return `$${Math.round(value)}`;
-}
 
 const METRICA_LABEL: Record<MetricaSerie, string> = {
   m3: "m³",
