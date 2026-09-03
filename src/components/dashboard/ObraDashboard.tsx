@@ -7,16 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   Truck,
-  Clock,
   Users,
   DollarSign,
-  Boxes,
   Activity,
   Fuel,
-  Route,
   TrendingUp,
   TrendingDown,
 } from "lucide-react";
+
 import {
   BarChart,
   Bar,
