@@ -62,6 +62,7 @@ export function TableroVista({ sesion, tv, onObraEnPantalla, onEstado }: Props) 
   }, [indice, obras.length]);
 
   const obra = obras[indice];
+  const { avance } = useAvanceObra(obra?.obraId);
   const avisadaRef = useRef<string | null>(null);
   useEffect(() => {
     if (!obra || !onObraEnPantalla) return;
