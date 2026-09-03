@@ -218,6 +218,7 @@ export function ObraDashboard({
   mesLabel,
   tv,
   posicion,
+  avance,
 }: Props) {
   const decimales = metrica === "movimientos" ? 0 : 1;
   const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
