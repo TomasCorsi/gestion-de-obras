@@ -1,6 +1,7 @@
 import { ObraTableroData } from "@/hooks/useTableroObras";
 import { MetricaSerie, SeriePunto } from "@/hooks/useTableroSeries";
 import { HistoricoObra } from "@/hooks/useTableroHistorico";
+import { AvanceObra } from "@/hooks/useAvanceObra";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -204,6 +205,7 @@ interface Props {
   mesLabel?: string;
   tv?: boolean;
   posicion?: { actual: number; total: number };
+  avance?: AvanceObra;
 }
 
 export function ObraDashboard({
@@ -216,6 +218,7 @@ export function ObraDashboard({
   mesLabel,
   tv,
   posicion,
+  avance,
 }: Props) {
   const decimales = metrica === "movimientos" ? 0 : 1;
   const data = serie.map((p) => ({ label: p.label, valor: Number(p[obra.obraId]) || 0 }));
@@ -437,6 +440,44 @@ export function ObraDashboard({
                 {consumido.toFixed(0)}% del monto cotizado ya consumido en gastos
               </p>
             </div>
+
+            {/* Avance y cobranzas (desde certificados) */}
+            {avance && avance.totalCertificado > 0 && (
+              <div className="px-1 mt-3 space-y-2">
+                <div className={cn("flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1", tv ? "text-lg" : "text-sm")}>
+                  <p className="text-foreground">
+                    <span className="text-muted-foreground">Certificado:</span>{" "}
+                    <span className="font-bold font-mono-numbers">{formatCurrencyFull(avance.totalCertificado)}</span>
+                    {cotizado > 0 && (
+                      <span className="text-muted-foreground"> · {((avance.totalCertificado / cotizado) * 100).toFixed(0)}% del cotizado</span>
+                    )}
+                  </p>
+                  <p className="text-foreground">
+                    <span className="text-muted-foreground">Cobrado:</span>{" "}
+                    <span className="font-bold font-mono-numbers text-success">{formatCurrencyFull(avance.totalCobrado)}</span>
+                    <span className="text-muted-foreground"> · {avance.porcentajeCobrado.toFixed(0)}%</span>
+                    {avance.saldoPendiente > 0 && (
+                      <span className="text-destructive"> · Saldo {formatCurrencyFull(avance.saldoPendiente)}</span>
+                    )}
+                  </p>
+                </div>
+
+                {avance.montoContratado > 0 && (
+                  <div>
+                    <div className={cn("w-full rounded-full bg-muted overflow-hidden", tv ? "h-3" : "h-2.5")}>
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${Math.min(100, avance.avanceGeneral)}%` }}
+                      />
+                    </div>
+                    <p className={cn("text-muted-foreground mt-1", tv ? "text-sm" : "text-xs")}>
+                      <span className="font-bold font-mono-numbers text-foreground">{avance.avanceGeneral.toFixed(0)}%</span>{" "}
+                      de avance de obra certificado
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </>
         )}
       </Card>

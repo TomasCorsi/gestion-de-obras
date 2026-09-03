@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { Building2 } from "lucide-react";
 import { ObraDashboard } from "@/components/dashboard/ObraDashboard";
 import { useTableroObras } from "@/hooks/useTableroObras";
+import { useAvanceObra } from "@/hooks/useAvanceObra";
 import { useTableroSeries } from "@/hooks/useTableroSeries";
 import { useTableroHistorico } from "@/hooks/useTableroHistorico";
 import { useTableroRealtime } from "@/hooks/useTableroRealtime";
@@ -61,6 +62,7 @@ export function TableroVista({ sesion, tv, onObraEnPantalla, onEstado }: Props) 
   }, [indice, obras.length]);
 
   const obra = obras[indice];
+  const { avance } = useAvanceObra(obra?.obraId);
   const avisadaRef = useRef<string | null>(null);
   useEffect(() => {
     if (!obra || !onObraEnPantalla) return;
@@ -107,6 +109,7 @@ export function TableroVista({ sesion, tv, onObraEnPantalla, onEstado }: Props) 
         mesLabel={mesLabel}
         tv={tv}
         posicion={{ actual: indice, total: obras.length }}
+        avance={avance}
       />
     </div>
   );
