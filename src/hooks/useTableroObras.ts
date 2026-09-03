@@ -40,6 +40,7 @@ export interface ObraTableroData {
   costoOtros: number;
   gastosPorCategoria: GastoCategoria[];
   montoCotizado: number;
+  anticipoCobrado: number;
   maquinariasTotal: number;
   maquinariasEnUso: number;
   horasHoy: number;
@@ -130,7 +131,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .gte("fecha", inicioMes)
       .lte("fecha", finMes),
     supabase.from("precios_productos_mes").select("producto, precio_unitario, mes, anio").eq("anio", anio).eq("mes", mesNum),
-    supabase.from("cotizaciones").select("obra_id, subtotal, total, anticipo_monto, estado").in("obra_id", obraIds).eq("estado", "aprobada"),
+    supabase.from("cotizaciones").select("id, obra_id, subtotal, total, anticipo_monto, estado").in("obra_id", obraIds).eq("estado", "aprobada"),
   ]);
 
   // Los remitos no tienen obra_id cargado: se traen todos del período y se asignan por nombre.
@@ -183,6 +184,19 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
 
   const gastos = (gastosRes.data || []) as any[];
   const cotizaciones = (cotizRes.data || []) as any[];
+
+  // Anticipos de las cotizaciones aprobadas (múltiples por cotización)
+  const anticipoPorCotiz: Record<string, number> = {};
+  const cotizIds = cotizaciones.map((c) => c.id).filter(Boolean);
+  if (cotizIds.length > 0) {
+    const { data: antData } = await supabase
+      .from("cotizacion_anticipos")
+      .select("cotizacion_id, monto")
+      .in("cotizacion_id", cotizIds);
+    ((antData || []) as any[]).forEach((a) => {
+      anticipoPorCotiz[a.cotizacion_id] = (anticipoPorCotiz[a.cotizacion_id] || 0) + num(a.monto);
+    });
+  }
   const combustible = (combRes.data || []) as any[];
 
   return ((obrasRes.data || []) as any[]).map((obra) => {
@@ -237,6 +251,10 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .filter((c) => c.obra_id === obra.id)
       .reduce((s, c) => s + num(c.subtotal), 0);
 
+    const anticipoCobrado = cotizaciones
+      .filter((c) => c.obra_id === obra.id)
+      .reduce((s, c) => s + (anticipoPorCotiz[c.id] ?? num(c.anticipo_monto)), 0);
+
     const horasMaq: Record<string, number> = {};
     partesObra.forEach((p) => {
       if (!p.maquinaria_id) return;
@@ -287,6 +305,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       costoOtros,
       gastosPorCategoria,
       montoCotizado,
+      anticipoCobrado,
       horasPorMaquina,
       horasPorTipoMaquina,
       materiales,
