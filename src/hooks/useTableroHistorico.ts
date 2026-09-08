@@ -70,7 +70,7 @@ const fetchHistorico = async (
     fetchAll<any>((from, to) =>
       supabase
         .from("ordenes_compra")
-        .select("obra_id, total, estado")
+        .select("obra_id, subtotal, total, estado")
         .in("obra_id", obraIds)
         .in("estado", ["emitida", "recibida"])
         .range(from, to)
@@ -134,7 +134,7 @@ const fetchHistorico = async (
     });
     const costoOrdenes = ordenesCompra
       .filter((x) => x.obra_id === o.obraId)
-      .reduce((s, x) => s + num(x.total), 0);
+      .reduce((s, x) => s + (x.subtotal != null ? num(x.subtotal) : num(x.total)), 0);
     const gastosPorCategoria = [
       { categoria: "Combustible", monto: costoCombustible },
       { categoria: "Órdenes de compra", monto: costoOrdenes },

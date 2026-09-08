@@ -134,7 +134,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
     supabase.from("cotizaciones").select("id, obra_id, subtotal, total, anticipo_monto, estado").in("obra_id", obraIds).eq("estado", "aprobada"),
     supabase
       .from("ordenes_compra")
-      .select("obra_id, fecha, total, estado")
+      .select("obra_id, fecha, subtotal, total, estado")
       .in("obra_id", obraIds)
       .in("estado", ["emitida", "recibida"])
       .gte("fecha", inicioMes)
@@ -247,7 +247,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .reduce((s, m) => s + num(m.costo_total), 0);
     const costoOrdenes = ordenesCompra
       .filter((o) => o.obra_id === obra.id)
-      .reduce((s, o) => s + num(o.total), 0);
+      .reduce((s, o) => s + (o.subtotal != null ? num(o.subtotal) : num(o.total)), 0);
     const gastosMes = costoOtros + costoMantenimiento + costoCombustible + costoOrdenes;
 
     const gastosPorCategoria: GastoCategoria[] = [
