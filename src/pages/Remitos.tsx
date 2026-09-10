@@ -50,6 +50,7 @@ import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { toast } from "sonner";
+import { CombustibleRepartidorPanel } from "@/components/gastos/CombustibleRepartidorPanel";
 
 // Lazy-load heavy dialogs to keep initial Remitos render snappy
 const RemitosCSVImportDialog = lazy(() =>
@@ -85,6 +86,7 @@ export default function Remitos() {
   const isCalaminasur = user?.id === CALAMINASUR_USER_ID;
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
+  const [seccion, setSeccion] = useState<"remitos" | "combustible">("remitos");
   const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
@@ -507,8 +509,38 @@ export default function Remitos() {
     );
   }
 
+  const SeccionTabs = () =>
+    isFranco ? (
+      <div className="mb-4 inline-flex rounded-lg border border-border bg-card p-1">
+        {(["remitos", "combustible"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSeccion(s)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              seccion === s
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s === "remitos" ? "Remitos" : "Combustible"}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
+  if (isFranco && seccion === "combustible") {
+    return (
+      <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+        <SeccionTabs />
+        <CombustibleRepartidorPanel />
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+      <SeccionTabs />
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar
