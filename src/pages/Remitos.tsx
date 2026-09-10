@@ -509,8 +509,38 @@ export default function Remitos() {
     );
   }
 
+  const SeccionTabs = () =>
+    isFranco ? (
+      <div className="mb-4 inline-flex rounded-lg border border-border bg-card p-1">
+        {(["remitos", "combustible"] as const).map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSeccion(s)}
+            className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+              seccion === s
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s === "remitos" ? "Remitos" : "Combustible"}
+          </button>
+        ))}
+      </div>
+    ) : null;
+
+  if (isFranco && seccion === "combustible") {
+    return (
+      <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+        <SeccionTabs />
+        <CombustibleRepartidorPanel />
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+      <SeccionTabs />
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar
