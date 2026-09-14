@@ -2629,6 +2629,9 @@ export type Database = {
           created_at: string
           dni: string | null
           email: string | null
+          estado_laboral: string | null
+          fecha_alta: string | null
+          fecha_baja: string | null
           fecha_ingreso: string | null
           id: string
           legajo: string | null
@@ -2636,7 +2639,10 @@ export type Database = {
           modalidad_pago: string | null
           nombre: string | null
           numero_cuenta: string | null
+          observaciones: string | null
+          puesto: string | null
           rol: Database["public"]["Enums"]["rol_personal"]
+          sector: string | null
           situacion_laboral: string | null
           sueldo: number | null
           sueldo_negro: number | null
@@ -2652,6 +2658,9 @@ export type Database = {
           created_at?: string
           dni?: string | null
           email?: string | null
+          estado_laboral?: string | null
+          fecha_alta?: string | null
+          fecha_baja?: string | null
           fecha_ingreso?: string | null
           id?: string
           legajo?: string | null
@@ -2659,7 +2668,10 @@ export type Database = {
           modalidad_pago?: string | null
           nombre?: string | null
           numero_cuenta?: string | null
+          observaciones?: string | null
+          puesto?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
+          sector?: string | null
           situacion_laboral?: string | null
           sueldo?: number | null
           sueldo_negro?: number | null
@@ -2675,6 +2687,9 @@ export type Database = {
           created_at?: string
           dni?: string | null
           email?: string | null
+          estado_laboral?: string | null
+          fecha_alta?: string | null
+          fecha_baja?: string | null
           fecha_ingreso?: string | null
           id?: string
           legajo?: string | null
@@ -2682,7 +2697,10 @@ export type Database = {
           modalidad_pago?: string | null
           nombre?: string | null
           numero_cuenta?: string | null
+          observaciones?: string | null
+          puesto?: string | null
           rol?: Database["public"]["Enums"]["rol_personal"]
+          sector?: string | null
           situacion_laboral?: string | null
           sueldo?: number | null
           sueldo_negro?: number | null
@@ -3182,6 +3200,246 @@ export type Database = {
             columns: ["viaje_id"]
             isOneToOne: false
             referencedRelation: "viajes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rrhh_feriados: {
+        Row: {
+          created_at: string
+          descripcion: string | null
+          fecha: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          descripcion?: string | null
+          fecha: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          descripcion?: string | null
+          fecha?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      rrhh_jornada_config: {
+        Row: {
+          domingo: number
+          id: string
+          jueves: number
+          lunes: number
+          martes: number
+          miercoles: number
+          sabado: number
+          updated_at: string
+          viernes: number
+        }
+        Insert: {
+          domingo?: number
+          id?: string
+          jueves?: number
+          lunes?: number
+          martes?: number
+          miercoles?: number
+          sabado?: number
+          updated_at?: string
+          viernes?: number
+        }
+        Update: {
+          domingo?: number
+          id?: string
+          jueves?: number
+          lunes?: number
+          martes?: number
+          miercoles?: number
+          sabado?: number
+          updated_at?: string
+          viernes?: number
+        }
+        Relationships: []
+      }
+      rrhh_novedades: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          dias: number | null
+          fecha: string | null
+          fecha_desde: string | null
+          fecha_hasta: string | null
+          horas: number | null
+          id: string
+          monto: number | null
+          observacion: string | null
+          periodo_id: string | null
+          personal_id: string
+          tipo: Database["public"]["Enums"]["rrhh_novedad_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          dias?: number | null
+          fecha?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          horas?: number | null
+          id?: string
+          monto?: number | null
+          observacion?: string | null
+          periodo_id?: string | null
+          personal_id: string
+          tipo: Database["public"]["Enums"]["rrhh_novedad_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          dias?: number | null
+          fecha?: string | null
+          fecha_desde?: string | null
+          fecha_hasta?: string | null
+          horas?: number | null
+          id?: string
+          monto?: number | null
+          observacion?: string | null
+          periodo_id?: string | null
+          personal_id?: string
+          tipo?: Database["public"]["Enums"]["rrhh_novedad_tipo"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrhh_novedades_periodo_id_fkey"
+            columns: ["periodo_id"]
+            isOneToOne: false
+            referencedRelation: "rrhh_periodos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rrhh_novedades_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rrhh_novedades_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rrhh_novedades_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rrhh_periodos: {
+        Row: {
+          anio: number
+          created_at: string
+          estado: Database["public"]["Enums"]["rrhh_periodo_estado"]
+          fecha_desde: string
+          fecha_hasta: string
+          horas_normales: number
+          id: string
+          mes: number
+          observaciones: string | null
+          tipo: Database["public"]["Enums"]["rrhh_periodo_tipo"]
+          updated_at: string
+        }
+        Insert: {
+          anio: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["rrhh_periodo_estado"]
+          fecha_desde: string
+          fecha_hasta: string
+          horas_normales?: number
+          id?: string
+          mes: number
+          observaciones?: string | null
+          tipo: Database["public"]["Enums"]["rrhh_periodo_tipo"]
+          updated_at?: string
+        }
+        Update: {
+          anio?: number
+          created_at?: string
+          estado?: Database["public"]["Enums"]["rrhh_periodo_estado"]
+          fecha_desde?: string
+          fecha_hasta?: string
+          horas_normales?: number
+          id?: string
+          mes?: number
+          observaciones?: string | null
+          tipo?: Database["public"]["Enums"]["rrhh_periodo_tipo"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rrhh_sueldos_historial: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          modalidad: string
+          observacion: string | null
+          personal_id: string
+          sueldo_acordado: number
+          sueldo_registrado: number
+          updated_at: string
+          vigencia_desde: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modalidad?: string
+          observacion?: string | null
+          personal_id: string
+          sueldo_acordado?: number
+          sueldo_registrado?: number
+          updated_at?: string
+          vigencia_desde: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          modalidad?: string
+          observacion?: string | null
+          personal_id?: string
+          sueldo_acordado?: number
+          sueldo_registrado?: number
+          updated_at?: string
+          vigencia_desde?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rrhh_sueldos_historial_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rrhh_sueldos_historial_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rrhh_sueldos_historial_personal_id_fkey"
+            columns: ["personal_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
             referencedColumns: ["id"]
           },
         ]
@@ -3835,6 +4093,22 @@ export type Database = {
         | "mecanico"
         | "topografo"
         | "repartidor_calecita"
+      rrhh_novedad_tipo:
+        | "inasistencia"
+        | "enfermedad"
+        | "art"
+        | "vacaciones"
+        | "licencia"
+        | "horas_extras"
+        | "feriado_trabajado"
+        | "premio"
+        | "adelanto"
+        | "alta"
+        | "baja"
+        | "cambio_sueldo"
+        | "otro"
+      rrhh_periodo_estado: "abierto" | "revision" | "cerrado"
+      rrhh_periodo_tipo: "quincena_1" | "quincena_2" | "mes"
       tipo_documento_empleado: "estudio_medico" | "recibo_sueldo"
       tipo_mantenimiento: "preventivo" | "correctivo" | "emergencia"
       tipo_maquinaria:
@@ -4082,6 +4356,23 @@ export const Constants = {
         "topografo",
         "repartidor_calecita",
       ],
+      rrhh_novedad_tipo: [
+        "inasistencia",
+        "enfermedad",
+        "art",
+        "vacaciones",
+        "licencia",
+        "horas_extras",
+        "feriado_trabajado",
+        "premio",
+        "adelanto",
+        "alta",
+        "baja",
+        "cambio_sueldo",
+        "otro",
+      ],
+      rrhh_periodo_estado: ["abierto", "revision", "cerrado"],
+      rrhh_periodo_tipo: ["quincena_1", "quincena_2", "mes"],
       tipo_documento_empleado: ["estudio_medico", "recibo_sueldo"],
       tipo_mantenimiento: ["preventivo", "correctivo", "emergencia"],
       tipo_maquinaria: [

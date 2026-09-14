@@ -36,6 +36,13 @@
       "when": 1788374348590,
       "tag": "0004_create_cotizacion_anticipos",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789404920148,
+      "tag": "0005_rrhh_modulo_etapa1",
+      "breakpoints": true
     }
   ]
 }
