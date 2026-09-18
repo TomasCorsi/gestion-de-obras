@@ -316,6 +316,15 @@ export function LiquidacionClienteDialog({
             map[tipo].precioTotal += r.precio_total || 0;
             const fpKey = normalizarFormaPago(r.forma_pago);
             totalesPorFormaPago[fpKey] += r.precio_total || 0;
+            for (const it of itemsMap[r.id] || []) {
+              const key = it.concepto || "Ítems adicionales";
+              if (!map[key]) {
+                map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+              }
+              map[key].cantidad += it.cantidad || 0;
+              map[key].precioTotal += it.precio_total || 0;
+              totalesPorFormaPago[fpKey] += it.precio_total || 0;
+            }
           });
         const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
         return {
