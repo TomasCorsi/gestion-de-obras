@@ -521,6 +521,16 @@ export function RemitoQuickFormDialog({
           </div>
           <div />
 
+          {/* === ÍTEMS ADICIONALES === */}
+          <RemitoItemsEditor items={items} onChange={setItems} />
+
+          {items.length > 0 && (
+            <div className="col-span-1 sm:col-span-2 md:col-span-3 flex justify-end text-sm font-semibold text-foreground">
+              Total del remito (viaje + ítems): $
+              {((form.precio_total || 0) + totalItems(items)).toLocaleString("es-AR")}
+            </div>
+          )}
+
           {/* === FORMA DE PAGO === */}
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Forma de Pago</Label>
