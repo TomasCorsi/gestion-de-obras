@@ -44,6 +44,7 @@ function formatFormaPago(fp?: string | null) {
 const Row = memo(function Row({
   r,
   maqMap,
+  itemsMap,
   creadoresMap,
   showClienteCantera,
   hideExtrasForFranco,
