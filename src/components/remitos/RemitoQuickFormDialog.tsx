@@ -27,6 +27,8 @@ import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { ClienteDB } from "@/hooks/useClientes";
 import { ProveedorDB } from "@/hooks/useProveedores";
 import { useAuth } from "@/hooks/useAuth";
+import { RemitoItemsEditor } from "@/components/remitos/RemitoItemsEditor";
+import { fetchRemitoItems, RemitoItemInput, totalItems } from "@/hooks/useRemitoItems";
 
 const FRANCO_USER_ID = "2184b0ef-3c4f-4ca7-bdbf-c7cc69fc4c3a";
 
@@ -82,7 +84,7 @@ interface RemitoQuickFormDialogProps {
   clientes: ClienteDB[];
   proveedores?: ProveedorDB[];
   generateNumero: () => string;
-  onSubmit: (remito: RemitoForm & { id?: string }) => Promise<void>;
+  onSubmit: (remito: RemitoForm & { id?: string; items?: RemitoItemInput[] }) => Promise<void>;
   editingRemito?: RemitoEditData | null;
 }
 
@@ -189,6 +191,24 @@ export function RemitoQuickFormDialog({
     }
   }, [open, editingRemito]);
 
+  // Ítems adicionales del remito (jornadas de máquina, servicios)
+  const [items, setItems] = useState<RemitoItemInput[]>([]);
+  useEffect(() => {
+    if (!open) return;
+    if (editingRemito?.id) {
+      let cancel = false;
+      fetchRemitoItems(editingRemito.id)
+        .then((data) => {
+          if (!cancel) setItems(data.map(({ id, remito_id, orden, ...rest }) => rest));
+        })
+        .catch(() => setItems([]));
+      return () => {
+        cancel = true;
+      };
+    }
+    setItems([]);
+  }, [open, editingRemito]);
+
   // Buffers de texto para campos decimales (permite escribir "0.", "1,", ".5", etc.)
   const [cantUniStr, setCantUniStr] = useState<string>("");
   const [precioUniStr, setPrecioUniStr] = useState<string>("");
@@ -289,7 +309,8 @@ export function RemitoQuickFormDialog({
     setSaving(true);
     try {
       const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
-      const remito: RemitoForm & { id?: string } = {
+      const remito: RemitoForm & { id?: string; items?: RemitoItemInput[] } = {
+        items,
         numero: form.remito_local || generateNumero(),
         fecha: form.fecha,
         material: form.tipo_material || "-",
