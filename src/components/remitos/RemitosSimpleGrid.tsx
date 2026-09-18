@@ -72,6 +72,11 @@ const Row = memo(function Row({
     unidad: r.unidad || "M3",
     p_unit: r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-",
     p_total: `$${(r.precio_total || 0).toLocaleString("es-AR")}`,
+    items: (() => {
+      const its = itemsMap?.[r.id];
+      if (!its || its.length === 0) return "-";
+      return `+${its.length} ítem${its.length === 1 ? "" : "s"}`;
+    })(),
     proveedor: r.proveedor || "-",
     forma_pago: formatFormaPago((r as any).forma_pago),
     observaciones: r.observaciones || "-",
@@ -128,6 +133,7 @@ const Row = memo(function Row({
     prev.maqMap === next.maqMap &&
     prev.showClienteCantera === next.showClienteCantera &&
     prev.hideExtrasForFranco === next.hideExtrasForFranco &&
+    prev.itemsMap === next.itemsMap &&
     prev.style.transform === next.style.transform
   );
 });
