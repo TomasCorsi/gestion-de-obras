@@ -43,6 +43,13 @@
       "when": 1789404920148,
       "tag": "0005_rrhh_modulo_etapa1",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789759865434,
+      "tag": "0006_create_remito_items",
+      "breakpoints": true
     }
   ]
 }
