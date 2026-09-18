@@ -306,6 +306,9 @@ export function LiquidacionObraDialog({
       .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
       .forEach((r) => {
         totFP[normalizarFormaPago((r as any).forma_pago)] += r.precio_total || 0;
+        for (const it of (itemsMap as Record<string, any[]>)[r.id] || []) {
+          totFP[normalizarFormaPago((r as any).forma_pago)] += it.precio_total || 0;
+        }
       });
 
     const hayFormaPago = totFP.efectivo + totFP.transferencia + totFP.cuenta_corriente > 0;
