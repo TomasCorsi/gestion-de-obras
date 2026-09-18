@@ -899,6 +899,7 @@ export default function Remitos() {
           creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
           showClienteCantera={isFranco || isAdminOrCapataz}
           hideExtrasForFranco={isFranco}
+          itemsMap={itemsMap}
         />
       </div>
 
