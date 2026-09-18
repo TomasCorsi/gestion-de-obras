@@ -486,7 +486,9 @@ export default function Remitos() {
       "Cantidad Total": r.cantidad || 0,
       "Unidad": r.unidad || "",
       "Precio Unitario": r.precio_unitario || "",
-      "Precio Total": r.precio_total || 0,
+      "Precio Total": (r.precio_total || 0) + totalItems(itemsMap[r.id]),
+      "Ítems adicionales": resumenItems(itemsMap[r.id]),
+      "Importe ítems": totalItems(itemsMap[r.id]) || "",
       "Forma de Pago": r.forma_pago || "",
       "Proveedor": r.proveedor || "",
       "Observaciones": r.observaciones || "",
@@ -500,6 +502,33 @@ export default function Remitos() {
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(workbook, ws, "Remitos");
+
+    // Hoja "Ítems": una fila por ítem adicional (jornadas de máquina, servicios)
+    const itemsRows: Record<string, string | number>[] = [];
+    filteredRemitos.forEach((r) => {
+      (itemsMap[r.id] || []).forEach((it) => {
+        itemsRows.push({
+          "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
+          "Rem. Local": r.remito_local || r.numero || "",
+          "Rem. Tercero": r.remito_tercero || "",
+          "Desde": r.desde || "",
+          "Hasta": r.hasta || "",
+          "Cantidad": it.cantidad,
+          "Unidad": it.unidad,
+          "Concepto": it.concepto,
+          "Precio Unitario": it.precio_unitario,
+          "Importe": it.precio_total,
+        });
+      });
+    });
+    if (itemsRows.length > 0) {
+      const wsItems = XLSX.utils.json_to_sheet(itemsRows);
+      wsItems["!cols"] = Object.keys(itemsRows[0]).map((key) => ({
+        wch: Math.max(key.length, ...itemsRows.map((row) => String((row as any)[key] || "").length)) + 2,
+      }));
+      XLSX.utils.book_append_sheet(workbook, wsItems, "Ítems");
+    }
+
     const fileName = `Remitos_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     toast.success("Excel exportado correctamente");
@@ -514,7 +543,10 @@ export default function Remitos() {
     return acc;
   }, {});
   const cantidadUnidadEntries = Object.entries(cantidadPorUnidad).sort(([a], [b]) => a.localeCompare(b));
-  const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
+  const totalPrecio = filteredRemitos.reduce(
+    (sum, r) => sum + (r.precio_total || 0) + totalItems(itemsMap[r.id]),
+    0
+  );
 
   if (loading) {
     return (
