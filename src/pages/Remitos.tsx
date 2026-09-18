@@ -39,6 +39,13 @@ import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import {
+  useRemitoItemsMap,
+  saveRemitoItems,
+  resumenItems,
+  totalItems,
+  RemitoItemInput,
+} from "@/hooks/useRemitoItems";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
 import { useRemitosFilterOptions } from "@/hooks/useRemitosFilterOptions";
 
@@ -87,7 +94,8 @@ export default function Remitos() {
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
   const [seccion, setSeccion] = useState<"remitos" | "combustible">("remitos");
-  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
+  const { remitos, loading, batchSave, createRemito, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
+  const { itemsMap, invalidateItems } = useRemitoItemsMap();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -375,12 +383,21 @@ export default function Remitos() {
     setDeleteId(null);
   };
 
-  const handleFormSubmit = async (remito: RemitoForm & { id?: string }) => {
-    const { id, ...data } = remito;
+  const handleFormSubmit = async (
+    remito: RemitoForm & { id?: string; items?: RemitoItemInput[] }
+  ) => {
+    const { id, items, ...data } = remito;
     if (id) {
       const results = await batchSave({ created: [], updated: [{ id, data }], deleted: [] });
       if (results.errors > 0) throw new Error("Error al actualizar");
+      await saveRemitoItems(id, items || []);
+      invalidateItems();
       toast.success("Remito actualizado");
+    } else if (items && items.length > 0) {
+      const created = await createRemito(data as RemitoForm);
+      if (!created) throw new Error("Error al crear");
+      await saveRemitoItems((created as any).id, items);
+      invalidateItems();
     } else {
       const results = await batchSave({ created: [data as RemitoForm], updated: [], deleted: [] });
       if (results.errors > 0) throw new Error("Error al crear");
@@ -469,7 +486,9 @@ export default function Remitos() {
       "Cantidad Total": r.cantidad || 0,
       "Unidad": r.unidad || "",
       "Precio Unitario": r.precio_unitario || "",
-      "Precio Total": r.precio_total || 0,
+      "Precio Total": (r.precio_total || 0) + totalItems(itemsMap[r.id]),
+      "Ítems adicionales": resumenItems(itemsMap[r.id]),
+      "Importe ítems": totalItems(itemsMap[r.id]) || "",
       "Forma de Pago": r.forma_pago || "",
       "Proveedor": r.proveedor || "",
       "Observaciones": r.observaciones || "",
@@ -483,6 +502,33 @@ export default function Remitos() {
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(workbook, ws, "Remitos");
+
+    // Hoja "Ítems": una fila por ítem adicional (jornadas de máquina, servicios)
+    const itemsRows: Record<string, string | number>[] = [];
+    filteredRemitos.forEach((r) => {
+      (itemsMap[r.id] || []).forEach((it) => {
+        itemsRows.push({
+          "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
+          "Rem. Local": r.remito_local || r.numero || "",
+          "Rem. Tercero": r.remito_tercero || "",
+          "Desde": r.desde || "",
+          "Hasta": r.hasta || "",
+          "Cantidad": it.cantidad,
+          "Unidad": it.unidad,
+          "Concepto": it.concepto,
+          "Precio Unitario": it.precio_unitario,
+          "Importe": it.precio_total,
+        });
+      });
+    });
+    if (itemsRows.length > 0) {
+      const wsItems = XLSX.utils.json_to_sheet(itemsRows);
+      wsItems["!cols"] = Object.keys(itemsRows[0]).map((key) => ({
+        wch: Math.max(key.length, ...itemsRows.map((row) => String((row as any)[key] || "").length)) + 2,
+      }));
+      XLSX.utils.book_append_sheet(workbook, wsItems, "Ítems");
+    }
+
     const fileName = `Remitos_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
     toast.success("Excel exportado correctamente");
@@ -497,7 +543,10 @@ export default function Remitos() {
     return acc;
   }, {});
   const cantidadUnidadEntries = Object.entries(cantidadPorUnidad).sort(([a], [b]) => a.localeCompare(b));
-  const totalPrecio = filteredRemitos.reduce((sum, r) => sum + (r.precio_total || 0), 0);
+  const totalPrecio = filteredRemitos.reduce(
+    (sum, r) => sum + (r.precio_total || 0) + totalItems(itemsMap[r.id]),
+    0
+  );
 
   if (loading) {
     return (
@@ -850,6 +899,7 @@ export default function Remitos() {
           creadoresMap={isAdminOrCapataz ? creadoresMap : undefined}
           showClienteCantera={isFranco || isAdminOrCapataz}
           hideExtrasForFranco={isFranco}
+          itemsMap={itemsMap}
         />
       </div>
 

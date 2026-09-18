@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Download, FileText, Search } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
@@ -61,6 +62,7 @@ export function LiquidacionClienteDialog({
   const [searchCliente, setSearchCliente] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [typesInitialized, setTypesInitialized] = useState(false);
+  const { itemsMap } = useRemitoItemsMap();
 
   // Get unique clients based on tipoCliente
   const clientesUnicos = useMemo(() => {
@@ -173,6 +175,19 @@ export function LiquidacionClienteDialog({
         map[tipo].viajes += r.cantidad_viajes || 1;
         map[tipo].cantidad += r.cantidad || 0;
         map[tipo].precioTotal += r.precio_total || 0;
+      });
+    // Ítems adicionales de remitos (jornadas de máquina, servicios) como línea propia
+    remitosCliente
+      .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
+      .forEach((r) => {
+        for (const it of itemsMap[r.id] || []) {
+          const key = it.concepto || "Ítems adicionales";
+          if (!map[key]) {
+            map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+          }
+          map[key].cantidad += it.cantidad || 0;
+          map[key].precioTotal += it.precio_total || 0;
+        }
       });
 
     return Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
@@ -301,6 +316,15 @@ export function LiquidacionClienteDialog({
             map[tipo].precioTotal += r.precio_total || 0;
             const fpKey = normalizarFormaPago(r.forma_pago);
             totalesPorFormaPago[fpKey] += r.precio_total || 0;
+            for (const it of itemsMap[r.id] || []) {
+              const key = it.concepto || "Ítems adicionales";
+              if (!map[key]) {
+                map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+              }
+              map[key].cantidad += it.cantidad || 0;
+              map[key].precioTotal += it.precio_total || 0;
+              totalesPorFormaPago[fpKey] += it.precio_total || 0;
+            }
           });
         const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
         return {

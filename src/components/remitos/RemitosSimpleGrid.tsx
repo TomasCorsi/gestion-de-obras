@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { RemitoItem, resumenItems } from "@/hooks/useRemitoItems";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { formatDate } from "@/lib/utils";
@@ -16,11 +17,13 @@ interface RemitosSimpleGridProps {
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
   hideExtrasForFranco?: boolean;
+  itemsMap?: Record<string, RemitoItem[]>;
 }
 
 interface RowProps {
   r: RemitoWithRelations;
   maqMap: Record<string, string>;
+  itemsMap?: Record<string, RemitoItem[]>;
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
   hideExtrasForFranco?: boolean;
@@ -41,6 +44,7 @@ function formatFormaPago(fp?: string | null) {
 const Row = memo(function Row({
   r,
   maqMap,
+  itemsMap,
   creadoresMap,
   showClienteCantera,
   hideExtrasForFranco,
@@ -69,6 +73,11 @@ const Row = memo(function Row({
     unidad: r.unidad || "M3",
     p_unit: r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-",
     p_total: `$${(r.precio_total || 0).toLocaleString("es-AR")}`,
+    items: (() => {
+      const its = itemsMap?.[r.id];
+      if (!its || its.length === 0) return "-";
+      return `+${its.length} ítem${its.length === 1 ? "" : "s"}`;
+    })(),
     proveedor: r.proveedor || "-",
     forma_pago: formatFormaPago((r as any).forma_pago),
     observaciones: r.observaciones || "-",
@@ -125,6 +134,7 @@ const Row = memo(function Row({
     prev.maqMap === next.maqMap &&
     prev.showClienteCantera === next.showClienteCantera &&
     prev.hideExtrasForFranco === next.hideExtrasForFranco &&
+    prev.itemsMap === next.itemsMap &&
     prev.style.transform === next.style.transform
   );
 });
@@ -137,6 +147,7 @@ export function RemitosSimpleGrid({
   creadoresMap,
   showClienteCantera = false,
   hideExtrasForFranco = false,
+  itemsMap,
 }: RemitosSimpleGridProps) {
   const maqMap = useMemo(() => {
     const m: Record<string, string> = {};
@@ -166,6 +177,7 @@ export function RemitosSimpleGrid({
     cols.push({ key: "unidad", label: "Unidad", width: 65 });
     cols.push({ key: "p_unit", label: "P. Unit.", width: 90, align: "right" });
     cols.push({ key: "p_total", label: "P. Total", width: 100, align: "right" });
+    cols.push({ key: "items", label: "Ítems", width: 80, align: "center" });
     if (!hideExtrasForFranco) cols.push({ key: "proveedor", label: "Proveedor", width: 110 });
     cols.push({ key: "forma_pago", label: "Forma Pago", width: 110 });
     cols.push({ key: "observaciones", label: "Observaciones", width: 140 });
@@ -182,9 +194,12 @@ export function RemitosSimpleGrid({
     for (const r of remitos) {
       precio += r.precio_total || 0;
       viajes += r.cantidad_viajes || 0;
+      for (const it of itemsMap?.[r.id] || []) {
+        precio += it.precio_total || 0;
+      }
     }
     return { precio, viajes };
-  }, [remitos]);
+  }, [remitos, itemsMap]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
@@ -245,6 +260,7 @@ export function RemitosSimpleGrid({
                     key={r.id}
                     r={r}
                     maqMap={maqMap}
+                    itemsMap={itemsMap}
                     creadoresMap={creadoresMap}
                     showClienteCantera={showClienteCantera}
                     hideExtrasForFranco={hideExtrasForFranco}

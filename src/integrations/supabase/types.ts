@@ -3068,6 +3068,63 @@ export type Database = {
           },
         ]
       }
+      remito_items: {
+        Row: {
+          cantidad: number
+          concepto: string
+          created_at: string
+          id: string
+          observaciones: string | null
+          orden: number
+          precio_total: number
+          precio_unitario: number
+          remito_id: string
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          cantidad?: number
+          concepto?: string
+          created_at?: string
+          id?: string
+          observaciones?: string | null
+          orden?: number
+          precio_total?: number
+          precio_unitario?: number
+          remito_id: string
+          unidad?: string
+          updated_at?: string
+        }
+        Update: {
+          cantidad?: number
+          concepto?: string
+          created_at?: string
+          id?: string
+          observaciones?: string | null
+          orden?: number
+          precio_total?: number
+          precio_unitario?: number
+          remito_id?: string
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remito_items_remito_id_fkey"
+            columns: ["remito_id"]
+            isOneToOne: false
+            referencedRelation: "remitos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remito_items_remito_id_fkey"
+            columns: ["remito_id"]
+            isOneToOne: false
+            referencedRelation: "remitos_list_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       remitos: {
         Row: {
           cantidad: number

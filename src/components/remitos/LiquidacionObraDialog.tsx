@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Download, FileText } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
@@ -59,6 +60,7 @@ export function LiquidacionObraDialog({
   const [obraOpen, setObraOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const { itemsMap } = useRemitoItemsMap();
 
   // Obras únicas presentes en desde / hasta
   const obrasUnicas = useMemo(() => {
@@ -122,6 +124,19 @@ export function LiquidacionObraDialog({
         map[tipo].viajes += r.cantidad_viajes || 1;
         map[tipo].cantidad += r.cantidad || 0;
         map[tipo].precioTotal += r.precio_total || 0;
+      });
+    // Ítems adicionales de remitos (jornadas de máquina, servicios) como línea propia
+    remitosObra
+      .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
+      .forEach((r) => {
+        for (const it of (itemsMap as Record<string, any[]>)[r.id] || []) {
+          const key = it.concepto || "Ítems adicionales";
+          if (!map[key]) {
+            map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+          }
+          map[key].cantidad += it.cantidad || 0;
+          map[key].precioTotal += it.precio_total || 0;
+        }
       });
     return Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
   }, [remitosObra, selectedTypes]);
@@ -291,6 +306,9 @@ export function LiquidacionObraDialog({
       .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
       .forEach((r) => {
         totFP[normalizarFormaPago((r as any).forma_pago)] += r.precio_total || 0;
+        for (const it of (itemsMap as Record<string, any[]>)[r.id] || []) {
+          totFP[normalizarFormaPago((r as any).forma_pago)] += it.precio_total || 0;
+        }
       });
 
     const hayFormaPago = totFP.efectivo + totFP.transferencia + totFP.cuenta_corriente > 0;
