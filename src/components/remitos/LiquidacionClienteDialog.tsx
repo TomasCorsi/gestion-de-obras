@@ -176,6 +176,19 @@ export function LiquidacionClienteDialog({
         map[tipo].cantidad += r.cantidad || 0;
         map[tipo].precioTotal += r.precio_total || 0;
       });
+    // Ítems adicionales de remitos (jornadas de máquina, servicios) como línea propia
+    remitosCliente
+      .filter((r) => r.tipo_material && selectedTypes.has(r.tipo_material))
+      .forEach((r) => {
+        for (const it of itemsMap[r.id] || []) {
+          const key = it.concepto || "Ítems adicionales";
+          if (!map[key]) {
+            map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+          }
+          map[key].cantidad += it.cantidad || 0;
+          map[key].precioTotal += it.precio_total || 0;
+        }
+      });
 
     return Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
   }, [remitosCliente, selectedTypes]);
