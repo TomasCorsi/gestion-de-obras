@@ -3,6 +3,7 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { RemitoItem, resumenItems } from "@/hooks/useRemitoItems";
 import { ObraWithRelations } from "@/hooks/useObras";
 import { MaquinariaWithRelations } from "@/hooks/useMaquinarias";
 import { formatDate } from "@/lib/utils";
@@ -16,11 +17,13 @@ interface RemitosSimpleGridProps {
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
   hideExtrasForFranco?: boolean;
+  itemsMap?: Record<string, RemitoItem[]>;
 }
 
 interface RowProps {
   r: RemitoWithRelations;
   maqMap: Record<string, string>;
+  itemsMap?: Record<string, RemitoItem[]>;
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
   hideExtrasForFranco?: boolean;
