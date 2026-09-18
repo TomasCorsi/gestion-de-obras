@@ -39,6 +39,13 @@ import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 
 import { useUrlSearch } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
+import {
+  useRemitoItemsMap,
+  saveRemitoItems,
+  resumenItems,
+  totalItems,
+  RemitoItemInput,
+} from "@/hooks/useRemitoItems";
 import { useRemitosCreators } from "@/hooks/useRemitosCreators";
 import { useRemitosFilterOptions } from "@/hooks/useRemitosFilterOptions";
 
@@ -87,7 +94,8 @@ export default function Remitos() {
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
   const [seccion, setSeccion] = useState<"remitos" | "combustible">("remitos");
-  const { remitos, loading, batchSave, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
+  const { remitos, loading, batchSave, createRemito, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
+  const { itemsMap, invalidateItems } = useRemitoItemsMap();
   const { obras } = useObras();
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
@@ -375,12 +383,21 @@ export default function Remitos() {
     setDeleteId(null);
   };
 
-  const handleFormSubmit = async (remito: RemitoForm & { id?: string }) => {
-    const { id, ...data } = remito;
+  const handleFormSubmit = async (
+    remito: RemitoForm & { id?: string; items?: RemitoItemInput[] }
+  ) => {
+    const { id, items, ...data } = remito;
     if (id) {
       const results = await batchSave({ created: [], updated: [{ id, data }], deleted: [] });
       if (results.errors > 0) throw new Error("Error al actualizar");
+      await saveRemitoItems(id, items || []);
+      invalidateItems();
       toast.success("Remito actualizado");
+    } else if (items && items.length > 0) {
+      const created = await createRemito(data as RemitoForm);
+      if (!created) throw new Error("Error al crear");
+      await saveRemitoItems((created as any).id, items);
+      invalidateItems();
     } else {
       const results = await batchSave({ created: [data as RemitoForm], updated: [], deleted: [] });
       if (results.errors > 0) throw new Error("Error al crear");
