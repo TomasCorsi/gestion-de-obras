@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/table";
 import { Download, FileText, Search } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
@@ -61,6 +62,7 @@ export function LiquidacionClienteDialog({
   const [searchCliente, setSearchCliente] = useState("");
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [typesInitialized, setTypesInitialized] = useState(false);
+  const { itemsMap } = useRemitoItemsMap();
 
   // Get unique clients based on tipoCliente
   const clientesUnicos = useMemo(() => {

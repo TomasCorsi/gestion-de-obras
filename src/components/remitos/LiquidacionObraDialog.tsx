@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Download, FileText } from "lucide-react";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
+import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
 
@@ -59,6 +60,7 @@ export function LiquidacionObraDialog({
   const [obraOpen, setObraOpen] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [initialized, setInitialized] = useState(false);
+  const { itemsMap } = useRemitoItemsMap();
 
   // Obras únicas presentes en desde / hasta
   const obrasUnicas = useMemo(() => {
