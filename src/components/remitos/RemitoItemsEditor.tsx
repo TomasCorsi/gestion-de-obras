@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,15 +17,38 @@ interface Props {
 }
 
 const parseDecimal = (raw: string): number => {
-  const cleaned = raw.replace(/[^0-9.,]/g, "").replace(/,/g, ".");
-  const first = cleaned.indexOf(".");
-  const numeric =
-    first === -1 ? cleaned : cleaned.slice(0, first + 1) + cleaned.slice(first + 1).replace(/\./g, "");
-  const n = numeric === "" || numeric === "." ? 0 : parseFloat(numeric);
+  const normalized = raw.replace(/,/g, ".");
+  const first = normalized.indexOf(".");
+  const numericStr =
+    first === -1
+      ? normalized
+      : normalized.slice(0, first + 1) + normalized.slice(first + 1).replace(/\./g, "");
+  const n = numericStr === "" || numericStr === "." ? 0 : parseFloat(numericStr);
   return isNaN(n) ? 0 : n;
 };
 
+const numToStr = (n: number): string => {
+  if (!n) return "";
+  return Number.isInteger(n) ? String(n) : String(n).replace(".", ",");
+};
+
 export function RemitoItemsEditor({ items, onChange }: Props) {
+  // Raw string state per field so decimal separators don't disappear mid-typing
+  const [cantidadStrs, setCantidadStrs] = useState<string[]>([]);
+  const [precioStrs, setPrecioStrs] = useState<string[]>([]);
+
+  // Sync string state when items change externally (load edit, add/remove rows)
+  useEffect(() => {
+    setCantidadStrs((prev) => {
+      const next = items.map((it, i) => prev[i] ?? numToStr(Number(it.cantidad) || 0));
+      return next.length === items.length ? next : items.map((it) => numToStr(Number(it.cantidad) || 0));
+    });
+    setPrecioStrs((prev) => {
+      const next = items.map((it, i) => prev[i] ?? numToStr(Number(it.precio_unitario) || 0));
+      return next.length === items.length ? next : items.map((it) => numToStr(Number(it.precio_unitario) || 0));
+    });
+  }, [items]);
+
   const update = (idx: number, patch: Partial<RemitoItemInput>) => {
     const next = items.map((it, i) => (i === idx ? { ...it, ...patch } : it));
     const row = next[idx];
@@ -32,13 +56,38 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
     onChange(next);
   };
 
-  const addItem = () =>
+  const handleCantidadChange = (idx: number, raw: string) => {
+    const cleaned = raw.replace(/[^0-9.,]/g, "");
+    setCantidadStrs((prev) => {
+      const next = [...prev];
+      next[idx] = cleaned;
+      return next;
+    });
+    update(idx, { cantidad: parseDecimal(cleaned) });
+  };
+
+  const handlePrecioChange = (idx: number, raw: string) => {
+    const cleaned = raw.replace(/[^0-9.,]/g, "");
+    setPrecioStrs((prev) => {
+      const next = [...prev];
+      next[idx] = cleaned;
+      return next;
+    });
+    update(idx, { precio_unitario: parseDecimal(cleaned) });
+  };
+
+  const addItem = () => {
     onChange([
       ...items,
       { concepto: "", cantidad: 1, unidad: "DIA", precio_unitario: 0, precio_total: 0 },
     ]);
+  };
 
-  const removeItem = (idx: number) => onChange(items.filter((_, i) => i !== idx));
+  const removeItem = (idx: number) => {
+    onChange(items.filter((_, i) => i !== idx));
+    setCantidadStrs((prev) => prev.filter((_, i) => i !== idx));
+    setPrecioStrs((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   return (
     <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-2">
@@ -68,8 +117,8 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
                 {idx === 0 && <Label className="text-[11px]">Cantidad</Label>}
                 <Input
                   inputMode="decimal"
-                  value={it.cantidad === 0 ? "" : String(it.cantidad).replace(".", ",")}
-                  onChange={(e) => update(idx, { cantidad: parseDecimal(e.target.value) })}
+                  value={cantidadStrs[idx] ?? numToStr(Number(it.cantidad) || 0)}
+                  onChange={(e) => handleCantidadChange(idx, e.target.value)}
                   placeholder="1"
                   className="h-9 text-sm"
                 />
@@ -100,8 +149,8 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
                 {idx === 0 && <Label className="text-[11px]">Precio unit.</Label>}
                 <Input
                   inputMode="decimal"
-                  value={it.precio_unitario === 0 ? "" : String(it.precio_unitario).replace(".", ",")}
-                  onChange={(e) => update(idx, { precio_unitario: parseDecimal(e.target.value) })}
+                  value={precioStrs[idx] ?? numToStr(Number(it.precio_unitario) || 0)}
+                  onChange={(e) => handlePrecioChange(idx, e.target.value)}
                   placeholder="0,00"
                   className="h-9 text-sm"
                 />
