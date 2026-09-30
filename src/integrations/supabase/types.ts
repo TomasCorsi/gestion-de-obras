@@ -115,6 +115,7 @@ export type Database = {
           operador_id: string | null
           parte_diario_id: string | null
           repartidor_id: string | null
+          tipo_movimiento: string
           tipo_operador: string | null
           tipo_producto: string | null
           updated_at: string | null
@@ -133,6 +134,7 @@ export type Database = {
           operador_id?: string | null
           parte_diario_id?: string | null
           repartidor_id?: string | null
+          tipo_movimiento?: string
           tipo_operador?: string | null
           tipo_producto?: string | null
           updated_at?: string | null
@@ -151,6 +153,7 @@ export type Database = {
           operador_id?: string | null
           parte_diario_id?: string | null
           repartidor_id?: string | null
+          tipo_movimiento?: string
           tipo_operador?: string | null
           tipo_producto?: string | null
           updated_at?: string | null
