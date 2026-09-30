@@ -74,7 +74,12 @@ const chartConfig = {
 
 export function GastosMaquinaria() {
   const { maquinarias } = useMaquinarias();
-  const { cargas: cargasRepartidor } = useCargasRepartidorAll();
+  const { cargas: cargasRepartidorRaw } = useCargasRepartidorAll();
+  // Los ingresos a cisternas no son consumo de máquina
+  const cargasRepartidor = useMemo(
+    () => cargasRepartidorRaw.filter((c) => c.tipo_movimiento !== "ingreso"),
+    [cargasRepartidorRaw]
+  );
   const now = new Date();
   const { preciosPorMesProducto } = usePreciosTodos(now.getFullYear());
   const { remitos } = useRemitos();

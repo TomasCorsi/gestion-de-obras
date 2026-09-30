@@ -214,6 +214,7 @@ export function CombustibleRepartidorTab() {
   const [obraFiltro, setObraFiltro] = useState<string>("all");
   const [repartidorFiltro, setRepartidorFiltro] = useState<string>("all");
   const [tipoOperadorFiltro, setTipoOperadorFiltro] = useState<string>("all");
+  const [movimientoFiltro, setMovimientoFiltro] = useState<string>("all");
 
   // Edit / Delete state
   const [editingCarga, setEditingCarga] = useState<CargaRepartidorFull | null>(null);
@@ -335,8 +336,27 @@ export function CombustibleRepartidorTab() {
       result = result.filter((c) => (c.tipo_operador || "interno") === tipoOperadorFiltro);
     }
 
+    if (movimientoFiltro !== "all") {
+      result = result.filter((c) => (c.tipo_movimiento || "egreso") === movimientoFiltro);
+    }
+
     return result;
-  }, [cargas, mes, year, fechaFiltro, operadorFiltro, numeroRemito, productoFiltro, maquinariaFiltro, obraFiltro, repartidorFiltro, tipoOperadorFiltro]);
+  }, [cargas, mes, year, fechaFiltro, operadorFiltro, numeroRemito, productoFiltro, maquinariaFiltro, obraFiltro, repartidorFiltro, tipoOperadorFiltro, movimientoFiltro]);
+
+  // Historial de cisternas: ingresos por cisterna y mes (sobre el filtro actual)
+  const historialCisternas = useMemo(() => {
+    const map = new Map<string, Record<string, number>>();
+    const meses = new Set<string>();
+    filtered.filter((c) => c.tipo_movimiento === "ingreso").forEach((c) => {
+      const cod = c.maquinaria?.codigo || "?";
+      const m = c.fecha.slice(0, 7);
+      meses.add(m);
+      const row = map.get(cod) || {};
+      row[m] = (row[m] || 0) + (c.litros || 0);
+      map.set(cod, row);
+    });
+    return { filas: Array.from(map.entries()).sort(), meses: Array.from(meses).sort() };
+  }, [filtered]);
 
   // Calculate cost per row using monthly prices
   const getPrecioForCarga = (carga: (typeof filtered)[0]) => {
@@ -623,6 +643,45 @@ export function CombustibleRepartidorTab() {
         </div>
       </div>
 
+      {/* Movimiento filter + historial cisternas */}
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">Movimiento:</span>
+        {[["all", "Todos"], ["ingreso", "Ingresos a cisternas"], ["egreso", "Egresos"]].map(([v, l]) => (
+          <Button key={v} size="sm" variant={movimientoFiltro === v ? "default" : "outline"} onClick={() => setMovimientoFiltro(v)}>
+            {l}
+          </Button>
+        ))}
+      </div>
+      {historialCisternas.filas.length > 0 && (
+        <div className="card-industrial p-4 overflow-x-auto">
+          <p className="font-semibold mb-2">Historial de cisternas (litros ingresados)</p>
+          <table className="text-sm w-full">
+            <thead>
+              <tr className="text-muted-foreground">
+                <th className="text-left py-1">Cisterna</th>
+                {historialCisternas.meses.map((m) => (
+                  <th key={m} className="text-right py-1 px-2">{m.slice(5)}/{m.slice(0, 4)}</th>
+                ))}
+                <th className="text-right py-1 px-2">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historialCisternas.filas.map(([cod, row]) => (
+                <tr key={cod} className="border-t border-border">
+                  <td className="py-1 font-medium">{cod}</td>
+                  {historialCisternas.meses.map((m) => (
+                    <td key={m} className="text-right px-2">{(row[m] || 0).toLocaleString("es-AR")}</td>
+                  ))}
+                  <td className="text-right px-2 font-bold text-primary">
+                    {Object.values(row).reduce((a, b) => a + b, 0).toLocaleString("es-AR")}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {/* Table */}
       <div className="card-industrial overflow-hidden">
         <Table>
@@ -661,7 +720,12 @@ export function CombustibleRepartidorTab() {
                   <TableRow key={carga.id} className="border-border hover:bg-muted/50">
                     <TableCell className="text-foreground font-mono text-xs">{carga.numero_remito || "-"}</TableCell>
                     <TableCell className="text-foreground">{formatDate(carga.fecha)}</TableCell>
-                    <TableCell className="text-foreground capitalize">{carga.tipo_producto || "combustible"}</TableCell>
+                    <TableCell className="text-foreground capitalize">
+                      {carga.tipo_producto || "combustible"}
+                      {carga.tipo_movimiento === "ingreso" && (
+                        <span className="ml-1 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary normal-case">Ingreso</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-foreground">
                       {carga.repartidor ? formatOperador(carga.repartidor) : formatOperador(carga.parte_diario?.personal)}
                     </TableCell>

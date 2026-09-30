@@ -50,9 +50,12 @@ interface CargaCombustibleRepartidorDialogProps {
     tipo_operador: string;
     tipo_producto: string;
     observaciones: string | null;
+    tipo_movimiento: string;
   }) => Promise<void>;
   isSaving: boolean;
 }
+
+export const CISTERNAS_CODIGOS = ['981', '982', '983', '984'];
 
 export function CargaCombustibleRepartidorDialog({
   open,
@@ -65,7 +68,7 @@ export function CargaCombustibleRepartidorDialog({
   onSave,
   isSaving,
 }: CargaCombustibleRepartidorDialogProps) {
-  const [formData, setFormData] = useState({
+  const emptyForm = {
     fecha: fechaParte,
     operador_id: '',
     maquinaria_id: '',
@@ -76,7 +79,9 @@ export function CargaCombustibleRepartidorDialog({
     tipo_operador: 'interno',
     tipo_producto: 'combustible',
     observaciones: '',
-  });
+    tipo_movimiento: 'egreso',
+  };
+  const [formData, setFormData] = useState(emptyForm);
 
   // Reset form when dialog opens/carga changes
   useEffect(() => {
@@ -93,23 +98,16 @@ export function CargaCombustibleRepartidorDialog({
           tipo_operador: carga.tipo_operador || 'interno',
           tipo_producto: carga.tipo_producto || 'combustible',
           observaciones: carga.observaciones || '',
+          tipo_movimiento: carga.tipo_movimiento || 'egreso',
         });
       } else {
-        setFormData({
-          fecha: fechaParte,
-          operador_id: '',
-          maquinaria_id: '',
-          obra_id: '',
-          litros: '',
-          horas: '',
-          km: '',
-          tipo_operador: 'interno',
-          tipo_producto: 'combustible',
-          observaciones: '',
-        });
+        setFormData({ ...emptyForm, fecha: fechaParte });
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, carga, fechaParte]);
+
+  const isIngreso = formData.tipo_movimiento === 'ingreso';
 
   const isDirty = useMemo(() => {
     const hasContent = formData.litros !== '' || formData.operador_id !== '' || 
@@ -137,6 +135,13 @@ export function CargaCombustibleRepartidorDialog({
     }));
   }, [maquinarias]);
 
+  const cisternas = useMemo(
+    () => maquinarias
+      .filter(m => CISTERNAS_CODIGOS.includes((m.codigo || '').trim()))
+      .sort((a, b) => (a.codigo || '').localeCompare(b.codigo || '')),
+    [maquinarias]
+  );
+
   const obraOptions: ComboboxOption[] = useMemo(() => {
     return obras
       .filter(o => o.estado === 'activa')
@@ -148,7 +153,14 @@ export function CargaCombustibleRepartidorDialog({
   }, [obras]);
 
   const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'tipo_movimiento') {
+        // Al cambiar de tipo, limpiar la máquina para evitar mezclar cisterna/máquina
+        next.maquinaria_id = '';
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async () => {
@@ -156,18 +168,20 @@ export function CargaCombustibleRepartidorDialog({
     if (litros <= 0) {
       return; // Simple validation - litros is required
     }
+    if (isIngreso && !formData.maquinaria_id) return;
 
     await onSave({
       fecha: formData.fecha,
-      operador_id: formData.operador_id || null,
+      operador_id: isIngreso ? null : formData.operador_id || null,
       maquinaria_id: formData.maquinaria_id || null,
-      obra_id: formData.obra_id || null,
+      obra_id: isIngreso ? null : formData.obra_id || null,
       litros,
-      horas: formData.horas ? parseFloat(formData.horas) : null,
-      km: formData.km ? parseFloat(formData.km) : null,
+      horas: !isIngreso && formData.horas ? parseFloat(formData.horas) : null,
+      km: !isIngreso && formData.km ? parseFloat(formData.km) : null,
       tipo_operador: formData.tipo_operador,
       tipo_producto: formData.tipo_producto,
       observaciones: formData.observaciones || null,
+      tipo_movimiento: formData.tipo_movimiento,
     });
 
     onOpenChange(false);
@@ -184,6 +198,27 @@ export function CargaCombustibleRepartidorDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Movimiento */}
+          <div className="space-y-2">
+            <Label>Movimiento *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={!isIngreso ? 'default' : 'outline'}
+                onClick={() => handleChange('tipo_movimiento', 'egreso')}
+              >
+                Egreso (a máquina)
+              </Button>
+              <Button
+                type="button"
+                variant={isIngreso ? 'default' : 'outline'}
+                onClick={() => handleChange('tipo_movimiento', 'ingreso')}
+              >
+                Ingreso (a cisterna)
+              </Button>
+            </div>
+          </div>
+
           {/* Fecha */}
           <div className="space-y-2">
             <Label htmlFor="fecha">Fecha</Label>
@@ -211,6 +246,27 @@ export function CargaCombustibleRepartidorDialog({
             </Select>
           </div>
 
+          {isIngreso ? (
+            <div className="space-y-2">
+              <Label>Cisterna *</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {cisternas.map((c) => (
+                  <Button
+                    key={c.id}
+                    type="button"
+                    variant={formData.maquinaria_id === c.id ? 'default' : 'outline'}
+                    onClick={() => handleChange('maquinaria_id', c.id)}
+                  >
+                    {c.codigo}
+                  </Button>
+                ))}
+              </div>
+              {cisternas.length === 0 && (
+                <p className="text-xs text-muted-foreground">No se encontraron las cisternas 981–984.</p>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Operador */}
           <div className="space-y-2">
             <Label>Operador</Label>
@@ -251,6 +307,8 @@ export function CargaCombustibleRepartidorDialog({
               emptyText="No se encontró máquina"
             />
           </div>
+            </>
+          )}
 
           {/* Cantidad */}
           <div className="space-y-2">
@@ -268,6 +326,8 @@ export function CargaCombustibleRepartidorDialog({
             />
           </div>
 
+          {!isIngreso && (
+            <>
           {/* Horas y Km */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -306,6 +366,8 @@ export function CargaCombustibleRepartidorDialog({
               emptyText="No se encontró obra"
             />
           </div>
+            </>
+          )}
 
           {/* Observaciones */}
           <div className="space-y-2">
@@ -324,7 +386,7 @@ export function CargaCombustibleRepartidorDialog({
           <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isSaving || !formData.litros}>
+          <Button onClick={handleSubmit} disabled={isSaving || !formData.litros || (isIngreso && !formData.maquinaria_id)}>
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {carga ? 'Actualizar' : 'Agregar'}
           </Button>

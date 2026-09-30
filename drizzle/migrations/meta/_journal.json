@@ -50,6 +50,13 @@
       "when": 1789759865434,
       "tag": "0006_create_remito_items",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790772382094,
+      "tag": "0007_combustible_tipo_movimiento",
+      "breakpoints": true
     }
   ]
 }
