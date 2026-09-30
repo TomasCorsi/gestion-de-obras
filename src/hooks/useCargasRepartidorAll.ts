@@ -20,6 +20,7 @@ export interface CargaRepartidorFull {
   tipo_producto: string | null;
   repartidor_id: string | null;
   observaciones: string | null;
+  tipo_movimiento?: string | null;
   numero_remito: number | null;
   created_at: string;
   updated_at: string | null;

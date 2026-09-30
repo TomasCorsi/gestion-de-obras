@@ -16,6 +16,7 @@ export interface CargaRepartidor {
   tipo_producto: string | null;
   repartidor_id: string | null;
   observaciones: string | null;
+  tipo_movimiento?: string | null;
   created_at: string;
   updated_at: string;
   // Joined relations
@@ -38,6 +39,7 @@ export interface CargaRepartidorInsert {
   tipo_producto?: string | null;
   repartidor_id?: string | null;
   observaciones?: string | null;
+  tipo_movimiento?: string | null;
 }
 
 const SELECT_QUERY = `
@@ -148,11 +150,15 @@ export function useCargasRepartidor(parteDiarioId: string | null, repartidorId?:
   });
 
   const totalLitros = cargas.reduce((sum, c) => sum + (c.litros || 0), 0);
+  const totalIngreso = cargas.filter((c) => c.tipo_movimiento === 'ingreso').reduce((s, c) => s + (c.litros || 0), 0);
+  const totalEgreso = totalLitros - totalIngreso;
 
   return {
     cargas,
     isLoading,
     totalLitros,
+    totalIngreso,
+    totalEgreso,
     createCarga: createMutation.mutateAsync,
     updateCarga: updateMutation.mutateAsync,
     deleteCarga: deleteMutation.mutateAsync,
