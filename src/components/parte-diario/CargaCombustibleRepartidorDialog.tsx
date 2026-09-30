@@ -198,6 +198,27 @@ export function CargaCombustibleRepartidorDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          {/* Movimiento */}
+          <div className="space-y-2">
+            <Label>Movimiento *</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={!isIngreso ? 'default' : 'outline'}
+                onClick={() => handleChange('tipo_movimiento', 'egreso')}
+              >
+                Egreso (a máquina)
+              </Button>
+              <Button
+                type="button"
+                variant={isIngreso ? 'default' : 'outline'}
+                onClick={() => handleChange('tipo_movimiento', 'ingreso')}
+              >
+                Ingreso (a cisterna)
+              </Button>
+            </div>
+          </div>
+
           {/* Fecha */}
           <div className="space-y-2">
             <Label htmlFor="fecha">Fecha</Label>
@@ -225,6 +246,27 @@ export function CargaCombustibleRepartidorDialog({
             </Select>
           </div>
 
+          {isIngreso ? (
+            <div className="space-y-2">
+              <Label>Cisterna *</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {cisternas.map((c) => (
+                  <Button
+                    key={c.id}
+                    type="button"
+                    variant={formData.maquinaria_id === c.id ? 'default' : 'outline'}
+                    onClick={() => handleChange('maquinaria_id', c.id)}
+                  >
+                    {c.codigo}
+                  </Button>
+                ))}
+              </div>
+              {cisternas.length === 0 && (
+                <p className="text-xs text-muted-foreground">No se encontraron las cisternas 981–984.</p>
+              )}
+            </div>
+          ) : (
+            <>
           {/* Operador */}
           <div className="space-y-2">
             <Label>Operador</Label>
@@ -265,6 +307,8 @@ export function CargaCombustibleRepartidorDialog({
               emptyText="No se encontró máquina"
             />
           </div>
+            </>
+          )}
 
           {/* Cantidad */}
           <div className="space-y-2">
@@ -282,6 +326,8 @@ export function CargaCombustibleRepartidorDialog({
             />
           </div>
 
+          {!isIngreso && (
+            <>
           {/* Horas y Km */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -320,6 +366,8 @@ export function CargaCombustibleRepartidorDialog({
               emptyText="No se encontró obra"
             />
           </div>
+            </>
+          )}
 
           {/* Observaciones */}
           <div className="space-y-2">
@@ -338,7 +386,7 @@ export function CargaCombustibleRepartidorDialog({
           <Button variant="outline" onClick={handleClose} disabled={isSaving}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isSaving || !formData.litros}>
+          <Button onClick={handleSubmit} disabled={isSaving || !formData.litros || (isIngreso && !formData.maquinaria_id)}>
             {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             {carga ? 'Actualizar' : 'Agregar'}
           </Button>
