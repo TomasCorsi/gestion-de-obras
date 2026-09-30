@@ -39,6 +39,8 @@ export function CargasCombustibleRepartidorList({
     );
   }
 
+  const ingreso = cargas.filter((c) => c.tipo_movimiento === "ingreso").reduce((s, c) => s + (c.litros || 0), 0);
+
   return (
     <div className="space-y-3">
       {cargas.map((carga) => {
@@ -57,6 +59,9 @@ export function CargasCombustibleRepartidorList({
               {/* Row 1: Badge + quantity + actions */}
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
+                  <Badge variant={carga.tipo_movimiento === "ingreso" ? "default" : "destructive"} className="text-[11px] shrink-0">
+                    {carga.tipo_movimiento === "ingreso" ? "Ingreso" : "Egreso"}
+                  </Badge>
                   <Badge
                     variant="outline"
                     className={`text-[11px] shrink-0 capitalize ${productBadgeClass[producto] || ""}`}
@@ -111,9 +116,9 @@ export function CargasCombustibleRepartidorList({
       })}
 
       {/* Total bar */}
-      <div className="rounded-lg bg-muted/60 px-4 py-2.5 flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">Total</span>
-        <span className="text-sm font-bold text-primary">{totalLitros} L</span>
+      <div className="rounded-lg bg-muted/60 px-4 py-2.5 flex items-center justify-between gap-3 text-sm">
+        <span className="font-medium text-muted-foreground">Ingresado: <b className="text-foreground">{ingreso.toLocaleString("es-AR")} L</b></span>
+        <span className="font-medium text-muted-foreground">Entregado: <b className="text-primary">{(totalLitros - ingreso).toLocaleString("es-AR")} L</b></span>
       </div>
     </div>
   );
