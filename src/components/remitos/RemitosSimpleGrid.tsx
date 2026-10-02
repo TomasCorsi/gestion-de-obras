@@ -22,8 +22,8 @@ interface RemitosSimpleGridProps {
 
 interface RowProps {
   r: RemitoWithRelations;
+  item?: RemitoItem;
   maqMap: Record<string, string>;
-  itemsMap?: Record<string, RemitoItem[]>;
   creadoresMap?: Record<string, string>;
   showClienteCantera?: boolean;
   hideExtrasForFranco?: boolean;
@@ -41,54 +41,49 @@ function formatFormaPago(fp?: string | null) {
   return fp.charAt(0).toUpperCase() + fp.slice(1);
 }
 
+const fmtNum = (n: number) => n.toLocaleString("es-AR");
+
 const Row = memo(function Row({
   r,
+  item,
   maqMap,
-  itemsMap,
   creadoresMap,
-  showClienteCantera,
-  hideExtrasForFranco,
   onEdit,
   onDelete,
   style,
   columns,
 }: RowProps) {
   const cellBase = "px-3 py-2 border-b border-border text-xs truncate";
+  const isItem = !!item;
   const valByKey: Record<string, React.ReactNode> = {
     fecha: formatDate(r.fecha),
     remito_tercero: r.remito_tercero || "-",
     remito_local: r.remito_local || r.numero || "-",
     desde: r.desde || "-",
     hasta: r.hasta || "-",
-    tipo: r.tipo_material || r.material || "-",
-    transporte: r.tipo_transporte || "-",
-    vehiculo: r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-",
-    pat_tercero: r.patente_tercero || "-",
+    tipo: isItem ? `└ ${item!.concepto || "Ítem"}` : r.tipo_material || r.material || "-",
+    transporte: isItem ? "" : r.tipo_transporte || "-",
+    vehiculo: isItem ? "" : r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-",
+    pat_tercero: isItem ? "" : r.patente_tercero || "-",
     cli_origen: r.cliente || "-",
     cli_destino: (r as any).cliente_destino || "-",
     cli_cantera: (r as any).cliente_cantera || "-",
-    viajes: r.cantidad_viajes || 0,
-    c_uni: r.cantidad_uni ?? "-",
-    c_total: r.cantidad || 0,
-    unidad: r.unidad || "M3",
-    p_unit: r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-",
-    p_total: `$${(r.precio_total || 0).toLocaleString("es-AR")}`,
-    items: (() => {
-      const its = itemsMap?.[r.id];
-      if (!its || its.length === 0) return "-";
-      return `+${its.length} ítem${its.length === 1 ? "" : "s"}`;
-    })(),
-    proveedor: r.proveedor || "-",
+    viajes: isItem ? "" : r.cantidad_viajes || 0,
+    c_uni: isItem ? "" : r.cantidad_uni ?? "-",
+    c_total: isItem ? fmtNum(item!.cantidad) : r.cantidad || 0,
+    unidad: isItem ? item!.unidad : r.unidad || "M3",
+    p_unit: isItem
+      ? `$${fmtNum(item!.precio_unitario)}`
+      : r.precio_unitario != null ? `$${r.precio_unitario.toLocaleString("es-AR")}` : "-",
+    p_total: `$${fmtNum(isItem ? item!.precio_total : r.precio_total || 0)}`,
+    proveedor: isItem ? "" : r.proveedor || "-",
     forma_pago: formatFormaPago((r as any).forma_pago),
-    observaciones: r.observaciones || "-",
+    observaciones: isItem ? "" : r.observaciones || "-",
     cargado_por: (r as any).created_by ? (creadoresMap?.[(r as any).created_by] || "-") : "-",
   };
 
   return (
-    <div
-      style={style}
-      className="flex hover:bg-muted/40"
-    >
+    <div style={style} className={`flex hover:bg-muted/40 ${isItem ? "bg-muted/20 text-muted-foreground" : ""}`}>
       {columns.map((c) => {
         if (c.key === "acciones") {
           return (
@@ -97,30 +92,33 @@ const Row = memo(function Row({
               className={`${cellBase} flex items-center justify-center gap-1`}
               style={{ width: c.width, minWidth: c.width }}
             >
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(r)}>
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(r)} title={isItem ? "Editar remito e ítems" : "Editar"}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-destructive hover:text-destructive"
-                onClick={() => onDelete(r.id)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+              {!isItem && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={() => onDelete(r.id)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
           );
         }
         const alignClass =
           c.align === "right" ? "justify-end text-right" : c.align === "center" ? "justify-center text-center" : "";
+        const v = valByKey[c.key];
         return (
           <div
             key={c.key}
-            className={`${cellBase} flex items-center ${alignClass}`}
+            className={`${cellBase} flex items-center ${alignClass} ${isItem && c.key === "tipo" ? "font-medium text-foreground" : ""}`}
             style={{ width: c.width, minWidth: c.width }}
-            title={typeof valByKey[c.key] === "string" ? (valByKey[c.key] as string) : undefined}
+            title={typeof v === "string" ? v : undefined}
           >
-            {valByKey[c.key]}
+            {v}
           </div>
         );
       })}
@@ -130,12 +128,11 @@ const Row = memo(function Row({
   return (
     prev.r.id === next.r.id &&
     (prev.r as any).updated_at === (next.r as any).updated_at &&
+    prev.item === next.item &&
     prev.creadoresMap === next.creadoresMap &&
     prev.maqMap === next.maqMap &&
-    prev.showClienteCantera === next.showClienteCantera &&
-    prev.hideExtrasForFranco === next.hideExtrasForFranco &&
-    prev.itemsMap === next.itemsMap &&
-    prev.style.transform === next.style.transform
+    prev.style.transform === next.style.transform &&
+    prev.columns === next.columns
   );
 });
 
@@ -177,7 +174,6 @@ export function RemitosSimpleGrid({
     cols.push({ key: "unidad", label: "Unidad", width: 65 });
     cols.push({ key: "p_unit", label: "P. Unit.", width: 90, align: "right" });
     cols.push({ key: "p_total", label: "P. Total", width: 100, align: "right" });
-    cols.push({ key: "items", label: "Ítems", width: 80, align: "center" });
     if (!hideExtrasForFranco) cols.push({ key: "proveedor", label: "Proveedor", width: 110 });
     cols.push({ key: "forma_pago", label: "Forma Pago", width: 110 });
     cols.push({ key: "observaciones", label: "Observaciones", width: 140 });
@@ -201,9 +197,18 @@ export function RemitosSimpleGrid({
     return { precio, viajes };
   }, [remitos, itemsMap]);
 
+  const filas = useMemo(() => {
+    const out: { r: RemitoWithRelations; item?: RemitoItem; key: string }[] = [];
+    for (const r of remitos) {
+      out.push({ r, key: r.id });
+      for (const it of itemsMap?.[r.id] || []) out.push({ r, item: it, key: `${r.id}_${it.id}` });
+    }
+    return out;
+  }, [remitos, itemsMap]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const rowVirtualizer = useVirtualizer({
-    count: remitos.length,
+    count: filas.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: 12,
@@ -254,13 +259,13 @@ export function RemitosSimpleGrid({
               }}
             >
               {rowVirtualizer.getVirtualItems().map((vi) => {
-                const r = remitos[vi.index];
+                const { r, item, key } = filas[vi.index];
                 return (
                   <Row
-                    key={r.id}
+                    key={key}
                     r={r}
+                    item={item}
                     maqMap={maqMap}
-                    itemsMap={itemsMap}
                     creadoresMap={creadoresMap}
                     showClienteCantera={showClienteCantera}
                     hideExtrasForFranco={hideExtrasForFranco}
