@@ -468,66 +468,70 @@ export default function Remitos() {
       return m ? [m.codigo, m.patente].filter(Boolean).join(" - ") : "-";
     };
 
-    const data = filteredRemitos.map(r => ({
-      "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
-      "Rem. Tercero": r.remito_tercero || "",
-      "Rem. Local": r.remito_local || "",
-      "Desde": r.desde || "",
-      "Hasta": r.hasta || "",
-      "Tipo Material": r.tipo_material || "",
-      "Tipo Transporte": r.tipo_transporte || "",
-      "Maquinaria": getMaquinariaLabel(r.maquinaria_id),
-      "Pat. Tercero": r.patente_tercero || "",
-      "Cliente Origen": r.cliente || "",
-      "Cliente Destino": r.cliente_destino || "",
-      "Cliente Cantera": (r as any).cliente_cantera || "",
-      "Cant. Viajes": r.cantidad_viajes || 1,
-      "Cant. Unitaria": r.cantidad_uni || "",
-      "Cantidad Total": r.cantidad || 0,
-      "Unidad": r.unidad || "",
-      "Precio Unitario": r.precio_unitario || "",
-      "Precio Total": (r.precio_total || 0) + totalItems(itemsMap[r.id]),
-      "Ítems adicionales": resumenItems(itemsMap[r.id]),
-      "Importe ítems": totalItems(itemsMap[r.id]) || "",
-      "Forma de Pago": r.forma_pago || "",
-      "Proveedor": r.proveedor || "",
-      "Observaciones": r.observaciones || "",
-      ...(isAdminOrCapataz ? { "Cargado por": (r as any).created_by ? (creadoresMap[(r as any).created_by] || "") : "" } : {}),
-    }));
+    const data: Record<string, string | number>[] = [];
+    filteredRemitos.forEach(r => {
+      const base = {
+        "Tipo renglón": "Remito",
+        "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
+        "Rem. Tercero": r.remito_tercero || "",
+        "Rem. Local": r.remito_local || "",
+        "Desde": r.desde || "",
+        "Hasta": r.hasta || "",
+      };
+      const clientes = {
+        "Cliente Origen": r.cliente || "",
+        "Cliente Destino": r.cliente_destino || "",
+        "Cliente Cantera": (r as any).cliente_cantera || "",
+      };
+      const cargado = isAdminOrCapataz ? { "Cargado por": (r as any).created_by ? (creadoresMap[(r as any).created_by] || "") : "" } : {};
+      data.push({
+        ...base,
+        "Tipo Material": r.tipo_material || "",
+        "Tipo Transporte": r.tipo_transporte || "",
+        "Maquinaria": getMaquinariaLabel(r.maquinaria_id),
+        "Pat. Tercero": r.patente_tercero || "",
+        ...clientes,
+        "Cant. Viajes": r.cantidad_viajes || 1,
+        "Cant. Unitaria": r.cantidad_uni || "",
+        "Cantidad Total": r.cantidad || 0,
+        "Unidad": r.unidad || "",
+        "Precio Unitario": r.precio_unitario || "",
+        "Precio Total": r.precio_total || 0,
+        "Forma de Pago": r.forma_pago || "",
+        "Proveedor": r.proveedor || "",
+        "Observaciones": r.observaciones || "",
+        ...cargado,
+      });
+      (itemsMap[r.id] || []).forEach(it => {
+        data.push({
+          ...base,
+          "Tipo renglón": "Ítem",
+          "Tipo Material": it.concepto,
+          "Tipo Transporte": "",
+          "Maquinaria": "",
+          "Pat. Tercero": "",
+          ...clientes,
+          "Cant. Viajes": "",
+          "Cant. Unitaria": "",
+          "Cantidad Total": it.cantidad,
+          "Unidad": it.unidad,
+          "Precio Unitario": it.precio_unitario,
+          "Precio Total": it.precio_total,
+          "Forma de Pago": r.forma_pago || "",
+          "Proveedor": "",
+          "Observaciones": "",
+          ...cargado,
+        });
+      });
+    });
 
     const ws = XLSX.utils.json_to_sheet(data);
     const colWidths = Object.keys(data[0] || {}).map(key => ({
-      wch: Math.max(key.length, ...data.map(row => String((row as any)[key] || "").length).slice(0, 50)) + 2,
+      wch: Math.max(key.length, ...data.slice(0, 200).map(row => String((row as any)[key] || "").length)) + 2,
     }));
     ws["!cols"] = colWidths;
 
     XLSX.utils.book_append_sheet(workbook, ws, "Remitos");
-
-    // Hoja "Ítems": una fila por ítem adicional (jornadas de máquina, servicios)
-    const itemsRows: Record<string, string | number>[] = [];
-    filteredRemitos.forEach((r) => {
-      (itemsMap[r.id] || []).forEach((it) => {
-        itemsRows.push({
-          "Fecha": r.fecha ? format(parseISO(r.fecha), "dd/MM/yyyy") : "",
-          "Rem. Local": r.remito_local || r.numero || "",
-          "Rem. Tercero": r.remito_tercero || "",
-          "Desde": r.desde || "",
-          "Hasta": r.hasta || "",
-          "Cantidad": it.cantidad,
-          "Unidad": it.unidad,
-          "Concepto": it.concepto,
-          "Precio Unitario": it.precio_unitario,
-          "Importe": it.precio_total,
-        });
-      });
-    });
-    if (itemsRows.length > 0) {
-      const wsItems = XLSX.utils.json_to_sheet(itemsRows);
-      wsItems["!cols"] = Object.keys(itemsRows[0]).map((key) => ({
-        wch: Math.max(key.length, ...itemsRows.map((row) => String((row as any)[key] || "").length)) + 2,
-      }));
-      XLSX.utils.book_append_sheet(workbook, wsItems, "Ítems");
-    }
 
     const fileName = `Remitos_${format(new Date(), "yyyyMMdd")}.xlsx`;
     XLSX.writeFile(workbook, fileName);
