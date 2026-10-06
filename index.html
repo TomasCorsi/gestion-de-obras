@@ -40,6 +40,42 @@
 
   <body>
     <div id="root"></div>
+    <script>
+      // Rescate de pantalla en blanco: si la app no carga, limpia caché viejo y recarga una vez.
+      (function () {
+        var KEY = "blank_rescue_at";
+        async function rescue() {
+          try {
+            if ("serviceWorker" in navigator) {
+              var regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map(function (r) { return r.unregister(); }));
+            }
+            if (window.caches) {
+              var names = await caches.keys();
+              await Promise.all(names.map(function (n) { return caches.delete(n); }));
+            }
+          } catch (e) {}
+          location.reload();
+        }
+        function tryRescue() {
+          var root = document.getElementById("root");
+          if (root && root.children.length > 0) return;
+          var last = Number(sessionStorage.getItem(KEY) || 0);
+          if (Date.now() - last < 60000) return; // evitar bucles
+          sessionStorage.setItem(KEY, String(Date.now()));
+          rescue();
+        }
+        window.addEventListener("error", function (e) {
+          var msg = String((e && e.message) || "");
+          if (/dynamically imported module|Failed to fetch|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(msg)) tryRescue();
+        }, true);
+        window.addEventListener("unhandledrejection", function (e) {
+          var msg = String((e && e.reason && e.reason.message) || e.reason || "");
+          if (/dynamically imported module|Failed to fetch|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(msg)) tryRescue();
+        });
+        setTimeout(tryRescue, 10000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

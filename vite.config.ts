@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
       devOptions: { enabled: false },
       manifest: false, // use existing public/manifest.webmanifest
       injectManifest: {
-        globPatterns: ["**/*.{js,css,html,png,svg,webp,ico,woff2}"],
+        globPatterns: ["**/*.{js,css,png,svg,webp,ico,woff2}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
     }),
