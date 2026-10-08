@@ -408,11 +408,13 @@ export default function Remitos() {
 
   const getClienteForObra = (obraNombre: string | null | undefined) => {
     if (!obraNombre) return "";
-    const obra = obras.find(o => o.nombre === obraNombre);
-    if (!obra) return "";
-    const num = parseInt(obra.numero || "0", 10);
-    if (num >= 300 && obra.cliente?.nombre) return obra.cliente.nombre;
-    return "";
+    const key = obraNombre.trim().toLowerCase();
+    const obra = obras.find(o => (o.nombre || "").trim().toLowerCase() === key);
+    if (!obra || !obra.cliente?.nombre) return "";
+    const num = parseInt(obra.numero || "", 10);
+    // Obras internas (N° < 300) no llevan cliente; sin número se toma el cliente cargado
+    if (!isNaN(num) && num < 300) return "";
+    return obra.cliente.nombre;
   };
 
   const handleRecalcularClientes = async () => {
