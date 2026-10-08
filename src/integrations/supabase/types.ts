@@ -4066,6 +4066,7 @@ export type Database = {
         Args: { _rol: Database["public"]["Enums"]["rol_personal"] }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      recalcular_horas_maquinas: { Args: never; Returns: number }
     }
     Enums: {
       adelanto_estado: "pendiente" | "aplicado" | "cancelado"

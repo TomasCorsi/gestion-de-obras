@@ -57,6 +57,13 @@
       "when": 1790772382094,
       "tag": "0007_combustible_tipo_movimiento",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791466757060,
+      "tag": "0008_recalcular_horas_maquinas",
+      "breakpoints": true
     }
   ]
 }
