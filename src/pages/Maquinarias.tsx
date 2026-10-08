@@ -1,4 +1,8 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { RefreshCw } from "lucide-react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { useUrlSearch, useUrlTab } from "@/hooks/useUrlState";
@@ -107,6 +111,8 @@ export default function Maquinarias() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<"cards" | "grid">("cards");
+  const [recalculando, setRecalculando] = useState(false);
+  const queryClient = useQueryClient();
 
   const operadores = personal.filter(p => p.rol === "maquinista" && p.activo);
 
@@ -256,6 +262,23 @@ export default function Maquinarias() {
             
             {viewMode === "cards" && (
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={recalculando}
+                  onClick={async () => {
+                    if (!confirm("¿Recalcular horas y km de todas las máquinas desde los partes diarios? Se descartan valores cargados mal (saltos absurdos).")) return;
+                    setRecalculando(true);
+                    const { data, error } = await supabase.rpc("recalcular_horas_maquinas" as any);
+                    setRecalculando(false);
+                    if (error) { toast.error("No se pudo recalcular: " + error.message); return; }
+                    toast.success(`Horas recalculadas en ${data ?? 0} máquinas`);
+                    queryClient.invalidateQueries({ queryKey: ["maquinarias"] });
+                  }}
+                  className="border-border"
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${recalculando ? "animate-spin" : ""}`} />
+                  Recalcular horas
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => setCsvImportOpen(true)}
