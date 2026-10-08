@@ -125,10 +125,10 @@ export function RemitoQuickFormDialog({
 
   function getClienteForObra(obraNombre: string): string {
     const obra = obras.find(o => o.nombre === obraNombre);
-    if (obra && isObraExterna(obra.numero)) {
-      return obra.cliente?.nombre || "";
-    }
-    return "";
+    if (!obra || !obra.cliente?.nombre) return "";
+    const num = parseInt(obra.numero || "", 10);
+    if (!isNaN(num) && !isObraExterna(obra.numero)) return "";
+    return obra.cliente.nombre;
   }
 
   function getInitialForm() {
