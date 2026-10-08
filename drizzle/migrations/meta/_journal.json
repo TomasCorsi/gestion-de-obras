@@ -64,6 +64,13 @@
       "when": 1791466757060,
       "tag": "0008_recalcular_horas_maquinas",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791471832370,
+      "tag": "0009_recalcular_horas_ultimo_parte",
+      "breakpoints": true
     }
   ]
 }
