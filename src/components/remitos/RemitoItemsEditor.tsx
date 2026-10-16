@@ -76,6 +76,24 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
     update(idx, { precio_unitario: parseDecimal(cleaned) });
   };
 
+  // Al salir del campo, mostrar el número realmente guardado para que un
+  // valor mal interpretado (ej. "45.000" → 45) se vea al instante.
+  const handleCantidadBlur = (idx: number) => {
+    setCantidadStrs((prev) => {
+      const next = [...prev];
+      next[idx] = numToStr(Number(items[idx]?.cantidad) || 0);
+      return next;
+    });
+  };
+
+  const handlePrecioBlur = (idx: number) => {
+    setPrecioStrs((prev) => {
+      const next = [...prev];
+      next[idx] = numToStr(Number(items[idx]?.precio_unitario) || 0);
+      return next;
+    });
+  };
+
   const addItem = () => {
     onChange([
       ...items,
@@ -119,6 +137,7 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
                   inputMode="decimal"
                   value={cantidadStrs[idx] ?? numToStr(Number(it.cantidad) || 0)}
                   onChange={(e) => handleCantidadChange(idx, e.target.value)}
+                  onBlur={() => handleCantidadBlur(idx)}
                   placeholder="1"
                   className="h-9 text-sm"
                 />
@@ -151,6 +170,7 @@ export function RemitoItemsEditor({ items, onChange }: Props) {
                   inputMode="decimal"
                   value={precioStrs[idx] ?? numToStr(Number(it.precio_unitario) || 0)}
                   onChange={(e) => handlePrecioChange(idx, e.target.value)}
+                  onBlur={() => handlePrecioBlur(idx)}
                   placeholder="0,00"
                   className="h-9 text-sm"
                 />

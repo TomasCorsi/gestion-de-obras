@@ -372,13 +372,19 @@ export function CombustibleRepartidorTab() {
     return preciosPorMesProducto[`${fechaMes}-${producto}`];
   };
 
-  const totalLitros = filtered.reduce((sum, c) => sum + (c.litros || 0), 0);
-  const totalCosto = filtered.reduce((sum, c) => {
+  // Los ingresos a cisternas no son consumo: se muestran aparte para no
+  // contar dos veces el mismo combustible (entra a la cisterna y sale a máquina).
+  const egresos = filtered.filter((c) => (c.tipo_movimiento || "egreso") !== "ingreso");
+  const litrosIngresados = filtered
+    .filter((c) => c.tipo_movimiento === "ingreso")
+    .reduce((sum, c) => sum + (c.litros || 0), 0);
+  const totalLitros = egresos.reduce((sum, c) => sum + (c.litros || 0), 0);
+  const totalCosto = egresos.reduce((sum, c) => {
     const precio = getPrecioForCarga(c);
     if (precio === undefined) return sum;
     return sum + (c.litros || 0) * precio;
   }, 0);
-  const hayCostos = filtered.some((c) => getPrecioForCarga(c) !== undefined);
+  const hayCostos = egresos.some((c) => getPrecioForCarga(c) !== undefined);
 
   const handleExport = () => {
     if (filtered.length === 0) {
@@ -390,6 +396,7 @@ export function CombustibleRepartidorTab() {
       return {
         "N° Remito": c.numero_remito || "-",
         Fecha: formatDate(c.fecha),
+        Movimiento: c.tipo_movimiento === "ingreso" ? "Ingreso" : "Egreso",
         Producto: (c.tipo_producto || "combustible").charAt(0).toUpperCase() + (c.tipo_producto || "combustible").slice(1),
         Repartidor: c.repartidor ? formatOperador(c.repartidor) : formatOperador(c.parte_diario?.personal),
         Operador: formatOperador(c.operador),
@@ -628,7 +635,9 @@ export function CombustibleRepartidorTab() {
         <div className="card-industrial p-4 flex items-center justify-between">
           <div>
             <p className="text-2xl font-bold text-foreground">{totalLitros.toLocaleString()} L</p>
-            <p className="text-sm text-muted-foreground">Litros Totales</p>
+            <p className="text-sm text-muted-foreground">
+              Litros entregados{litrosIngresados > 0 ? ` (+${litrosIngresados.toLocaleString()} L ingresados a cisternas)` : ""}
+            </p>
           </div>
           <Droplets className="w-8 h-8 text-primary" />
         </div>

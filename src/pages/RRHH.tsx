@@ -25,6 +25,7 @@ import { NovedadesTab } from "@/components/rrhh/NovedadesTab";
 import { PlanillaTab } from "@/components/rrhh/PlanillaTab";
 import { EmpleadosTab } from "@/components/rrhh/EmpleadosTab";
 import { ConfigTab } from "@/components/rrhh/ConfigTab";
+import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import type { PersonalMin } from "@/components/rrhh/planillaData";
 
 const ESTADO_BADGE: Record<RrhhPeriodoEstado, { label: string; className: string }> = {
@@ -44,6 +45,7 @@ export default function RRHH() {
 
   const [periodoId, setPeriodoId] = useState<string>("");
   const [openNuevo, setOpenNuevo] = useState(false);
+  const [confirmarBorrado, setConfirmarBorrado] = useState(false);
 
   const hoy = new Date();
   const [tipo, setTipo] = useState<RrhhPeriodoTipo>(hoy.getDate() <= 15 ? "quincena_1" : "quincena_2");
@@ -123,7 +125,7 @@ export default function RRHH() {
               )}
               {periodo && (
                 <Button variant="ghost" size="icon" className="text-destructive"
-                  onClick={() => { borrarPeriodo.mutate(periodo.id); setPeriodoId(""); }}>
+                  onClick={() => setConfirmarBorrado(true)}>
                   <Trash2 className="w-4 h-4" />
                 </Button>
               )}
@@ -160,6 +162,20 @@ export default function RRHH() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <DeleteConfirmDialog
+        open={confirmarBorrado}
+        onOpenChange={setConfirmarBorrado}
+        title="¿Eliminar este período?"
+        description="Las novedades cargadas en este período no se borran, pero quedarán desvinculadas y dejarán de verse en la planilla. Esta acción no se puede deshacer."
+        onConfirm={() => {
+          if (periodo) {
+            borrarPeriodo.mutate(periodo.id);
+            setPeriodoId("");
+          }
+          setConfirmarBorrado(false);
+        }}
+      />
 
       <Dialog open={openNuevo} onOpenChange={setOpenNuevo}>
         <DialogContent className="max-w-md">
