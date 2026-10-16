@@ -53,6 +53,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { useClientes } from "@/hooks/useClientes";
+import { useTiposMaterial } from "@/hooks/useTiposMaterial";
 import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
@@ -100,6 +101,7 @@ export default function Remitos() {
   const { maquinarias } = useMaquinarias();
   const { clientes } = useClientes();
   const { proveedores } = useProveedores();
+  const { tipos: tiposMaterialPersonalizados, addTipo: addTipoMaterialPersonalizado } = useTiposMaterial();
 
   const [searchTerm, setSearchTerm] = useUrlSearch("");
   // Debounced version used by the heavy filter computation
@@ -962,6 +964,8 @@ export default function Remitos() {
             generateNumero={generateNumero}
             onSubmit={handleFormSubmit}
             editingRemito={editingRemito}
+            tiposPersonalizados={tiposMaterialPersonalizados}
+            onAddTipoPersonalizado={addTipoMaterialPersonalizado}
           />
         )}
 

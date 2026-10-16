@@ -71,6 +71,13 @@
       "when": 1791471832370,
       "tag": "0009_recalcular_horas_ultimo_parte",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792158611555,
+      "tag": "0010_remito_tipos_material_personalizados",
+      "breakpoints": true
     }
   ]
 }

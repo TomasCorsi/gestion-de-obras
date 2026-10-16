@@ -86,6 +86,8 @@ interface RemitoQuickFormDialogProps {
   generateNumero: () => string;
   onSubmit: (remito: RemitoForm & { id?: string; items?: RemitoItemInput[] }) => Promise<void>;
   editingRemito?: RemitoEditData | null;
+  tiposPersonalizados?: string[];
+  onAddTipoPersonalizado?: (nombre: string) => void;
 }
 
 const today = () => new Date().toISOString().split("T")[0];
@@ -109,6 +111,8 @@ export function RemitoQuickFormDialog({
   generateNumero,
   onSubmit,
   editingRemito,
+  tiposPersonalizados = [],
+  onAddTipoPersonalizado,
 }: RemitoQuickFormDialogProps) {
   const { user, hasRole } = useAuth();
   const isFranco = user?.id === FRANCO_USER_ID;
@@ -294,10 +298,24 @@ export function RemitoQuickFormDialog({
     searchValue: [m.codigo, m.patente, m.nombre, m.tipo].filter(Boolean).join(" "),
   }));
 
-  const tipoMaterialOptions: ComboboxOption[] = TIPO_MATERIAL_OPTIONS.map((t) => ({
+  const tiposMaterialCombinados = useMemo(() => {
+    const base = new Set(TIPO_MATERIAL_OPTIONS.map((t) => t.toLowerCase()));
+    const extra = tiposPersonalizados.filter((t) => t && !base.has(t.toLowerCase()));
+    return [...TIPO_MATERIAL_OPTIONS, ...extra];
+  }, [tiposPersonalizados]);
+
+  const tipoMaterialOptions: ComboboxOption[] = tiposMaterialCombinados.map((t) => ({
     value: t,
     label: t,
   }));
+
+  const handleTipoMaterialChange = (v: string) => {
+    set("tipo_material", v);
+    const clean = (v || "").trim();
+    if (!clean) return;
+    const conocido = tiposMaterialCombinados.some((t) => t.toLowerCase() === clean.toLowerCase());
+    if (!conocido) onAddTipoPersonalizado?.(clean);
+  };
 
   const unidadOptions: ComboboxOption[] = UNIDAD_OPTIONS.map((u) => ({
     value: u,
@@ -419,7 +437,7 @@ export function RemitoQuickFormDialog({
             <Combobox
               options={tipoMaterialOptions}
               value={form.tipo_material}
-              onValueChange={(v) => set("tipo_material", v)}
+              onValueChange={handleTipoMaterialChange}
               placeholder="Buscar material..."
               allowCustom
               customLabel="Agregar tipo"
