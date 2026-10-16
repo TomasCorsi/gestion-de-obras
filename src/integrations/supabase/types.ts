@@ -3128,6 +3128,27 @@ export type Database = {
           },
         ]
       }
+      remito_tipos_material: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nombre: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre?: string
+        }
+        Relationships: []
+      }
       remitos: {
         Row: {
           cantidad: number
