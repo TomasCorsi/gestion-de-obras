@@ -46,11 +46,13 @@ export function usePeriodoExterno(periodo: RrhhPeriodo | null) {
         supabase
           .from("vacaciones")
           .select("personal_id, fecha_inicio, fecha_fin, motivo")
+          .not("aprobado_por", "is", null)
           .lte("fecha_inicio", p.fecha_hasta)
           .gte("fecha_fin", p.fecha_desde),
         supabase
           .from("adelantos_personal")
           .select("personal_id, fecha, monto")
+          .neq("estado", "cancelado")
           .gte("fecha", p.fecha_desde)
           .lte("fecha", p.fecha_hasta),
       ]);

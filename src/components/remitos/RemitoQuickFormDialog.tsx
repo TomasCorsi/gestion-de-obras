@@ -19,6 +19,7 @@ import {
 import { Combobox, type ComboboxOption } from "@/components/ui/combobox";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { RemitoForm } from "@/hooks/useRemitos";
 import { useDirtyDialog } from "@/hooks/useDirtyDialog";
 import { UnsavedChangesAlert } from "@/components/shared/UnsavedChangesAlert";
@@ -197,20 +198,30 @@ export function RemitoQuickFormDialog({
 
   // Ítems adicionales del remito (jornadas de máquina, servicios)
   const [items, setItems] = useState<RemitoItemInput[]>([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
   useEffect(() => {
     if (!open) return;
     if (editingRemito?.id) {
       let cancel = false;
+      setItemsLoading(true);
       fetchRemitoItems(editingRemito.id)
         .then((data) => {
           if (!cancel) setItems(data.map(({ id, remito_id, orden, ...rest }) => rest));
         })
-        .catch(() => setItems([]));
+        .catch(() => {
+          // No pisar con lista vacía: si falla la carga, no permitimos guardar
+          // para no borrar los ítems existentes del remito.
+          if (!cancel) toast.error("No se pudieron cargar los ítems del remito. Cerrá y volvé a intentar.");
+        })
+        .finally(() => {
+          if (!cancel) setItemsLoading(false);
+        });
       return () => {
         cancel = true;
       };
     }
     setItems([]);
+    setItemsLoading(false);
   }, [open, editingRemito]);
 
   // Buffers de texto para campos decimales (permite escribir "0.", "1,", ".5", etc.)
@@ -572,7 +583,7 @@ export function RemitoQuickFormDialog({
 
         <DialogFooter className="sticky bottom-0 bg-card pt-2">
           <Button variant="outline" onClick={handleClose}>Cancelar</Button>
-          <Button onClick={handleSubmit} disabled={saving} className="bg-primary hover:bg-primary/90">
+          <Button onClick={handleSubmit} disabled={saving || itemsLoading} className="bg-primary hover:bg-primary/90">
             {saving && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
             Guardar
           </Button>

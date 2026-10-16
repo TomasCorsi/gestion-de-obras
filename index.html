@@ -57,9 +57,15 @@
           } catch (e) {}
           location.reload();
         }
-        function tryRescue() {
+        function tryRescue(fromTimer) {
           var root = document.getElementById("root");
           if (root && root.children.length > 0) return;
+          // Si la página sigue descargando recursos (conexión lenta), no es un
+          // fallo: reintentar más tarde en vez de borrar caché y recargar.
+          if (fromTimer && document.readyState !== "complete") {
+            setTimeout(function () { tryRescue(true); }, 15000);
+            return;
+          }
           var last = Number(sessionStorage.getItem(KEY) || 0);
           if (Date.now() - last < 60000) return; // evitar bucles
           sessionStorage.setItem(KEY, String(Date.now()));
@@ -73,7 +79,7 @@
           var msg = String((e && e.reason && e.reason.message) || e.reason || "");
           if (/dynamically imported module|Failed to fetch|Importing a module script failed|ChunkLoadError|Loading chunk/i.test(msg)) tryRescue();
         });
-        setTimeout(tryRescue, 10000);
+        setTimeout(function () { tryRescue(true); }, 10000);
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
