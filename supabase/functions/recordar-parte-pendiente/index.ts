@@ -19,6 +19,24 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Solo el cron interno (secreto compartido) o service role pueden dispararlo
+    const authHeader = req.headers.get("authorization") || "";
+    const internalSecret = req.headers.get("x-internal-secret") || "";
+    const { data: cfg } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "edge_internal_secret")
+      .maybeSingle();
+    const expectedSecret = cfg?.value || "";
+    const isServiceRole = authHeader === `Bearer ${SERVICE_ROLE}`;
+    const isInternal = !!expectedSecret && internalSecret === expectedSecret;
+    if (!isServiceRole && !isInternal) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Fecha de hoy en zona ARG (UTC-3)
     const ahoraUTC = new Date();
     const argMs = ahoraUTC.getTime() - 3 * 60 * 60 * 1000;
