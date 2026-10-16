@@ -30,6 +30,26 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
+    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+    // Solo llamadas internas (trigger/cron con secreto compartido o service role)
+    const authHeader = req.headers.get("authorization") || "";
+    const internalSecret = req.headers.get("x-internal-secret") || "";
+    const { data: cfg } = await supabase
+      .from("app_config")
+      .select("value")
+      .eq("key", "edge_internal_secret")
+      .maybeSingle();
+    const expectedSecret = cfg?.value || "";
+    const isServiceRole = authHeader === `Bearer ${SERVICE_ROLE}`;
+    const isInternal = !!expectedSecret && internalSecret === expectedSecret;
+    if (!isServiceRole && !isInternal) {
+      return new Response(JSON.stringify({ error: "No autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const payload = (await req.json()) as SendPushPayload;
 
     if (!payload?.user_ids?.length || !payload?.title || !payload?.body) {
@@ -38,8 +58,6 @@ Deno.serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-
-    const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
     const { data: subs, error: subsErr } = await supabase
       .from("push_subscriptions")
