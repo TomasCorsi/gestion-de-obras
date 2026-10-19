@@ -1912,7 +1912,7 @@ export default function Certificados() {
                               <TableBody>
                                 {items.map((item) => (
                                   <TableRow key={item.id}>
-                                    <TableCell>{item.descripcion}</TableCell>
+                                    <TableCell>{item.descripcion}{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                     <TableCell>{item.unidad}</TableCell>
                                     <TableCell className="text-right">{item.cantidad}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -2168,7 +2168,7 @@ export default function Certificados() {
                                   <TableBody>
                                     {group.items.map((item) => (
                                       <TableRow key={item.id}>
-                                        <TableCell>{item.descripcion}</TableCell>
+                                        <TableCell>{item.descripcion}{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                         <TableCell>{item.unidad}</TableCell>
                                         <TableCell className="text-right">{item.cantidad}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
