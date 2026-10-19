@@ -1,3 +1,4 @@
+import { costoOrdenNeto } from "@/lib/costos";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
@@ -247,7 +248,7 @@ const fetchTablero = async (obraIds: string[], mes: string): Promise<ObraTablero
       .reduce((s, m) => s + num(m.costo_total), 0);
     const costoOrdenes = ordenesCompra
       .filter((o) => o.obra_id === obra.id)
-      .reduce((s, o) => s + (o.subtotal != null ? num(o.subtotal) : num(o.total)), 0);
+      .reduce((s, o) => s + costoOrdenNeto(o), 0);
     const gastosMes = costoOtros + costoMantenimiento + costoCombustible + costoOrdenes;
 
     const gastosPorCategoria: GastoCategoria[] = [
