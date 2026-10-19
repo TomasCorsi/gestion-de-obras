@@ -80,9 +80,25 @@ export function usePushNotifications() {
         return;
       }
 
+      // Usar la clave del servidor para que la suscripción coincida con la que firma los envíos
+      let publicKey = VAPID_PUBLIC_KEY;
+      try {
+        const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        });
+        const j = await r.json();
+        if (j?.publicKey) publicKey = j.publicKey;
+      } catch { /* usa la clave local */ }
+
+      const existente = await reg.pushManager.getSubscription();
+      if (existente) {
+        await supabase.from("push_subscriptions").delete().eq("endpoint", existente.endpoint);
+        await existente.unsubscribe();
+      }
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
