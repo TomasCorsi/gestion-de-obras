@@ -35,9 +35,10 @@ export function useTiposMaterial() {
     setTipos((prev) =>
       prev.some((t) => t.toLowerCase() === clean.toLowerCase()) ? prev : [...prev, clean]
     );
+    const { data: auth } = await supabase.auth.getUser();
     const { error } = await supabase
       .from("remito_tipos_material")
-      .upsert({ nombre: clean }, { onConflict: "nombre", ignoreDuplicates: true });
+      .upsert({ nombre: clean, created_by: auth.user?.id ?? null }, { onConflict: "nombre", ignoreDuplicates: true });
     if (error) {
       // Revertir el agregado optimista si falla (permiso, conexión, etc.)
       setTipos((prev) => prev.filter((t) => t.toLowerCase() !== clean.toLowerCase()));
