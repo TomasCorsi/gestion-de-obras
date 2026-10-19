@@ -1,3 +1,4 @@
+import { calcularRentabilidad, calcularCobranzas } from "@/lib/rentabilidad";
 import { ObraTableroData } from "@/hooks/useTableroObras";
 import { MetricaSerie, SeriePunto } from "@/hooks/useTableroSeries";
 import { HistoricoObra } from "@/hooks/useTableroHistorico";
