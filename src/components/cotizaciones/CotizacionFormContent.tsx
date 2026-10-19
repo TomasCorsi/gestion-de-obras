@@ -79,12 +79,9 @@ export function CotizacionFormContent({
   const [draggedItem, setDraggedItem] = useState<{ cat: number; pos: number } | null>(null);
 
   // Anticipos (varios; cada uno por porcentaje o monto fijo)
-  const calcMonto = (a: CotizacionAnticipoForm) =>
-    a.tipo === "porcentaje" ? (formData.subtotal * (a.valor || 0)) / 100 : a.valor || 0;
-  const anticiposCalc = anticipos.map((a) => ({ ...a, monto: calcMonto(a) }));
-  const anticipoMonto = anticiposCalc.reduce((s, a) => s + a.monto, 0);
+  const anticiposCalc = anticipos.map((a) => ({ ...a, monto: montoAnticipo(a, formData.subtotal) }));
   // El anticipo se descuenta del subtotal (base imponible) antes del IVA
-  const baseImponible = formData.subtotal - anticipoMonto;
+  const { anticipoMonto, baseImponible } = calcularTotalesCotizacion(formData.subtotal, anticipos);
 
   useEffect(() => {
     const iva = baseImponible * 0.21;

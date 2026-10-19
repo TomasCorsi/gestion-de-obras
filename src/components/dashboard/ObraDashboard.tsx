@@ -229,14 +229,15 @@ export function ObraDashboard({
   // Rentabilidad: lo cotizado (aprobado) contra el gasto acumulado histórico de la obra
   const cotizado = obra.montoCotizado || 0;
   const gastadoHistorico = historico?.gastos ?? obra.gastosMes;
-  const beneficio = cotizado - gastadoHistorico;
-  const margen = cotizado > 0 ? (beneficio / cotizado) * 100 : 0;
-  const consumido = cotizado > 0 ? Math.min(100, (gastadoHistorico / cotizado) * 100) : 0;
+  const { beneficio, margen, consumido } = calcularRentabilidad(cotizado, gastadoHistorico);
 
   // Cobranzas: anticipo de la cotización + pagos de certificados
   const anticipoCobrado = obra.anticipoCobrado || 0;
-  const cobradoTotal = anticipoCobrado + (avance?.totalCobrado || 0);
-  const saldoPendiente = Math.max(0, (avance?.totalCertificado || 0) - (avance?.totalCobrado || 0));
+  const { cobradoTotal, saldoPendiente } = calcularCobranzas(
+    anticipoCobrado,
+    avance?.totalCertificado || 0,
+    avance?.totalCobrado || 0
+  );
 
   // En la TV no hay mouse: los valores se dibujan sobre el gráfico y se ocultan los tooltips.
   const mostrarTooltip = !tv;
