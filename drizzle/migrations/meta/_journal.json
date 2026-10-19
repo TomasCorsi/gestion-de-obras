@@ -99,6 +99,13 @@
       "when": 1792434144614,
       "tag": "0013_revoke_public_execute_internal_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792434161817,
+      "tag": "0014_list_views_security_invoker",
+      "breakpoints": true
     }
   ]
 }
