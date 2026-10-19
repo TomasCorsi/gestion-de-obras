@@ -106,7 +106,11 @@ serve(async (req) => {
 
     const conversation: any[] = [
       { role: "system", content: SCHEMA_PROMPT },
-      ...messages,
+      // Solo se aceptan turnos user/assistant con texto; el rol system lo fija el servidor
+      ...(Array.isArray(messages) ? messages : [])
+        .filter((m: any) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .slice(-30)
+        .map((m: any) => ({ role: m.role, content: m.content.slice(0, 8000) })),
     ];
 
     const callModel = async (stream: boolean) => {

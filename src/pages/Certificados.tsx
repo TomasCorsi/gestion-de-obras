@@ -2750,9 +2750,9 @@ function PagosTab({
         c?.periodo || "",
         p.monto,
         p.metodo || "",
-        (p.referencia || "").replace(/[",\n]/g, " "),
-        (p.banco || "").replace(/[",\n]/g, " "),
-        (p.descripcion || "").replace(/[",\n]/g, " "),
+        (p.referencia || "").replace(/[",\n]/g, " ").replace(/^[=+\-@\t\r]/, (m) => `'${m}`),
+        (p.banco || "").replace(/[",\n]/g, " ").replace(/^[=+\-@\t\r]/, (m) => `'${m}`),
+        (p.descripcion || "").replace(/[",\n]/g, " ").replace(/^[=+\-@\t\r]/, (m) => `'${m}`),
       ].join(",");
     });
     const csv = [headers.join(","), ...rows].join("\n");
