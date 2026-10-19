@@ -91,7 +91,7 @@ export function useCargasRepartidorAll() {
     mutationFn: async ({ id, ...data }: { id: string; [key: string]: any }) => {
       const { error } = await supabase
         .from('cargas_combustible_repartidor')
-        .update(data)
+        .update(data as never)
         .eq('id', id);
       if (error) throw error;
     },

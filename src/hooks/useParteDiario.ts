@@ -165,7 +165,7 @@ export function useParteDiario() {
     mutationFn: async ({ id, ...updates }: Partial<ParteDiario> & { id: string }) => {
       const { data, error } = await supabase
         .from('partes_diarios')
-        .update(updates)
+        .update(updates as never)
         .eq('id', id)
         .select()
         .single();

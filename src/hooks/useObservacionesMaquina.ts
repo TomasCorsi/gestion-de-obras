@@ -77,7 +77,7 @@ export function useObservacionesMaquina() {
 
       const { error } = await supabase
         .from("observaciones_maquina_estado")
-        .update(updateData)
+        .update(updateData as never)
         .eq("id", id);
 
       if (error) throw error;
