@@ -5,7 +5,7 @@ import webpush from "npm:web-push@3.6.7";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY")!;
@@ -28,6 +28,12 @@ interface SendPushPayload {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // La clave pública VAPID es pública: el cliente la usa para suscribirse con el mismo par que firma el servidor.
+  if (req.method === "GET") {
+    return new Response(JSON.stringify({ publicKey: VAPID_PUBLIC_KEY }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   try {
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -100,7 +106,7 @@ Deno.serve(async (req) => {
         } catch (err: any) {
           failed++;
           const status = err?.statusCode;
-          if (status === 404 || status === 410) {
+          if (status === 404 || status === 410 || status === 403) {
             deadEndpoints.push(s.endpoint);
           } else {
             console.error("Push error", status, err?.body || err?.message);
