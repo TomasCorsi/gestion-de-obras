@@ -539,6 +539,10 @@ export default function Certificados() {
     );
   };
 
+  const updateItemNota = (idx: number, observaciones: string) => {
+    setItemsDraft((prev) => prev.map((item, i) => (i === idx ? { ...item, observaciones } : item)));
+  };
+
   const removeItemFromDraft = (idx: number) => {
     setItemsDraft((prev) => prev.filter((_, i) => i !== idx));
   };
@@ -1534,7 +1538,7 @@ export default function Certificados() {
                                     const valorTotal = cantTotal * item.precio_unitario;
                                     return (
                                       <TableRow key={globalIdx}>
-                                        <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                        <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div><Input value={item.observaciones || ""} onChange={(e) => updateItemNota(globalIdx, e.target.value)} placeholder="Nota (ej. Adicional)" className={`h-6 mt-1 text-[11px] ${item.observaciones ? "border-primary text-primary font-semibold" : ""}`} /></TableCell>
                                         <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
                                         <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                         <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -1634,7 +1638,7 @@ export default function Certificados() {
                                         const valorTotal = cantTotal * item.precio_unitario;
                                         return (
                                           <TableRow key={globalIdx}>
-                                            <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div><Input value={item.observaciones || ""} onChange={(e) => updateItemNota(globalIdx, e.target.value)} placeholder="Nota (ej. Adicional)" className={`h-6 mt-1 text-[11px] ${item.observaciones ? "border-primary text-primary font-semibold" : ""}`} /></TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-muted-foreground">{item.categoria || "-"}</TableCell>
                                             <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -1908,7 +1912,7 @@ export default function Certificados() {
                               <TableBody>
                                 {items.map((item) => (
                                   <TableRow key={item.id}>
-                                    <TableCell>{item.descripcion}</TableCell>
+                                    <TableCell>{item.descripcion}{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                     <TableCell>{item.unidad}</TableCell>
                                     <TableCell className="text-right">{item.cantidad}</TableCell>
                                     <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -2013,7 +2017,7 @@ export default function Certificados() {
                                       const valorTotal = cantTotal * item.precio_unitario;
                                       return (
                                         <TableRow key={item.id}>
-                                          <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                          <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div>{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                           <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
                                           <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                           <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -2109,7 +2113,7 @@ export default function Certificados() {
                                         const valorTotal = cantTotal * item.precio_unitario;
                                         return (
                                           <TableRow key={item.id}>
-                                            <TableCell className="px-1.5 py-1.5 font-medium truncate max-w-[120px]" title={item.descripcion}>{item.descripcion}</TableCell>
+                                            <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div>{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
                                             <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -2164,7 +2168,7 @@ export default function Certificados() {
                                   <TableBody>
                                     {group.items.map((item) => (
                                       <TableRow key={item.id}>
-                                        <TableCell>{item.descripcion}</TableCell>
+                                        <TableCell>{item.descripcion}{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                         <TableCell>{item.unidad}</TableCell>
                                         <TableCell className="text-right">{item.cantidad}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(item.precio_unitario)}</TableCell>
