@@ -84,7 +84,7 @@ export function usePushNotifications() {
       let publicKey = VAPID_PUBLIC_KEY;
       try {
         const r = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-push`, {
-          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
         });
         const j = await r.json();
         if (j?.publicKey) publicKey = j.publicKey;
