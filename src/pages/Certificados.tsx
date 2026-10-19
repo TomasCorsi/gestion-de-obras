@@ -2017,7 +2017,7 @@ export default function Certificados() {
                                       const valorTotal = cantTotal * item.precio_unitario;
                                       return (
                                         <TableRow key={item.id}>
-                                          <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div><Input value={item.observaciones || ""} onChange={(e) => updateItemNota(globalIdx, e.target.value)} placeholder="Nota (ej. Adicional)" className={`h-6 mt-1 text-[11px] ${item.observaciones ? "border-primary text-primary font-semibold" : ""}`} /></TableCell>
+                                          <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div>{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                           <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
                                           <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                           <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
@@ -2113,7 +2113,7 @@ export default function Certificados() {
                                         const valorTotal = cantTotal * item.precio_unitario;
                                         return (
                                           <TableRow key={item.id}>
-                                            <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div><Input value={item.observaciones || ""} onChange={(e) => updateItemNota(globalIdx, e.target.value)} placeholder="Nota (ej. Adicional)" className={`h-6 mt-1 text-[11px] ${item.observaciones ? "border-primary text-primary font-semibold" : ""}`} /></TableCell>
+                                            <TableCell className="px-1.5 py-1.5 max-w-[160px]"><div className="font-medium truncate" title={item.descripcion}>{item.descripcion}</div>{item.observaciones && <div className="text-[11px] font-semibold text-primary">{item.observaciones}</div>}</TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-muted-foreground">{(item.concepto_id && categoriaMap[item.concepto_id]) || "-"}</TableCell>
                                             <TableCell className="px-1.5 py-1.5">{item.unidad}</TableCell>
                                             <TableCell className="px-1.5 py-1.5 text-right">{formatCurrency(item.precio_unitario)}</TableCell>
