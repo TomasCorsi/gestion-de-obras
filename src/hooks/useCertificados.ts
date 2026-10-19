@@ -468,7 +468,7 @@ export function useCertificados(obraId?: string) {
       if (fecha_emision) updates.fecha_emision = fecha_emision;
       const { error } = await supabase
         .from("certificados")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id);
       if (error) throw error;
     },
@@ -516,7 +516,7 @@ export function useCertificados(obraId?: string) {
       // Update certificado header
       const { error } = await supabase
         .from("certificados")
-        .update(updateData)
+        .update(updateData as never)
         .eq("id", id);
       if (error) throw error;
 
@@ -683,7 +683,7 @@ export function useCertificados(obraId?: string) {
       updates.estado = "emitido";
     }
     if (Object.keys(updates).length > 0) {
-      await supabase.from("certificados").update(updates).eq("id", certificadoId);
+      await supabase.from("certificados").update(updates as never).eq("id", certificadoId);
     }
   };
 
@@ -764,7 +764,7 @@ export function useCertificados(obraId?: string) {
       if (comprobante_url !== undefined) updates.comprobante_url = comprobante_url;
       const { error } = await supabase
         .from("certificado_pagos")
-        .update(updates)
+        .update(updates as never)
         .eq("id", id);
       if (error) throw error;
       await syncCertificadoEstado(certificado_id);

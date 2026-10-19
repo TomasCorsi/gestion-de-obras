@@ -63,7 +63,7 @@ export function useParteDiarioAdmin(filters: ParteDiarioAdminFilters = {}) {
     mutationFn: async ({ id, data }: { id: string; data: Partial<ParteDiario> }) => {
       const { error } = await supabase
         .from('partes_diarios')
-        .update(data)
+        .update(data as never)
         .eq('id', id);
 
       if (error) throw error;

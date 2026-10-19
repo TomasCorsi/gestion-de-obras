@@ -156,7 +156,7 @@ export function useSueldos(periodo: string) {
           if (Object.keys(patch).length === 0) continue;
           const { error, count: c } = await supabase
             .from("sueldos")
-            .update(patch, { count: "exact" })
+            .update(patch as never, { count: "exact" })
             .eq("periodo", p)
             .eq("legajo", u.legajo);
           if (error) throw error;

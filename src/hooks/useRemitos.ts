@@ -393,7 +393,7 @@ export function useRemitos() {
     updateRowColor: async (id: string, color: string | null) => {
       const { error } = await supabase
         .from("remitos")
-        .update({ row_color: color } as Record<string, unknown>)
+        .update({ row_color: color } as never)
         .eq("id", id);
       if (error) {
         console.error("Error updating row color:", error);

@@ -224,7 +224,7 @@ export const useUpdateLiquidacionItem = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, patch, liquidacionId }: { id: string; patch: Partial<LiquidacionItem>; liquidacionId: string }) => {
-      const { error } = await supabase.from("liquidacion_items").update(patch).eq("id", id);
+      const { error } = await supabase.from("liquidacion_items").update(patch as never).eq("id", id);
       if (error) throw error;
       return { liquidacionId };
     },

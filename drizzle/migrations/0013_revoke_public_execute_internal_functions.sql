@@ -1,0 +1,16 @@
+REVOKE EXECUTE ON FUNCTION public.notify_documento_subido() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.notify_observacion_maquina() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_orden_compra_numero() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.set_remito_created_by() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_horas_km_from_parte() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_mantenimiento_completado() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.sync_observacion_maquina() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.handle_new_user() FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_documento_signed_url(uuid) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.get_user_role(uuid) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.is_owner_of_personal(uuid, uuid) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.recalcular_horas_maquinas() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_documento_signed_url(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_role(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_owner_of_personal(uuid, uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.recalcular_horas_maquinas() TO authenticated;

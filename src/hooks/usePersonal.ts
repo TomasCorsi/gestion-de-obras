@@ -142,7 +142,7 @@ export function usePersonal() {
       
       const { data, error } = await supabase
         .from("personal")
-        .insert([normalizePersonalPayload(cleanedData as Record<string, unknown>)])
+        .insert([normalizePersonalPayload(cleanedData as Record<string, unknown>) as never])
         .select()
         .single();
 
@@ -185,7 +185,7 @@ export function usePersonal() {
 
       const { error } = await supabase
         .from("personal")
-        .update(cleanedData)
+        .update(cleanedData as never)
         .eq("id", id);
 
       if (error) throw error;

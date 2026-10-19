@@ -150,7 +150,7 @@ export function LiquidacionDetalle({ id, onClose }: Props) {
       const merged: LiquidacionItem = { ...orig, ...draft[rowId] } as LiquidacionItem;
       const recalc = recalcItem(merged, configMap[orig.personal_id] || 0);
       const patch = { ...draft[rowId], ...recalc };
-      await supabase.from("liquidacion_items").update(patch).eq("id", rowId);
+      await supabase.from("liquidacion_items").update(patch as never).eq("id", rowId);
     }
     // Update liquidacion totals
     await supabase.from("liquidaciones").update({
