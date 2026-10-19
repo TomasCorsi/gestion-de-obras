@@ -15,8 +15,14 @@ import { useMaquinarias } from "@/hooks/useMaquinarias";
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
+// Neutraliza fórmulas: texto que empieza con = + - @ tab o CR se antepone con '
+const safeCell = (c: unknown) => {
+  if (typeof c === "number") return String(c);
+  const s = String(c ?? "");
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+};
 const toCSV = (rows: any[][]) =>
-  rows.map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+  rows.map((r) => r.map((c) => `"${safeCell(c).replace(/"/g, '""')}"`).join(",")).join("\n");
 
 const download = (filename: string, content: string) => {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
