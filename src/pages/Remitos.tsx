@@ -37,7 +37,7 @@ import {
 import { FilterBar, FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
 import { MultiSelectFilter } from "@/components/shared/MultiSelectFilter";
 
-import { useUrlSearch } from "@/hooks/useUrlState";
+import { useUrlSearch, useUrlState } from "@/hooks/useUrlState";
 import { useRemitos, RemitoForm, RemitoWithRelations } from "@/hooks/useRemitos";
 import {
   useRemitoItemsMap,
@@ -96,7 +96,7 @@ export default function Remitos() {
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
   const [seccion, setSeccion] = useState<"remitos" | "combustible">("remitos");
-  const [tipoRemito, setTipoRemito] = useUrlSearch("tipo", "viajes");
+  const [tipoRemito, setTipoRemito] = useUrlState<string>({ key: "tipo", defaultValue: "viajes", serialize: (v) => v, deserialize: (v) => v });
   const { remitos, loading, batchSave, createRemito, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
   const { itemsMap, invalidateItems } = useRemitoItemsMap();
   const { obras } = useObras();
