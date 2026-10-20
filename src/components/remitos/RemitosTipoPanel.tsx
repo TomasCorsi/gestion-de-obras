@@ -185,7 +185,7 @@ export function RemitosTipoPanel({ tipo }: { tipo: Tipo }) {
   };
 
   const obraOpts = (obras || []).map((o: any) => ({ value: o.id, label: o.nombre }));
-  const cols = rows.length || true ? Object.keys(display(rows[0] || {})) : [];
+  const cols = Object.keys(display({}));
 
   return (
     <div className="space-y-4">

@@ -59,6 +59,7 @@ import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { CombustibleRepartidorPanel } from "@/components/gastos/CombustibleRepartidorPanel";
+import { RemitosTipoPanel } from "@/components/remitos/RemitosTipoPanel";
 
 // Lazy-load heavy dialogs to keep initial Remitos render snappy
 const RemitosCSVImportDialog = lazy(() =>
@@ -95,6 +96,7 @@ export default function Remitos() {
   const isOwnOnly = isSergio || isFranco || isCalaminasur;
   const isAdminOrCapataz = role === "admin" || role === "capataz";
   const [seccion, setSeccion] = useState<"remitos" | "combustible">("remitos");
+  const [tipoRemito, setTipoRemito] = useUrlSearch("tipo", "viajes");
   const { remitos, loading, batchSave, createRemito, fetchRemitos, loadAll, cargarHistorico, cargandoHistorico } = useRemitos();
   const { itemsMap, invalidateItems } = useRemitoItemsMap();
   const { obras } = useObras();
@@ -566,6 +568,28 @@ export default function Remitos() {
     );
   }
 
+  const TIPOS = [
+    { v: "viajes", l: "Remitos de viajes" },
+    { v: "materiales", l: "Remitos de materiales" },
+    { v: "maquinas", l: "Remitos de máquinas" },
+  ];
+  const TipoTabs = () => (
+    <div className="mb-4 inline-flex flex-wrap rounded-lg border border-border bg-card p-1">
+      {TIPOS.map((t) => (
+        <button
+          key={t.v}
+          type="button"
+          onClick={() => setTipoRemito(t.v)}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            (tipoRemito || "viajes") === t.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          {t.l}
+        </button>
+      ))}
+    </div>
+  );
+
   const SeccionTabs = () =>
     isFranco ? (
       <div className="mb-4 inline-flex rounded-lg border border-border bg-card p-1">
@@ -595,9 +619,20 @@ export default function Remitos() {
     );
   }
 
+  if (tipoRemito === "materiales" || tipoRemito === "maquinas") {
+    return (
+      <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
+        <SeccionTabs />
+        <div><TipoTabs /></div>
+        <RemitosTipoPanel key={tipoRemito} tipo={tipoRemito} />
+      </MainLayout>
+    );
+  }
+
   return (
     <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
       <SeccionTabs />
+      <div><TipoTabs /></div>
       {/* Filter Bar */}
       <div className="mb-4">
         <FilterBar
