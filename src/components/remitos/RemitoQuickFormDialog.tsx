@@ -551,7 +551,7 @@ export function RemitoQuickFormDialog({
           <div />
 
           {/* === ÍTEMS ADICIONALES === */}
-          <RemitoItemsEditor items={items} onChange={setItems} />
+          {items.length > 0 && <RemitoItemsEditor items={items} onChange={setItems} />}
 
           {items.length > 0 && (
             <div className="col-span-1 sm:col-span-2 md:col-span-3 flex justify-end text-sm font-semibold text-foreground">
