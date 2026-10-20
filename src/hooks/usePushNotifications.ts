@@ -72,7 +72,12 @@ export function usePushNotifications() {
     }
     setBusy(true);
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (!reg?.active) {
+        toast.error("Las notificaciones están temporalmente pausadas mientras se actualiza la aplicación");
+        setStatus("granted-unsubscribed");
+        return;
+      }
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
         toast.error("Permiso denegado");
