@@ -3285,6 +3285,155 @@ export type Database = {
           },
         ]
       }
+      remitos_maquinas: {
+        Row: {
+          cantidad: number
+          cliente_id: string | null
+          created_at: string
+          created_by: string | null
+          fecha: string
+          id: string
+          maquinaria_id: string | null
+          numero_remito: string | null
+          obra_id: string | null
+          observaciones: string | null
+          operador: string | null
+          precio_unitario: number
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          cantidad?: number
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          maquinaria_id?: string | null
+          numero_remito?: string | null
+          obra_id?: string | null
+          observaciones?: string | null
+          operador?: string | null
+          precio_unitario?: number
+          unidad?: string
+          updated_at?: string
+        }
+        Update: {
+          cantidad?: number
+          cliente_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          maquinaria_id?: string | null
+          numero_remito?: string | null
+          obra_id?: string | null
+          observaciones?: string | null
+          operador?: string | null
+          precio_unitario?: number
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remitos_maquinas_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_maquinas_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_maquinas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remitos_materiales: {
+        Row: {
+          cantidad: number
+          created_at: string
+          created_by: string | null
+          fecha: string
+          id: string
+          material: string
+          movimiento: string
+          numero_remito: string | null
+          obra_destino_id: string | null
+          obra_origen_id: string | null
+          observaciones: string | null
+          precio_unitario: number
+          proveedor_id: string | null
+          unidad: string
+          updated_at: string
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          material: string
+          movimiento?: string
+          numero_remito?: string | null
+          obra_destino_id?: string | null
+          obra_origen_id?: string | null
+          observaciones?: string | null
+          precio_unitario?: number
+          proveedor_id?: string | null
+          unidad?: string
+          updated_at?: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          created_by?: string | null
+          fecha?: string
+          id?: string
+          material?: string
+          movimiento?: string
+          numero_remito?: string | null
+          obra_destino_id?: string | null
+          obra_origen_id?: string | null
+          observaciones?: string | null
+          precio_unitario?: number
+          proveedor_id?: string | null
+          unidad?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remitos_materiales_obra_destino_id_fkey"
+            columns: ["obra_destino_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_materiales_obra_origen_id_fkey"
+            columns: ["obra_origen_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_materiales_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rrhh_feriados: {
         Row: {
           created_at: string
