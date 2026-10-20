@@ -115,8 +115,10 @@ export function useMisDocumentos() {
   useEffect(() => {
     if (!personalId) return;
 
+    // Unique name per hook instance: this hook is used by several components at once,
+    // and reusing a name returns an already-subscribed channel, which throws on .on().
     const channel = supabase
-      .channel(`empleado_documentos:${personalId}`)
+      .channel(`empleado_documentos:${personalId}:${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
