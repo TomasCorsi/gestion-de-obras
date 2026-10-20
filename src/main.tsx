@@ -1,9 +1,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
-import { registerAppServiceWorker } from './lib/registerSW'
+import { AppErrorBoundary } from './components/auth/AppErrorBoundary'
 
-createRoot(document.getElementById("root")!).render(<App />);
-
-// Register service worker (with strict guards for preview/dev)
-registerAppServiceWorker();
+const root = document.getElementById("root");
+if (root) createRoot(root).render(<AppErrorBoundary><App /></AppErrorBoundary>);

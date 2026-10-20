@@ -1,0 +1,3 @@
+# Architecture rules
+- Keep a top-level error boundary and a visible startup loading state so rejected imports cannot leave the application empty.
+- During the broken-PWA cleanup release, serve the cleanup worker at `/sw.js` without registering an app-shell worker from the app; keep manifest installability and local drafts intact. Rebuild offline/push registration separately after cleanup to avoid reviving stale caches.

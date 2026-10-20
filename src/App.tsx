@@ -69,7 +69,7 @@ const PageLoader = () => <LoadingScreen />;
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <Suspense fallback={null}>
+    <Suspense fallback={<PageLoader />}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
