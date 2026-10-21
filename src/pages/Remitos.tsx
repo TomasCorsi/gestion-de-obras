@@ -624,7 +624,7 @@ export default function Remitos() {
       <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
         <SeccionTabs />
         <div><TipoTabs /></div>
-        <RemitosTipoPanel key={tipoRemito} tipo={tipoRemito} />
+        tipoRemito === "materiales" ? <MaterialesRemitosPanel /> : <RemitosTipoPanel key={tipoRemito} tipo={tipoRemito} />
       </MainLayout>
     );
   }
