@@ -2079,6 +2079,39 @@ export type Database = {
           },
         ]
       }
+      materiales_catalogo: {
+        Row: {
+          activo: boolean
+          categoria: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          nombre: string
+          nombre_normalizado: string
+          unidad_default: string
+        }
+        Insert: {
+          activo?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre: string
+          nombre_normalizado: string
+          unidad_default?: string
+        }
+        Update: {
+          activo?: boolean
+          categoria?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre?: string
+          nombre_normalizado?: string
+          unidad_default?: string
+        }
+        Relationships: []
+      }
       movimientos_stock: {
         Row: {
           cantidad: number
@@ -3124,6 +3157,54 @@ export type Database = {
             columns: ["remito_id"]
             isOneToOne: false
             referencedRelation: "remitos_list_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remito_material_items: {
+        Row: {
+          cantidad: number
+          created_at: string
+          id: string
+          material_id: string
+          orden: number
+          precio_unitario: number
+          remito_id: string
+          unidad: string
+        }
+        Insert: {
+          cantidad?: number
+          created_at?: string
+          id?: string
+          material_id: string
+          orden?: number
+          precio_unitario?: number
+          remito_id: string
+          unidad?: string
+        }
+        Update: {
+          cantidad?: number
+          created_at?: string
+          id?: string
+          material_id?: string
+          orden?: number
+          precio_unitario?: number
+          remito_id?: string
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remito_material_items_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materiales_catalogo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remito_material_items_remito_id_fkey"
+            columns: ["remito_id"]
+            isOneToOne: false
+            referencedRelation: "remitos_materiales"
             referencedColumns: ["id"]
           },
         ]
@@ -4236,7 +4317,12 @@ export type Database = {
         Args: { _rol: Database["public"]["Enums"]["rol_personal"] }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      normalizar_material: { Args: { _t: string }; Returns: string }
       recalcular_horas_maquinas: { Args: never; Returns: number }
+      unificar_materiales: {
+        Args: { _destino: string; _origen: string }
+        Returns: undefined
+      }
     }
     Enums: {
       adelanto_estado: "pendiente" | "aplicado" | "cancelado"
