@@ -127,6 +127,13 @@
       "when": 1792597105931,
       "tag": "0017_materiales_catalogo_y_items",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1792597270432,
+      "tag": "0018_fix_normalizar_material",
+      "breakpoints": true
     }
   ]
 }
