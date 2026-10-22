@@ -3311,6 +3311,7 @@ export type Database = {
           proveedor: string | null
           recibido_por: string
           remito_local: string | null
+          remito_material_id: string | null
           remito_tercero: string | null
           row_color: string | null
           tipo_material: string | null
@@ -3348,6 +3349,7 @@ export type Database = {
           proveedor?: string | null
           recibido_por: string
           remito_local?: string | null
+          remito_material_id?: string | null
           remito_tercero?: string | null
           row_color?: string | null
           tipo_material?: string | null
@@ -3385,6 +3387,7 @@ export type Database = {
           proveedor?: string | null
           recibido_por?: string
           remito_local?: string | null
+          remito_material_id?: string | null
           remito_tercero?: string | null
           row_color?: string | null
           tipo_material?: string | null
@@ -3406,6 +3409,13 @@ export type Database = {
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_remito_material_id_fkey"
+            columns: ["remito_material_id"]
+            isOneToOne: false
+            referencedRelation: "remitos_materiales"
             referencedColumns: ["id"]
           },
           {
@@ -3492,7 +3502,10 @@ export type Database = {
       }
       remitos_materiales: {
         Row: {
+          camion_id: string | null
           cantidad: number
+          cantidad_viajes: number | null
+          chofer_id: string | null
           created_at: string
           created_by: string | null
           fecha: string
@@ -3505,11 +3518,15 @@ export type Database = {
           observaciones: string | null
           precio_unitario: number
           proveedor_id: string | null
+          transporte: string
           unidad: string
           updated_at: string
         }
         Insert: {
+          camion_id?: string | null
           cantidad?: number
+          cantidad_viajes?: number | null
+          chofer_id?: string | null
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -3522,11 +3539,15 @@ export type Database = {
           observaciones?: string | null
           precio_unitario?: number
           proveedor_id?: string | null
+          transporte?: string
           unidad?: string
           updated_at?: string
         }
         Update: {
+          camion_id?: string | null
           cantidad?: number
+          cantidad_viajes?: number | null
+          chofer_id?: string | null
           created_at?: string
           created_by?: string | null
           fecha?: string
@@ -3539,10 +3560,39 @@ export type Database = {
           observaciones?: string | null
           precio_unitario?: number
           proveedor_id?: string | null
+          transporte?: string
           unidad?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "remitos_materiales_camion_id_fkey"
+            columns: ["camion_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_materiales_chofer_id_fkey"
+            columns: ["chofer_id"]
+            isOneToOne: false
+            referencedRelation: "personal"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_materiales_chofer_id_fkey"
+            columns: ["chofer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_legajo_lookup"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remitos_materiales_chofer_id_fkey"
+            columns: ["chofer_id"]
+            isOneToOne: false
+            referencedRelation: "personal_selector"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "remitos_materiales_obra_destino_id_fkey"
             columns: ["obra_destino_id"]
