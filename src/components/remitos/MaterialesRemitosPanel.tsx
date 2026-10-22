@@ -48,18 +48,50 @@ const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingre
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const sel = options.find((o) => o.value === value);
+  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const list = options.filter((o) => tokens.every((t) => o.label.toLowerCase().includes(t)));
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
-      <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? "" : v)}>
-        <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value={NONE}>— Sin seleccionar —</SelectItem>
-          {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQ(""); }}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-9 w-full justify-between font-normal" aria-label={label}>
+            <span className="truncate">{sel?.label || "Seleccionar"}</span>
+            <ChevronsUpDown className="w-4 h-4 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-72" align="start">
+          <Command shouldFilter={false}>
+            <CommandInput value={q} onValueChange={setQ} placeholder="Buscar..." />
+            <CommandList>
+              <CommandEmpty>Sin coincidencias</CommandEmpty>
+              <CommandGroup>
+                {!q && <CommandItem value={NONE} onSelect={() => { onChange(""); setOpen(false); }}>— Sin seleccionar —</CommandItem>}
+                {list.slice(0, 100).map((o) => (
+                  <CommandItem key={o.value} value={o.value} onSelect={() => { onChange(o.value); setOpen(false); setQ(""); }}>{o.label}</CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
+}
+
+function useChoferes() {
+  return useQuery<{ id: string; nombre: string | null; apellido: string | null; rol: string }[]>({
+    queryKey: ["personal_selector_choferes"],
+    queryFn: async () => {
+      const { data, error } = await sb.from("personal_selector").select("id,nombre,apellido,rol").order("apellido");
+      if (error) throw error;
+      return data || [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
 }
 
 function useCatalogo() {
