@@ -134,6 +134,13 @@
       "when": 1792597270432,
       "tag": "0018_fix_normalizar_material",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1792677127327,
+      "tag": "0019_remitos_maquinas_varios_renglones",
+      "breakpoints": true
     }
   ]
 }
