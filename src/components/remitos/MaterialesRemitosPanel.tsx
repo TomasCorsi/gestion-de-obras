@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { usePersonal } from "@/hooks/usePersonal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,7 +44,7 @@ const num = (v: any) => {
   return isNaN(n) ? 0 : n;
 };
 const money = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
-const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", observaciones: "" });
+const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "" });
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
@@ -190,6 +192,8 @@ export function MaterialesRemitosPanel() {
   const qc = useQueryClient();
   const { obras } = useObras();
   const { proveedores } = useProveedores();
+  const { maquinarias } = useMaquinarias();
+  const { personal } = usePersonal();
   const { data: catalogo = [] } = useCatalogo();
   const [open, setOpen] = useState(false);
   const [head, setHead] = useState<Row>(emptyHead());
@@ -226,6 +230,8 @@ export function MaterialesRemitosPanel() {
   const matName = useMemo(() => Object.fromEntries(catalogo.map((m) => [m.id, m.nombre])), [catalogo]);
   const obraName = useMemo(() => Object.fromEntries((obras || []).map((o: any) => [o.id, o.nombre])), [obras]);
   const provName = useMemo(() => Object.fromEntries((proveedores || []).map((p: any) => [p.id, p.nombre])), [proveedores]);
+  const maqName = useMemo(() => Object.fromEntries((maquinarias || []).map((m: any) => [m.id, [m.codigo, m.nombre].filter(Boolean).join(" - ")])), [maquinarias]);
+  const choferName = useMemo(() => Object.fromEntries((personal || []).map((p: any) => [p.id, `${p.apellido || ""} ${p.nombre || ""}`.trim()])), [personal]);
 
   const filas = useMemo(() => {
     const byRemito: Record<string, Row[]> = {};
@@ -242,6 +248,8 @@ export function MaterialesRemitosPanel() {
           Proveedor: provName[r.proveedor_id] || "",
           "Obra origen": obraName[r.obra_origen_id] || "",
           "Obra destino": obraName[r.obra_destino_id] || "",
+          Transporte: r.transporte === "propio" ? `Propio – ${maqName[r.camion_id] || "camión"}${r.cantidad_viajes ? ` (${r.cantidad_viajes} viaje${r.cantidad_viajes > 1 ? "s" : ""})` : ""}` : "Proveedor",
+          Chofer: choferName[r.chofer_id] || "",
           Material: matName[i.material_id] || i._legacy || "",
           Cantidad: Number(i.cantidad),
           Unidad: i.unidad,
@@ -259,10 +267,10 @@ export function MaterialesRemitosPanel() {
       const txt = normalizarMaterial(Object.values(d).join(" "));
       return q.split(" ").every((t) => txt.includes(t));
     });
-  }, [remitos, items, matName, obraName, provName, search, desde, hasta]);
+  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta]);
 
   const total = filas.reduce((s, f) => s + Number(f.d.Importe), 0);
-  const cols = ["Fecha", "N° Remito", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
+  const cols = ["Fecha", "N° Remito", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
   const setH = (k: string, v: any) => setHead((f) => ({ ...f, [k]: v }));
   const setR = (idx: number, patch: Partial<Renglon>) => setRenglones((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
@@ -287,6 +295,8 @@ export function MaterialesRemitosPanel() {
 
   const save = async () => {
     if (!head.fecha) return toast.error("La fecha es obligatoria");
+    const propio = head.transporte === "propio";
+    if (propio && !head.camion_id) return toast.error("Elegí el camión propio que hizo el viaje");
     const validos = renglones.filter((r) => r.material_id || num(r.cantidad) > 0);
     if (!validos.length) return toast.error("Agregá al menos un material");
     if (validos.some((r) => !r.material_id)) return toast.error("Hay renglones sin material elegido");
@@ -295,6 +305,9 @@ export function MaterialesRemitosPanel() {
     const payload: Row = {};
     Object.entries(head).forEach(([k, v]) => (payload[k] = v === "" ? null : v));
     payload.movimiento = head.movimiento || "ingreso_proveedor";
+    payload.transporte = propio ? "propio" : "proveedor";
+    payload.cantidad_viajes = propio ? Math.max(1, parseInt(head.cantidad_viajes) || 1) : null;
+    if (!propio) { payload.camion_id = null; payload.chofer_id = null; }
     payload.material = parsed.map((r) => matName[r.material_id]).join("; ").slice(0, 500);
     payload.cantidad = parsed.length === 1 ? parsed[0].cantidad : 0;
     payload.unidad = parsed.length === 1 ? parsed[0].unidad : "UN";
@@ -314,10 +327,42 @@ export function MaterialesRemitosPanel() {
       }
       const { error: e3 } = await sb.from("remito_material_items").insert(parsed.map((r, orden) => ({ remito_id: id, material_id: r.material_id, cantidad: r.cantidad, unidad: r.unidad, precio_unitario: r.precio_unitario, orden })));
       if (e3) throw e3;
-      toast.success(editId ? "Remito actualizado" : "Remito cargado");
+      // Viaje vinculado del camión propio
+      const { data: viajePrev } = await sb.from("remitos").select("id").eq("remito_material_id", id).maybeSingle();
+      if (propio) {
+        const origen = payload.movimiento === "ingreso_proveedor" ? provName[payload.proveedor_id] : obraName[payload.obra_origen_id];
+        const viaje = {
+          remito_material_id: id,
+          numero: payload.numero_remito || `MAT-${String(id).slice(0, 8)}`,
+          remito_tercero: payload.numero_remito,
+          fecha: payload.fecha,
+          obra_id: payload.obra_destino_id,
+          maquinaria_id: payload.camion_id,
+          tipo_transporte: "Calamina Sur",
+          cantidad_viajes: payload.cantidad_viajes,
+          desde: origen || null,
+          hasta: obraName[payload.obra_destino_id] || null,
+          proveedor: provName[payload.proveedor_id] || null,
+          material: payload.material || "Materiales",
+          tipo_material: "Retiro de material",
+          cantidad: 0,
+          unidad: "VIAJE",
+          recibido_por: choferName[payload.chofer_id] || "",
+          firmado: false,
+          observaciones: `Retiro de material – remito de materiales ${payload.numero_remito || ""}`.trim(),
+        };
+        const { error: e4 } = viajePrev
+          ? await sb.from("remitos").update(viaje).eq("id", viajePrev.id)
+          : await sb.from("remitos").insert({ ...viaje, created_by: user?.id });
+        if (e4) throw new Error("El material se guardó, pero no el viaje del camión: " + e4.message);
+      } else if (viajePrev) {
+        await sb.from("remitos").delete().eq("id", viajePrev.id);
+      }
+      toast.success(editId ? "Remito actualizado" : propio ? "Remito y viaje del camión cargados" : "Remito cargado");
       setOpen(false);
       qc.invalidateQueries({ queryKey: ["remitos_materiales"] });
       qc.invalidateQueries({ queryKey: ["remito_material_items"] });
+      qc.invalidateQueries({ queryKey: ["remitos"] });
     } catch (e: any) {
       toast.error("No se pudo guardar: " + (e.message || e));
     } finally {
@@ -341,6 +386,8 @@ export function MaterialesRemitosPanel() {
   };
 
   const obraOpts = (obras || []).map((o: any) => ({ value: o.id, label: o.nombre }));
+  const camionOpts = (maquinarias || []).filter((m: any) => ["camion", "batea", "acoplado", "carreton"].includes(m.tipo) || m.id === head.camion_id).map((m: any) => ({ value: m.id, label: maqName[m.id] }));
+  const choferOpts = (personal || []).filter((p: any) => p.rol === "chofer" || p.id === head.chofer_id).map((p: any) => ({ value: p.id, label: `${p.apellido || ""} ${p.nombre || ""}`.trim() }));
   const totalForm = totalRemitoMateriales(renglones.map((r) => ({ cantidad: num(r.cantidad), precio_unitario: num(r.precio_unitario) })));
   let prevId = "";
 
@@ -414,6 +461,14 @@ export function MaterialesRemitosPanel() {
               <Pick label="Obra origen" value={head.obra_origen_id} onChange={(v) => setH("obra_origen_id", v)} options={obraOpts} />
             )}
             <Pick label="Obra destino" value={head.obra_destino_id} onChange={(v) => setH("obra_destino_id", v)} options={obraOpts} />
+            <Pick label="Transporte" value={head.transporte} onChange={(v) => setH("transporte", v || "proveedor")} options={[{ value: "proveedor", label: "Lo trae el proveedor" }, { value: "propio", label: "Camión propio" }]} />
+            {head.transporte === "propio" && (
+              <>
+                <Pick label="Camión (interno)" value={head.camion_id} onChange={(v) => setH("camion_id", v)} options={camionOpts} />
+                <Pick label="Chofer" value={head.chofer_id} onChange={(v) => setH("chofer_id", v)} options={choferOpts} />
+                <div className="space-y-1.5"><Label className="text-xs">Cantidad de viajes</Label><Input inputMode="numeric" value={head.cantidad_viajes} onChange={(e) => setH("cantidad_viajes", e.target.value.replace(/\D/g, ""))} className="h-9" /></div>
+              </>
+            )}
           </div>
 
           <div className="space-y-2 pt-2">
