@@ -3161,6 +3161,57 @@ export type Database = {
           },
         ]
       }
+      remito_maquina_items: {
+        Row: {
+          cantidad: number
+          id: string
+          maquinaria_id: string
+          observaciones: string | null
+          operador: string | null
+          orden: number
+          precio_unitario: number
+          remito_id: string
+          unidad: string
+        }
+        Insert: {
+          cantidad?: number
+          id?: string
+          maquinaria_id: string
+          observaciones?: string | null
+          operador?: string | null
+          orden?: number
+          precio_unitario?: number
+          remito_id: string
+          unidad?: string
+        }
+        Update: {
+          cantidad?: number
+          id?: string
+          maquinaria_id?: string
+          observaciones?: string | null
+          operador?: string | null
+          orden?: number
+          precio_unitario?: number
+          remito_id?: string
+          unidad?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remito_maquina_items_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remito_maquina_items_remito_id_fkey"
+            columns: ["remito_id"]
+            isOneToOne: false
+            referencedRelation: "remitos_maquinas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       remito_material_items: {
         Row: {
           cantidad: number
@@ -4286,6 +4337,10 @@ export type Database = {
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      guardar_remito_maquinas: {
+        Args: { p_cabecera: Json; p_id?: string; p_items: Json }
+        Returns: string
       }
       has_role: {
         Args: {
