@@ -1,6 +1,6 @@
 # Pantalla en blanco
 ## Remitos de máquinas
-- [ ] Carga, edición y Excel de varias máquinas en un remito; conservar registros anteriores y verificar guardado.
+- [x] Carga, edición y Excel de varias máquinas en un remito; guardado y edición de dos renglones verificados con sesión real, pruebas aprobadas.
 
 - [x] Recuperación visible ante fallos de carga y reintento verificados en navegador.
 - [x] Reemplazo de limpieza en `/sw.js`; dos pruebas pasan y no se registra caché nuevo.
