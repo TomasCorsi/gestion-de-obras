@@ -59,7 +59,7 @@ import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { CombustibleRepartidorPanel } from "@/components/gastos/CombustibleRepartidorPanel";
-import { RemitosTipoPanel } from "@/components/remitos/RemitosTipoPanel";
+import { MaquinasRemitosPanel } from "@/components/remitos/MaquinasRemitosPanel";
 import { MaterialesRemitosPanel } from "@/components/remitos/MaterialesRemitosPanel";
 
 // Lazy-load heavy dialogs to keep initial Remitos render snappy
@@ -625,7 +625,7 @@ export default function Remitos() {
       <MainLayout title="Remitos" subtitle="Gestión de remitos y entregas">
         <SeccionTabs />
         <div><TipoTabs /></div>
-        {tipoRemito === "materiales" ? <MaterialesRemitosPanel /> : <RemitosTipoPanel key={tipoRemito} tipo={tipoRemito} />}
+        {tipoRemito === "materiales" ? <MaterialesRemitosPanel /> : <MaquinasRemitosPanel />}
       </MainLayout>
     );
   }
