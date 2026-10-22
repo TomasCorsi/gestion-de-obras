@@ -204,6 +204,8 @@ const tipoTransporteNormalize: Record<string, string> = {
   'bertone': 'BERTONE',
   'nardon': 'NARDONI',
   'nardoni': 'NARDONI',
+  'hormibaires': 'Hormibaires',
+  'hormibaire': 'Hormibaires',
 };
 
 // Valid transport types for validation

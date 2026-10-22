@@ -47,6 +47,7 @@ const TIPO_TRANSPORTE_OPTIONS = [
   "Patan", "Hormicret", "Lamacol", "Britcom", "Ramon romero gomez", "Duraez",
   "Ranelga", "San-vol", "Santino", "Acosta", "Meyer", "Bozzuto", "Legui",
   "Larraige", "Fidanza", "Transgom", "ARIDO EXPRESS S.A", "BERTONE", "NARDONI",
+  "Hormibaires",
 ];
 
 const UNIDAD_OPTIONS = ["TN", "KG", "M3", "M2", "U", "DIA"];
