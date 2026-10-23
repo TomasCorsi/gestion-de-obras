@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContabAsientos, useContabAsientoLineas } from "@/hooks/useContabilidad";
+import { AsientoManualDialog } from "./AsientoManualDialog";
 import { useConfirmarAsiento, useDescartarAsiento, useRevertirAsiento } from "@/hooks/useContabPeriodos";
 
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
@@ -22,12 +23,14 @@ export function AsientosTab() {
   const { data = [] } = useContabAsientos();
   const [openId, setOpenId] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string>("todos");
+  const [manual, setManual] = useState(false);
   const lista = useMemo(() => filtro === "todos" ? data : data.filter((a: any) => (a.estado ?? "borrador") === filtro), [data, filtro]);
   const abierto = data.find((a) => a.id === openId) as any;
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" className="mr-auto" onClick={() => setManual(true)}>Nuevo asiento manual</Button>
         {["todos", "borrador", "confirmado", "revertido"].map((f) => (
           <Button key={f} size="sm" variant={filtro === f ? "default" : "outline"} onClick={() => setFiltro(f)}>
             {f === "todos" ? "Todos" : ESTADOS[f].label} ({f === "todos" ? data.length : data.filter((a: any) => (a.estado ?? "borrador") === f).length})
@@ -79,6 +82,7 @@ export function AsientosTab() {
         </CardContent>
       </Card>
 
+      {manual && <AsientoManualDialog onClose={() => setManual(false)} />}
       {abierto && <AsientoDetalle asiento={abierto} onClose={() => setOpenId(null)} />}
     </div>
   );

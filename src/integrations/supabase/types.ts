@@ -4616,6 +4616,15 @@ export type Database = {
         Args: { _asiento_id: string }
         Returns: number
       }
+      contab_crear_asiento_manual: {
+        Args: {
+          _descripcion: string
+          _fecha: string
+          _lineas: Json
+          _tipo?: string
+        }
+        Returns: string
+      }
       contab_crear_ejercicio: {
         Args: { _desde: string; _hasta: string; _nombre: string }
         Returns: string
