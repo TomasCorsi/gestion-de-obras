@@ -1,274 +1,132 @@
-# Contabilidad Calamina Sur: plan integral para reemplazar CONTAD
+# Contabilidad – Fase 0: núcleo contable seguro
 
-Plan técnico, sin código ni cambios en la base hasta su aprobación y la validación del contador. Basado en los documentos CONTABLE y CONTAD VALEN JULI y en la auditoría del módulo actual (esquema, funciones, políticas, datos y pantallas).
+Alcance exclusivo: núcleo contable. **No se tocan** stock, combustible, mantenimiento, remitos, certificados, gastos generales, órdenes de compra ni rentabilidad. Nada de esas tablas se modifica en esta fase.
 
-## 1. Comparación CONTAD vs ERP actual
+## A. Ajustes incorporados al plan integral (para fases siguientes)
 
-| Circuito CONTAD | ERP hoy | Estado |
-|---|---|---|
-| Compras (tipo, letra, PV, número, cuenta, centro/subcentro, percepciones) | Comprobante de compra con IVA por alícuota, percepciones IVA/IIBB/otras, 1 obra o 1 máquina por ítem | Parcial: faltan letras E/M/I/X, centros, imputación múltiple, duplicados |
-| NC / ND compras y ventas | Tipos existen | Parcial: sin vínculo al comprobante original ni aplicación |
-| OP 1 (facturas, retenciones, varios medios, PDF) | "Pago" simple: 1 comprobante, 1 medio | Falta |
-| OP 2 (rendiciones, Debe/Haber libre, centro/subcentro) | No existe | Falta |
-| Cta. cte. y totales proveedores, Excel | No existe | Falta |
-| Ventas (A B C E M T X Z, percepciones, CAE) | Comprobante de venta sin CAE | Parcial |
-| Recibos N1 / X2, aplicación, retenciones sufridas | "Cobro" simple | Falta |
-| Cta. cte. y totales clientes | No existe | Falta |
-| Libro banco, cajas, cheques/echeqs, conciliación | No existe | Falta |
-| Plan de cuentas | 79 cuentas cargadas, jerárquico | Reutilizable |
-| Asientos generales / modelo | Asientos automáticos; sin manuales ni modelos | Parcial |
-| Diario, mayor, sumas y saldos, balance | Mayor y libro IVA | Parcial |
-| Cierre de mes / ejercicio, diario definitivo | No existe | Falta |
-| Ajuste por inflación | No existe | Falta (sujeto a contador) |
-| Auditoría | No existe | Falta |
+1. **Vínculos entre documentos** (`doc_vinculos`): por documento y opcionalmente por renglón (`origen_item_id`, `destino_item_id`), con importe y cantidad vinculados; único por (origen, renglón, destino, renglón, tipo); validación de que lo vinculado no supere el saldo del renglón; borrado de documento bloqueado si tiene vínculos (sin huérfanos).
+2. **Unicidad de asientos**: única por `origen_tipo + origen_id + evento` (alta, anulación, ajuste, diferencia de cambio…) solo para asientos vigentes; las reversas y ajustes son eventos distintos. Resuelto ya en esta fase.
+3. **Mantenimiento**: vínculo de factura a componente (repuestos, mano de obra, servicio) con importe; solo se reemplaza el costo del componente y por el importe vinculado.
+4. **Materiales**: compra → ingreso a stock (cantidad y costo) → consumo → imputación a obra, con conciliación de cantidades y valores en cada paso.
+5. **Certificados**: `certificado_pagos` sigue siendo la pantalla actual; el recibo contable lo crea o lo vincula (nunca ambos por separado) mediante vínculo 1 a 1; transición en etapas con verificación de totales.
+6. **Apertura**: facturas pendientes, bancos, cajas y valores importados se contabilizan **dentro** del asiento de apertura (contrapartida única), no como asientos propios.
+7. **Diario, mayor y balance de comprobación** incluidos en esta Fase 0.
+8. **Rentabilidad**: tres vistas separadas (comprometido, real, financiero); la actual queda intacta hasta validar la nueva.
+9. **Migración**: dos cierres mensuales consecutivos conciliados, salvo criterio alternativo justificado y firmado por el contador.
+10. **Pendiente con contador**: cheques propios diferidos, e-cheqs emitidos, pagos en dólares, diferencias de cambio y operaciones abiertas a la fecha de corte.
 
-## 2. Auditoría del módulo actual
+## B. Estado verificado antes de la Fase 0
 
-**Reutilizable**
-- Plan de cuentas jerárquico, empresa, puntos de venta.
-- Estructura comprobante + ítems con IVA desagregado y percepciones.
-- Asiento + líneas con obra/máquina.
-- Pantallas Ventas, Compras, Pagos, Asientos, Reportes, Configuración (se rediseñan, no se descartan).
-- Maestros del ERP: proveedores, clientes, obras, maquinarias, personal, órdenes de compra, stock, combustible.
-- Datos operativos contables: **0 comprobantes, 0 asientos, 0 pagos, 0 terceros** → se puede corregir el núcleo sin migrar nada interno.
+- Datos contables: 0 comprobantes, 0 asientos, 0 pagos, 0 terceros; 79 cuentas.
+- Políticas: contador puede editar y borrar asientos y líneas; sin control de partida doble.
+- Numeración de asientos con secuencia global (sin ejercicio).
+- Líneas de asiento: si se borra una cuenta, la línea queda sin cuenta (`ON DELETE SET NULL`).
+- Usan estas tablas solo el módulo Contabilidad (`useContabilidad.ts` y sus pestañas) y las funciones `contab_generar_asiento_cbte` / `contab_generar_asiento_pago`.
 
-**Defectos a corregir antes de crecer**
-1. Asientos y líneas editables/borrables por contador (política ALL): sin inmutabilidad.
-2. Partida doble no validada por la base.
-3. Cuentas fijas por código dentro de las funciones.
-4. Sin ejercicios, períodos ni bloqueo.
-5. Numeración de asientos sin control de concurrencia.
-6. Guardado de comprobantes en varios pasos desde el navegador (no atómico).
-7. Anulación sin contraasiento.
-8. Sin control de comprobante duplicado.
-9. `contab_terceros` duplica proveedores/clientes del ERP.
-10. Sin auditoría ni aprobaciones.
-11. Rentabilidad de obra suma órdenes de compra, gastos y combustible: sumar facturas sin regla causaría **doble costo**.
+## C. Migraciones propuestas (en orden, todas aditivas)
 
-## 3. Modelo de datos propuesto
+**M1 – Roles**
+- Agregar valores `tesorero` y `aprobador_pagos` a `app_role` (sin uso aún; se asignan en fases siguientes).
+- Función `contab_puede(_accion text)` SECURITY DEFINER que centraliza permisos: leer (admin, contador), registrar (admin, contador), confirmar/revertir (admin, contador), cerrar períodos y configurar (admin).
 
-```text
-EJERCICIOS ─ PERÍODOS
-     │
-ASIENTOS (borrador → confirmado, inmutable; reversa) ─ LÍNEAS ─ IMPUTACIONES ANALÍTICAS
-     ▲
-     ├─ COMPROBANTES (compra/venta, NC/ND) ─ ítems ─ percepciones ─ vencimientos
-     ├─ ÓRDENES DE PAGO (OP1/OP2) ─ aplicaciones ─ débitos ─ retenciones ─ medios
-     ├─ RECIBOS ─ aplicaciones ─ retenciones sufridas ─ medios
-     ├─ MOV. TESORERÍA (depósitos, transferencias, gastos bancarios)
-     └─ ASIENTOS MANUALES / MODELO / AJUSTES / CIERRE
-VALORES (cheques, echeqs) ─ historial de estados
-CAJAS Y BANCOS ─ conciliaciones ─ extractos
-```
+**M2 – Ejercicios y períodos**
+- `contab_ejercicios` (nombre, desde, hasta, estado abierto/cerrado; sin superposición vía exclusión de rangos).
+- `contab_periodos` (ejercicio, año, mes, desde, hasta, estado abierto/cerrado, cerrado_por, cerrado_at); único por ejercicio+año+mes.
+- Función `contab_periodo_de(fecha)` que devuelve el período abierto o falla.
 
-**Núcleo**: `contab_ejercicios`, `contab_periodos` (abierto/cerrado), asientos con número correlativo por ejercicio, estado, `reversa_de`, origen; trigger diferido de Debe = Haber; trigger de bloqueo de confirmados y de períodos cerrados; `contab_cuentas_config` (cuentas por función); `contab_asientos_modelo`.
+**M3 – Cuentas por función**
+- `contab_cuentas_config` (clave única: deudores, proveedores, iva_cf, iva_df, percepciones, ventas, compras, caja, banco, resultado_ejercicio…) → cuenta imputable.
+- Precarga con los códigos que hoy están fijos en las funciones (mismo resultado que hoy).
 
-**Analítica**: `contab_centros_costo` (centro → subcentro, vinculado a obra, máquina, taller, oficina, depósito, vehículos); `contab_imputaciones` por % o importe, varias por ítem, validadas contra el neto.
+**M4 – Asientos endurecidos** (columnas nuevas nullable o con default)
+- `contab_asientos`: `ejercicio_id`, `periodo_id`, `numero_ejercicio`, `estado` (borrador/confirmado/revertido, default borrador), `origen_tipo`, `origen_id`, `evento` (default 'alta'), `reversa_de`, `revertido_por`, `confirmado_at`, `confirmado_por`, `version` (default 1).
+- Índice único parcial `(origen_tipo, origen_id, evento)` donde estado ≠ revertido y origen no nulo.
+- Índice único `(ejercicio_id, numero_ejercicio)`.
+- Numeración correlativa por ejercicio asignada al confirmar, con bloqueo de fila del ejercicio (sin huecos por concurrencia).
+- `contab_asiento_lineas`: CHECK debe ≥ 0, haber ≥ 0, no ambos > 0, al menos uno > 0; cuenta obligatoria al confirmar; FK a cuenta cambia a `RESTRICT` (no se puede borrar una cuenta con movimientos).
+- Triggers:
+  - Bloquear UPDATE/DELETE de asientos y líneas confirmados o revertidos (solo se permite marcar `revertido_por` desde la función de reversa).
+  - Rechazar asientos en período cerrado o fecha sin período.
+  - Al confirmar: Σdebe = Σhaber > 0, todas las cuentas imputables y activas.
+- La columna `comprobante_id` / `pago_id` existentes se mantienen y se completan también en `origen_*`.
 
-**Terceros**: un solo maestro = proveedores y clientes del ERP, ampliados con datos fiscales (CUIT, IVA, IIBB, jurisdicciones, exenciones, CBU, cuenta contable). `contab_terceros` queda en desuso.
+**M5 – Funciones transaccionales**
+- `contab_guardar_asiento_manual(cabecera jsonb, lineas jsonb, id uuid)`: crea/edita borrador en una sola transacción.
+- `contab_confirmar_asiento(id, version)`: valida, numera y confirma; control optimista por `version`.
+- `contab_revertir_asiento(id, motivo)`: crea contraasiento confirmado (evento 'reversa'), marca el original como revertido.
+- `contab_guardar_comprobante(cbte jsonb, items jsonb, id uuid)`: reemplaza el guardado en varios pasos; valida duplicado (tercero+tipo+PV+número) y que esté en borrador.
+- `contab_confirmar_comprobante(id)`: genera y confirma el asiento en la misma transacción (reescritura de `contab_generar_asiento_cbte` usando cuentas por función).
+- `contab_anular_comprobante(id, motivo)`: revierte su asiento y marca anulado.
+- `contab_registrar_pago(pago jsonb, request_id uuid)`: inserta pago + asiento + estado del comprobante en una transacción; `request_id` único evita doble envío; bloquea la fila del comprobante y no permite superar su saldo.
+- `contab_cerrar_periodo(id)` / `contab_reabrir_periodo(id, motivo)` (solo admin, auditado).
+- Las funciones viejas se mantienen pero pasan a llamar a las nuevas (compatibilidad).
+- Todas: verificación de rol al inicio, `search_path` fijo, `REVOKE EXECUTE ... FROM public, anon`, `GRANT` solo a authenticated.
 
-**Comprobantes**: código ARCA, letra, circuito (fiscal / interno), saldo derivado, comprobante asociado (NC/ND), vencimientos, percepciones detalladas, vínculo a orden de compra y remito; índice único proveedor+tipo+PV+número.
+**M6 – Auditoría**
+- `contab_auditoria` (tabla, registro, operación, antes, después, usuario, fecha) por trigger en todas las tablas `contab_*`; solo inserción vía trigger, lectura admin/contador, sin UPDATE/DELETE para nadie.
 
-**Cuentas corrientes**: `contab_aplicaciones` (qué documento cancela qué y cuánto); anticipos como saldo a aplicar; saldo nunca se escribe a mano.
+**M7 – Reportes de validación**
+- Vistas (security invoker): `contab_v_diario`, `contab_v_mayor` (con saldo acumulado), `contab_v_balance_comprobacion` (sumas y saldos por cuenta y período), `contab_v_controles` (asientos descuadrados, líneas sin cuenta, asientos fuera de período: debe estar siempre vacía).
 
-**OP**: tipo OP1/OP2, estados borrador → pendiente de aprobación → aprobada → pagada → anulada, responsable de rendición (personal), adjuntos, umbral de aprobación.
+**M8 – Políticas RLS (reemplazo de las actuales)**
+- SELECT: `contab_puede('leer')`.
+- INSERT/UPDATE/DELETE directo sobre asientos y líneas: **ninguno** para usuarios; solo vía funciones. Comprobantes, ítems y pagos: escritura directa solo en borrador; confirmación solo por función.
+- Configuración, ejercicios, períodos, cuentas por función: solo admin.
+- GRANT a authenticated y service_role en cada tabla nueva; sin acceso anónimo.
 
-**Retenciones**: regímenes por impuesto, jurisdicción, vigencia, mínimos no sujetos, escalas, base, acumulado mensual; situación por proveedor (inscripción, exención con vencimiento, padrón); certificados numerados.
+## D. Cambios en la aplicación (solo módulo Contabilidad)
 
-**Tesorería**: cajas/bancos con moneda y cuenta contable; valores con ciclo recibido → cartera → depositado / endosado → acreditado / rechazado; cotizaciones; conciliación con importación de extracto.
+- `useContabilidad.ts`: guardar comprobante, confirmar, anular y registrar pago llaman a las funciones nuevas (una llamada cada uno).
+- Pestaña Asientos: alta de asiento manual, confirmar, revertir; estado visible.
+- Nuevas vistas: Libro diario, Mayor, Balance de comprobación, Controles; exportables a Excel.
+- Configuración: ejercicios/períodos (abrir, cerrar, reabrir) y cuentas por función.
+- No se toca ningún otro módulo ni el menú de otros roles.
 
-**Seguridad**: roles nuevos `tesorero`, `aprobador_pagos` además de admin y contador; `contab_auditoria` por trigger; clave de idempotencia en OP y recibos; bloqueo de filas al aplicar pagos.
+## E. Dependencias con módulos actuales
 
-**ARCA**: `contab_arca_solicitudes` (request, response, CAE, vencimiento, estado) y función de servidor separada; la contabilidad no depende de su respuesta.
+- Lee: `obras`, `maquinarias` (solo referencias en líneas), `user_roles` (permisos).
+- Ninguna tabla operativa recibe columnas, triggers ni políticas nuevas.
+- `contab_terceros` se mantiene tal cual en esta fase (la unificación con proveedores/clientes es Fase 1).
 
-## 4. Diseño de cada circuito (experiencia modernizada)
+## F. Verificación de que no se altera nada operativo
 
-- **Compras**: carga con búsqueda de proveedor por nombre o CUIT, sugerencia de cuenta y centro según el último comprobante del proveedor, lectura asistida de PDF de factura (ya existe para órdenes de compra), aviso de duplicado, imputación rápida "100% a obra X" o reparto por %.
-- **OP1**: elegir proveedor → ver pendientes con saldo y vencimiento → marcar y editar importe parcial → retenciones calculadas solas con detalle → agregar medios (caja, banco, cheque de cartera, echeq, USD con cotización) → indicador de diferencia hasta cuadrar → enviar a aprobación → pagar → PDF de OP y certificados.
-- **OP2 / rendiciones**: renglones Debe con cuenta, centro y subcentro (obra/máquina reales); Haber con origen de fondos; adjuntar fotos de tickets; vincular a anticipo entregado al empleado para que la rendición lo descargue y no duplique.
-- **Ventas**: desde certificados y liquidaciones de remitos ya existentes se propone la factura; luego CAE.
-- **Recibos**: cliente → facturas pendientes → importes → medios y retenciones sufridas → PDF; N1 / X2 según circuito.
-- **Cuentas corrientes**: pantalla por tercero con saldo inicial, movimientos y saldo acumulado; totales de todos con filtros y Excel.
-- **Libro banco y tesorería**: por cuenta y fechas, orden por emisión o vencimiento, saldo acumulado, Excel; cartera de cheques con alertas de vencimiento; conciliación marcando contra extracto.
-- **Contabilidad general**: asientos manuales y modelo, diario, mayor, sumas y saldos, balance, cierre de mes, apertura/cierre de ejercicio, diario definitivo numerado e inalterable, ajuste por inflación si el contador lo confirma.
+- Antes: foto de conteos y suma de control (hash por tabla) de todas las tablas no contables.
+- Después de cada migración: misma foto; debe ser idéntica.
+- Revisión automática de que ninguna migración nombra tablas fuera de `contab_*` ni el enum de roles.
+- Prueba en pantalla de Remitos, Combustible, Obras/Rentabilidad y Partes con usuario admin y remitero: sin cambios.
 
-## 5. Integración profunda con el ERP (un solo sistema, sin duplicados)
+## G. Pruebas automáticas
 
-Verificado contra la base real, no solo contra el código.
+- SQL contra la base (en transacción con ROLLBACK, sin dejar datos):
+  - Asiento descuadrado no confirma; línea con debe y haber a la vez falla.
+  - Editar/borrar asiento confirmado falla; reversa deja saldo cero en mayor.
+  - Asiento en período cerrado o sin período falla.
+  - Doble contabilización del mismo origen y evento falla; reversa + nuevo alta permitido.
+  - Comprobante duplicado falla.
+  - Pago con mismo `request_id` dos veces crea uno solo; pago mayor al saldo falla; dos pagos simultáneos no superan el saldo.
+  - Usuario sin rol: no lee ni escribe; contador no cierra períodos; nadie escribe asientos directo.
+  - Auditoría registra cada cambio y no se puede borrar.
+  - Balance de comprobación: Σdebe = Σhaber siempre; vista de controles vacía.
+- Vitest: armado de líneas y validación de balance en el formulario.
 
-### 5.1 Inventario de lo que hoy se usa
+## H. Recuperación ante errores
 
-| Circuito | Tablas (filas aprox.) | Dónde se calcula / usa |
-|---|---|---|
-| Compras | `ordenes_compra` (63), `orden_compra_items` (255), `proveedores` (39). La OC ya guarda subtotal, IVA, percepciones, moneda, obra, máquina, sector y `numero_factura` (texto) | Proveedores, Reporte de obra, Tablero |
-| Gastos generales | `otros_gastos` (34): obra, máquina, sector, **proveedor como texto**, comprobante como texto | Gastos generales, Reporte de obra, Tablero |
-| Mantenimiento | `mantenimientos` (853): costo repuestos, mano de obra, costo total por máquina | Mantenimiento, Gastos por maquinaria, Tablero |
-| Combustible | `cargas_combustible_repartidor` (4.359, ingresos a cisternas y egresos), `precios_productos_mes` | Combustible, Gastos por maquinaria, Reporte de obra |
-| Stock | `stock_items`, `movimientos_stock` (entrada/salida/ajuste con stock anterior/nuevo) | Stock: inserta movimiento y luego actualiza existencia en **dos pasos** |
-| Remitos | `remitos` (9.214), `remitos_materiales`, `remitos_maquinas` + ítems | Remitos, liquidaciones a clientes, Gastos por maquinaria |
-| Ventas/cobros | `certificados` (14), `certificado_items` (221), `certificado_pagos` (1), `clientes` (40) | Certificados, avance y cobranzas en Rentabilidad |
-| Personal | `sueldos`, `liquidaciones`, `liquidacion_items`, `adelantos_personal`, `prestamos_personal`, RRHH | Liquidaciones, RRHH |
-| Contabilidad | `contab_*` (vacía salvo 79 cuentas) | Módulo Contabilidad |
+- Respaldo completo (función de backup existente + exportación de `contab_*`) inmediatamente antes de aplicar.
+- Cada migración es una transacción: si falla, no queda nada aplicado.
+- Al ser aditivas y con tablas contables vacías, la vuelta atrás es: restaurar políticas anteriores (script preparado y probado) y dejar sin usar las tablas nuevas; la app anterior sigue funcionando porque no se borra ninguna columna.
+- Bandera en la app para volver al guardado anterior si una función nueva falla en producción.
+- Prueba del procedimiento de vuelta atrás antes de publicar.
 
-Funciones SQL que intervienen: `contab_generar_asiento_cbte`, `contab_generar_asiento_pago`, `sync_horas_km_from_parte`, `set_orden_compra_numero`, `guardar_remito_maquinas`.
+## I. Criterio de aprobación de la Fase 0
 
-### 5.2 Problemas de integración confirmados
-
-1. Comprobantes contables guardados en varios pasos (cabecera, borrar ítems, insertar ítems).
-2. Pago insertado y asiento generado en dos llamadas separadas: si falla la segunda queda pago sin asiento.
-3. Stock: movimiento y existencia en dos pasos; dos usuarios simultáneos pueden dejar stock incorrecto.
-4. `otros_gastos.proveedor` es texto, no relación.
-5. Cobros en `certificado_pagos` y en `contab_pagos` sin vínculo: el mismo cobro podría cargarse dos veces.
-6. Costo de máquina hoy suma mantenimientos + combustible + remitos; una factura de repuestos lo duplicaría.
-7. Costo de obra hoy suma OC (neto) + otros gastos + combustible: una factura de la misma compra lo duplicaría.
-8. La OC guarda el número de factura como texto: no permite facturación parcial ni control.
-9. Ediciones y borrados de documentos operativos con efecto económico no dejan rastro.
-
-### 5.3 Arquitectura unificada
-
-Tres capas separadas, con un documento origen común:
-
-```text
-DOCUMENTO OPERATIVO (OC, mantenimiento, carga combustible, remito, certificado, liquidación, gasto)
-        │  origen_tipo + origen_id
-        ├──> CONTABILIDAD GENERAL: asiento (único por hecho económico)
-        ├──> TESORERÍA: movimiento de caja/banco/valor (solo al pagar o cobrar)
-        └──> COSTOS DE GESTIÓN: imputación analítica (obra / máquina / sector), con estado
-             comprometido (OC) → real (factura o consumo)
-```
-
-- Tabla `doc_vinculos` (documento A ↔ documento B, tipo de relación, importe) para relaciones explícitas: OC ↔ factura (parcial), factura ↔ mantenimiento, factura ↔ ingreso a cisterna, certificado ↔ factura de venta ↔ recibo, anticipo ↔ rendición.
-- Índice único por `origen_tipo + origen_id` en asientos: un hecho, un asiento.
-- `contab_imputaciones` con `estado_costo` (comprometido / real) y `origen`; la rentabilidad leerá una vista que toma, por hecho, la fuente de mayor jerarquía (factura > OC; consumo de stock > compra a stock).
-
-### 5.4 Matriz por operación
-
-| Operación | Origen | Asiento | Costo | Tesorería | Anti duplicado |
-|---|---|---|---|---|---|
-| Orden de compra | `ordenes_compra` | No | Comprometido en obra/máquina | No | Pasa a real solo vía factura vinculada |
-| Factura de compra (con OC) | comprobante + vínculo OC | Gasto/stock vs Proveedores | Real; libera el comprometido de la OC por el importe facturado | No | Vínculo OC↔factura; suma facturada ≤ OC |
-| Factura de compra a stock | comprobante + entrada de stock | Mercaderías vs Proveedores | Ninguno hasta consumir | No | Costo nace en salida de stock |
-| Salida de stock a obra | `movimientos_stock` | Costo vs Mercaderías (resumen) | Real en obra | No | Valorizada a costo promedio, una vez |
-| Factura de repuesto/servicio de máquina | comprobante + vínculo `mantenimientos` | Gasto máquina vs Proveedores | Real en la máquina | No | Si está vinculada, el mantenimiento deja de sumar su costo cargado a mano |
-| Compra de combustible | comprobante + ingreso a cisterna | Combustible en existencia vs Proveedores | Ninguno | No | Costo nace en egreso (carga a máquina) a precio del mes |
-| Carga de combustible a máquina | `cargas_combustible_repartidor` (egreso) | Consumo vs Existencia (resumen mensual) | Real en máquina/obra | No | Una sola fuente: el egreso |
-| Gasto general | `otros_gastos` → migra a comprobante u OP2 | Gasto vs Caja o Proveedores | Real | Si se paga en el acto | Gasto queda vinculado a su comprobante; no se carga en ambos |
-| OP1 | orden de pago | Proveedores vs Caja/Banco/Valores + retenciones | **Ninguno** | Sí | Idempotencia, bloqueo de saldo de factura |
-| OP2 / rendición | orden de pago | Gasto vs Caja/Anticipo | Real | Sí | Rendición descarga anticipo; no duplica gasto existente vinculado |
-| Certificado de obra | `certificados` | No (documento comercial) | Ingreso de obra (gestión) | No | Vínculo a factura de venta |
-| Factura de venta | comprobante + vínculo certificado | Deudores vs Ventas e IVA | — | No | Un certificado ↔ una o varias facturas, suma ≤ total |
-| Cobro | recibo | Caja/Banco/Valores vs Deudores | — | Sí | `certificado_pagos` pasa a ser vista del recibo: un solo registro |
-| Liquidación de sueldos | `liquidaciones` | Sueldos vs a pagar (resumen) | Real por obra según partes/asignación | Al pagar | Asiento único por liquidación |
-| Remito de máquinas/viajes a cliente | remitos | Al facturar | Ingreso de gestión | No | Vínculo remito ↔ factura |
-
-### 5.5 Cambios mínimos al esquema actual (todos aditivos)
-
-- `otros_gastos`: + `proveedor_id` nullable (se completa cruzando el texto; el texto queda).
-- `ordenes_compra`: sin cambios de columnas; la facturación parcial va en `doc_vinculos`.
-- `mantenimientos`: + `comprobante_id` nullable.
-- `cargas_combustible_repartidor` (ingresos): + `comprobante_id` nullable.
-- `certificado_pagos`: + `recibo_id` nullable; luego se vuelve solo lectura derivada.
-- `movimientos_stock`: + `costo_unitario`, `comprobante_id`; función atómica `registrar_movimiento_stock` con bloqueo de fila.
-- `proveedores` / `clientes`: + datos fiscales (CUIT ya existe).
-- Auditoría por trigger en los documentos operativos con impacto económico.
-- **No se modifica la rentabilidad actual** en estas fases: la vista nueva corre en paralelo y se compara.
-
-### 5.6 Migración de registros existentes
-
-- 63 OC: quedan como comprometido; las que tienen `numero_factura` se listan para vincular a la factura cuando se cargue.
-- 34 gastos generales: cruce de proveedor texto → ID con revisión manual de dudosos; no se generan asientos retroactivos salvo decisión del contador.
-- 853 mantenimientos y 4.359 cargas de combustible: siguen como fuente de costo; solo se vinculan a facturas desde la fecha de corte.
-- 14 certificados y 1 cobro: se vincula el cobro a un recibo de saldo inicial.
-- Nada se borra; todo cambio se hace sobre copia de respaldo previa y con reporte de antes/después.
-
-### 5.7 Pruebas de integración
-
-- Factura vinculada a OC: costo de obra no cambia en total (pasa de comprometido a real).
-- Factura de repuesto vinculada a mantenimiento: costo de máquina no se duplica.
-- Compra de combustible + egreso: costo aparece solo una vez, al egreso.
-- Cobro desde recibo aparece en Certificados sin cargarse dos veces.
-- Movimiento de stock concurrente deja existencia correcta.
-- Rentabilidad actual vs vista nueva para todas las obras: diferencias explicadas una por una.
-
-### 5.8 Riesgos de tocar módulos operativos
-
-- Pantallas en producción (remitos, combustible, mantenimiento) usadas a diario: cambios solo aditivos y detrás de vínculos opcionales.
-- Cambiar el cálculo de costos altera números que la dirección ya mira: por eso la vista nueva corre en paralelo antes de reemplazar.
-- Usuarios de campo (remitero, maquinistas) no deben ver ni verse afectados por la contabilidad: permisos separados.
-
-## 6. Plan de migración desde CONTAD
-
-**Qué conseguir de CONTAD (no asumir que existe exportación)**
-- Plan de cuentas con códigos.
-- Padrón de proveedores y clientes con CUIT y condición fiscal.
-- Saldos por proveedor y cliente a la fecha de corte, con detalle de comprobantes pendientes.
-- Balance de sumas y saldos a la fecha de corte.
-- Libro banco y saldos de cajas.
-- Cartera de cheques/echeqs vigentes.
-- Últimos números de OP, recibos y facturas por punto de venta.
-- Si CONTAD no exporta: listados en PDF/Excel o impresos para carga asistida.
-
-**Formatos aceptados**: Excel/CSV con plantilla por entidad; lectura asistida de PDF como respaldo.
-
-**Pasos**
-1. Mapear plan de cuentas CONTAD → nuevo (tabla de equivalencias, revisada por contador).
-2. Importar terceros cruzando por CUIT con proveedores/clientes del ERP; revisar coincidencias dudosas.
-3. Asiento de apertura a fecha de corte desde el balance.
-4. Comprobantes pendientes como "saldo inicial" por documento (para poder aplicar pagos).
-5. Bancos, cajas y cheques en cartera.
-6. Cada importación con vista previa, validaciones y simulación antes de grabar.
-7. Conciliación de control: totales por cuenta, por tercero y cartera de cheques iguales a CONTAD; reporte de diferencias.
-8. Paralelo de al menos un mes cargando en ambos sistemas; comparar mayores, libro IVA y saldos semanalmente.
-9. Corte definitivo cuando dos cierres de mes coincidan.
-
-## 7. Fases de implementación
-
-| Fase | Contenido | Depende de | Para pasar a la siguiente |
-|---|---|---|---|
-| 0 | Núcleo: ejercicios, períodos, inmutabilidad, partida doble, cuentas por configuración, roles, auditoría, guardado atómico (comprobante + asiento, pago + asiento) | — | Tests de núcleo y de permisos verdes |
-| 0b | Integración base: `doc_vinculos`, columnas de vínculo opcionales, stock atómico, `proveedor_id` en gastos generales | 0 | Pantallas operativas sin cambios visibles; pruebas de integración verdes |
-| 1 | Terceros unificados, centros de costo, importadores de plan de cuentas y terceros | 0 | Importación de prueba sin diferencias |
-| 2 | Compras completas + NC/ND + cta. cte. proveedores + saldos iniciales | 1 | Saldos iguales a CONTAD |
-| 3 | Tesorería: cajas, bancos, valores, cotizaciones, libro banco | 0 | Libro banco igual al extracto |
-| 4 | Retenciones + OP1 + OP2 con aprobación, rendiciones y PDF | 2, 3 | Casos del contador al centavo |
-| 5 | Ventas + recibos + cta. cte. clientes | 3 | Saldos de clientes iguales |
-| 6 | Asientos manuales/modelo, diario, mayor, sumas y saldos, balance, cierres, diario definitivo, conciliación bancaria | 2–5 | Balance de prueba igual a CONTAD |
-| 7 | Rentabilidad con costos atribuibles | 2, 4 | 3 obras y 3 máquinas con diferencias explicadas |
-| 8 | Paralelo y corte con CONTAD | 1–7 | Dos cierres coincidentes |
-| 9 | ARCA (CAE) y ajuste por inflación | 5, 6 + definiciones | Homologación aprobada / visto bueno contador |
-
-## 8. Riesgos
-
-- **Técnicos**: doble costo durante la convivencia; concurrencia en pagos; importaciones incompletas; dependencia de ARCA (certificado, homologación, caídas); volumen de pantallas grandes.
-- **Contables**: circuito interno separado de los libros fiscales; retenciones cambiantes por jurisdicción; saldos de CONTAD que no cierran; ajuste por inflación mal aplicado; diferencias de cambio.
-- **Operativos**: doble carga en el paralelo; capacitación; plazos (estimado varias semanas por fases).
-- **Backups y recuperación**: copia diaria automática de la base, exportación propia diaria de tablas contables (ampliar la función de respaldo existente), respaldo antes de cada cierre y de cada importación, prueba de restauración trimestral; un cierre nunca se deshace borrando, solo con reapertura autorizada y auditada.
-
-## 9. Pruebas
-
-**Automatizadas**: partida doble; inmutabilidad y reversa; pagos parciales y múltiples facturas; NC y anticipos aplicados; saldos = comprobantes − aplicaciones; retenciones (mínimos, acumulado mensual, exención vencida, vigencias); imputaciones al 100%; período cerrado rechaza; dos pagos simultáneos no superan el saldo; doble envío no duplica; permisos por rol contra la base; diferencia de cambio; regla anti doble costo en rentabilidad.
-
-**Conciliación**: por fase contra listados de CONTAD (saldos por tercero, mayores, libro banco, cartera, libro IVA); reporte de diferencias firmado por el contador antes de avanzar.
-
-## 10. Decisiones para validar con el contador
-
-1. Circuito interno (N1, X2, OP2): ¿libro separado o mismas cuentas con marca, y cómo se excluye de libros fiscales?
-2. ¿Plan de cuentas de CONTAD tal cual o uno nuevo? ¿Qué puede exportar CONTAD y en qué formato?
-3. Regímenes de retención vigentes (Ganancias RG 830, IIBB ARBA/AGIP/otros, IVA, SUSS) y padrones usados.
-4. ¿Somos agentes de percepción en ventas? ¿Dónde?
-5. Costo de obra: ¿al devengar la factura o al consumir de stock?
-6. Valuación de dólares y diferencia de cambio.
-7. Fecha de cierre de ejercicio y procedimiento de cierre/apertura.
-8. Ajuste por inflación: ¿corresponde y con qué índice?
-9. Reportes obligatorios (libro IVA digital, diario, sumas y saldos, balance) y formato.
-10. Puntos de venta y comprobantes habilitados en ARCA.
-11. Cheques diferidos propios: ¿valores a pagar?
-12. Fecha de corte para la migración y duración del paralelo.
-
-**Decisiones internas**: quién aprueba pagos y desde qué monto; quién cierra períodos; si se retira `contab_terceros`.
+- Todas las pruebas verdes; vista de controles vacía.
+- Fotos de tablas operativas idénticas antes/después.
+- Un ciclo completo probado en pantalla: abrir ejercicio → comprobante de compra → confirmar → pago parcial → anular → revertir → ver diario, mayor y balance cuadrados → cerrar mes → intento de asiento en mes cerrado rechazado.
+- Validación del contador sobre diario y balance de prueba.
 
 ## Detalles técnicos
 
-- Todo aditivo: columnas nuevas nullable, nada se borra mientras haya código que lo use; tablas nuevas con GRANT y RLS por rol (`has_role`), sin acceso anónimo.
-- Funciones transaccionales en la base: confirmar comprobante, guardar/aprobar/pagar OP, guardar recibo, revertir asiento, cerrar período, importar lote. SECURITY INVOKER cuando sea posible; las DEFINER con verificación de rol, `search_path` fijo y sin ejecución pública.
-- Tests: Vitest para cálculos puros (retenciones, reparto, saldos, anti doble costo) y pruebas SQL para triggers y permisos.
+- Orden de aplicación: M1 → M2 → M3 → M4 → M5 → M6 → M7 → M8 (las políticas al final, para no cortar el acceso mientras se crean las funciones).
+- Exclusión de rangos de ejercicios con `btree_gist` si está disponible; si no, trigger de validación.
+- Agregar valores a `app_role` va en migración propia (no puede usarse en la misma transacción).
+- Montos `numeric(18,2)`; sin cambiar tipos de columnas existentes.
