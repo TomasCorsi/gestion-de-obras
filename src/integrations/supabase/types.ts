@@ -701,6 +701,39 @@ export type Database = {
           },
         ]
       }
+      contab_auditoria: {
+        Row: {
+          accion: string
+          antes: Json | null
+          created_at: string
+          despues: Json | null
+          id: number
+          registro_id: string | null
+          tabla: string
+          usuario: string | null
+        }
+        Insert: {
+          accion: string
+          antes?: Json | null
+          created_at?: string
+          despues?: Json | null
+          id?: number
+          registro_id?: string | null
+          tabla: string
+          usuario?: string | null
+        }
+        Update: {
+          accion?: string
+          antes?: Json | null
+          created_at?: string
+          despues?: Json | null
+          id?: number
+          registro_id?: string | null
+          tabla?: string
+          usuario?: string | null
+        }
+        Relationships: []
+      }
       contab_comprobante_items: {
         Row: {
           alicuota_iva: number
@@ -4571,6 +4604,18 @@ export type Database = {
     Functions: {
       can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
       can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
+      contab_cerrar_periodo: {
+        Args: { _periodo_id: string }
+        Returns: undefined
+      }
+      contab_confirmar_asiento: {
+        Args: { _asiento_id: string }
+        Returns: number
+      }
+      contab_crear_ejercicio: {
+        Args: { _desde: string; _hasta: string; _nombre: string }
+        Returns: string
+      }
       contab_es_usuario_directo: { Args: never; Returns: boolean }
       contab_generar_asiento_cbte: {
         Args: { _cbte_id: string }
@@ -4578,6 +4623,15 @@ export type Database = {
       }
       contab_generar_asiento_pago: {
         Args: { _pago_id: string }
+        Returns: string
+      }
+      contab_puede: { Args: { _accion: string }; Returns: boolean }
+      contab_reabrir_periodo: {
+        Args: { _motivo: string; _periodo_id: string }
+        Returns: undefined
+      }
+      contab_revertir_asiento: {
+        Args: { _asiento_id: string; _fecha?: string; _motivo: string }
         Returns: string
       }
       execute_readonly_query: { Args: { query_sql: string }; Returns: Json }

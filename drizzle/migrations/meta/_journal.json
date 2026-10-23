@@ -169,6 +169,13 @@
       "when": 1792783181506,
       "tag": "0023_contab_0a3_asientos_guardas",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1792783365980,
+      "tag": "0024_contab_0b_funciones_auditoria",
+      "breakpoints": true
     }
   ]
 }
