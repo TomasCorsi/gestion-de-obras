@@ -1,3 +1,6 @@
+import { Combobox } from "@/components/ui/combobox";
+import { FichaRapidaDialog } from "./FichaRapidaDialog";
+import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import {
@@ -97,6 +100,20 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
   const [fechaVto, setFechaVto] = useState("");
   const [terceroId, setTerceroId] = useState<string>("");
+  const { data: maestros = [] } = useTercerosEstado();
+  const rolMaestro = esVenta ? "cliente" : "proveedor";
+  const delRol = useMemo(() => maestros.filter((m) => m.rol === rolMaestro && (m.activo || m.tercero_id === terceroId)), [maestros, rolMaestro, terceroId]);
+  const [maestroElegido, setMaestroElegido] = useState<string>("");
+  const maestroSel = maestroElegido || delRol.find((m) => m.tercero_id && m.tercero_id === terceroId)?.maestro_id || "";
+  const maestrosOpts = delRol.map((m) => ({ value: m.maestro_id, label: `${m.nombre}${m.cuit_maestro ? ` · ${m.cuit_maestro}` : ""}${m.tercero_id ? "" : " (sin ficha)"}` }));
+  const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
+  const elegirMaestro = (id: string) => {
+    setMaestroElegido(id);
+    const m = delRol.find((x) => x.maestro_id === id);
+    if (!m) { setTerceroId(""); return; }
+    if (m.tercero_id) setTerceroId(m.tercero_id);
+    else { setTerceroId(""); setFichaPara(m); }
+  };
   const [obraId, setObraId] = useState<string>("");
   const [maqId, setMaqId] = useState<string>("");
   const [observaciones, setObservaciones] = useState("");
@@ -253,16 +270,20 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
 
           <div className="col-span-6">
             <Label>{esVenta ? "Cliente" : "Proveedor"}</Label>
-            <Select value={terceroId} onValueChange={setTerceroId} disabled={!!isReadOnly}>
-              <SelectTrigger><SelectValue placeholder="Seleccionar tercero" /></SelectTrigger>
-              <SelectContent>
-                {terceros.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.razon_social}{t.cuit ? ` · ${t.cuit}` : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {isReadOnly ? (
+              <Input value={delRol.find((m) => m.maestro_id === maestroSel)?.nombre ?? ""} disabled />
+            ) : <Combobox
+              options={maestrosOpts}
+              value={maestroSel}
+              onValueChange={elegirMaestro}
+              placeholder={esVenta ? "Elegí un cliente" : "Elegí un proveedor"}
+              searchPlaceholder="Buscar…"
+            />}
+            {maestroSel && !terceroId && <p className="text-xs text-destructive mt-1">Falta la ficha fiscal: completala para continuar.</p>}
+            {fichaPara && (
+              <FichaRapidaDialog maestro={fichaPara} onClose={() => setFichaPara(null)}
+                onCreada={(id) => { setTerceroId(id); setFichaPara(null); }} />
+            )}
           </div>
           <div className="col-span-3">
             <Label>Obra (cabecera)</Label>
