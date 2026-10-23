@@ -9,3 +9,9 @@
 - [ ] Publicar y confirmar en celulares de empleados (requiere publicación del usuario).
 
 - [ ] Contabilidad Fase 0A: validar en borrador aislado (plan en .lovable/plan.md); producción intacta. Bloqueado: crear borrador en el próximo mensaje.
+
+## Contabilidad – verificaciones operativas pendientes (núcleo 0A–0C)
+- [ ] Concurrencia real: dos usuarios confirmando asientos / cerrando período a la vez (numeración sin huecos ni duplicados). Bloqueo: requiere dos sesiones simultáneas reales.
+- [ ] Ingreso con sesión real de contador (hoy no existe usuario con rol contador). Bloqueo: asignar el rol a la persona real.
+- [ ] Confirmar/Revertir desde la pantalla con datos reales (probado solo en transacción revertida).
+- [ ] Fechas reales del ejercicio fiscal de Calamina Sur antes de crear el primer ejercicio (no crear 2026 automáticamente).
