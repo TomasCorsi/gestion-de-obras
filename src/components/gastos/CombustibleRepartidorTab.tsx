@@ -236,7 +236,13 @@ export function CombustibleRepartidorTab() {
   const mesLabel = mes ? meses.find((m) => m.value === mes)?.label ?? "" : "";
 
   // Build unique operator options from all cargas
-  const operadorOptions = useMemo(() => {
+  // Options para filtros con buscador: primera opción "Todos" para limpiar el filtro
+  const conTodos = (opts: { value: string; label: string }[], labelTodos: string): ComboboxOption[] => [
+    { value: "all", label: labelTodos },
+    ...opts.map((o) => ({ value: o.value, label: o.label, searchValue: o.label.toLowerCase() })),
+  ];
+
+  const operadorOptions = useMemo((): ComboboxOption[] => {
     const map = new Map<string, string>();
     cargas.forEach((c) => {
       if (c.operador_id && c.operador) {
@@ -244,9 +250,12 @@ export function CombustibleRepartidorTab() {
         if (label !== "-") map.set(c.operador_id, label);
       }
     });
-    return Array.from(map.entries())
-      .map(([id, label]) => ({ value: id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return conTodos(
+      Array.from(map.entries())
+        .map(([id, label]) => ({ value: id, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      "Todos los operadores"
+    );
   }, [cargas]);
 
   // Build unique option lists from cargas
