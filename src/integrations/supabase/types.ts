@@ -500,37 +500,46 @@ export type Database = {
       contab_asiento_lineas: {
         Row: {
           asiento_id: string
+          cotizacion: number
           created_at: string
           cuenta_id: string | null
           debe: number
           descripcion: string | null
           haber: number
           id: string
+          importe_origen: number | null
           maquinaria_id: string | null
+          moneda: string
           obra_id: string | null
           orden: number
         }
         Insert: {
           asiento_id: string
+          cotizacion?: number
           created_at?: string
           cuenta_id?: string | null
           debe?: number
           descripcion?: string | null
           haber?: number
           id?: string
+          importe_origen?: number | null
           maquinaria_id?: string | null
+          moneda?: string
           obra_id?: string | null
           orden?: number
         }
         Update: {
           asiento_id?: string
+          cotizacion?: number
           created_at?: string
           cuenta_id?: string | null
           debe?: number
           descripcion?: string | null
           haber?: number
           id?: string
+          importe_origen?: number | null
           maquinaria_id?: string | null
+          moneda?: string
           obra_id?: string | null
           orden?: number
         }
@@ -567,46 +576,85 @@ export type Database = {
       }
       contab_asientos: {
         Row: {
+          clave_evento: string
           comprobante_id: string | null
+          confirmado_at: string | null
+          confirmado_por: string | null
           created_at: string
           created_by: string | null
           descripcion: string
+          ejercicio_id: string | null
+          estado: string
           fecha: string
           id: string
+          motivo: string | null
           numero: number
+          numero_ejercicio: number | null
           origen: string | null
+          origen_id: string | null
+          origen_tipo: string | null
           pago_id: string | null
+          periodo_id: string | null
+          reversa_de: string | null
+          revertido_por: string | null
           total_debe: number
           total_haber: number
           updated_at: string
+          version: number
         }
         Insert: {
+          clave_evento?: string
           comprobante_id?: string | null
+          confirmado_at?: string | null
+          confirmado_por?: string | null
           created_at?: string
           created_by?: string | null
           descripcion: string
+          ejercicio_id?: string | null
+          estado?: string
           fecha: string
           id?: string
+          motivo?: string | null
           numero?: number
+          numero_ejercicio?: number | null
           origen?: string | null
+          origen_id?: string | null
+          origen_tipo?: string | null
           pago_id?: string | null
+          periodo_id?: string | null
+          reversa_de?: string | null
+          revertido_por?: string | null
           total_debe?: number
           total_haber?: number
           updated_at?: string
+          version?: number
         }
         Update: {
+          clave_evento?: string
           comprobante_id?: string | null
+          confirmado_at?: string | null
+          confirmado_por?: string | null
           created_at?: string
           created_by?: string | null
           descripcion?: string
+          ejercicio_id?: string | null
+          estado?: string
           fecha?: string
           id?: string
+          motivo?: string | null
           numero?: number
+          numero_ejercicio?: number | null
           origen?: string | null
+          origen_id?: string | null
+          origen_tipo?: string | null
           pago_id?: string | null
+          periodo_id?: string | null
+          reversa_de?: string | null
+          revertido_por?: string | null
           total_debe?: number
           total_haber?: number
           updated_at?: string
+          version?: number
         }
         Relationships: [
           {
@@ -617,10 +665,38 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contab_asientos_ejercicio_id_fkey"
+            columns: ["ejercicio_id"]
+            isOneToOne: false
+            referencedRelation: "contab_ejercicios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "contab_asientos_pago_id_fkey"
             columns: ["pago_id"]
             isOneToOne: false
             referencedRelation: "contab_pagos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_periodo_id_fkey"
+            columns: ["periodo_id"]
+            isOneToOne: false
+            referencedRelation: "contab_periodos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_reversa_de_fkey"
+            columns: ["reversa_de"]
+            isOneToOne: false
+            referencedRelation: "contab_asientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_revertido_por_fkey"
+            columns: ["revertido_por"]
+            isOneToOne: false
+            referencedRelation: "contab_asientos"
             referencedColumns: ["id"]
           },
         ]
@@ -851,6 +927,77 @@ export type Database = {
           },
         ]
       }
+      contab_cuentas_config: {
+        Row: {
+          clave: string
+          cuenta_id: string
+          descripcion: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          clave: string
+          cuenta_id: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          clave?: string
+          cuenta_id?: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_cuentas_config_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_ejercicios: {
+        Row: {
+          cerrado_at: string | null
+          cerrado_por: string | null
+          created_at: string
+          created_by: string | null
+          estado: string
+          fecha_desde: string
+          fecha_hasta: string
+          id: string
+          nombre: string
+          ultimo_numero: number
+        }
+        Insert: {
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_desde: string
+          fecha_hasta: string
+          id?: string
+          nombre: string
+          ultimo_numero?: number
+        }
+        Update: {
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_desde?: string
+          fecha_hasta?: string
+          id?: string
+          nombre?: string
+          ultimo_numero?: number
+        }
+        Relationships: []
+      }
       contab_empresa: {
         Row: {
           activa: boolean
@@ -1003,6 +1150,59 @@ export type Database = {
             columns: ["tercero_id"]
             isOneToOne: false
             referencedRelation: "contab_terceros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_periodos: {
+        Row: {
+          anio: number
+          cerrado_at: string | null
+          cerrado_por: string | null
+          ejercicio_id: string
+          estado: string
+          fecha_desde: string
+          fecha_hasta: string
+          id: string
+          mes: number
+          motivo_reapertura: string | null
+          reabierto_at: string | null
+          reabierto_por: string | null
+        }
+        Insert: {
+          anio: number
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          ejercicio_id: string
+          estado?: string
+          fecha_desde: string
+          fecha_hasta: string
+          id?: string
+          mes: number
+          motivo_reapertura?: string | null
+          reabierto_at?: string | null
+          reabierto_por?: string | null
+        }
+        Update: {
+          anio?: number
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          ejercicio_id?: string
+          estado?: string
+          fecha_desde?: string
+          fecha_hasta?: string
+          id?: string
+          mes?: number
+          motivo_reapertura?: string | null
+          reabierto_at?: string | null
+          reabierto_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_periodos_ejercicio_id_fkey"
+            columns: ["ejercicio_id"]
+            isOneToOne: false
+            referencedRelation: "contab_ejercicios"
             referencedColumns: ["id"]
           },
         ]
@@ -4371,6 +4571,7 @@ export type Database = {
     Functions: {
       can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
       can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
+      contab_es_usuario_directo: { Args: never; Returns: boolean }
       contab_generar_asiento_cbte: {
         Args: { _cbte_id: string }
         Returns: string
@@ -4438,6 +4639,8 @@ export type Database = {
         | "ayudante"
         | "remitero"
         | "contador"
+        | "tesorero"
+        | "aprobador_pagos"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
       contab_cbte_estado:
         | "borrador"
@@ -4692,6 +4895,8 @@ export const Constants = {
         "ayudante",
         "remitero",
         "contador",
+        "tesorero",
+        "aprobador_pagos",
       ],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
       contab_cbte_estado: [
