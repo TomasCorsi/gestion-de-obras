@@ -568,59 +568,51 @@ export function CombustibleRepartidorTab() {
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Máquina</label>
-            <Select value={maquinariaFiltro} onValueChange={setMaquinariaFiltro}>
-              <SelectTrigger className="h-9 bg-background border-border">
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las máquinas</SelectItem>
-                {maquinariaOptions.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={maquinariaOptions}
+              value={maquinariaFiltro}
+              onValueChange={setMaquinariaFiltro}
+              placeholder="Todas"
+              searchPlaceholder="Buscar máquina..."
+              emptyText="No se encontró máquina"
+              className="h-9 bg-background border-border"
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Obra</label>
-            <Select value={obraFiltro} onValueChange={setObraFiltro}>
-              <SelectTrigger className="h-9 bg-background border-border">
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las obras</SelectItem>
-                {obraOptions.map((o) => (
-                  <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={obraOptions}
+              value={obraFiltro}
+              onValueChange={setObraFiltro}
+              placeholder="Todas"
+              searchPlaceholder="Buscar obra..."
+              emptyText="No se encontró obra"
+              className="h-9 bg-background border-border"
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Operador</label>
-            <Select value={operadorFiltro} onValueChange={setOperadorFiltro}>
-              <SelectTrigger className="h-9 bg-background border-border">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los operadores</SelectItem>
-                {operadorOptions.map((op) => (
-                  <SelectItem key={op.value} value={op.value}>{op.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={operadorOptions}
+              value={operadorFiltro}
+              onValueChange={setOperadorFiltro}
+              placeholder="Todos"
+              searchPlaceholder="Buscar operador..."
+              emptyText="No se encontró operador"
+              className="h-9 bg-background border-border"
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Repartidor</label>
-            <Select value={repartidorFiltro} onValueChange={setRepartidorFiltro}>
-              <SelectTrigger className="h-9 bg-background border-border">
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los repartidores</SelectItem>
-                {repartidorOptions.map((r) => (
-                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Combobox
+              options={repartidorOptions}
+              value={repartidorFiltro}
+              onValueChange={setRepartidorFiltro}
+              placeholder="Todos"
+              searchPlaceholder="Buscar repartidor..."
+              emptyText="No se encontró repartidor"
+              className="h-9 bg-background border-border"
+            />
           </div>
           <div>
             <label className="text-xs text-muted-foreground mb-1 block">Tipo Operador</label>
