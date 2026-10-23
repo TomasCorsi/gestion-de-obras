@@ -276,17 +276,20 @@ export function CombustibleRepartidorTab() {
     );
   }, [cargas]);
 
-  const obraOptions = useMemo(() => {
+  const obraOptions = useMemo((): ComboboxOption[] => {
     const map = new Map<string, string>();
     cargas.forEach((c) => {
       if (c.obra_id && c.obra?.nombre) map.set(c.obra_id, c.obra.nombre);
     });
-    return Array.from(map.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return conTodos(
+      Array.from(map.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      "Todas las obras"
+    );
   }, [cargas]);
 
-  const repartidorOptions = useMemo(() => {
+  const repartidorOptions = useMemo((): ComboboxOption[] => {
     const map = new Map<string, string>();
     cargas.forEach((c) => {
       if (c.repartidor_id && c.repartidor) {
@@ -297,9 +300,12 @@ export function CombustibleRepartidorTab() {
         if (label !== "-") map.set(`pd:${label}`, label);
       }
     });
-    return Array.from(map.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return conTodos(
+      Array.from(map.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      "Todos los repartidores"
+    );
   }, [cargas]);
 
   const filtered = useMemo(() => {
