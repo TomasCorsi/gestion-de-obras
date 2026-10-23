@@ -829,6 +829,13 @@ export type Database = {
           exento: number
           fecha: string
           fecha_vto: string | null
+          fiscal_condicion_iva:
+            | Database["public"]["Enums"]["contab_cond_iva"]
+            | null
+          fiscal_doc_numero: string | null
+          fiscal_doc_tipo: string | null
+          fiscal_domicilio: string | null
+          fiscal_razon_social: string | null
           id: string
           iva_105: number
           iva_21: number
@@ -867,6 +874,13 @@ export type Database = {
           exento?: number
           fecha: string
           fecha_vto?: string | null
+          fiscal_condicion_iva?:
+            | Database["public"]["Enums"]["contab_cond_iva"]
+            | null
+          fiscal_doc_numero?: string | null
+          fiscal_doc_tipo?: string | null
+          fiscal_domicilio?: string | null
+          fiscal_razon_social?: string | null
           id?: string
           iva_105?: number
           iva_21?: number
@@ -905,6 +919,13 @@ export type Database = {
           exento?: number
           fecha?: string
           fecha_vto?: string | null
+          fiscal_condicion_iva?:
+            | Database["public"]["Enums"]["contab_cond_iva"]
+            | null
+          fiscal_doc_numero?: string | null
+          fiscal_doc_tipo?: string | null
+          fiscal_domicilio?: string | null
+          fiscal_razon_social?: string | null
           id?: string
           iva_105?: number
           iva_21?: number
@@ -1330,16 +1351,31 @@ export type Database = {
           activo: boolean
           banco: string | null
           cbu: string | null
+          cbu_alias: string | null
+          cliente_id: string | null
           condicion_iva: Database["public"]["Enums"]["contab_cond_iva"]
           cp: string | null
           created_at: string
+          cuenta_deudores_id: string | null
+          cuenta_proveedores_id: string | null
           cuit: string | null
+          doc_numero: string | null
+          doc_tipo: string
           domicilio: string | null
+          domicilio_fiscal: string | null
           email: string | null
+          exencion_detalle: string | null
+          exencion_vigencia_hasta: string | null
+          ganancias_regimen: string | null
           id: string
+          iibb_condicion: string | null
+          iibb_jurisdiccion: string | null
+          iibb_numero: string | null
           localidad: string | null
           notas: string | null
           numero_cuenta: string | null
+          plazo_pago_dias: number | null
+          proveedor_id: string | null
           provincia: string | null
           razon_social: string
           telefono: string | null
@@ -1350,16 +1386,31 @@ export type Database = {
           activo?: boolean
           banco?: string | null
           cbu?: string | null
+          cbu_alias?: string | null
+          cliente_id?: string | null
           condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
           cp?: string | null
           created_at?: string
+          cuenta_deudores_id?: string | null
+          cuenta_proveedores_id?: string | null
           cuit?: string | null
+          doc_numero?: string | null
+          doc_tipo?: string
           domicilio?: string | null
+          domicilio_fiscal?: string | null
           email?: string | null
+          exencion_detalle?: string | null
+          exencion_vigencia_hasta?: string | null
+          ganancias_regimen?: string | null
           id?: string
+          iibb_condicion?: string | null
+          iibb_jurisdiccion?: string | null
+          iibb_numero?: string | null
           localidad?: string | null
           notas?: string | null
           numero_cuenta?: string | null
+          plazo_pago_dias?: number | null
+          proveedor_id?: string | null
           provincia?: string | null
           razon_social: string
           telefono?: string | null
@@ -1370,23 +1421,67 @@ export type Database = {
           activo?: boolean
           banco?: string | null
           cbu?: string | null
+          cbu_alias?: string | null
+          cliente_id?: string | null
           condicion_iva?: Database["public"]["Enums"]["contab_cond_iva"]
           cp?: string | null
           created_at?: string
+          cuenta_deudores_id?: string | null
+          cuenta_proveedores_id?: string | null
           cuit?: string | null
+          doc_numero?: string | null
+          doc_tipo?: string
           domicilio?: string | null
+          domicilio_fiscal?: string | null
           email?: string | null
+          exencion_detalle?: string | null
+          exencion_vigencia_hasta?: string | null
+          ganancias_regimen?: string | null
           id?: string
+          iibb_condicion?: string | null
+          iibb_jurisdiccion?: string | null
+          iibb_numero?: string | null
           localidad?: string | null
           notas?: string | null
           numero_cuenta?: string | null
+          plazo_pago_dias?: number | null
+          proveedor_id?: string | null
           provincia?: string | null
           razon_social?: string
           telefono?: string | null
           tipo?: Database["public"]["Enums"]["contab_tercero_tipo"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contab_terceros_cliente_id_fkey"
+            columns: ["cliente_id"]
+            isOneToOne: false
+            referencedRelation: "clientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_terceros_cuenta_deudores_id_fkey"
+            columns: ["cuenta_deudores_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_terceros_cuenta_proveedores_id_fkey"
+            columns: ["cuenta_proveedores_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_terceros_proveedor_id_fkey"
+            columns: ["proveedor_id"]
+            isOneToOne: false
+            referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cotizacion_anticipos: {
         Row: {
@@ -4413,6 +4508,27 @@ export type Database = {
       }
     }
     Views: {
+      contab_terceros_estado: {
+        Row: {
+          activo: boolean | null
+          condicion_iva: Database["public"]["Enums"]["contab_cond_iva"] | null
+          cuit_maestro: string | null
+          direccion: string | null
+          doc_numero: string | null
+          doc_tipo: string | null
+          email: string | null
+          localidad: string | null
+          maestro_id: string | null
+          nombre: string | null
+          razon_social: string | null
+          rol: string | null
+          sugerencia_tercero_id: string | null
+          telefono: string | null
+          tercero_id: string | null
+          tipo: Database["public"]["Enums"]["contab_tercero_tipo"] | null
+        }
+        Relationships: []
+      }
       mantenimientos_list_view: {
         Row: {
           adjunto_url: string | null
@@ -4629,11 +4745,27 @@ export type Database = {
         Args: { _desde: string; _hasta: string; _nombre: string }
         Returns: string
       }
+      contab_cuit_valido: { Args: { _n: string }; Returns: boolean }
       contab_descartar_asiento: {
         Args: { _asiento_id: string }
         Returns: undefined
       }
+      contab_doc_valido: {
+        Args: { _n: string; _tipo: string }
+        Returns: boolean
+      }
       contab_es_usuario_directo: { Args: never; Returns: boolean }
+      contab_ficha_desde_maestro: {
+        Args: {
+          _cliente_id: string
+          _condicion_iva: Database["public"]["Enums"]["contab_cond_iva"]
+          _doc_numero: string
+          _doc_tipo: string
+          _proveedor_id: string
+          _razon_social: string
+        }
+        Returns: string
+      }
       contab_generar_asiento_cbte: {
         Args: { _cbte_id: string }
         Returns: string
@@ -4650,6 +4782,14 @@ export type Database = {
       contab_revertir_asiento: {
         Args: { _asiento_id: string; _fecha?: string; _motivo: string }
         Returns: string
+      }
+      contab_vincular_ficha: {
+        Args: {
+          _cliente_id: string
+          _proveedor_id: string
+          _tercero_id: string
+        }
+        Returns: undefined
       }
       execute_readonly_query: { Args: { query_sql: string }; Returns: Json }
       get_documento_signed_url: {

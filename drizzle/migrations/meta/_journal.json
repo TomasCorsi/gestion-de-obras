@@ -197,6 +197,13 @@
       "when": 1792784209348,
       "tag": "0027_contab_asiento_manual",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1792785238514,
+      "tag": "0028_contab_1a_fichas_fiscales",
+      "breakpoints": true
     }
   ]
 }
