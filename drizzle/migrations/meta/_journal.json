@@ -183,6 +183,13 @@
       "when": 1792783745761,
       "tag": "0025_contab_integridad_documentos",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792783882294,
+      "tag": "0026_contab_revertir_recalcula_estado",
+      "breakpoints": true
     }
   ]
 }
