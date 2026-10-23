@@ -4438,6 +4438,8 @@ export type Database = {
         | "ayudante"
         | "remitero"
         | "contador"
+        | "tesorero"
+        | "aprobador_pagos"
       categoria_stock: "material" | "repuesto" | "herramienta" | "consumible"
       contab_cbte_estado:
         | "borrador"
@@ -4692,6 +4694,8 @@ export const Constants = {
         "ayudante",
         "remitero",
         "contador",
+        "tesorero",
+        "aprobador_pagos",
       ],
       categoria_stock: ["material", "repuesto", "herramienta", "consumible"],
       contab_cbte_estado: [
