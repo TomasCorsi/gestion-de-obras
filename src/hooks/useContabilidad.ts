@@ -385,14 +385,12 @@ export const useAnularComprobante = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (cbteId: string) => {
-      const { error } = await (supabase as any)
-        .from("contab_comprobantes")
-        .update({ estado: "anulado", anulado_at: new Date().toISOString() })
-        .eq("id", cbteId);
+      const { error } = await (supabase as any).rpc("contab_anular_comprobante", { _cbte_id: cbteId, _motivo: "Anulación de comprobante" });
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
+      qc.invalidateQueries({ queryKey: ["contab_asientos"] });
       toast.success("Comprobante anulado");
     },
     onError: (e: any) => toast.error(e.message),
@@ -538,8 +536,9 @@ export const useMayorCuenta = (cuentaId: string | null, desde: string, hasta: st
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from("contab_asiento_lineas")
-        .select("*, asiento:contab_asientos!inner(fecha,descripcion,numero), obra:obras(nombre), maquinaria:maquinarias(nombre,codigo)")
+        .select("*, asiento:contab_asientos!inner(fecha,descripcion,numero,numero_ejercicio,estado), obra:obras(nombre), maquinaria:maquinarias(nombre,codigo)")
         .eq("cuenta_id", cuentaId)
+        .in("asiento.estado", ["confirmado", "revertido"])
         .gte("asiento.fecha", desde)
         .lte("asiento.fecha", hasta);
       if (error) throw error;
