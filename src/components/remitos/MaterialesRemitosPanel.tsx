@@ -6,7 +6,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
-import { usePersonal } from "@/hooks/usePersonal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -225,7 +224,7 @@ export function MaterialesRemitosPanel() {
   const { obras } = useObras();
   const { proveedores } = useProveedores();
   const { maquinarias } = useMaquinarias();
-  const { personal } = usePersonal();
+  const { data: personal } = useChoferes();
   const { data: catalogo = [] } = useCatalogo();
   const [open, setOpen] = useState(false);
   const [head, setHead] = useState<Row>(emptyHead());
