@@ -13,6 +13,8 @@ import {
   type ContabComprobante, type CbteEstado, type CbteTipo,
 } from "@/hooks/useContabilidad";
 import { ComprobanteDialog } from "./ComprobanteDialog";
+import { useContabAsientos } from "@/hooks/useContabilidad";
+import { estadosComprobante, type EstadoContable } from "@/lib/contabEstados";
 
 const TIPO_LABEL: Record<CbteTipo, string> = {
   FA_A: "Factura A", FA_B: "Factura B", FA_C: "Factura C",
@@ -23,17 +25,12 @@ const TIPO_LABEL: Record<CbteTipo, string> = {
   NC_CPA: "NC Compra", ND_CPA: "ND Compra", OTRO: "Otro",
 };
 
-const estadoBadge = (e: CbteEstado) => {
-  const map: Record<CbteEstado, { label: string; cls: string }> = {
-    borrador: { label: "Borrador", cls: "bg-muted text-foreground" },
-    confirmado: { label: "Confirmado", cls: "bg-blue-600 text-white" },
-    parcial: { label: "Parcial", cls: "bg-amber-600 text-white" },
-    pagado: { label: "Pagado", cls: "bg-green-600 text-white" },
-    anulado: { label: "Anulado", cls: "bg-destructive text-destructive-foreground" },
-  };
-  const v = map[e];
-  return <Badge className={v.cls}>{v.label}</Badge>;
+const CONTABLE: Record<EstadoContable, { label: string; variant: "secondary" | "default" | "destructive" }> = {
+  registrado: { label: "Registrado", variant: "secondary" },
+  contabilizado: { label: "Contabilizado", variant: "default" },
+  anulado: { label: "Anulado", variant: "destructive" },
 };
+const FINANCIERO: Record<string, string> = { pendiente: "Pendiente", parcial: "Parcial", cancelado: "Cancelado" };
 
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const fmtDate = (s: string) => {
@@ -51,6 +48,8 @@ export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
   const del = useDeleteComprobante();
   const confirmar = useConfirmarComprobante();
   const anular = useAnularComprobante();
+  const { data: asientos = [] } = useContabAsientos();
+  const estadoAsiento = useMemo(() => new Map((asientos as any[]).map((a) => [a.id, a.estado ?? "borrador"])), [asientos]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -101,22 +100,24 @@ export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
                   <th className="px-3 py-2 text-right">Neto</th>
                   <th className="px-3 py-2 text-right">IVA</th>
                   <th className="px-3 py-2 text-right">Total</th>
-                  <th className="px-3 py-2">Estado</th>
+                  <th className="px-3 py-2">Contable</th>
+                  <th className="px-3 py-2">Financiero</th>
                   <th className="px-3 py-2"></th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading && (
-                  <tr><td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">Cargando…</td></tr>
+                  <tr><td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">Cargando…</td></tr>
                 )}
                 {!isLoading && filtered.length === 0 && (
-                  <tr><td colSpan={11} className="px-3 py-6 text-center text-muted-foreground">
+                  <tr><td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
                     <FileText className="inline w-4 h-4 mr-2" />Sin comprobantes
                   </td></tr>
                 )}
                 {filtered.map((c) => {
                   const neto = +c.neto_21 + +c.neto_105 + +c.neto_27 + +c.neto_0 + +c.exento + +c.no_gravado;
                   const iva = +c.iva_21 + +c.iva_105 + +c.iva_27;
+                  const est = estadosComprobante(c.estado, c.asiento_id ? estadoAsiento.get(c.asiento_id) : null);
                   return (
                     <tr key={c.id} className="border-t hover:bg-muted/30">
                       <td className="px-3 py-2 whitespace-nowrap">{fmtDate(c.fecha)}</td>
@@ -130,17 +131,22 @@ export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
                       <td className="px-3 py-2 text-right tabular-nums">{fmt(neto)}</td>
                       <td className="px-3 py-2 text-right tabular-nums">{fmt(iva)}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmt(c.total)}</td>
-                      <td className="px-3 py-2">{estadoBadge(c.estado)}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant={CONTABLE[est.contable].variant}>{CONTABLE[est.contable].label}</Badge>
+                        {est.contable === "registrado" && c.estado !== "borrador" && <div className="text-[10px] text-muted-foreground mt-0.5">asiento en borrador</div>}
+                        {c.estado === "borrador" && <div className="text-[10px] text-muted-foreground mt-0.5">sin asiento</div>}
+                      </td>
+                      <td className="px-3 py-2 text-xs">{est.financiero ? FINANCIERO[est.financiero] : "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-right">
                         <Button size="icon" variant="ghost" onClick={() => handleEdit(c)} title="Ver / editar">
                           <Edit3 className="w-4 h-4" />
                         </Button>
                         {c.estado === "borrador" && (
-                          <Button size="icon" variant="ghost" onClick={() => confirmar.mutate(c.id)} title="Confirmar">
+                          <Button size="icon" variant="ghost" onClick={() => confirmar.mutate(c.id)} title="Generar asiento">
                             <CheckCircle2 className="w-4 h-4 text-green-600" />
                           </Button>
                         )}
-                        {(c.estado === "confirmado" || c.estado === "parcial") && (
+                        {(c.estado === "confirmado" || c.estado === "parcial" || c.estado === "pagado") && (
                           <Button size="icon" variant="ghost" onClick={() => anular.mutate(c.id)} title="Anular">
                             <Ban className="w-4 h-4 text-amber-600" />
                           </Button>
