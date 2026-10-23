@@ -1,87 +1,100 @@
-# Contabilidad – Fase 1: maestros, datos fiscales y centros de costo
+# Contabilidad – Fase 1 (sin migración de CONTAD) y diseño técnico de 1A
 
-Alcance: solo propuesta. No se ejecutan migraciones de esta fase hasta tu autorización. Base única: la actual de Lovable Cloud.
+Alcance: propuesta para revisar. No se ejecuta ninguna migración hasta tu autorización. Base única: la actual de Lovable Cloud.
+
+## Decisión de base
+- **No se importa nada de CONTAD**: ni clientes, ni proveedores, ni comprobantes, asientos o movimientos. CONTAD queda solo para consultar lo histórico.
+- La contabilidad del ERP arranca desde cero en una **fecha de corte** que definirán ustedes. Hasta esa fecha se consulta CONTAD; desde esa fecha todo se registra solo en el ERP.
+- No se agrega ningún código de CONTAD a las tablas nuevas.
+- Se reutilizan solo los clientes, proveedores, obras y máquinas que ya existen en el ERP.
+- No se modifican obras, maquinaria, combustible, remitos, certificados, stock ni rentabilidad.
 
 ## Punto de partida (verificado en la base)
-- Hoy hay 64 clientes y 44 proveedores, usados por obras, remitos, órdenes de compra, combustible y rentabilidad.
-- Terceros contables: 0 registros. Comprobantes y pagos ya apuntan a esa tabla de terceros.
-- Obras: 112. Máquinas: 117. Los asientos ya admiten una obra y una máquina por línea.
-- Rentabilidad calcula desde órdenes de compra, combustible, partes, remitos y certificados; no lee asientos.
+- Clientes: 64, de los cuales **59 no tienen CUIT** y 5 tienen CUIT válido.
+- Proveedores: 44, de los cuales 25 no tienen CUIT y 19 tienen CUIT válido.
+- No hay CUIT repetidos dentro de clientes ni dentro de proveedores, y ningún CUIT figura a la vez como cliente y proveedor.
+- Fichas fiscales: 0. Comprobantes y pagos contables ya apuntan a esa tabla.
+- Conclusión: el cruce automático por CUIT alcanza para pocos casos. La vinculación será principalmente **manual y asistida**, a medida que se use cada cliente o proveedor.
 
-## 1. Clientes y proveedores (sin duplicar)
-- Clientes y proveedores siguen siendo los maestros operativos. No se tocan sus columnas ni sus usos actuales.
-- El tercero contable pasa a ser la **ficha fiscal** de cada uno, vinculada al cliente y/o proveedor existente. Una misma empresa que es cliente y proveedor tiene una sola ficha.
-- Vinculación inicial asistida: se cruza por CUIT normalizado (solo dígitos). Los casos sin CUIT o con CUIT repetido se listan para revisión manual; no se fusiona nada automáticamente.
-- El CUIT normalizado queda único entre las fichas fiscales.
+## Fase 1 – alcance actualizado
+- **1A. Fichas fiscales vinculadas** a clientes y proveedores existentes (detalle abajo).
+- **1B. Centros y subcentros de costo**, con subcentros vinculados a obras y máquinas existentes (un subcentro por obra o máquina como máximo).
+- **1C. Imputaciones múltiples**: cada línea de asiento y cada ítem de comprobante puede repartirse entre varios subcentros. Al confirmar, el reparto debe sumar exactamente el importe; sin reparto toma la obra o máquina ya cargada.
+- **1D. Apertura y fecha de corte** (reemplaza a la antigua 1D de importación):
+  - Configuración única de la **fecha de inicio del ERP**. No se pueden confirmar asientos ni comprobantes anteriores a esa fecha, salvo el asiento de apertura.
+  - **Asiento de apertura** opcional y manual, hecho con el asiento manual que ya existe (tipo Apertura), fechado el día de inicio. Uno solo por ejercicio.
+  - **Saldos iniciales por cliente o proveedor**, cargados a mano y opcionales, como detalle del asiento de apertura: tercero, comprobante de referencia, fecha, vencimiento e importe. Sirven para que las cuentas corrientes nuevas arranquen con el saldo aprobado por el contador.
+  - Detalle opcional de cheques en cartera y anticipos dentro de la apertura.
+  - Solo admin y contador; la apertura se confirma como cualquier asiento y queda auditada. No es un importador: no hay carga masiva de archivos.
 
-## 2. Datos fiscales
-En la ficha fiscal: condición ante IVA (ya existe), tipo y número de documento, condición de IIBB y número, jurisdicción, régimen de ganancias, inscripto en convenio multilateral, exenciones y certificados de no retención con fecha de vigencia, CBU/alias, plazo de pago habitual, cuenta contable por defecto (deudores o proveedores) y código de origen CONTAD.
+## 1A – Fichas fiscales: qué cambia para el usuario
+- Nueva pantalla **Contabilidad → Terceros**: lista todos los clientes y proveedores del ERP con su estado: "con ficha fiscal" o "sin ficha".
+- Desde ahí se crea la ficha de un cliente o proveedor existente. Los datos que ya tienen (nombre, CUIT, domicilio, teléfono, email) se copian como punto de partida.
+- Si una empresa es cliente y también proveedor, se vincula a **una sola ficha**. El sistema sugiere la coincidencia cuando el CUIT es igual, pero no fusiona nada solo.
+- Al cargar una factura de compra o venta se elige el cliente o proveedor de siempre. Si todavía no tiene ficha, se ofrece crearla en el momento.
+- No se pueden registrar dos fichas con el mismo CUIT.
+- Los clientes y proveedores operativos no cambian: se siguen editando donde se editan hoy.
 
-## 3. Centros y subcentros de costo
-- Estructura en dos niveles: **centro** (ej. Obras, Equipos, Administración, Taller) y **subcentro**.
-- Cada obra y cada máquina existentes pueden tener **un único** subcentro asociado. Se ofrece crear automáticamente un subcentro por obra activa y por máquina; los inactivos quedan opcionales.
-- Al crear una obra o máquina nueva se sugiere su subcentro (sin crearlo de forma silenciosa).
-- Código, nombre, activo y fechas de vigencia. Un subcentro con movimientos no se borra, se desactiva.
+### Datos fiscales de la ficha
+Razón social, CUIT, condición ante IVA (ya existe), condición y número de Ingresos Brutos, jurisdicción, convenio multilateral, régimen de Ganancias, exenciones o certificados de no retención con vigencia, CBU y alias, banco, plazo de pago habitual y cuenta contable por defecto (deudores o proveedores).
 
-## 4. Imputaciones múltiples
-- **Contable:** sin cambios. Cada asiento puede tener las líneas y cuentas que necesite.
-- **Analítica:** cada línea de asiento puede repartirse entre varios subcentros, por importe o porcentaje (ej. 60% Obra A, 40% Obra B).
-- Al confirmar un asiento se valida que el reparto de cada línea sume exactamente su importe; si una línea no tiene reparto, toma la obra o máquina que ya tenga cargada (compatibilidad).
-- Las reversas copian el reparto en espejo.
-- Comprobantes: cada ítem puede llevar su reparto, que viaja al asiento al generarlo.
+## Detalles técnicos de 1A
 
-## 5. Importación de maestros desde CONTAD (preparación)
-- Planilla de carga en dos pasos: **subir y revisar**, luego **aplicar**.
-- En la revisión cada fila se marca como: nueva, coincide con existente (por CUIT o código CONTAD), conflicto (datos distintos) o inválida.
-- Solo se aplican las filas aprobadas. Se guarda el lote, quién lo aplicó y el código CONTAD de cada registro, para poder repetir la importación sin duplicar.
-- Esta fase deja lista la estructura y la pantalla de revisión; no se importan datos reales hasta que lo indiques.
+Una sola migración aditiva: no borra ni renombra nada y no toca las tablas `clientes` ni `proveedores`.
 
-## 6. Rentabilidad
-No se modifican tablas, cálculos ni pantallas de rentabilidad. Los centros de costo son una vista contable adicional; integrarla con rentabilidad queda para una fase posterior con conciliación explícita.
+```sql
+ALTER TABLE public.contab_terceros
+  ADD COLUMN cliente_id uuid REFERENCES public.clientes(id) ON DELETE RESTRICT,
+  ADD COLUMN proveedor_id uuid REFERENCES public.proveedores(id) ON DELETE RESTRICT,
+  ADD COLUMN cuit_normalizado text GENERATED ALWAYS AS (NULLIF(regexp_replace(COALESCE(cuit,''),'\D','','g'),'')) STORED,
+  ADD COLUMN iibb_condicion text,          -- local | convenio | exento | no_inscripto
+  ADD COLUMN iibb_numero text,
+  ADD COLUMN iibb_jurisdiccion text,
+  ADD COLUMN ganancias_regimen text,
+  ADD COLUMN exencion_detalle text,
+  ADD COLUMN exencion_vigencia_hasta date,
+  ADD COLUMN cbu_alias text,
+  ADD COLUMN plazo_pago_dias integer,
+  ADD COLUMN cuenta_defecto_id uuid REFERENCES public.contab_plan_cuentas(id) ON DELETE RESTRICT,
+  ADD CONSTRAINT chk_terc_iibb CHECK (iibb_condicion IS NULL OR iibb_condicion IN ('local','convenio','exento','no_inscripto')),
+  ADD CONSTRAINT chk_terc_plazo CHECK (plazo_pago_dias IS NULL OR plazo_pago_dias BETWEEN 0 AND 365),
+  ADD CONSTRAINT chk_terc_cuit CHECK (cuit_normalizado IS NULL OR length(cuit_normalizado) = 11);
 
-## 7. Permisos
-- Fichas fiscales, centros y repartos: ver y editar admin y contador.
-- Importación: preparar admin y contador; aplicar solo admin.
-- Usuarios operativos: sin cambios en lo que ven hoy.
-
-## 8. Pantallas (Contabilidad)
-- **Terceros:** listado unificado con su cliente/proveedor vinculado, datos fiscales y estado de vinculación.
-- **Centros de costo:** árbol centro → subcentro, con obra o máquina asociada.
-- **Reparto analítico:** en el detalle del asiento manual y en los ítems de comprobantes.
-- **Importar CONTAD:** subir, revisar, aprobar.
-- Reporte nuevo: saldos por subcentro y período (solo asientos confirmados).
-
-## Detalles técnicos
-
-Migraciones previstas, una por vez con verificación (todas aditivas, sin borrar ni renombrar):
-
-```text
-1A  contab_terceros: + cliente_id (único, FK clientes), proveedor_id (único, FK proveedores),
-    cuit_normalizado (generada, índice único parcial), campos fiscales, codigo_contad,
-    cuenta_defecto_id. RLS sin cambios (admin/contador).
-1B  contab_centros_costo (id, codigo único, nombre, tipo centro|subcentro, padre_id,
-    obra_id único nullable, maquinaria_id único nullable, activo, vigencia).
-    Check: subcentro exige padre; centro no tiene padre ni obra/máquina.
-1C  contab_imputaciones (linea_id FK líneas ON DELETE CASCADE, centro_id FK RESTRICT,
-    importe > 0). Guarda de inmutabilidad igual a las líneas (solo en borrador).
-    contab_comprobante_item_imputaciones (item_id, centro_id, importe).
-    Actualización de contab_confirmar_asiento: validar suma del reparto por línea;
-    contab_revertir_asiento: copiar reparto; contab_generar_asiento_cbte: trasladar reparto.
-1D  contab_import_lotes y contab_import_filas (datos crudos jsonb, resultado del cruce,
-    decisión, registro destino). Función contab_aplicar_lote (solo admin, transaccional).
-1E  Funciones auxiliares: sugerir vínculos por CUIT, crear subcentros para obras/máquinas
-    seleccionadas (sin ejecución automática).
+CREATE UNIQUE INDEX uq_contab_terc_cliente   ON public.contab_terceros (cliente_id)   WHERE cliente_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_contab_terc_proveedor ON public.contab_terceros (proveedor_id) WHERE proveedor_id IS NOT NULL;
+CREATE UNIQUE INDEX uq_contab_terc_cuit      ON public.contab_terceros (cuit_normalizado) WHERE cuit_normalizado IS NOT NULL;
 ```
 
-Pruebas por paso: estructura y permisos en modo lectura; reglas con bloques que terminan siempre en vuelta atrás; conteos de clientes, proveedores, obras, máquinas y todas las tablas operativas idénticos antes y después.
+Coherencia entre `tipo` y los vínculos, mediante un trigger de validación:
+- Con `cliente_id` cargado, `tipo` debe ser cliente o ambos.
+- Con `proveedor_id` cargado, `tipo` debe ser proveedor o ambos.
+- Al vincular los dos, `tipo` pasa a ambos.
+- No se puede desvincular un cliente o proveedor si la ficha ya tiene comprobantes o pagos asociados.
 
-## Pendientes heredados del núcleo
+Funciones (con permisos de sistema, solo admin y contador, con `contab_puede`):
+- `contab_ficha_desde_maestro(_cliente_id uuid, _proveedor_id uuid)`: crea la ficha copiando los datos existentes, o devuelve la que ya existe. Si el CUIT ya está en otra ficha, la sugiere en lugar de duplicarla.
+- `contab_vincular_ficha(_tercero_id uuid, _cliente_id uuid, _proveedor_id uuid)`: une una ficha existente con el otro maestro.
+- Vista de solo lectura `contab_terceros_estado`, que une clientes y proveedores con su ficha (sí/no, CUIT y sugerencia de coincidencia por CUIT). Se crea con permisos del usuario que la consulta (`security_invoker`): admin y contador la ven completa; el resto no ve las fichas.
+
+Permisos: no cambian los de la tabla de fichas (ver y editar admin y contador). Los usuarios operativos siguen sin acceso.
+
+Aplicación:
+- Hook `useTercerosEstado` y pestaña "Terceros" en Contabilidad.
+- En el formulario de comprobantes, el selector de tercero usa la vista y ofrece "crear ficha" si falta.
+
+Verificación del paso:
+- Solo lectura: columnas, índices, restricciones y permisos.
+- Pruebas que siempre se deshacen al final: crear ficha desde cliente, vincular el mismo CUIT como proveedor, rechazar CUIT duplicado, rechazar desvincular con comprobantes, y probar como usuario sin acceso.
+- Antes y después: conteos de clientes, proveedores, obras y del resto de las tablas operativas, idénticos.
+
+Vuelta atrás: quitar el trigger, las funciones, la vista, los índices y las columnas nuevas, solo si no hay fichas con vínculos. Se ejecuta únicamente con tu aprobación.
+
+## Pendientes heredados
 - Concurrencia real con dos sesiones simultáneas.
 - Ingreso con una sesión real de contador.
-- Fechas reales del ejercicio fiscal antes de crear el primer ejercicio.
+- Fechas reales del ejercicio fiscal y fecha de corte del ERP.
 
-## Preguntas antes de ejecutar
-1. Centros principales que usan hoy (ej. Obras, Equipos, Administración, Taller, otros).
-2. ¿Una máquina se imputa siempre a su propio subcentro, o también a la obra donde trabaja ese día?
-3. ¿El reparto analítico es obligatorio para cuentas de resultado (ingresos y gastos) o siempre opcional?
-4. Formato de exportación de CONTAD para clientes y proveedores (columnas disponibles).
+## Preguntas antes de 1B y 1C (no bloquean 1A)
+1. Centros principales que usan hoy (ej. Obras, Equipos, Administración, Taller).
+2. ¿Una máquina se imputa a su propio subcentro, a la obra donde trabaja o a ambos?
+3. ¿El reparto analítico es obligatorio para las cuentas de ingresos y gastos, o siempre opcional?
