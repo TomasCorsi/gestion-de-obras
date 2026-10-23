@@ -331,6 +331,10 @@ Nota sobre la cuenta: desactivar una cuenta con movimientos **confirmados** se p
 
 **Recién en 0B**: quitar escritura directa sobre asientos/líneas/pagos; funciones de confirmación, reversa, numeración, cierre; auditoría; `contab_puede`.
 
+**Funciones contables existentes (verificado en la base)**: `contab_generar_asiento_cbte` y `contab_generar_asiento_pago` son SECURITY DEFINER, propiedad de `postgres`, con EXECUTE para `authenticated` y `service_role`, y validan internamente rol admin/contador. Se re-verifica en el borrador: dueño, `search_path`, EXECUTE de `anon`/`PUBLIC` (debe ser nulo) y que un usuario sin rol reciba "No autorizado".
+
+**Protección transitoria**: distinguir usuario directo de función privilegiada con `current_user` es una medida **provisoria de 0A**. Es válida solo mientras toda función que confirme o revierta sea DEFINER de `postgres`. En 0B se reemplaza por RLS sin escritura directa + `contab_puede(acción)` dentro de cada función; el chequeo de `current_user` queda como segunda barrera.
+
 ## 4. Datos iniciales verificados
 
 Las 9 cuentas existen, imputables y activas (verificado hoy en la base):
@@ -363,7 +367,7 @@ JOIN public.contab_plan_cuentas c ON c.codigo = v.codigo;
 1. Crear borrador con base propia; confirmar que no apunta a producción.
 2. En el borrador: foto previa (estructura de todas las tablas, conteos y suma de control por tabla no contable; definición de funciones y políticas).
 3. Aplicar 0A-1, 0A-2, 0A-3 y la carga de `contab_cuentas_config`.
-4. Pruebas (cada una en transacción con vuelta atrás, como usuario autenticado real admin / contador / remitero / sin rol mediante sesión simulada, y como función privilegiada):
+4. Pruebas (cada una en transacción con vuelta atrás, como usuario autenticado real admin / contador / remitero / sin rol mediante sesión simulada, y como función privilegiada). **Mecanismo de prueba temporal**: las funciones privilegiadas de prueba (`contab_test_confirmar`, `contab_test_revertir`) se crean **dentro de la misma transacción de cada prueba** y desaparecen con su ROLLBACK; nunca se otorga EXECUTE permanente. Al terminar se verifica que no exista ningún `contab_test_%` en el borrador; la guarda del inverso también lo exige. Casos:
    - Superposición de ejercicios y de períodos, incluida **concurrencia con dos conexiones** insertando rangos que se pisan: solo uno prospera.
    - Período fuera del ejercicio; cambiar fechas de ejercicio dejando períodos afuera; reabrir sin motivo; abrir período de ejercicio cerrado.
    - Línea con debe y haber, ambos 0, negativos → rechazo.
