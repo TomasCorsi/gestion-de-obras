@@ -270,14 +270,15 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
 
           <div className="col-span-6">
             <Label>{esVenta ? "Cliente" : "Proveedor"}</Label>
-            <Combobox
+            {isReadOnly ? (
+              <Input value={delRol.find((m) => m.maestro_id === maestroSel)?.nombre ?? ""} disabled />
+            ) : <Combobox
               options={maestrosOpts}
               value={maestroSel}
               onValueChange={elegirMaestro}
               placeholder={esVenta ? "Elegí un cliente" : "Elegí un proveedor"}
               searchPlaceholder="Buscar…"
-              disabled={!!isReadOnly}
-            />
+            />}
             {maestroSel && !terceroId && <p className="text-xs text-destructive mt-1">Falta la ficha fiscal: completala para continuar.</p>}
             {fichaPara && (
               <FichaRapidaDialog maestro={fichaPara} onClose={() => setFichaPara(null)}
