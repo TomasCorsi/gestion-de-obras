@@ -259,7 +259,7 @@ export function CombustibleRepartidorTab() {
   }, [cargas]);
 
   // Build unique option lists from cargas
-  const maquinariaOptions = useMemo(() => {
+  const maquinariaOptions = useMemo((): ComboboxOption[] => {
     const map = new Map<string, string>();
     cargas.forEach((c) => {
       if (c.maquinaria_id && c.maquinaria) {
@@ -268,9 +268,12 @@ export function CombustibleRepartidorTab() {
         if (label) map.set(c.maquinaria_id, label);
       }
     });
-    return Array.from(map.entries())
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
+    return conTodos(
+      Array.from(map.entries())
+        .map(([value, label]) => ({ value, label }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+      "Todas las máquinas"
+    );
   }, [cargas]);
 
   const obraOptions = useMemo(() => {
