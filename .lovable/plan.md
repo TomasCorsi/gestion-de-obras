@@ -223,13 +223,23 @@ BEGIN
     END IF;
     -- Contraasiento espejo exacto
     SELECT COUNT(*) INTO v_dif FROM (
-      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id
+      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, cotizacion, importe_origen, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id
        EXCEPT ALL
-       SELECT cuenta_id, obra_id, maquinaria_id, moneda, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por)
+       SELECT cuenta_id, obra_id, maquinaria_id, moneda, cotizacion, importe_origen, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por)
       UNION ALL
-      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por
+      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, cotizacion, importe_origen, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por
        EXCEPT ALL
-       SELECT cuenta_id, obra_id, maquinaria_id, moneda, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id)
+       SELECT cuenta_id, obra_id, maquinaria_id, moneda, cotizacion, importe_origen, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id)
+    ) d;
+    IF v_dif > 0 THEN RAISE EXCEPTION 'El contraasiento no es exacto'; END IF;
+    IF NOT EXISTS (SELECT 1 FROM public.contab_asientos r WHERE r.id = NEW.revertido_por
+                   AND r.total_debe = OLD.total_haber AND r.total_haber = OLD.total_debe
+                   AND r.ejercicio_id IS NOT NULL) THEN
+      RAISE EXCEPTION 'Totales del contraasiento no coinciden';
+    END IF;
+    PERFORM 1 FROM (SELECT 1 WHERE false) d2 -- marcador: bloque espejo terminado
+    ;
+    SELECT 0 INTO v_dif FROM (SELECT 1) d3
     ) d;
     IF v_dif > 0 THEN RAISE EXCEPTION 'El contraasiento no es exacto'; END IF;
     NEW.version := OLD.version + 1;
