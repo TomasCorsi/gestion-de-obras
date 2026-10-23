@@ -17,6 +17,7 @@ import {
   useContabTerceros, useSaveTercero, useDeleteTercero,
   type ContabEmpresa, type CondIva, type CuentaTipo, type ContabTercero, type TerceroTipo,
 } from "@/hooks/useContabilidad";
+import { TercerosPanel } from "./TercerosPanel";
 
 const COND_IVA: { v: CondIva; l: string }[] = [
   { v: "RI", l: "Responsable Inscripto" },
@@ -38,7 +39,7 @@ export function ConfigTab() {
       </TabsList>
       <TabsContent value="empresa" className="mt-4"><EmpresaForm /></TabsContent>
       <TabsContent value="plan" className="mt-4"><PlanCuentas /></TabsContent>
-      <TabsContent value="terceros" className="mt-4"><Terceros /></TabsContent>
+      <TabsContent value="terceros" className="mt-4"><TercerosPanel /></TabsContent>
     </Tabs>
   );
 }
