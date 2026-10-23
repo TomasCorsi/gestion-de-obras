@@ -379,16 +379,36 @@ JOIN public.contab_plan_cuentas c ON c.codigo = v.codigo;
 
 ## 6. Script inverso de 0A (con guarda)
 
+Se ejecuta como **una sola migración = una sola transacción**: si la guarda aborta o cualquier paso falla, no se revierte nada. La guarda acepta en `contab_cuentas_config` únicamente los 9 registros iniciales exactos (clave + código de cuenta, sin ediciones); cualquier fila distinta o adicional aborta.
+
 ```sql
 DO $$
+DECLARE v_cfg_ok boolean;
 BEGIN
+  SELECT
+    (SELECT COUNT(*) FROM public.contab_cuentas_config) = 9
+    AND NOT EXISTS (
+      SELECT cc.clave, c.codigo FROM public.contab_cuentas_config cc
+        JOIN public.contab_plan_cuentas c ON c.id = cc.cuenta_id
+       WHERE cc.updated_by IS NULL
+      EXCEPT
+      SELECT * FROM (VALUES ('caja','1.1.1.01'),('banco','1.1.1.02'),('deudores','1.1.2.01'),
+        ('iva_cf','1.1.4.01'),('percepciones','1.1.4.02'),('proveedores','2.1.1.01'),
+        ('iva_df','2.1.3.01'),('ventas','4.1.1.01'),('compras','5.1.1.01')) v(clave,codigo))
+    AND (SELECT COUNT(*) FROM public.contab_cuentas_config WHERE updated_by IS NULL) = 9
+  INTO v_cfg_ok;
+  IF (SELECT COUNT(*) FROM public.contab_cuentas_config) > 0 AND NOT v_cfg_ok THEN
+    RAISE EXCEPTION 'Vuelta atrás abortada: la configuración de cuentas fue modificada';
+  END IF;
   IF EXISTS (SELECT 1 FROM public.contab_ejercicios) OR EXISTS (SELECT 1 FROM public.contab_periodos)
      OR EXISTS (SELECT 1 FROM public.contab_asientos WHERE estado <> 'borrador' OR ejercicio_id IS NOT NULL
                 OR periodo_id IS NOT NULL OR numero_ejercicio IS NOT NULL OR origen_id IS NOT NULL
-                OR reversa_de IS NOT NULL OR revertido_por IS NOT NULL OR clave_evento <> 'alta')
+                OR reversa_de IS NOT NULL OR revertido_por IS NOT NULL OR clave_evento <> 'alta'
+                OR confirmado_at IS NOT NULL OR motivo IS NOT NULL)
      OR EXISTS (SELECT 1 FROM public.contab_asiento_lineas WHERE moneda <> 'ARS' OR cotizacion <> 1 OR importe_origen IS NOT NULL)
-     OR EXISTS (SELECT 1 FROM pg_proc WHERE proname IN ('contab_confirmar_asiento','contab_revertir_asiento','contab_puede')) THEN
-    RAISE EXCEPTION 'Vuelta atrás abortada: hay datos contables o fases posteriores aplicadas';
+     OR EXISTS (SELECT 1 FROM pg_proc WHERE proname IN ('contab_confirmar_asiento','contab_revertir_asiento','contab_puede'))
+     OR EXISTS (SELECT 1 FROM pg_proc WHERE proname LIKE 'contab_test_%') THEN
+    RAISE EXCEPTION 'Vuelta atrás abortada: hay datos contables, objetos de prueba o fases posteriores aplicadas';
   END IF;
 END $$;
 DROP TRIGGER trg_contab_cuenta_guarda ON public.contab_plan_cuentas;
