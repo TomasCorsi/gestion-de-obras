@@ -1,55 +1,30 @@
-# Contabilidad – Fase 0: diseño técnico cerrado y SQL definitivo de 0A
+# Contabilidad – Fase 0A: SQL corregido y validación en entorno aislado
 
-Solo Fase 0. No se ejecuta nada hasta tu aprobación explícita de 0A. Ningún objeto fuera de `contab_*` y del tipo de roles se modifica.
+Alcance: solo 0A. Se ejecuta **únicamente en un borrador aislado** (copia del proyecto con base propia, sin datos de producción). Producción no se toca. Al aprobar este plan: creo el borrador, aplico, corro las pruebas y te entrego el informe y el SQL final para que apruebes la publicación.
 
-## 1. División de la fase
+## 1. Correcciones aplicadas
 
-| Sub-fase | Contenido | Toca la app | Riesgo |
-|---|---|---|---|
-| **0A** | Tablas de ejercicios, períodos, cuentas por función; columnas y restricciones de asientos; triggers de inmutabilidad y validación | No | Bajo: tablas contables vacías, cambios aditivos |
-| **0B** | Funciones transaccionales, permisos (RLS), auditoría | No | Medio: cambia quién puede escribir |
-| **0C** | Conexión de la pantalla Contabilidad, diario, mayor, balance de comprobación, validación integral | Solo módulo Contabilidad | Medio |
+| # | Pedido | Solución |
+|---|---|---|
+| 1 | Superposición segura en concurrencia | Restricciones de exclusión `EXCLUDE USING gist (daterange(...) WITH &&)` en ejercicios y períodos (solo rangos: no requiere extensión). La pertenencia del período al ejercicio se valida con bloqueo `FOR SHARE` del ejercicio, y el cambio de fechas del ejercicio toma `FOR UPDATE` y verifica sus períodos. |
+| 2 | Reversa solo por función autorizada y exacta | El trigger rechaza confirmar, revertir o insertar contraasientos si quien ejecuta es un usuario de la app (`authenticated`/`anon`): solo funciones privilegiadas (las actuales y las de 0B). Al marcar revertido verifica que el contraasiento sea espejo exacto (misma cuenta, obra, máquina, moneda e importe, debe↔haber). Ambos asientos quedan. |
+| 3 | Concurrencia en la confirmación | Al confirmar se bloquean: el período (`FOR SHARE`; el cierre usa `FOR UPDATE`), las líneas y sus cuentas (`FOR SHARE`, así no se desactivan a mitad). El trigger de líneas bloquea el asiento padre (`FOR UPDATE`): no se pueden agregar líneas mientras se confirma. Las cuentas con movimientos confirmados no pueden pasar a no imputables ni inactivas (trigger en plan de cuentas). |
+| 4 | Vuelta atrás sin pérdida | El script inverso aborta solo si encuentra cualquier dato en tablas nuevas, cualquier asiento no borrador, cualquier valor en columnas nuevas distinto del default, o cualquier objeto de 0B. |
+| 5 | Numeración | **Se implementa en 0B**, no en 0A. Diseño: dentro de la transacción de confirmación `UPDATE contab_ejercicios SET ultimo_numero = ultimo_numero + 1 ... RETURNING` (bloqueo de fila: serializa), sin huecos porque si la transacción falla el número vuelve; el índice único `(ejercicio_id, numero_ejercicio)` es la red de seguridad. Se probará con dos conexiones simultáneas en 0B. |
+| 6 | Permisos | Ver sección 3. |
+| 7 | Compatibilidad con funciones actuales | Pruebas específicas (sección 5). |
+| 8 | Conteo exacto y datos iniciales | Ver secciones 2.4 y 4. |
 
-Cada sub-fase se ejecuta primero en un **borrador aislado** (copia del proyecto con su propia base, sin datos de producción) y solo después de pasar las pruebas se aplica a producción.
+## 2. SQL corregido
 
-## 2. Backups y recuperación reales en Lovable Cloud
-
-- Backup automático diario, retención de unos 14 días, incluye estructura y datos (no archivos).
-- **No hay recuperación a un momento puntual**: solo a la foto diaria. Restaurar pisa toda la base y se pierde todo lo cargado después (remitos, partes, combustible del día). Por eso **no es la vía de vuelta atrás de una sub-fase**; es último recurso ante desastre.
-- Exportación completa de la base (Más → Base de datos → Administrar → Configuración → Exportar datos), una cada 24 h. Se hace antes de cada sub-fase en producción y se guarda.
-- **Vía principal de vuelta atrás**: script inverso por sub-fase, escrito y probado en el borrador antes de producción (sección 7). Como las tablas contables están vacías y los cambios son aditivos, el script inverso no afecta datos operativos.
-- Se elimina la idea de "bandera para volver al guardado antiguo": era contradictoria con bloquear escrituras directas. La vuelta atrás de 0B/0C es script inverso de base + volver a la versión anterior del código, en ese orden coordinado.
-
-## 3. Matriz de permisos
-
-| Acción | admin | contador | tesorero* | aprobador_pagos* | resto |
-|---|---|---|---|---|---|
-| Leer contabilidad, diario, mayor, balance | Sí | Sí | Sí | Sí | No |
-| Crear/editar borradores (asientos, comprobantes) | Sí | Sí | No | No | No |
-| Confirmar asiento / comprobante | Sí | Sí | No | No | No |
-| Revertir asiento / anular comprobante | Sí | Sí | No | No | No |
-| Registrar pago o cobro | Sí | Sí | Sí | No | No |
-| Aprobar pagos (Fase 4) | Sí | No | No | Sí | No |
-| Abrir/cerrar períodos y ejercicios | Sí | No | No | No | No |
-| Reabrir período cerrado | Sí (con motivo, auditado) | No | No | No | No |
-| Configurar cuentas por función y plan de cuentas | Sí | No | No | No | No |
-| Escribir directo en asientos/líneas/auditoría | **Nadie** (solo funciones) | | | | |
-| Leer auditoría | Sí | Sí | No | No | No |
-
-*Roles nuevos, sin usuarios asignados en Fase 0.
-
-## 4. SQL definitivo de 0A
-
-Tres migraciones, en este orden. No incluyen políticas de escritura (las tablas nuevas quedan legibles para admin/contador y sin escritura directa hasta 0B; las existentes conservan sus políticas actuales).
-
-### 0A-1 Roles (migración aparte: un valor nuevo de tipo no puede usarse en la misma transacción)
+### 2.1 Migración 0A-1 (aparte por regla de Postgres sobre valores nuevos de tipo)
 
 ```sql
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'tesorero';
 ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'aprobador_pagos';
 ```
 
-### 0A-2 Ejercicios, períodos y cuentas por función
+### 2.2 Migración 0A-2: ejercicios, períodos, cuentas por función
 
 ```sql
 CREATE TABLE public.contab_ejercicios (
@@ -57,86 +32,93 @@ CREATE TABLE public.contab_ejercicios (
   nombre text NOT NULL,
   fecha_desde date NOT NULL,
   fecha_hasta date NOT NULL,
-  estado text NOT NULL DEFAULT 'abierto' CHECK (estado IN ('abierto','cerrado')),
-  ultimo_numero bigint NOT NULL DEFAULT 0 CHECK (ultimo_numero >= 0),
+  estado text NOT NULL DEFAULT 'abierto',
+  ultimo_numero bigint NOT NULL DEFAULT 0,
   cerrado_at timestamptz,
   cerrado_por uuid,
   created_at timestamptz NOT NULL DEFAULT now(),
   created_by uuid,
+  CONSTRAINT chk_ejercicio_estado CHECK (estado IN ('abierto','cerrado')),
   CONSTRAINT chk_ejercicio_rango CHECK (fecha_hasta > fecha_desde),
-  CONSTRAINT uq_ejercicio_desde UNIQUE (fecha_desde)
+  CONSTRAINT chk_ejercicio_numero CHECK (ultimo_numero >= 0),
+  CONSTRAINT ex_ejercicio_superpuesto EXCLUDE USING gist (daterange(fecha_desde, fecha_hasta, '[]') WITH &&)
 );
 
 CREATE TABLE public.contab_periodos (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   ejercicio_id uuid NOT NULL REFERENCES public.contab_ejercicios(id) ON DELETE RESTRICT,
   anio integer NOT NULL,
-  mes integer NOT NULL CHECK (mes BETWEEN 1 AND 12),
+  mes integer NOT NULL,
   fecha_desde date NOT NULL,
   fecha_hasta date NOT NULL,
-  estado text NOT NULL DEFAULT 'abierto' CHECK (estado IN ('abierto','cerrado')),
+  estado text NOT NULL DEFAULT 'abierto',
   cerrado_at timestamptz,
   cerrado_por uuid,
   reabierto_at timestamptz,
   reabierto_por uuid,
   motivo_reapertura text,
+  CONSTRAINT chk_periodo_estado CHECK (estado IN ('abierto','cerrado')),
+  CONSTRAINT chk_periodo_mes CHECK (mes BETWEEN 1 AND 12),
   CONSTRAINT chk_periodo_rango CHECK (fecha_hasta >= fecha_desde),
   CONSTRAINT uq_periodo UNIQUE (ejercicio_id, anio, mes),
-  CONSTRAINT uq_periodo_desde UNIQUE (fecha_desde)
+  CONSTRAINT ex_periodo_superpuesto EXCLUDE USING gist (daterange(fecha_desde, fecha_hasta, '[]') WITH &&)
 );
-CREATE INDEX idx_contab_periodos_fechas ON public.contab_periodos (fecha_desde, fecha_hasta);
 
 CREATE TABLE public.contab_cuentas_config (
-  clave text PRIMARY KEY CHECK (clave ~ '^[a-z_]+$'),
+  clave text PRIMARY KEY,
   cuenta_id uuid NOT NULL REFERENCES public.contab_plan_cuentas(id) ON DELETE RESTRICT,
   descripcion text,
   updated_at timestamptz NOT NULL DEFAULT now(),
-  updated_by uuid
+  updated_by uuid,
+  CONSTRAINT chk_cuentas_config_clave CHECK (clave ~ '^[a-z_]+$')
 );
 
--- Sin superposición de ejercicios y períodos dentro de su ejercicio
-CREATE OR REPLACE FUNCTION public.contab_trg_ejercicio_valida()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM public.contab_ejercicios e
-             WHERE e.id <> NEW.id
-               AND daterange(e.fecha_desde, e.fecha_hasta, '[]') && daterange(NEW.fecha_desde, NEW.fecha_hasta, '[]')) THEN
-    RAISE EXCEPTION 'El ejercicio se superpone con otro';
-  END IF;
-  IF TG_OP = 'UPDATE' AND OLD.estado = 'cerrado' AND NEW.estado = 'cerrado'
-     AND (NEW.fecha_desde, NEW.fecha_hasta) IS DISTINCT FROM (OLD.fecha_desde, OLD.fecha_hasta) THEN
-    RAISE EXCEPTION 'No se pueden cambiar las fechas de un ejercicio cerrado';
-  END IF;
-  RETURN NEW;
-END $$;
-CREATE TRIGGER trg_contab_ejercicio_valida BEFORE INSERT OR UPDATE ON public.contab_ejercicios
-  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_ejercicio_valida();
-
-CREATE OR REPLACE FUNCTION public.contab_trg_periodo_valida()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+-- Período dentro de su ejercicio; reglas de cierre y reapertura
+CREATE FUNCTION public.contab_trg_periodo_valida()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 DECLARE e public.contab_ejercicios%ROWTYPE;
 BEGIN
-  SELECT * INTO e FROM public.contab_ejercicios WHERE id = NEW.ejercicio_id;
+  SELECT * INTO e FROM public.contab_ejercicios WHERE id = NEW.ejercicio_id FOR SHARE;
   IF NEW.fecha_desde < e.fecha_desde OR NEW.fecha_hasta > e.fecha_hasta THEN
     RAISE EXCEPTION 'El período está fuera del ejercicio';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.contab_periodos p
-             WHERE p.id <> NEW.id
-               AND daterange(p.fecha_desde, p.fecha_hasta, '[]') && daterange(NEW.fecha_desde, NEW.fecha_hasta, '[]')) THEN
-    RAISE EXCEPTION 'El período se superpone con otro';
-  END IF;
-  IF TG_OP = 'UPDATE' AND (NEW.fecha_desde, NEW.fecha_hasta, NEW.ejercicio_id)
-        IS DISTINCT FROM (OLD.fecha_desde, OLD.fecha_hasta, OLD.ejercicio_id)
-     AND EXISTS (SELECT 1 FROM public.contab_asientos a WHERE a.periodo_id = OLD.id) THEN
-    RAISE EXCEPTION 'El período tiene asientos: no se pueden cambiar sus fechas';
-  END IF;
-  IF e.estado = 'cerrado' AND NEW.estado = 'abierto' AND (TG_OP = 'INSERT' OR OLD.estado = 'cerrado') THEN
-    RAISE EXCEPTION 'No se puede abrir un período de un ejercicio cerrado';
+  IF TG_OP = 'UPDATE' THEN
+    IF (NEW.ejercicio_id, NEW.fecha_desde, NEW.fecha_hasta) IS DISTINCT FROM (OLD.ejercicio_id, OLD.fecha_desde, OLD.fecha_hasta)
+       AND EXISTS (SELECT 1 FROM public.contab_asientos a WHERE a.periodo_id = OLD.id) THEN
+      RAISE EXCEPTION 'El período tiene asientos: no se pueden cambiar sus fechas';
+    END IF;
+    IF OLD.estado = 'cerrado' AND NEW.estado = 'abierto' THEN
+      IF e.estado = 'cerrado' THEN RAISE EXCEPTION 'El ejercicio está cerrado'; END IF;
+      IF NEW.motivo_reapertura IS NULL OR NEW.reabierto_por IS NULL THEN
+        RAISE EXCEPTION 'Reabrir un período exige motivo y responsable';
+      END IF;
+    END IF;
+  ELSIF e.estado = 'cerrado' THEN
+    RAISE EXCEPTION 'El ejercicio está cerrado';
   END IF;
   RETURN NEW;
 END $$;
 CREATE TRIGGER trg_contab_periodo_valida BEFORE INSERT OR UPDATE ON public.contab_periodos
   FOR EACH ROW EXECUTE FUNCTION public.contab_trg_periodo_valida();
+
+-- Cambio de fechas del ejercicio: no puede dejar períodos afuera
+CREATE FUNCTION public.contab_trg_ejercicio_valida()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+BEGIN
+  IF (NEW.fecha_desde, NEW.fecha_hasta) IS DISTINCT FROM (OLD.fecha_desde, OLD.fecha_hasta) THEN
+    IF OLD.estado = 'cerrado' THEN RAISE EXCEPTION 'Ejercicio cerrado: no se cambian sus fechas'; END IF;
+    IF EXISTS (SELECT 1 FROM public.contab_periodos p WHERE p.ejercicio_id = OLD.id
+               AND (p.fecha_desde < NEW.fecha_desde OR p.fecha_hasta > NEW.fecha_hasta)) THEN
+      RAISE EXCEPTION 'Hay períodos fuera del nuevo rango del ejercicio';
+    END IF;
+  END IF;
+  IF NEW.ultimo_numero < OLD.ultimo_numero THEN RAISE EXCEPTION 'La numeración no puede retroceder'; END IF;
+  RETURN NEW;
+END $$;
+CREATE TRIGGER trg_contab_ejercicio_valida BEFORE UPDATE ON public.contab_ejercicios
+  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_ejercicio_valida();
+
+REVOKE ALL ON FUNCTION public.contab_trg_periodo_valida(), public.contab_trg_ejercicio_valida() FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT ON public.contab_ejercicios, public.contab_periodos, public.contab_cuentas_config TO authenticated;
 GRANT ALL ON public.contab_ejercicios, public.contab_periodos, public.contab_cuentas_config TO service_role;
@@ -149,13 +131,11 @@ CREATE POLICY contab_periodos_select ON public.contab_periodos FOR SELECT TO aut
   USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'contador'));
 CREATE POLICY contab_cuentas_config_select ON public.contab_cuentas_config FOR SELECT TO authenticated
   USING (public.has_role(auth.uid(),'admin') OR public.has_role(auth.uid(),'contador'));
--- Sin políticas de escritura: solo funciones de 0B podrán escribir.
 ```
 
-### 0A-3 Asientos y líneas: columnas, restricciones e inmutabilidad
+### 2.3 Migración 0A-3: asientos, líneas, cuentas
 
 ```sql
--- Asientos
 ALTER TABLE public.contab_asientos
   ADD COLUMN ejercicio_id uuid REFERENCES public.contab_ejercicios(id) ON DELETE RESTRICT,
   ADD COLUMN periodo_id uuid REFERENCES public.contab_periodos(id) ON DELETE RESTRICT,
@@ -174,26 +154,22 @@ ALTER TABLE public.contab_asientos
 ALTER TABLE public.contab_asientos
   ADD CONSTRAINT chk_asiento_estado CHECK (estado IN ('borrador','confirmado','revertido')),
   ADD CONSTRAINT chk_asiento_origen CHECK ((origen_tipo IS NULL) = (origen_id IS NULL)),
-  ADD CONSTRAINT chk_asiento_confirmado CHECK (
-    estado = 'borrador' OR (ejercicio_id IS NOT NULL AND periodo_id IS NOT NULL
-                            AND numero_ejercicio IS NOT NULL AND confirmado_at IS NOT NULL)),
+  ADD CONSTRAINT chk_asiento_confirmado CHECK (estado = 'borrador' OR (ejercicio_id IS NOT NULL
+      AND periodo_id IS NOT NULL AND numero_ejercicio IS NOT NULL AND confirmado_at IS NOT NULL)),
   ADD CONSTRAINT chk_asiento_reversa_propia CHECK (reversa_de IS NULL OR reversa_de <> id),
   ADD CONSTRAINT chk_asiento_revertido CHECK ((estado = 'revertido') = (revertido_por IS NOT NULL)),
   ADD CONSTRAINT chk_asiento_reversa_clave CHECK (reversa_de IS NULL OR clave_evento = 'reversa:' || reversa_de::text);
 
 CREATE UNIQUE INDEX uq_contab_asiento_numero ON public.contab_asientos (ejercicio_id, numero_ejercicio)
   WHERE numero_ejercicio IS NOT NULL;
--- Un solo asiento vigente por hecho: (documento, evento). Los ajustes usan clave 'ajuste:<id del ajuste>'
 CREATE UNIQUE INDEX uq_contab_asiento_origen_evento ON public.contab_asientos (origen_tipo, origen_id, clave_evento)
   WHERE origen_id IS NOT NULL AND estado IN ('borrador','confirmado');
--- Un asiento solo puede revertirse una vez
 CREATE UNIQUE INDEX uq_contab_asiento_reversa ON public.contab_asientos (reversa_de) WHERE reversa_de IS NOT NULL;
 CREATE INDEX idx_contab_asientos_periodo ON public.contab_asientos (periodo_id, fecha);
 
--- Líneas: montos obligatorios, uno y solo uno positivo, moneda
 ALTER TABLE public.contab_asiento_lineas ALTER COLUMN debe SET DEFAULT 0, ALTER COLUMN haber SET DEFAULT 0;
 UPDATE public.contab_asiento_lineas SET debe = COALESCE(debe,0), haber = COALESCE(haber,0)
-  WHERE debe IS NULL OR haber IS NULL;  -- tabla vacía hoy; respaldo por si acaso
+  WHERE debe IS NULL OR haber IS NULL;
 ALTER TABLE public.contab_asiento_lineas ALTER COLUMN debe SET NOT NULL, ALTER COLUMN haber SET NOT NULL;
 ALTER TABLE public.contab_asiento_lineas
   ADD COLUMN moneda text NOT NULL DEFAULT 'ARS',
@@ -201,22 +177,29 @@ ALTER TABLE public.contab_asiento_lineas
   ADD COLUMN importe_origen numeric(18,2),
   ADD CONSTRAINT chk_linea_montos CHECK (debe >= 0 AND haber >= 0 AND ((debe > 0) <> (haber > 0))),
   ADD CONSTRAINT chk_linea_cotizacion CHECK (cotizacion > 0);
--- No se puede borrar una cuenta con movimientos
 ALTER TABLE public.contab_asiento_lineas DROP CONSTRAINT contab_asiento_lineas_cuenta_id_fkey;
-ALTER TABLE public.contab_asiento_lineas
-  ADD CONSTRAINT contab_asiento_lineas_cuenta_id_fkey FOREIGN KEY (cuenta_id)
-  REFERENCES public.contab_plan_cuentas(id) ON DELETE RESTRICT;
+ALTER TABLE public.contab_asiento_lineas ADD CONSTRAINT contab_asiento_lineas_cuenta_id_fkey
+  FOREIGN KEY (cuenta_id) REFERENCES public.contab_plan_cuentas(id) ON DELETE RESTRICT;
 CREATE INDEX idx_contab_lineas_cuenta ON public.contab_asiento_lineas (cuenta_id);
 
--- Guardia de asientos
-CREATE OR REPLACE FUNCTION public.contab_trg_asiento_guarda()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+-- ¿Ejecuta un usuario de la app (y no una función privilegiada)?
+-- Las funciones privilegiadas corren como su dueño; un usuario directo corre como authenticated/anon.
+CREATE FUNCTION public.contab_es_usuario_directo()
+RETURNS boolean LANGUAGE sql STABLE SET search_path = public, pg_temp AS $$
+  SELECT current_user IN ('authenticated','anon')
+$$;
+
+CREATE FUNCTION public.contab_trg_asiento_guarda()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 DECLARE
   v_per public.contab_periodos%ROWTYPE;
-  v_debe numeric; v_haber numeric; v_malas integer; v_sin integer;
+  v_debe numeric; v_haber numeric; v_malas integer; v_dif integer;
 BEGIN
   IF TG_OP = 'INSERT' THEN
     IF NEW.estado <> 'borrador' THEN RAISE EXCEPTION 'Un asiento nace en borrador'; END IF;
+    IF NEW.reversa_de IS NOT NULL AND public.contab_es_usuario_directo() THEN
+      RAISE EXCEPTION 'Los contraasientos solo se generan con la función de reversa';
+    END IF;
     RETURN NEW;
   END IF;
 
@@ -225,38 +208,53 @@ BEGIN
     RETURN OLD;
   END IF;
 
-  -- UPDATE
-  IF OLD.estado = 'revertido' THEN
-    RAISE EXCEPTION 'Asiento revertido: no admite cambios';
-  END IF;
+  IF OLD.estado = 'revertido' THEN RAISE EXCEPTION 'Asiento revertido: no admite cambios'; END IF;
 
   IF OLD.estado = 'confirmado' THEN
-    -- Única transición permitida: marcar revertido, con un contraasiento confirmado real
+    IF public.contab_es_usuario_directo() THEN
+      RAISE EXCEPTION 'Asiento confirmado: solo la función de reversa puede marcarlo';
+    END IF;
     IF NEW.estado <> 'revertido' OR NEW.revertido_por IS NULL
-       OR (to_jsonb(NEW) - ARRAY['estado','revertido_por','updated_at'])
-          IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['estado','revertido_por','updated_at'])
+       OR (to_jsonb(NEW) - ARRAY['estado','revertido_por','updated_at','version'])
+          IS DISTINCT FROM (to_jsonb(OLD) - ARRAY['estado','revertido_por','updated_at','version'])
        OR NOT EXISTS (SELECT 1 FROM public.contab_asientos r
                       WHERE r.id = NEW.revertido_por AND r.reversa_de = OLD.id AND r.estado = 'confirmado') THEN
       RAISE EXCEPTION 'Asiento confirmado: solo puede revertirse mediante contraasiento';
     END IF;
+    -- Contraasiento espejo exacto
+    SELECT COUNT(*) INTO v_dif FROM (
+      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id
+       EXCEPT ALL
+       SELECT cuenta_id, obra_id, maquinaria_id, moneda, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por)
+      UNION ALL
+      (SELECT cuenta_id, obra_id, maquinaria_id, moneda, haber, debe FROM public.contab_asiento_lineas WHERE asiento_id = NEW.revertido_por
+       EXCEPT ALL
+       SELECT cuenta_id, obra_id, maquinaria_id, moneda, debe, haber FROM public.contab_asiento_lineas WHERE asiento_id = OLD.id)
+    ) d;
+    IF v_dif > 0 THEN RAISE EXCEPTION 'El contraasiento no es exacto'; END IF;
+    NEW.version := OLD.version + 1;
     RETURN NEW;
   END IF;
 
   -- OLD borrador
   IF NEW.estado = 'revertido' THEN RAISE EXCEPTION 'Un borrador no se revierte, se borra'; END IF;
   IF NEW.estado = 'confirmado' THEN
-    SELECT * INTO v_per FROM public.contab_periodos WHERE id = NEW.periodo_id;
+    IF public.contab_es_usuario_directo() THEN
+      RAISE EXCEPTION 'La confirmación se hace solo con la función autorizada';
+    END IF;
+    SELECT * INTO v_per FROM public.contab_periodos WHERE id = NEW.periodo_id FOR SHARE;
     IF v_per.id IS NULL OR v_per.estado <> 'abierto' THEN RAISE EXCEPTION 'Período cerrado o inexistente'; END IF;
-    IF NEW.fecha < v_per.fecha_desde OR NEW.fecha > v_per.fecha_hasta THEN RAISE EXCEPTION 'La fecha no corresponde al período'; END IF;
     IF v_per.ejercicio_id <> NEW.ejercicio_id THEN RAISE EXCEPTION 'Período y ejercicio no coinciden'; END IF;
+    IF NEW.fecha < v_per.fecha_desde OR NEW.fecha > v_per.fecha_hasta THEN RAISE EXCEPTION 'La fecha no corresponde al período'; END IF;
+    PERFORM 1 FROM public.contab_plan_cuentas c
+      WHERE c.id IN (SELECT cuenta_id FROM public.contab_asiento_lineas WHERE asiento_id = NEW.id) FOR SHARE;
     SELECT COALESCE(SUM(debe),0), COALESCE(SUM(haber),0) INTO v_debe, v_haber
       FROM public.contab_asiento_lineas WHERE asiento_id = NEW.id;
     IF v_debe = 0 OR v_debe <> v_haber THEN RAISE EXCEPTION 'Asiento descuadrado: debe % / haber %', v_debe, v_haber; END IF;
-    SELECT COUNT(*) INTO v_sin FROM public.contab_asiento_lineas WHERE asiento_id = NEW.id AND cuenta_id IS NULL;
     SELECT COUNT(*) INTO v_malas FROM public.contab_asiento_lineas l
-      JOIN public.contab_plan_cuentas c ON c.id = l.cuenta_id
-      WHERE l.asiento_id = NEW.id AND (NOT c.imputable OR NOT c.activa);
-    IF v_sin > 0 OR v_malas > 0 THEN RAISE EXCEPTION 'Hay líneas sin cuenta o con cuentas no imputables/inactivas'; END IF;
+      LEFT JOIN public.contab_plan_cuentas c ON c.id = l.cuenta_id
+      WHERE l.asiento_id = NEW.id AND (c.id IS NULL OR NOT c.imputable OR NOT c.activa);
+    IF v_malas > 0 THEN RAISE EXCEPTION 'Hay líneas sin cuenta o con cuentas no imputables/inactivas'; END IF;
     NEW.total_debe := v_debe; NEW.total_haber := v_haber;
   END IF;
   NEW.version := OLD.version + 1;
@@ -265,16 +263,16 @@ END $$;
 CREATE TRIGGER trg_contab_asiento_guarda BEFORE INSERT OR UPDATE OR DELETE ON public.contab_asientos
   FOR EACH ROW EXECUTE FUNCTION public.contab_trg_asiento_guarda();
 
--- Guardia de líneas: solo se tocan mientras el asiento es borrador
-CREATE OR REPLACE FUNCTION public.contab_trg_linea_guarda()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
-DECLARE v_estado text;
+CREATE FUNCTION public.contab_trg_linea_guarda()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+DECLARE v_estado text; v_id uuid;
 BEGIN
-  SELECT estado INTO v_estado FROM public.contab_asientos
-   WHERE id = CASE WHEN TG_OP = 'DELETE' THEN OLD.asiento_id ELSE NEW.asiento_id END;
   IF TG_OP = 'UPDATE' AND NEW.asiento_id <> OLD.asiento_id THEN
     RAISE EXCEPTION 'Una línea no puede cambiar de asiento';
   END IF;
+  v_id := CASE WHEN TG_OP = 'DELETE' THEN OLD.asiento_id ELSE NEW.asiento_id END;
+  SELECT estado INTO v_estado FROM public.contab_asientos WHERE id = v_id FOR UPDATE;
+  -- v_estado nulo: el asiento borrador se está borrando en cascada
   IF v_estado IS NOT NULL AND v_estado <> 'borrador' THEN
     RAISE EXCEPTION 'El asiento está confirmado: sus líneas no se modifican';
   END IF;
@@ -283,99 +281,141 @@ END $$;
 CREATE TRIGGER trg_contab_linea_guarda BEFORE INSERT OR UPDATE OR DELETE ON public.contab_asiento_lineas
   FOR EACH ROW EXECUTE FUNCTION public.contab_trg_linea_guarda();
 
--- Períodos cerrados: no se cambia el estado de control salvo reapertura (función de 0B, solo admin)
-CREATE OR REPLACE FUNCTION public.contab_trg_periodo_cierre()
-RETURNS trigger LANGUAGE plpgsql SET search_path = public AS $$
+-- Cuentas con movimientos confirmados no pierden su condición de imputable/activa
+CREATE FUNCTION public.contab_trg_cuenta_guarda()
+RETURNS trigger LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
 BEGIN
-  IF OLD.estado = 'cerrado' AND NEW.estado = 'abierto'
-     AND (NEW.motivo_reapertura IS NULL OR NEW.reabierto_por IS NULL) THEN
-    RAISE EXCEPTION 'Reabrir un período exige motivo y responsable';
+  IF (OLD.imputable AND NOT NEW.imputable) OR (OLD.activa AND NOT NEW.activa) THEN
+    IF EXISTS (SELECT 1 FROM public.contab_asiento_lineas l
+               JOIN public.contab_asientos a ON a.id = l.asiento_id
+               WHERE l.cuenta_id = OLD.id AND a.estado = 'borrador') THEN
+      RAISE EXCEPTION 'La cuenta está en asientos borrador: quitela de ellos primero';
+    END IF;
   END IF;
   RETURN NEW;
 END $$;
-CREATE TRIGGER trg_contab_periodo_cierre BEFORE UPDATE ON public.contab_periodos
-  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_periodo_cierre();
+CREATE TRIGGER trg_contab_cuenta_guarda BEFORE UPDATE ON public.contab_plan_cuentas
+  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_cuenta_guarda();
+
+REVOKE ALL ON FUNCTION public.contab_trg_asiento_guarda(), public.contab_trg_linea_guarda(),
+  public.contab_trg_cuenta_guarda() FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.contab_es_usuario_directo() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.contab_es_usuario_directo() TO authenticated;
 ```
 
-**Por qué no rompe lo existente**: las funciones actuales `contab_generar_asiento_cbte/pago` insertan asientos sin estado → quedan en borrador y siguen funcionando hasta que 0C las reemplace; sus líneas cargan solo debe o solo haber, compatible con la nueva regla. La numeración global (`numero`) se conserva; la correlativa por ejercicio se agrega.
+Nota sobre la cuenta: desactivar una cuenta con movimientos **confirmados** se permite (historial intacto, no admite nuevos); lo que se bloquea es desactivarla mientras haya borradores que la usan, para no dejar asientos imposibles de confirmar. Confirmar con cuenta inactiva igual falla por el bloqueo `FOR SHARE` + validación.
 
-**Datos iniciales (después de 0A, con la herramienta de datos, no en la migración)**: cargar `contab_cuentas_config` con los 7 códigos que hoy están fijos en las funciones (deudores 1.1.2.01, proveedores 2.1.1.01, iva_cf 1.1.4.01, iva_df 2.1.3.01, percepciones 1.1.4.02, ventas 4.1.1.01, compras 5.1.1.01, caja 1.1.1.01, banco 1.1.1.02). Ejercicio y períodos los crea el admin desde la pantalla en 0C.
+### 2.4 Inventario exacto de 0A
 
-**Objetos que crea/modifica 0A**: 3 tablas nuevas, 4 funciones de trigger nuevas, 5 triggers, 13 columnas en asientos, 3 en líneas, 7 restricciones, 5 índices, 1 FK recreada, 2 valores de rol. **Riesgos**: el cambio de FK y NOT NULL bloquea brevemente la tabla de líneas (vacía); ningún objeto operativo afectado.
+- Valores de rol: 2.
+- Tablas nuevas: 3.
+- Columnas nuevas: 13 en asientos, 3 en líneas. Columnas modificadas: `debe`, `haber` (default 0, NOT NULL).
+- Restricciones nuevas: ejercicios 4 (estado, rango, número, exclusión); períodos 5 (estado, mes, rango, único, exclusión); config 1 (clave); asientos 6 CHECK + 4 FK (ejercicio, período, reversa_de, revertido_por); líneas 2 CHECK; 1 FK recreada (cuenta, RESTRICT). Más 2 FK de tablas nuevas (período→ejercicio, config→cuenta).
+- Índices nuevos: 4 en asientos (3 únicos parciales + 1), 1 en líneas; más los implícitos de PK, único y exclusión de las tablas nuevas.
+- Funciones nuevas: 6 (`contab_es_usuario_directo` + 5 de trigger).
+- Triggers nuevos: 5 (períodos, ejercicios, asientos, líneas, plan de cuentas).
+- Políticas nuevas: 3 de lectura. Políticas existentes: sin cambios.
 
-## 5. Diseño de 0B (SQL definitivo se presenta antes de ejecutarla)
+## 3. Permisos activos
 
-**INVOKER vs DEFINER**
+**En 0A**
+- Tablas nuevas: SELECT para authenticated filtrado por RLS a admin/contador; sin INSERT/UPDATE/DELETE para usuarios (ni GRANT ni política). Escritura solo service_role y funciones privilegiadas.
+- Tablas existentes `contab_*`: **mantienen sus políticas actuales** (el contador aún puede escribir directo), pero los triggers ya impiden: confirmar o revertir desde un usuario directo, editar o borrar confirmados, crear contraasientos a mano.
+- Funciones de trigger: sin EXECUTE para nadie (además no son invocables por la API).
+- `contab_generar_asiento_cbte/pago`: siguen con EXECUTE para authenticated y su verificación interna admin/contador (sin cambios).
 
-| Función | Tipo | Motivo |
+**Recién en 0B**: quitar escritura directa sobre asientos/líneas/pagos; funciones de confirmación, reversa, numeración, cierre; auditoría; `contab_puede`.
+
+## 4. Datos iniciales verificados
+
+Las 9 cuentas existen, imputables y activas (verificado hoy en la base):
+
+| clave | código | cuenta |
 |---|---|---|
-| `contab_puede(accion)` | DEFINER, STABLE | Lee `user_roles` sin depender de su RLS |
-| Vistas de diario, mayor, balance, controles | `security_invoker` | Respetan la RLS de lectura de quien consulta |
-| `contab_guardar_asiento_borrador`, `contab_confirmar_asiento`, `contab_revertir_asiento` | DEFINER | Asientos y líneas no tienen escritura directa para nadie |
-| `contab_guardar_comprobante`, `contab_confirmar_comprobante`, `contab_anular_comprobante` | DEFINER | Generan asientos |
-| `contab_registrar_pago`, `contab_revertir_pago` | DEFINER | Generan asientos y cambian saldos |
-| `contab_abrir_ejercicio`, `contab_cerrar_periodo`, `contab_reabrir_periodo`, `contab_set_cuenta_config` | DEFINER | Tablas sin escritura directa |
-| Funciones de trigger de guardia | INVOKER (sin privilegio propio) | Solo validan |
-| Trigger de auditoría | DEFINER | Única vía de escritura de la auditoría |
-| `contab_generar_asiento_cbte/pago` (viejas) | Se reemplazan por envoltorios que llaman a las nuevas | Compatibilidad |
+| caja | 1.1.1.01 | Caja en pesos |
+| banco | 1.1.1.02 | Banco cuenta corriente |
+| deudores | 1.1.2.01 | Deudores por Ventas |
+| iva_cf | 1.1.4.01 | IVA Crédito Fiscal |
+| percepciones | 1.1.4.02 | Percepciones a Recuperar |
+| proveedores | 2.1.1.01 | Proveedores |
+| iva_df | 2.1.3.01 | IVA Débito Fiscal |
+| ventas | 4.1.1.01 | Ventas de Servicios |
+| compras | 5.1.1.01 | Compras de Mercaderías |
 
-**Reglas comunes de toda función DEFINER**: `SET search_path = public, pg_temp`; primera línea `IF NOT contab_puede('<acción>') THEN RAISE`; valida que el registro exista, su estado y su versión (`FOR UPDATE`); nombres de tablas calificados; `REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon; GRANT EXECUTE ... TO authenticated`. Las funciones de trigger y helpers internos sin EXECUTE para authenticated.
+Carga (con la herramienta de datos, no en la migración):
+```sql
+INSERT INTO public.contab_cuentas_config (clave, cuenta_id, descripcion)
+SELECT v.clave, c.id, c.nombre FROM (VALUES
+ ('caja','1.1.1.01'),('banco','1.1.1.02'),('deudores','1.1.2.01'),('iva_cf','1.1.4.01'),
+ ('percepciones','1.1.4.02'),('proveedores','2.1.1.01'),('iva_df','2.1.3.01'),
+ ('ventas','4.1.1.01'),('compras','5.1.1.01')) v(clave,codigo)
+JOIN public.contab_plan_cuentas c ON c.codigo = v.codigo;
+-- verificación: deben ser 9 filas
+```
 
-**RLS después de 0B**: lectura por `contab_puede('leer')`; asientos, líneas, auditoría, ejercicios, períodos y configuración sin INSERT/UPDATE/DELETE para usuarios; comprobantes e ítems: escritura directa solo si `estado = 'borrador'` y `contab_puede('registrar')`; pagos: solo vía función. Se quita al contador el permiso actual de editar/borrar asientos.
+## 5. Ejecución en el borrador aislado (al aprobar)
 
-**Reversas**
-- `contab_revertir_asiento(id, motivo, fecha)` bloquea el original (`FOR UPDATE`), exige `confirmado`, inserta contraasiento con líneas invertidas y `reversa_de`, lo confirma y marca el original `revertido`. El índice único sobre `reversa_de` impide una segunda reversa incluso en concurrencia.
-- **Original en período cerrado**: el original no se toca (salvo su marca de control); el contraasiento se fecha en el **primer período abierto** (por defecto la fecha de hoy). No hace falta reabrir. Reabrir es una excepción solo admin, con motivo, auditada.
-- Informes: muestran original y contraasiento cada uno en su fecha y período; el balance de un período cerrado no cambia por reversas posteriores.
+1. Crear borrador con base propia; confirmar que no apunta a producción.
+2. En el borrador: foto previa (estructura de todas las tablas, conteos y suma de control por tabla no contable; definición de funciones y políticas).
+3. Aplicar 0A-1, 0A-2, 0A-3 y la carga de `contab_cuentas_config`.
+4. Pruebas (cada una en transacción con vuelta atrás, como usuario autenticado real admin / contador / remitero / sin rol mediante sesión simulada, y como función privilegiada):
+   - Superposición de ejercicios y de períodos, incluida **concurrencia con dos conexiones** insertando rangos que se pisan: solo uno prospera.
+   - Período fuera del ejercicio; cambiar fechas de ejercicio dejando períodos afuera; reabrir sin motivo; abrir período de ejercicio cerrado.
+   - Línea con debe y haber, ambos 0, negativos → rechazo.
+   - Confirmar desde usuario directo → rechazo. Confirmar desde función privilegiada: descuadrado, sin cuenta, cuenta no imputable/inactiva, período cerrado, fecha fuera → rechazo; correcto → acepta y actualiza totales.
+   - **Concurrencia**: confirmar en una conexión mientras otra agrega una línea o desactiva la cuenta → la segunda espera y luego falla, sin dejar asiento inconsistente.
+   - Editar/borrar asiento o línea confirmados → rechazo. Insertar contraasiento desde usuario → rechazo. Marcar revertido con contraasiento no exacto → rechazo; exacto → acepta; segunda reversa → rechazo por índice.
+   - Mismo origen+evento dos veces → rechazo; reversa y nuevo alta del mismo origen → acepta; dos ajustes con claves distintas → acepta.
+   - Borrar cuenta con movimientos → rechazo.
+   - **Compatibilidad**: como admin, crear comprobante de compra y de venta con ítems y llamar `contab_generar_asiento_cbte`; registrar pago y llamar `contab_generar_asiento_pago` (efectivo y transferencia, cobro y pago). Esperado: asientos en borrador, líneas válidas, estados de comprobante actualizados, sin errores. Probar también con contador y con usuario sin rol (debe fallar como hoy).
+5. Foto posterior y comparación: tablas no contables idénticas en estructura, conteos y sumas.
+6. **Prueba del script inverso**: (a) con datos de prueba presentes → debe abortar sin cambios; (b) limpio → revierte todo; comparar con la foto previa (idéntico salvo los 2 valores de rol); (c) volver a aplicar 0A → mismo resultado.
+7. Informe: migraciones y resultado, pruebas aprobadas/fallidas, compatibilidad, módulos operativos sin cambios, resultado del inverso, riesgos pendientes y SQL final para aprobar publicación.
 
-**Comprobantes con pagos parciales**
-- Anular una factura con pagos vigentes **se rechaza**. Opciones: (a) revertir primero los pagos (cada uno con su contraasiento; vuelve el saldo) y luego anular; (b) emitir nota de crédito por el saldo o por el total y aplicarla.
-- Anular revierte el asiento del comprobante una sola vez (índice de reversa) y marca anulado en la misma transacción; una segunda anulación falla porque el estado ya es anulado.
-- Corrección de importes en factura confirmada: solo por NC/ND, nunca editando.
-- Saldo = total − pagos vigentes − NC aplicadas, recalculado dentro de la función con la factura bloqueada; nunca negativo.
+## 6. Script inverso de 0A (con guarda)
 
-**Auditoría**
-- `contab_auditoria` sin triggers propios (no hay recursión). Trigger DEFINER en todas las `contab_*` y en `user_roles` (cambios de permisos; solo registra, no modifica su comportamiento).
-- Eventos explícitos desde funciones: confirmación, reversa, anulación, cierre y reapertura, con motivo.
-- Sin UPDATE/DELETE para nadie; lectura admin/contador.
+```sql
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM public.contab_ejercicios) OR EXISTS (SELECT 1 FROM public.contab_periodos)
+     OR EXISTS (SELECT 1 FROM public.contab_asientos WHERE estado <> 'borrador' OR ejercicio_id IS NOT NULL
+                OR periodo_id IS NOT NULL OR numero_ejercicio IS NOT NULL OR origen_id IS NOT NULL
+                OR reversa_de IS NOT NULL OR revertido_por IS NOT NULL OR clave_evento <> 'alta')
+     OR EXISTS (SELECT 1 FROM public.contab_asiento_lineas WHERE moneda <> 'ARS' OR cotizacion <> 1 OR importe_origen IS NOT NULL)
+     OR EXISTS (SELECT 1 FROM pg_proc WHERE proname IN ('contab_confirmar_asiento','contab_revertir_asiento','contab_puede')) THEN
+    RAISE EXCEPTION 'Vuelta atrás abortada: hay datos contables o fases posteriores aplicadas';
+  END IF;
+END $$;
+DROP TRIGGER trg_contab_cuenta_guarda ON public.contab_plan_cuentas;
+DROP TRIGGER trg_contab_linea_guarda ON public.contab_asiento_lineas;
+DROP TRIGGER trg_contab_asiento_guarda ON public.contab_asientos;
+DROP FUNCTION public.contab_trg_cuenta_guarda(), public.contab_trg_linea_guarda(),
+  public.contab_trg_asiento_guarda(), public.contab_es_usuario_directo();
+ALTER TABLE public.contab_asiento_lineas DROP CONSTRAINT contab_asiento_lineas_cuenta_id_fkey;
+ALTER TABLE public.contab_asiento_lineas ADD CONSTRAINT contab_asiento_lineas_cuenta_id_fkey
+  FOREIGN KEY (cuenta_id) REFERENCES public.contab_plan_cuentas(id) ON DELETE SET NULL;
+DROP INDEX public.idx_contab_lineas_cuenta;
+ALTER TABLE public.contab_asiento_lineas DROP CONSTRAINT chk_linea_montos, DROP CONSTRAINT chk_linea_cotizacion,
+  DROP COLUMN moneda, DROP COLUMN cotizacion, DROP COLUMN importe_origen,
+  ALTER COLUMN debe DROP NOT NULL, ALTER COLUMN haber DROP NOT NULL;
+DROP INDEX public.uq_contab_asiento_numero, public.uq_contab_asiento_origen_evento,
+  public.uq_contab_asiento_reversa, public.idx_contab_asientos_periodo;
+ALTER TABLE public.contab_asientos
+  DROP CONSTRAINT chk_asiento_estado, DROP CONSTRAINT chk_asiento_origen, DROP CONSTRAINT chk_asiento_confirmado,
+  DROP CONSTRAINT chk_asiento_reversa_propia, DROP CONSTRAINT chk_asiento_revertido, DROP CONSTRAINT chk_asiento_reversa_clave,
+  DROP COLUMN ejercicio_id, DROP COLUMN periodo_id, DROP COLUMN numero_ejercicio, DROP COLUMN estado,
+  DROP COLUMN origen_tipo, DROP COLUMN origen_id, DROP COLUMN clave_evento, DROP COLUMN reversa_de,
+  DROP COLUMN revertido_por, DROP COLUMN confirmado_at, DROP COLUMN confirmado_por, DROP COLUMN motivo, DROP COLUMN version;
+DROP TRIGGER trg_contab_periodo_valida ON public.contab_periodos;
+DROP TRIGGER trg_contab_ejercicio_valida ON public.contab_ejercicios;
+DROP FUNCTION public.contab_trg_periodo_valida(), public.contab_trg_ejercicio_valida();
+DROP TABLE public.contab_cuentas_config, public.contab_periodos, public.contab_ejercicios;
+```
+Los defaults originales de `debe`/`haber` se registran en la foto previa y se restauran exactamente. Este script contiene borrados de estructura: se ejecutará solo con tu aprobación explícita en el momento.
 
-## 6. 0C (resumen)
+## 7. Riesgos pendientes conocidos
 
-Pantalla Contabilidad llama solo a las funciones; Asientos con alta manual, confirmar y revertir; Libro diario, Mayor, Balance de comprobación y Controles con Excel; Configuración de ejercicios/períodos y cuentas por función. Ningún otro módulo.
-
-## 7. Vuelta atrás por sub-fase
-
-- **0A**: script inverso que quita triggers, funciones de guardia, índices, restricciones, columnas nuevas y tablas nuevas (vacías) y restaura la FK original. Los dos valores de rol quedan (sin uso, inocuos). Probado en el borrador.
-- **0B**: script que restaura exactamente las políticas y funciones actuales (texto guardado hoy) y elimina las nuevas.
-- **0C**: volver a la versión anterior del código desde el historial, **después** de ejecutar el inverso de 0B si se revierte también 0B.
-- Antes de cada paso en producción: exportación completa de la base. Restaurar backup diario solo ante desastre, sabiendo que se pierde lo cargado después.
-
-## 8. Pruebas
-
-**En el borrador aislado, para 0A**
-- Esquema: comparación de estructura de todas las tablas no contables antes/después (debe ser idéntica).
-- Insertar asiento confirmado directo → falla. Confirmar descuadrado, sin cuenta, con cuenta no imputable, en período cerrado, con fecha fuera del período → falla.
-- Línea con debe y haber, ambos cero o negativos → falla.
-- Editar o borrar asiento/línea confirmados → falla. Marcar revertido sin contraasiento real → falla. Segunda reversa → falla por índice.
-- Mismo origen y evento dos veces → falla; reversa + nuevo alta del mismo documento → permitido; dos ajustes con claves distintas → permitido.
-- Ejercicios o períodos superpuestos → falla; reabrir sin motivo → falla; borrar cuenta con movimientos → falla.
-- Funciones viejas siguen generando asientos borrador correctamente.
-
-**Para 0B (además)**
-- Con usuarios reales de cada rol (admin, contador, remitero, maquinista, sin rol) mediante sesiones autenticadas: llamar cada función directamente; los no autorizados reciben error y nada cambia.
-- **Concurrencia real con dos conexiones independientes**: dos pagos simultáneos sobre la misma factura (no superan el saldo); dos reversas simultáneas (solo una prospera); dos confirmaciones simultáneas (numeración sin duplicados ni huecos).
-- Factura con pagos parciales: anulación rechazada; revertir pagos y anular; NC parcial; saldos consistentes.
-- Reversas en período abierto y con original en período cerrado.
-- Auditoría completa y no borrable.
-- Ejecutar el script inverso y volver a aplicar: mismo resultado.
-
-**Para 0C**
-- Ciclo completo en pantalla y diario/mayor/balance cuadrados; vista de controles vacía.
-- Comparación de comportamiento de Remitos, Combustible, Obras/Rentabilidad, Partes, Stock y Mantenimiento antes y después (conteos, totales y capturas): sin diferencias.
-
-## 9. Pendiente de tu revisión
-
-- Aprobar el SQL de 0A tal como está, o indicar cambios.
-- Confirmar que las pruebas se corren en un borrador aislado antes de producción.
-- Confirmar la regla de anulación con pagos (rechazar y exigir revertir pagos o NC).
-- Confirmar que el contraasiento de un período cerrado va al primer período abierto.
+- Depender de `current_user` para distinguir funciones privilegiadas: válido mientras todas las funciones contables privilegiadas sean propiedad del dueño de la base; se verificará en el informe y se reemplaza en 0B por `contab_puede` + RLS sin escritura directa.
+- Hasta 0B el contador conserva escritura directa sobre borradores (los confirmados ya quedan protegidos).
+- `ADD VALUE` de roles no se revierte (inocuo).
+- Publicar a producción requiere tu aprobación del informe; el borrador no publica nada por sí mismo.
