@@ -362,24 +362,51 @@ JOIN public.contab_plan_cuentas c ON c.codigo = v.codigo;
 -- verificación: deben ser 9 filas
 ```
 
-## 5. Ejecución en el borrador aislado (al aprobar)
+## 5. Ejecución de 0A sobre la base actual (reemplaza al borrador aislado)
 
-1. Crear borrador con base propia; confirmar que no apunta a producción.
-2. En el borrador: foto previa (estructura de todas las tablas, conteos y suma de control por tabla no contable; definición de funciones y políticas).
-3. Aplicar 0A-1, 0A-2, 0A-3 y la carga de `contab_cuentas_config`.
-4. Pruebas (cada una en transacción con vuelta atrás, como usuario autenticado real admin / contador / remitero / sin rol mediante sesión simulada, y como función privilegiada). **Mecanismo de prueba temporal**: las funciones privilegiadas de prueba (`contab_test_confirmar`, `contab_test_revertir`) se crean **dentro de la misma transacción de cada prueba** y desaparecen con su ROLLBACK; nunca se otorga EXECUTE permanente. Al terminar se verifica que no exista ningún `contab_test_%` en el borrador; la guarda del inverso también lo exige. Casos:
-   - Superposición de ejercicios y de períodos, incluida **concurrencia con dos conexiones** insertando rangos que se pisan: solo uno prospera.
-   - Período fuera del ejercicio; cambiar fechas de ejercicio dejando períodos afuera; reabrir sin motivo; abrir período de ejercicio cerrado.
-   - Línea con debe y haber, ambos 0, negativos → rechazo.
-   - Confirmar desde usuario directo → rechazo. Confirmar desde función privilegiada: descuadrado, sin cuenta, cuenta no imputable/inactiva, período cerrado, fecha fuera → rechazo; correcto → acepta y actualiza totales.
-   - **Concurrencia**: confirmar en una conexión mientras otra agrega una línea o desactiva la cuenta → la segunda espera y luego falla, sin dejar asiento inconsistente.
-   - Editar/borrar asiento o línea confirmados → rechazo. Insertar contraasiento desde usuario → rechazo. Marcar revertido con contraasiento no exacto → rechazo; exacto → acepta; segunda reversa → rechazo por índice.
-   - Mismo origen+evento dos veces → rechazo; reversa y nuevo alta del mismo origen → acepta; dos ajustes con claves distintas → acepta.
-   - Borrar cuenta con movimientos → rechazo.
-   - **Compatibilidad**: como admin, crear comprobante de compra y de venta con ítems y llamar `contab_generar_asiento_cbte`; registrar pago y llamar `contab_generar_asiento_pago` (efectivo y transferencia, cobro y pago). Esperado: asientos en borrador, líneas válidas, estados de comprobante actualizados, sin errores. Probar también con contador y con usuario sin rol (debe fallar como hoy).
-5. Foto posterior y comparación: tablas no contables idénticas en estructura, conteos y sumas.
-6. **Prueba del script inverso**: (a) con datos de prueba presentes → debe abortar sin cambios; (b) limpio → revierte todo; comparar con la foto previa (idéntico salvo los 2 valores de rol); (c) volver a aplicar 0A → mismo resultado.
-7. Informe: migraciones y resultado, pruebas aprobadas/fallidas, compatibilidad, módulos operativos sin cambios, resultado del inverso, riesgos pendientes y SQL final para aprobar publicación.
+Condiciones: una sola base (la actual de Calamina ERP), sin borradores, proyectos ni entornos nuevos. No se ejecuta nada hasta la autorización explícita de este procedimiento. 0B y 0C no se ejecutan automáticamente.
+
+### 5.1 Respaldo real disponible (verificar antes de tocar la base)
+- Lovable Cloud hace **una copia automática diaria** de la base (estructura y datos), retenida ~14 días. Se ve en **More → Database → Manage → Backups**, con hora UTC.
+- **No hay recuperación a un momento exacto**: solo se puede volver a la copia diaria completa. Restaurar es **en el mismo lugar, total y permanente**: se pierde todo lo cargado después de esa copia (partes, remitos, combustible de ese día), y la base queda unos minutos fuera de servicio.
+- No hay restauración por tabla. Los archivos (adjuntos, documentos) no están incluidos.
+- La **exportación** (Settings → Export data) es una foto descargable, no un backup restaurable desde la app: sirve como evidencia y resguardo externo, no como vuelta atrás.
+- Vuelta atrás **real** de 0A: el script inverso (sección 6), que solo toca objetos contables nuevos. La copia diaria queda como último recurso.
+- Acción del usuario antes de empezar: confirmar en Backups que existe copia de hoy y anotar su hora; opcionalmente pedir una exportación.
+
+### 5.2 Auditoría previa sin escritura (solo lectura)
+1. Inventario de tablas, columnas, restricciones, índices, triggers, funciones y políticas de todo el esquema `public`.
+2. Foto de control de módulos operativos: conteo de filas y suma de control (`md5` de filas ordenadas) por tabla de obras, máquinas, combustible, remitos, stock, personal, certificados, RRHH, cotizaciones y contabilidad actual.
+3. Confirmar que no existen objetos con los nombres que crea 0A (tablas, tipos, funciones, índices, triggers).
+4. Confirmar valores actuales de `app_role` y quién los usa.
+5. Verificar las 9 cuentas usadas por la configuración inicial (existen, imputables, activas).
+6. Confirmar que `contab_generar_asiento_cbte` y `contab_generar_asiento_pago` no cambian de definición en 0A.
+7. Revisar dependencias de pantallas actuales de Contabilidad sobre las tablas `contab_*` existentes.
+8. Linter de seguridad y salud de base como línea de base.
+
+### 5.3 Migraciones graduales (una por vez, con verificación)
+Cada paso: aplicar → verificar por lectura → recién entonces el siguiente. Si un paso falla, se deshace solo y se frena.
+1. **0A-1** tipos y tablas (ejercicios, períodos, configuración de cuentas, asientos/líneas nuevas) + permisos + RLS. Verificar: objetos creados, permisos y políticas esperadas, foto operativa idéntica.
+2. **0A-2** validaciones y triggers (superposición, cuadre, inmutabilidad, reversas). Verificar: definiciones, triggers enganchados solo a tablas contables nuevas.
+3. **0A-3** funciones de confirmación/reversa y permisos de ejecución. Verificar: `SECURITY` y `search_path` correctos, sin EXECUTE a `anon`.
+4. **Carga de `contab_cuentas_config`**: único dato que se inserta; es configuración real (no ficticia) y se puede quitar con el inverso.
+- Nota: si 0A agrega valores a `app_role`, esa parte **no se puede deshacer** limpiamente; se aplica al final y solo si se confirma.
+
+### 5.4 Pruebas posibles sin riesgo en producción
+- **Sin escritura**: existencia y definición de objetos, restricciones, índices de exclusión, permisos por rol (`has_table_privilege`, `has_function_privilege`), políticas RLS, foto operativa antes/después.
+- **Con escritura revertida**: casos de un solo usuario (superposición de rangos, línea con debe y haber, negativos, confirmar descuadrado, editar confirmado, reversa no exacta, doble reversa, borrar cuenta con movimientos) ejecutados como **un único bloque que termina siempre en ROLLBACK**, simulando roles con `set local role` y `request.jwt.claims`. Nada queda guardado. Requiere confirmar antes, con una prueba vacía, que la herramienta respeta el ROLLBACK; si no, estos casos pasan a pendientes.
+- Al terminar: verificar que no quedó ninguna fila de prueba ni función `contab_test_%`.
+
+### 5.5 Pruebas que NO se harán en producción (quedan pendientes)
+- **Concurrencia con dos conexiones** (rangos pisados en simultáneo, confirmar mientras otro edita): requiere transacciones abiertas en paralelo y bloqueos sobre la base en uso. Se cubre por diseño (exclusiones y `FOR UPDATE`) y se valida cuando haya uso real controlado.
+- **Compatibilidad con escritura real** de `contab_generar_asiento_cbte/pago`: crearía comprobantes y asientos persistentes. Se verifica por lectura que no cambian; la prueba real se hace con el contador sobre el primer comprobante verdadero.
+- **Prueba completa del script inverso** (aplicar → revertir → reaplicar): en producción solo se valida su guarda en modo lectura; se ejecuta únicamente si hace falta revertir.
+
+### 5.6 Compatibilidad
+- 0A no modifica tablas, funciones ni pantallas existentes (incluida Contabilidad actual). Tras cada paso: foto operativa idéntica y prueba visual de Contabilidad, Remitos, Partes y Combustible.
+
+### 5.7 Informe al cierre de 0A
+Migraciones aplicadas con su SQL exacto, resultado de cada verificación, pruebas aprobadas/fallidas, pruebas pendientes con motivo, comparación de fotos operativas, hora de la copia diaria de referencia y riesgos abiertos. Luego se espera autorización para 0B.
 
 ## 6. Script inverso de 0A (con guarda)
 
