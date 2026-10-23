@@ -851,6 +851,77 @@ export type Database = {
           },
         ]
       }
+      contab_cuentas_config: {
+        Row: {
+          clave: string
+          cuenta_id: string
+          descripcion: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          clave: string
+          cuenta_id: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          clave?: string
+          cuenta_id?: string
+          descripcion?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_cuentas_config_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_ejercicios: {
+        Row: {
+          cerrado_at: string | null
+          cerrado_por: string | null
+          created_at: string
+          created_by: string | null
+          estado: string
+          fecha_desde: string
+          fecha_hasta: string
+          id: string
+          nombre: string
+          ultimo_numero: number
+        }
+        Insert: {
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_desde: string
+          fecha_hasta: string
+          id?: string
+          nombre: string
+          ultimo_numero?: number
+        }
+        Update: {
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          created_at?: string
+          created_by?: string | null
+          estado?: string
+          fecha_desde?: string
+          fecha_hasta?: string
+          id?: string
+          nombre?: string
+          ultimo_numero?: number
+        }
+        Relationships: []
+      }
       contab_empresa: {
         Row: {
           activa: boolean
@@ -1003,6 +1074,59 @@ export type Database = {
             columns: ["tercero_id"]
             isOneToOne: false
             referencedRelation: "contab_terceros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_periodos: {
+        Row: {
+          anio: number
+          cerrado_at: string | null
+          cerrado_por: string | null
+          ejercicio_id: string
+          estado: string
+          fecha_desde: string
+          fecha_hasta: string
+          id: string
+          mes: number
+          motivo_reapertura: string | null
+          reabierto_at: string | null
+          reabierto_por: string | null
+        }
+        Insert: {
+          anio: number
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          ejercicio_id: string
+          estado?: string
+          fecha_desde: string
+          fecha_hasta: string
+          id?: string
+          mes: number
+          motivo_reapertura?: string | null
+          reabierto_at?: string | null
+          reabierto_por?: string | null
+        }
+        Update: {
+          anio?: number
+          cerrado_at?: string | null
+          cerrado_por?: string | null
+          ejercicio_id?: string
+          estado?: string
+          fecha_desde?: string
+          fecha_hasta?: string
+          id?: string
+          mes?: number
+          motivo_reapertura?: string | null
+          reabierto_at?: string | null
+          reabierto_por?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_periodos_ejercicio_id_fkey"
+            columns: ["ejercicio_id"]
+            isOneToOne: false
+            referencedRelation: "contab_ejercicios"
             referencedColumns: ["id"]
           },
         ]
