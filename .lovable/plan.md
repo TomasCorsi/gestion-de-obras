@@ -237,11 +237,6 @@ BEGIN
                    AND r.ejercicio_id IS NOT NULL) THEN
       RAISE EXCEPTION 'Totales del contraasiento no coinciden';
     END IF;
-    PERFORM 1 FROM (SELECT 1 WHERE false) d2 -- marcador: bloque espejo terminado
-    ;
-    SELECT 0 INTO v_dif FROM (SELECT 1) d3
-    ) d;
-    IF v_dif > 0 THEN RAISE EXCEPTION 'El contraasiento no es exacto'; END IF;
     NEW.version := OLD.version + 1;
     RETURN NEW;
   END IF;
