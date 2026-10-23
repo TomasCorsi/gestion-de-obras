@@ -4604,6 +4604,10 @@ export type Database = {
     Functions: {
       can_view_mantenimientos: { Args: { _user_id: string }; Returns: boolean }
       can_view_remitos: { Args: { _user_id: string }; Returns: boolean }
+      contab_anular_comprobante: {
+        Args: { _cbte_id: string; _motivo: string }
+        Returns: undefined
+      }
       contab_cerrar_periodo: {
         Args: { _periodo_id: string }
         Returns: undefined
@@ -4615,6 +4619,10 @@ export type Database = {
       contab_crear_ejercicio: {
         Args: { _desde: string; _hasta: string; _nombre: string }
         Returns: string
+      }
+      contab_descartar_asiento: {
+        Args: { _asiento_id: string }
+        Returns: undefined
       }
       contab_es_usuario_directo: { Args: never; Returns: boolean }
       contab_generar_asiento_cbte: {

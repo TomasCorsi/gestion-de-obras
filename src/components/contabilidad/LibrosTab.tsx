@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useBalanceSumasSaldos, useLibroDiario } from "@/hooks/useContabPeriodos";
+import { useBalanceSumasSaldos, useLibroDiario, mayorConSaldo } from "@/hooks/useContabPeriodos";
+import { useContabPlanCuentas, useMayorCuenta } from "@/hooks/useContabilidad";
+import { Combobox } from "@/components/ui/combobox";
 
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(n || 0));
 const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
@@ -44,7 +46,8 @@ export function LibrosTab() {
         <p className="text-xs text-muted-foreground">Solo incluye asientos confirmados (y revertidos con su contraasiento).</p>
       </div>
       <Tabs defaultValue="diario">
-        <TabsList><TabsTrigger value="diario">Libro Diario</TabsTrigger><TabsTrigger value="balance">Sumas y Saldos</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="diario">Libro Diario</TabsTrigger><TabsTrigger value="mayor">Libro Mayor</TabsTrigger><TabsTrigger value="balance">Sumas y Saldos</TabsTrigger></TabsList>
+        <TabsContent value="mayor"><LibroMayor desde={desde} hasta={hasta} /></TabsContent>
         <TabsContent value="diario">
           <Card><CardContent className="p-0 overflow-x-auto">
             <table className="w-full text-sm">
@@ -88,6 +91,40 @@ export function LibrosTab() {
           </CardContent></Card>
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function LibroMayor({ desde, hasta }: { desde: string; hasta: string }) {
+  const { data: cuentas = [] } = useContabPlanCuentas();
+  const [cuenta, setCuenta] = useState<string>("");
+  const { data = [], isLoading } = useMayorCuenta(cuenta || null, desde, hasta);
+  const filas = mayorConSaldo(data as any[]);
+  const opts = (cuentas as any[]).filter((c) => c.imputable).map((c) => ({ value: c.id, label: `${c.codigo} · ${c.nombre}` }));
+  return (
+    <div className="space-y-3">
+      <div className="max-w-md"><Label>Cuenta</Label>
+        <Combobox options={opts} value={cuenta} onValueChange={setCuenta} placeholder="Elegí una cuenta" searchPlaceholder="Buscar cuenta..." />
+      </div>
+      <Card><CardContent className="p-0 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50 text-left"><tr><th className="px-3 py-2">Fecha</th><th className="px-3 py-2">N°</th><th className="px-3 py-2">Concepto</th><th className="px-3 py-2 text-right">Debe</th><th className="px-3 py-2 text-right">Haber</th><th className="px-3 py-2 text-right">Saldo</th></tr></thead>
+          <tbody>
+            {!cuenta && <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Elegí una cuenta para ver sus movimientos</td></tr>}
+            {cuenta && isLoading && <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Cargando…</td></tr>}
+            {cuenta && !isLoading && filas.length === 0 && <tr><td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">Sin movimientos confirmados en el rango</td></tr>}
+            {filas.map((f) => (
+              <tr key={f.id} className="border-t">
+                <td className="px-3 py-1">{fmtDate(f.fecha)}</td><td className="px-3 py-1 font-mono">{f.numero ?? "—"}</td>
+                <td className="px-3 py-1">{f.concepto}{f.estado === "revertido" && <span className="ml-2 text-xs text-destructive">(revertido)</span>}</td>
+                <td className="px-3 py-1 text-right tabular-nums">{f.debe > 0 ? fmt(f.debe) : ""}</td>
+                <td className="px-3 py-1 text-right tabular-nums">{f.haber > 0 ? fmt(f.haber) : ""}</td>
+                <td className={`px-3 py-1 text-right tabular-nums font-medium ${f.saldo < 0 ? "text-destructive" : ""}`}>{fmt(f.saldo)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent></Card>
     </div>
   );
 }

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useContabAsientos, useContabAsientoLineas } from "@/hooks/useContabilidad";
-import { useConfirmarAsiento, useRevertirAsiento } from "@/hooks/useContabPeriodos";
+import { useConfirmarAsiento, useDescartarAsiento, useRevertirAsiento } from "@/hooks/useContabPeriodos";
 
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const fmtDate = (s: string) => { const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; };
@@ -88,6 +88,7 @@ function AsientoDetalle({ asiento, onClose }: { asiento: any; onClose: () => voi
   const { data: lineas = [] } = useContabAsientoLineas(asiento.id);
   const confirmar = useConfirmarAsiento();
   const revertir = useRevertirAsiento();
+  const descartar = useDescartarAsiento();
   const [revOpen, setRevOpen] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [fecha, setFecha] = useState(new Date().toLocaleDateString("en-CA"));
@@ -139,6 +140,12 @@ function AsientoDetalle({ asiento, onClose }: { asiento: any; onClose: () => voi
         )}
 
         <DialogFooter>
+          {estado === "borrador" && (
+            <Button variant="outline" disabled={descartar.isPending}
+              onClick={() => { if (confirm("¿Descartar este borrador? El comprobante o pago queda libre para corregirlo y volver a generar el asiento.")) descartar.mutate({ _asiento_id: asiento.id }, { onSuccess: onClose }); }}>
+              Descartar borrador
+            </Button>
+          )}
           {estado === "borrador" && (
             <Button disabled={!cuadra || confirmar.isPending} onClick={() => confirmar.mutate({ _asiento_id: asiento.id }, { onSuccess: onClose })}>
               <CheckCircle2 className="w-4 h-4 mr-1" />Confirmar

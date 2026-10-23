@@ -16,3 +16,14 @@ describe("balance de sumas y saldos", () => {
     ]);
   });
 });
+
+import { mayorConSaldo } from "./useContabPeriodos";
+describe("libro mayor", () => {
+  it("ordena por fecha y acumula saldo debe - haber", () => {
+    const r = mayorConSaldo([
+      { id: "b", debe: 0, haber: 40, orden: 1, asiento: { fecha: "2026-02-01", numero_ejercicio: 2, descripcion: "pago", estado: "confirmado" } },
+      { id: "a", debe: 100, haber: 0, orden: 1, asiento: { fecha: "2026-01-10", numero_ejercicio: 1, descripcion: "venta", estado: "confirmado" } },
+    ]);
+    expect(r.map((f) => [f.id, f.saldo])).toEqual([["a", 100], ["b", 60]]);
+  });
+});

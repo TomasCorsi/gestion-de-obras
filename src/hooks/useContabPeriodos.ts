@@ -61,6 +61,7 @@ export const useCerrarPeriodo = () => useRpc<{ _periodo_id: string }>("contab_ce
 export const useReabrirPeriodo = () =>
   useRpc<{ _periodo_id: string; _motivo: string }>("contab_reabrir_periodo", "Período reabierto");
 export const useConfirmarAsiento = () => useRpc<{ _asiento_id: string }>("contab_confirmar_asiento", "Asiento confirmado");
+export const useDescartarAsiento = () => useRpc<{ _asiento_id: string }>("contab_descartar_asiento", "Borrador descartado");
 export const useRevertirAsiento = () =>
   useRpc<{ _asiento_id: string; _motivo: string; _fecha?: string | null }>("contab_revertir_asiento", "Asiento revertido");
 
@@ -114,4 +115,18 @@ export function agruparBalance(rows: { debe: number; haber: number; cuenta: { co
     map.set(codigo, f);
   }
   return [...map.values()].sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true }));
+}
+
+export interface MayorFila { id: string; fecha: string; numero: number | null; concepto: string; estado: string; debe: number; haber: number; saldo: number }
+
+/** Ordena cronológicamente y calcula saldo acumulado (debe - haber) */
+export function mayorConSaldo(rows: any[]): MayorFila[] {
+  const ord = [...rows].sort((a, b) =>
+    a.asiento.fecha.localeCompare(b.asiento.fecha) || (a.asiento.numero_ejercicio ?? 0) - (b.asiento.numero_ejercicio ?? 0) || (a.orden ?? 0) - (b.orden ?? 0));
+  let saldo = 0;
+  return ord.map((r) => {
+    saldo = Math.round((saldo + Number(r.debe || 0) - Number(r.haber || 0)) * 100) / 100;
+    return { id: r.id, fecha: r.asiento.fecha, numero: r.asiento.numero_ejercicio ?? null, concepto: r.descripcion || r.asiento.descripcion,
+      estado: r.asiento.estado, debe: Number(r.debe || 0), haber: Number(r.haber || 0), saldo };
+  });
 }

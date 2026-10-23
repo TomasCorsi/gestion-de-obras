@@ -176,6 +176,20 @@
       "when": 1792783365980,
       "tag": "0024_contab_0b_funciones_auditoria",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1792783745761,
+      "tag": "0025_contab_integridad_documentos",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1792783882294,
+      "tag": "0026_contab_revertir_recalcula_estado",
+      "breakpoints": true
     }
   ]
 }
