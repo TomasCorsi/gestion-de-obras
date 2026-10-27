@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { useContabAsientos, useContabAsientoLineas } from "@/hooks/useContabilidad";
 import { AsientoManualDialog } from "./AsientoManualDialog";
 import { useConfirmarAsiento, useDescartarAsiento, useRevertirAsiento } from "@/hooks/useContabPeriodos";
+import { ImputacionesAsiento } from "./ImputacionesAsiento";
 
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const fmtDate = (s: string) => { const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; };
@@ -135,6 +136,9 @@ function AsientoDetalle({ asiento, onClose }: { asiento: any; onClose: () => voi
               <td className="px-2 py-1 text-right tabular-nums">{fmt(debe)}</td><td className="px-2 py-1 text-right tabular-nums">{fmt(haber)}</td></tr>
           </tfoot>
         </table>
+
+        <ImputacionesAsiento lineas={lineas} editable={estado === "borrador"} />
+
 
         {revOpen && (
           <div className="grid gap-3 rounded-md border p-3 sm:grid-cols-[1fr_180px]">

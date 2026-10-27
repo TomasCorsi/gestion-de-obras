@@ -18,6 +18,8 @@ import {
   type ContabEmpresa, type CondIva, type CuentaTipo, type ContabTercero, type TerceroTipo,
 } from "@/hooks/useContabilidad";
 import { TercerosPanel } from "./TercerosPanel";
+import { CentrosCostoPanel } from "./CentrosCostoPanel";
+import { Network } from "lucide-react";
 
 const COND_IVA: { v: CondIva; l: string }[] = [
   { v: "RI", l: "Responsable Inscripto" },
@@ -36,10 +38,12 @@ export function ConfigTab() {
         <TabsTrigger value="empresa"><Building2 className="w-4 h-4 mr-2" />Empresa</TabsTrigger>
         <TabsTrigger value="plan"><BookOpen className="w-4 h-4 mr-2" />Plan de cuentas</TabsTrigger>
         <TabsTrigger value="terceros"><Users className="w-4 h-4 mr-2" />Terceros</TabsTrigger>
+        <TabsTrigger value="centros"><Network className="w-4 h-4 mr-2" />Centros de costo</TabsTrigger>
       </TabsList>
       <TabsContent value="empresa" className="mt-4"><EmpresaForm /></TabsContent>
       <TabsContent value="plan" className="mt-4"><PlanCuentas /></TabsContent>
       <TabsContent value="terceros" className="mt-4"><TercerosPanel /></TabsContent>
+      <TabsContent value="centros" className="mt-4"><CentrosCostoPanel /></TabsContent>
     </Tabs>
   );
 }
