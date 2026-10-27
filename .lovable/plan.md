@@ -14,7 +14,19 @@ Base: la misma de Lovable Cloud. Sin borrar datos. Sin 1C. Sin tocar obras, maqu
 - Columnas reales: `obras(id, nombre, numero, estado, cliente_id)`, `maquinarias(id, codigo, nombre, patente, estado)`, `contab_plan_cuentas(id, codigo, nombre, imputable, activa, …)`, `contab_asientos.estado` (borrador / confirmado / revertido) y `reversa_de`.
 - No existe ninguna tabla de centros de costo.
 
-## Correcciones respecto del diseño anterior
+## Ajustes finales (revisión del SQL definitivo)
+
+| Punto | Corrección |
+|---|---|
+| 1. Reversas seguras | Se eliminó la variable `contab.reversa_en_curso`. Las contraimputaciones solo las puede insertar el trigger privilegiado de reversa (se comprueba el rol efectivo, no una variable). Además se valida que sean espejo exacto: misma línea por `orden`, mismo importe, subcentro, obra, máquina, atribución y naturaleza, del asiento indicado en `reversa_de`. No se pueden editar ni borrar. |
+| 2. Permisos de funciones | Ya no existe `contab_validar_tope_linea` suelta. Todas las funciones de trigger son privilegiadas, con ejecución revocada a todos los usuarios (Postgres no exige ese permiso al dispararse). Así validan sobre todas las filas sin depender de la RLS, y nadie las puede llamar directamente. Admin/contador operan por RLS normal. |
+| 3. Importes y concurrencia | Cada alta/edición/baja bloquea primero la línea (`FOR UPDATE`): dos sesiones sobre la misma línea se serializan. El tope se revisa al confirmar la transacción, en altas, ediciones y cambios de importe de la línea. La suma exacta se exige al confirmar el asiento en cuentas marcadas. |
+| 4. Modelo preparado para NC/ajustes | Nuevo `tipo_movimiento`: original, reversa, ajuste. "Ajuste" (NC, devoluciones, ajustes parciales con signo ±) queda reservado y bloqueado en 1B; no hará falta rediseñar. |
+| 5. Historial | Cada imputación guarda un snapshot del centro y subcentro (id, código, nombre). Con imputaciones no se puede cambiar código, tipo ni vínculo, ni acotar la vigencia dejando afuera fechas ya imputadas. Activar/desactivar y renombrar solo afectan el futuro. |
+| 6. Pruebas | Ampliadas abajo (permisos efectivos, inmutabilidad, espejo exacto, sumas, doble dimensión). |
+| 7. Recuperación | Revisa dependencias externas en el catálogo y aborta si alguna otra estructura depende de 1B; usa borrado restrictivo; conserva la auditoría. |
+
+## Correcciones de la revisión anterior (se mantienen)
 
 | Punto | Solución |
 |---|---|
@@ -86,20 +98,35 @@ CREATE TABLE public.contab_imputaciones_analiticas (
   naturaleza text NOT NULL CHECK (naturaleza IN ('ingreso','gasto')),
   importe numeric(18,2) NOT NULL CHECK (importe > 0),
   signo smallint NOT NULL DEFAULT 1 CHECK (signo IN (1,-1)),
+  -- original = imputación normal; reversa = espejo exacto de una anulación completa;
+  -- ajuste = reservado para NC, devoluciones y ajustes parciales (bloqueado en 1B)
+  tipo_movimiento text NOT NULL DEFAULT 'original'
+    CHECK (tipo_movimiento IN ('original','reversa','ajuste')),
   origen_imputacion_id uuid REFERENCES public.contab_imputaciones_analiticas(id) ON DELETE RESTRICT,
+  -- snapshot histórico al imputar
+  centro_id_snap uuid,
+  centro_codigo_snap text,
+  centro_nombre_snap text,
+  subcentro_codigo_snap text,
+  subcentro_nombre_snap text,
   nota text,
   created_by uuid DEFAULT auth.uid(),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT ia_obra_atrib CHECK ((obra_id IS NULL) = (obra_atribucion IS NULL)),
-  CONSTRAINT ia_reversa CHECK ((signo = -1) = (origen_imputacion_id IS NOT NULL))
+  CONSTRAINT ia_tipo CHECK (
+       (tipo_movimiento = 'original' AND signo = 1  AND origen_imputacion_id IS NULL)
+    OR (tipo_movimiento = 'reversa'  AND signo = -1 AND origen_imputacion_id IS NOT NULL)
+    OR (tipo_movimiento = 'ajuste'   AND origen_imputacion_id IS NOT NULL)),
+  CONSTRAINT ia_snap CHECK (centro_id_snap IS NOT NULL AND subcentro_codigo_snap IS NOT NULL)
 );
 CREATE INDEX contab_imput_linea_idx ON public.contab_imputaciones_analiticas (linea_id);
 CREATE INDEX contab_imput_sub_idx   ON public.contab_imputaciones_analiticas (subcentro_id);
 CREATE INDEX contab_imput_obra_idx  ON public.contab_imputaciones_analiticas (obra_id) WHERE obra_id IS NOT NULL;
 CREATE INDEX contab_imput_maq_idx   ON public.contab_imputaciones_analiticas (maquinaria_id) WHERE maquinaria_id IS NOT NULL;
-CREATE UNIQUE INDEX contab_imput_origen_uq ON public.contab_imputaciones_analiticas (origen_imputacion_id)
-  WHERE origen_imputacion_id IS NOT NULL;
+-- Una sola reversa por imputación original (los ajustes futuros pueden ser varios)
+CREATE UNIQUE INDEX contab_imput_reversa_uq ON public.contab_imputaciones_analiticas (origen_imputacion_id)
+  WHERE tipo_movimiento = 'reversa';
 
 -- 2) Grants (sin anon)
 REVOKE ALL ON public.contab_centros_costo, public.contab_subcentros_costo,
@@ -173,39 +200,70 @@ END $$;
 CREATE TRIGGER contab_subcentro_guarda BEFORE INSERT OR UPDATE OR DELETE ON public.contab_subcentros_costo
   FOR EACH ROW EXECUTE FUNCTION public.contab_trg_subcentro_guarda();
 
--- 6) Imputaciones: NEW/OLD explícitos, solo en borrador, validación de subcentro y dimensiones
-CREATE OR REPLACE FUNCTION public.contab_trg_imputacion_guarda() RETURNS trigger
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
-DECLARE v_estado text; v_fecha date; v_sub record;
-BEGIN
-  -- Las contraimputaciones de reversa solo las crea el trigger del sistema
-  IF current_setting('contab.reversa_en_curso', true) = 'on' THEN
-    RETURN CASE WHEN TG_OP = 'DELETE' THEN OLD ELSE NEW END;
-  END IF;
+-- Nota de permisos: todas las funciones de trigger son SECURITY DEFINER (dueño = rol de
+-- migración), con EXECUTE revocado a PUBLIC/anon/authenticated. Postgres solo verifica
+-- EXECUTE al crear el trigger, no al dispararlo, y una función RETURNS trigger no se puede
+-- invocar directamente. Así leen todas las líneas sin depender de la RLS del usuario y
+-- nadie puede llamarlas por fuera. No hay funciones auxiliares sueltas invocables.
 
+-- 6) Imputaciones: guarda (NEW/OLD explícitos, bloqueo de línea, snapshot histórico)
+CREATE OR REPLACE FUNCTION public.contab_trg_imputacion_guarda() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_estado text; v_fecha date; v_rev uuid; v_sub record; v_ori record; v_lr record;
+        v_es_sistema boolean := (current_user = (SELECT tableowner FROM pg_tables
+                                 WHERE schemaname='public' AND tablename='contab_imputaciones_analiticas'))
+                                AND session_user <> current_user;
+BEGIN
+  -- UPDATE / DELETE: siempre por OLD; nunca sobre asientos no borrador ni reversas
   IF TG_OP IN ('UPDATE','DELETE') THEN
     SELECT a.estado INTO v_estado FROM contab_asiento_lineas l JOIN contab_asientos a ON a.id = l.asiento_id
-     WHERE l.id = OLD.linea_id;
-    IF v_estado IS DISTINCT FROM 'borrador' THEN
-      RAISE EXCEPTION 'No se pueden modificar imputaciones de un asiento %', COALESCE(v_estado,'inexistente');
+     WHERE l.id = OLD.linea_id FOR UPDATE OF l;
+    IF v_estado IS DISTINCT FROM 'borrador' OR OLD.tipo_movimiento <> 'original' THEN
+      RAISE EXCEPTION 'No se pueden modificar imputaciones de un asiento % o de una reversa',
+        COALESCE(v_estado,'inexistente');
     END IF;
     IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
-    IF NEW.linea_id <> OLD.linea_id THEN RAISE EXCEPTION 'Una imputación no puede cambiar de línea'; END IF;
-    IF NEW.signo <> OLD.signo OR NEW.origen_imputacion_id IS DISTINCT FROM OLD.origen_imputacion_id THEN
-      RAISE EXCEPTION 'Datos de reversa no editables';
+    IF NEW.linea_id <> OLD.linea_id OR NEW.tipo_movimiento <> OLD.tipo_movimiento
+       OR NEW.signo <> OLD.signo OR NEW.origen_imputacion_id IS DISTINCT FROM OLD.origen_imputacion_id THEN
+      RAISE EXCEPTION 'Línea, tipo, signo y origen no son editables';
     END IF;
   END IF;
 
-  -- INSERT o UPDATE: validar con NEW
-  SELECT a.estado, a.fecha INTO v_estado, v_fecha
+  -- Bloqueo de la línea: serializa toda alta/edición concurrente sobre la misma línea
+  SELECT a.estado, a.fecha, a.reversa_de INTO v_estado, v_fecha, v_rev
     FROM contab_asiento_lineas l JOIN contab_asientos a ON a.id = l.asiento_id
-   WHERE l.id = NEW.linea_id;
+   WHERE l.id = NEW.linea_id FOR UPDATE OF l;
+
+  IF NEW.tipo_movimiento = 'reversa' THEN
+    -- Solo el trigger privilegiado de reversa (SECURITY DEFINER) puede crearlas.
+    -- No depende de variables de sesión: lo decide el rol efectivo.
+    IF TG_OP <> 'INSERT' OR NOT v_es_sistema THEN
+      RAISE EXCEPTION 'Las contraimputaciones solo las genera la reversa del asiento';
+    END IF;
+    SELECT i.*, lo.orden, lo.asiento_id INTO v_ori
+      FROM contab_imputaciones_analiticas i JOIN contab_asiento_lineas lo ON lo.id = i.linea_id
+     WHERE i.id = NEW.origen_imputacion_id;
+    SELECT orden, asiento_id INTO v_lr FROM contab_asiento_lineas WHERE id = NEW.linea_id;
+    IF v_ori.id IS NULL OR v_ori.tipo_movimiento <> 'original' OR v_rev IS DISTINCT FROM v_ori.asiento_id
+       OR v_lr.orden <> v_ori.orden OR NEW.importe <> v_ori.importe OR NEW.subcentro_id <> v_ori.subcentro_id
+       OR NEW.obra_id IS DISTINCT FROM v_ori.obra_id OR NEW.maquinaria_id IS DISTINCT FROM v_ori.maquinaria_id
+       OR NEW.obra_atribucion IS DISTINCT FROM v_ori.obra_atribucion OR NEW.naturaleza <> v_ori.naturaleza THEN
+      RAISE EXCEPTION 'La contraimputación no es espejo exacto del original';
+    END IF;
+    RETURN NEW;   -- copia exacta, incluido el snapshot del original
+  END IF;
+
+  IF NEW.tipo_movimiento = 'ajuste' THEN
+    RAISE EXCEPTION 'Los ajustes parciales (NC, devoluciones) se habilitan en una fase posterior';
+  END IF;
+
+  -- Original: solo en borrador
   IF v_estado IS DISTINCT FROM 'borrador' THEN
     RAISE EXCEPTION 'Solo se imputan líneas de asientos en borrador';
   END IF;
-  IF NEW.signo = -1 THEN RAISE EXCEPTION 'Las contraimputaciones las genera la reversa'; END IF;
 
-  SELECT s.*, c.activo AS c_activo, c.vigente_desde AS c_desde, c.vigente_hasta AS c_hasta
+  SELECT s.*, c.codigo AS c_codigo, c.nombre AS c_nombre, c.activo AS c_activo,
+         c.vigente_desde AS c_desde, c.vigente_hasta AS c_hasta
     INTO v_sub FROM contab_subcentros_costo s JOIN contab_centros_costo c ON c.id = s.centro_id
    WHERE s.id = NEW.subcentro_id;
   IF NOT (v_sub.activo AND v_sub.c_activo)
@@ -214,7 +272,7 @@ BEGIN
     RAISE EXCEPTION 'Centro o subcentro inactivo o fuera de vigencia para la fecha del asiento';
   END IF;
 
-  IF v_sub.obra_id IS NOT NULL THEN            -- subcentro de obra: atribución económica a esa obra
+  IF v_sub.obra_id IS NOT NULL THEN
     IF NEW.obra_id IS NOT NULL AND NEW.obra_id <> v_sub.obra_id THEN
       RAISE EXCEPTION 'La obra no coincide con la del subcentro'; END IF;
     NEW.obra_id := v_sub.obra_id; NEW.obra_atribucion := 'economica';
@@ -224,89 +282,113 @@ BEGIN
       RAISE EXCEPTION 'La máquina no coincide con la del subcentro'; END IF;
     NEW.maquinaria_id := v_sub.maquinaria_id;
   END IF;
-  IF NEW.obra_id IS NOT NULL AND NEW.obra_atribucion IS NULL THEN
-    NEW.obra_atribucion := 'informativa';      -- por defecto no suma al resultado de la obra
-  END IF;
+  IF NEW.obra_id IS NOT NULL AND NEW.obra_atribucion IS NULL THEN NEW.obra_atribucion := 'informativa'; END IF;
+
+  -- Snapshot histórico: cambios posteriores del centro/subcentro no alteran la interpretación
+  NEW.centro_id_snap := v_sub.centro_id;  NEW.centro_codigo_snap := v_sub.c_codigo;
+  NEW.centro_nombre_snap := v_sub.c_nombre;
+  NEW.subcentro_codigo_snap := v_sub.codigo; NEW.subcentro_nombre_snap := v_sub.nombre;
+  NEW.signo := 1; NEW.origen_imputacion_id := NULL;
   NEW.updated_at := now();
   RETURN NEW;
 END $$;
+REVOKE EXECUTE ON FUNCTION public.contab_trg_imputacion_guarda() FROM PUBLIC, anon, authenticated;
 CREATE TRIGGER contab_imputacion_guarda BEFORE INSERT OR UPDATE OR DELETE ON public.contab_imputaciones_analiticas
   FOR EACH ROW EXECUTE FUNCTION public.contab_trg_imputacion_guarda();
 
--- 7) Tope por línea (diferido, con bloqueo de la línea contra concurrencia)
-CREATE OR REPLACE FUNCTION public.contab_validar_tope_linea(_linea_id uuid) RETURNS void
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
-DECLARE v_tope numeric; v_suma numeric;
+-- 7) Tope por línea: diferido al COMMIT; el bloqueo del paso 6 serializa transacciones
+--    concurrentes (la segunda espera y, en READ COMMITTED, ve las filas confirmadas de la primera)
+CREATE OR REPLACE FUNCTION public.contab_trg_tope_linea() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_linea uuid; v_tope numeric; v_suma numeric;
 BEGIN
-  SELECT debe + haber INTO v_tope FROM contab_asiento_lineas WHERE id = _linea_id FOR UPDATE;
-  IF v_tope IS NULL THEN RETURN; END IF;     -- línea borrada (cascade)
-  SELECT COALESCE(sum(importe),0) INTO v_suma FROM contab_imputaciones_analiticas WHERE linea_id = _linea_id;
+  v_linea := CASE WHEN TG_TABLE_NAME = 'contab_asiento_lineas' THEN NEW.id ELSE NEW.linea_id END;
+  SELECT debe + haber INTO v_tope FROM contab_asiento_lineas WHERE id = v_linea FOR UPDATE;
+  IF v_tope IS NULL THEN RETURN NULL; END IF;
+  SELECT COALESCE(sum(importe),0) INTO v_suma FROM contab_imputaciones_analiticas
+   WHERE linea_id = v_linea AND tipo_movimiento = 'original';
   IF v_suma > v_tope THEN
     RAISE EXCEPTION 'Las imputaciones (%) superan el importe de la línea (%)', v_suma, v_tope;
   END IF;
-END $$;
-REVOKE EXECUTE ON FUNCTION public.contab_validar_tope_linea(uuid) FROM PUBLIC, anon;
-
-CREATE OR REPLACE FUNCTION public.contab_trg_imputacion_tope() RETURNS trigger
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
-BEGIN
-  PERFORM public.contab_validar_tope_linea(NEW.linea_id);
   RETURN NULL;
 END $$;
+REVOKE EXECUTE ON FUNCTION public.contab_trg_tope_linea() FROM PUBLIC, anon, authenticated;
 CREATE CONSTRAINT TRIGGER contab_imputacion_tope AFTER INSERT OR UPDATE ON public.contab_imputaciones_analiticas
-  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.contab_trg_imputacion_tope();
-
-CREATE OR REPLACE FUNCTION public.contab_trg_linea_tope() RETURNS trigger
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
-BEGIN
-  PERFORM public.contab_validar_tope_linea(NEW.id);
-  RETURN NULL;
-END $$;
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.contab_trg_tope_linea();
 CREATE CONSTRAINT TRIGGER contab_linea_tope AFTER UPDATE OF debe, haber ON public.contab_asiento_lineas
-  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.contab_trg_linea_tope();
+  DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION public.contab_trg_tope_linea();
+-- (DELETE solo reduce la suma; no necesita tope. Borrar una línea arrastra sus imputaciones de borrador.)
 
--- 8) Al confirmar: suma exacta en cuentas con analítica obligatoria
+-- 8) Al confirmar: suma exacta en cuentas con analítica obligatoria (diferido)
 CREATE OR REPLACE FUNCTION public.contab_trg_asiento_analitica() RETURNS trigger
-LANGUAGE plpgsql SET search_path = public, pg_temp AS $$
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_falta text;
 BEGIN
-  IF NEW.reversa_de IS NOT NULL THEN RETURN NULL; END IF;   -- las reversas se espejan solas
+  IF NEW.reversa_de IS NOT NULL THEN RETURN NULL; END IF;
   SELECT string_agg(c.codigo || ' (línea ' || l.orden || ')', ', ') INTO v_falta
     FROM contab_asiento_lineas l JOIN contab_plan_cuentas c ON c.id = l.cuenta_id
    WHERE l.asiento_id = NEW.id AND c.requiere_analitica
      AND (l.debe + l.haber) <> COALESCE((SELECT sum(i.importe) FROM contab_imputaciones_analiticas i
-                                          WHERE i.linea_id = l.id), 0);
-  IF v_falta IS NOT NULL THEN
-    RAISE EXCEPTION 'Faltan imputar al 100%% las cuentas: %', v_falta;
-  END IF;
+                                          WHERE i.linea_id = l.id AND i.tipo_movimiento = 'original'), 0);
+  IF v_falta IS NOT NULL THEN RAISE EXCEPTION 'Faltan imputar al 100%% las cuentas: %', v_falta; END IF;
   RETURN NULL;
 END $$;
+REVOKE EXECUTE ON FUNCTION public.contab_trg_asiento_analitica() FROM PUBLIC, anon, authenticated;
 CREATE CONSTRAINT TRIGGER contab_asiento_analitica AFTER UPDATE OF estado ON public.contab_asientos
   DEFERRABLE INITIALLY DEFERRED FOR EACH ROW
   WHEN (OLD.estado = 'borrador' AND NEW.estado = 'confirmado')
   EXECUTE FUNCTION public.contab_trg_asiento_analitica();
 
--- 9) Reversa: contraimputaciones espejo (no modifica contab_revertir_asiento)
+-- 9) Reversa: contraimputaciones exactas creadas por el rol privilegiado (sin variables de sesión)
 CREATE OR REPLACE FUNCTION public.contab_trg_reversa_imputaciones() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
-  PERFORM set_config('contab.reversa_en_curso','on', true);
   INSERT INTO contab_imputaciones_analiticas
-    (linea_id, subcentro_id, obra_id, obra_atribucion, maquinaria_id, naturaleza, importe, signo,
-     origen_imputacion_id, nota, created_by)
-  SELECT lr.id, i.subcentro_id, i.obra_id, i.obra_atribucion, i.maquinaria_id, i.naturaleza, i.importe, -1,
-         i.id, 'Reversa', auth.uid()
+    (linea_id, subcentro_id, obra_id, obra_atribucion, maquinaria_id, naturaleza, importe,
+     signo, tipo_movimiento, origen_imputacion_id,
+     centro_id_snap, centro_codigo_snap, centro_nombre_snap, subcentro_codigo_snap, subcentro_nombre_snap,
+     nota, created_by)
+  SELECT lr.id, i.subcentro_id, i.obra_id, i.obra_atribucion, i.maquinaria_id, i.naturaleza, i.importe,
+         -1, 'reversa', i.id,
+         i.centro_id_snap, i.centro_codigo_snap, i.centro_nombre_snap, i.subcentro_codigo_snap, i.subcentro_nombre_snap,
+         'Reversa', auth.uid()
     FROM contab_asiento_lineas lo
-    JOIN contab_imputaciones_analiticas i ON i.linea_id = lo.id AND i.signo = 1
+    JOIN contab_imputaciones_analiticas i ON i.linea_id = lo.id AND i.tipo_movimiento = 'original'
     JOIN contab_asiento_lineas lr ON lr.asiento_id = NEW.id AND lr.orden = lo.orden
    WHERE lo.asiento_id = NEW.reversa_de;
-  PERFORM set_config('contab.reversa_en_curso','off', true);
   RETURN NULL;
 END $$;
 REVOKE EXECUTE ON FUNCTION public.contab_trg_reversa_imputaciones() FROM PUBLIC, anon, authenticated;
 CREATE TRIGGER contab_reversa_imputaciones AFTER UPDATE OF estado ON public.contab_asientos
   FOR EACH ROW WHEN (OLD.estado = 'borrador' AND NEW.estado = 'confirmado' AND NEW.reversa_de IS NOT NULL)
   EXECUTE FUNCTION public.contab_trg_reversa_imputaciones();
+-- Como la reversa no exime vigencia/activo, revertir un asiento cuyo subcentro ya se desactivó funciona.
+
+-- 9b) Historial de centros/subcentros: con imputaciones confirmadas no se puede acotar la
+--     vigencia excluyendo fechas ya imputadas. Activo/nombre/descr. solo afectan el futuro
+--     (los reportes usan el snapshot de la imputación).
+CREATE OR REPLACE FUNCTION public.contab_trg_vigencia_historica() RETURNS trigger
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE v_min date; v_max date;
+BEGIN
+  IF NEW.vigente_desde IS NOT DISTINCT FROM OLD.vigente_desde
+     AND NEW.vigente_hasta IS NOT DISTINCT FROM OLD.vigente_hasta THEN RETURN NEW; END IF;
+  SELECT min(a.fecha), max(a.fecha) INTO v_min, v_max
+    FROM contab_imputaciones_analiticas i
+    JOIN contab_asiento_lineas l ON l.id = i.linea_id JOIN contab_asientos a ON a.id = l.asiento_id
+   WHERE CASE WHEN TG_TABLE_NAME = 'contab_centros_costo' THEN i.centro_id_snap ELSE i.subcentro_id END = OLD.id;
+  IF v_min IS NOT NULL AND (NEW.vigente_desde > v_min OR COALESCE(NEW.vigente_hasta,'infinity'::date) < v_max) THEN
+    RAISE EXCEPTION 'La vigencia debe cubrir las fechas ya imputadas (% a %)', v_min, v_max;
+  END IF;
+  RETURN NEW;
+END $$;
+REVOKE EXECUTE ON FUNCTION public.contab_trg_vigencia_historica() FROM PUBLIC, anon, authenticated;
+CREATE TRIGGER contab_centro_vigencia BEFORE UPDATE ON public.contab_centros_costo
+  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_vigencia_historica();
+CREATE TRIGGER contab_subcentro_vigencia BEFORE UPDATE ON public.contab_subcentros_costo
+  FOR EACH ROW EXECUTE FUNCTION public.contab_trg_vigencia_historica();
+-- Las funciones de trigger de los pasos 4 y 5 también pasan a SECURITY DEFINER con el mismo REVOKE,
+-- para que vean todas las imputaciones al validar sin depender de la RLS.
 
 -- 10) Auditoría (función de 0B)
 CREATE TRIGGER contab_auditar_centros AFTER INSERT OR UPDATE OR DELETE ON public.contab_centros_costo
