@@ -578,3 +578,21 @@ DROP INDEX public.contab_imput_reparto_uq;
 - Cuentas con `requiere_analitica`, fechas del ejercicio y de corte (contador).
 - Concurrencia real y sesión real de contador.
 - Pantallas de reparto/vínculos se hacen después de aplicar el SQL.
+
+---
+
+## Correcciones finales (sustituyen lo anterior donde difieran) y ejecución autorizada
+
+1. **Porcentajes**: el trigger de repartos siempre calcula `importe = round(neto × % / 100, 2)` y al final llama a la normalización interna (sin `contab_es_usuario_directo`). La normalización deja el residuo de redondeo en el reparto de mayor % cuando suman 100 %, usando una columna `ajuste_redondeo` (no editable por el usuario) para que el trigger no lo pise. El generador lee `importe + ajuste_redondeo` ya normalizado. Prueba: 3 × 33,333333 % sobre $100 = $100,00.
+2. **Estados**: el generador no marca el comprobante como `confirmado` al crear el borrador; queda `borrador` con `asiento_id` (= "asiento generado"). Pasa a `confirmado` solo cuando `contab_confirmar_asiento` confirma el asiento (trigger AFTER sobre asientos), y `contab_descartar_asiento` sigue devolviéndolo a borrador. La UI muestra: registrado / asiento generado / contabilizado / anulado.
+3. **Vista analítica**: `contab_analitica_efecto` filtra `estado IN ('confirmado','revertido')` e incluye las reversas (lado opuesto → compensan); NC restan por lado.
+4. **Vínculos**: la anulación de un vínculo cuyo asiento está confirmado solo es válida si el comprobante ya está `anulado` en la misma transacción (la función de anulación marca el comprobante primero y después los vínculos). El trigger no intenta identificar al usuario.
+5. **Correspondencia al confirmar**: el trigger diferido reconstruye en memoria el asiento esperado (contrapartida con su cuenta, una línea por ítem con cuenta/importe/lado/obra/máquina, IVA, percepciones) y lo compara con las líneas reales (`EXCEPT` en ambos sentidos, con conteo para detectar duplicados), además de imputaciones vs repartos con subcentro, importe, obra y máquina.
+6. **Recuperación**: sin `DROP` destructivo. La reversión técnica solo restaura las dos funciones respaldadas (propietario y permisos se verifican antes/después vía `pg_proc.proowner` y `proacl`), deshabilita los triggers nuevos y deja tablas/columnas marcadas DEPRECATED. Se niega a correr si existen comprobantes.
+
+### Procedimiento
+1. Corregir el SQL de 1C-A y 1C-B con estos puntos.
+2. Ejecutarlo completo dentro de una transacción con ROLLBACK forzado junto con los casos de prueba (generación, regeneración, confirmación, reversa, anulación, porcentajes, permisos admin/contador/maquinista, vínculos parciales) y conteos de obras, máquinas, combustible, remitos, stock y certificados antes/después.
+3. Si todo pasa y la recuperación se verifica segura: aplicar 1C-A y 1C-B con la herramienta de migración, luego pantallas de reparto por ítem, vínculos, estado "asiento generado" y saldos.
+4. Si algo falla: detener e informar el bloqueo.
+5. Informe breve con lo ejecutado, resultados y pendientes. Sin concurrencia agresiva, sin CONTAD, sin 1D, sin otra base.
