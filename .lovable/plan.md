@@ -435,85 +435,115 @@ END $$;
 REVOKE EXECUTE ON FUNCTION public.contab_subcentros_sugeridos() FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contab_subcentros_sugeridos() TO authenticated;
 
--- 13) Vista de resultados netos (respeta RLS del usuario)
+-- 13) Vista de resultados netos (respeta RLS del usuario; usa el snapshot histórico)
 CREATE VIEW public.contab_analitica_neta WITH (security_invoker = true) AS
-SELECT i.id, a.fecha, a.id AS asiento_id, a.estado AS asiento_estado,
-       s.centro_id, i.subcentro_id, i.maquinaria_id, i.obra_id, i.obra_atribucion,
-       i.naturaleza, i.importe * i.signo AS importe_neto
+SELECT i.id, a.fecha, a.id AS asiento_id, a.estado AS asiento_estado, i.tipo_movimiento,
+       i.centro_id_snap AS centro_id, i.centro_codigo_snap AS centro_codigo, i.centro_nombre_snap AS centro_nombre,
+       i.subcentro_id, i.subcentro_codigo_snap AS subcentro_codigo, i.subcentro_nombre_snap AS subcentro_nombre,
+       i.maquinaria_id, i.obra_id, i.obra_atribucion, i.naturaleza,
+       i.importe * i.signo AS importe_neto
   FROM public.contab_imputaciones_analiticas i
   JOIN public.contab_asiento_lineas l ON l.id = i.linea_id
   JOIN public.contab_asientos a ON a.id = l.asiento_id
-  JOIN public.contab_subcentros_costo s ON s.id = i.subcentro_id
  WHERE a.estado IN ('confirmado','revertido');
 GRANT SELECT ON public.contab_analitica_neta TO authenticated;
 ```
 
-Reglas de lectura de reportes: por centro/subcentro/máquina se suma todo `importe_neto`; por obra solo `obra_atribucion = 'economica'`. Original (+) y reversa (−) se compensan, así el costo nunca se duplica.
+Reglas de reportes: por centro/subcentro/máquina se suma todo `importe_neto`; por obra solo `obra_atribucion = 'economica'`. Original (+) y reversa (−) se compensan; los futuros ajustes parciales sumarán con su propio signo. El costo nunca se duplica y los cambios posteriores de nombre o estado no alteran el histórico.
 
 ## Datos iniciales (carga de datos, después de la migración)
-OBR Obras · MAQ Maquinarias · TAL Taller · ADM Administración · DEP Depósito / Stock · GG Gastos Generales — `ON CONFLICT (codigo) DO NOTHING`. Ningún subcentro automático. Ninguna cuenta marcada como `requiere_analitica` hasta que lo definas con el contador.
+OBR Obras · MAQ Maquinarias · TAL Taller · ADM Administración · DEP Depósito / Stock · GG Gastos Generales — `ON CONFLICT (codigo) DO NOTHING`. Configurables. Ningún subcentro automático. Ninguna cuenta marcada como `requiere_analitica` hasta definirlo con el contador.
 
-## Verificaciones (todas en transacciones con ROLLBACK; no queda nada guardado)
-Seguridad
-1. Sin sesión, maquinista, remitero, capataz, tesorero, aprobador: no leen ni escriben las 3 tablas, la vista ni las sugerencias.
-2. Admin y contador: alta, edición y desactivación.
+## Controles previos (solo lectura, antes de migrar)
+- Conteos de obras, maquinarias, partes, remitos, combustible, stock, certificados, clientes, proveedores, asientos, líneas y auditoría.
+- Confirmar que no existen objetos con los nombres de 1B.
+- Confirmar dueño de las tablas contables (rol de migración) para el control de rol efectivo de reversas.
+- Firma de `contab_revertir_asiento` y `contab_confirmar_asiento` sin cambios respecto de 0B.
 
-Integridad
-3. Duplicados: código de centro; código dentro del centro; misma obra o máquina en dos subcentros.
-4. Asociaciones inválidas: obra en Taller, máquina en Obras, obra y máquina en el mismo subcentro, obra distinta a la del subcentro.
-5. Borrador: alta, edición y baja de imputación permitidas. Confirmado/revertido: edición y baja rechazadas.
-6. Tope: superar la línea en una o varias inserciones, y bajar el importe de la línea por debajo de lo imputado → rechazo. Dos sesiones simultáneas sobre la misma línea: la segunda espera y se rechaza si excede.
-7. Suma exacta: cuenta marcada sin imputar al 100 % → no confirma; cuenta no marcada → confirma.
-8. Reversa: contraimputaciones con signo −1; neto por obra y por máquina = 0; no se duplican.
-9. Máquina + obra: un importe; suma a la máquina siempre, a la obra solo si es económica.
-10. Desactivación: borrar con movimientos → rechazado; desactivar → permitido; imputar en inactivo o fuera de vigencia → rechazado.
+## Verificaciones posteriores (transacciones con ROLLBACK; no queda nada guardado)
+Permisos efectivos (simulando sesión con `request.jwt.claims` y `SET ROLE authenticated`)
+1. Sin sesión, maquinista, remitero, capataz, tesorero y aprobador_pagos: 0 filas al leer las 3 tablas y la vista; altas/ediciones rechazadas; `contab_subcentros_sugeridos()` rechazada.
+2. Llamar directamente cualquier función de trigger de 1B como `authenticated` → rechazado.
+3. Admin y contador: crear centro y subcentro, imputar, editar y borrar en borrador, confirmar y revertir sin error.
+
+Inmutabilidad y reversas
+4. Editar o borrar imputaciones de asiento confirmado o revertido → rechazado (admin y contador).
+5. Insertar a mano una imputación `reversa` o `ajuste` (admin y contador) → rechazado.
+6. Revertir un asiento con 3 imputaciones (incluida una máquina + obra económica): se crean 3 contraimputaciones con mismo importe, subcentro, dimensiones y snapshot; neto 0 por centro, máquina y obra; una segunda reversa no duplica (índice único + regla de 0B).
+7. Revertir después de desactivar el subcentro → funciona.
+
+Importes
+8. Superar el importe de la línea en una o varias altas o ediciones → rechazo al confirmar la transacción.
+9. Bajar el importe de la línea por debajo de lo imputado → rechazo.
+10. Concurrencia: dos sesiones imputan la misma línea; la segunda espera al bloqueo y se rechaza si en conjunto exceden.
+11. Cuenta marcada sin imputar al 100 % → no confirma; con 100 % → confirma; cuenta no marcada → confirma sin imputar.
+
+Doble dimensión e historial
+12. Subcentro de máquina + obra: un único importe; suma en la máquina siempre y en la obra solo si es económica.
+13. Renombrar o desactivar centro/subcentro con imputaciones → los reportes conservan código y nombre originales.
+14. Acotar vigencia excluyendo fechas imputadas, cambiar código, tipo o vínculo con imputaciones, o borrar con imputaciones → rechazado.
+15. Duplicados y asociaciones inválidas (como en la revisión anterior).
 
 Compatibilidad
-11. Conteos de obras, máquinas, partes, remitos, combustible, certificados, clientes y proveedores iguales antes y después.
-12. Ciclo completo de 0B (crear ejercicio, asiento manual, confirmar, revertir, cerrar período) y funciones de 1A funcionando dentro de transacción revertida.
-13. Rentabilidad sin cambios (no se toca su código ni sus tablas).
+16. Conteos de controles previos idénticos.
+17. Ciclo completo de 0B y funciones de 1A dentro de transacción revertida.
+18. Rentabilidad sin cambios.
 
 ## Recuperación — procedimiento inverso transaccional
-Solo se ejecuta si se decide desinstalar 1B. Aborta si hay cualquier dato cargado más allá de los 6 centros iniciales sin modificar.
+Solo si se decide desinstalar 1B. Aborta si hay cualquier dato real o si otra estructura depende de 1B. Conserva la auditoría (sus registros de 1B quedan como historial) y la columna aditiva del plan de cuentas.
 
 ```sql
 DO $$
+DECLARE v_dep text;
 BEGIN
-  IF NOT public.has_role(auth.uid(),'admin') AND current_user NOT IN ('postgres','supabase_admin') THEN
-    RAISE EXCEPTION 'Solo administración';
-  END IF;
-  IF EXISTS (SELECT 1 FROM public.contab_imputaciones_analiticas) THEN
-    RAISE EXCEPTION 'Hay imputaciones analíticas: no se revierte 1B'; END IF;
-  IF EXISTS (SELECT 1 FROM public.contab_subcentros_costo) THEN
-    RAISE EXCEPTION 'Hay subcentros cargados: no se revierte 1B'; END IF;
+  IF current_user NOT IN ('postgres','supabase_admin') THEN RAISE EXCEPTION 'Solo el rol de migración'; END IF;
+
+  -- Datos reales: si existen, no se toca nada
+  IF EXISTS (SELECT 1 FROM public.contab_imputaciones_analiticas) THEN RAISE EXCEPTION 'Hay imputaciones'; END IF;
+  IF EXISTS (SELECT 1 FROM public.contab_subcentros_costo) THEN RAISE EXCEPTION 'Hay subcentros'; END IF;
   IF EXISTS (SELECT 1 FROM public.contab_centros_costo
               WHERE codigo NOT IN ('OBR','MAQ','TAL','ADM','DEP','GG') OR updated_at <> created_at) THEN
-    RAISE EXCEPTION 'Hay centros nuevos o modificados: no se revierte 1B'; END IF;
+    RAISE EXCEPTION 'Hay centros nuevos o modificados'; END IF;
   IF EXISTS (SELECT 1 FROM public.contab_plan_cuentas WHERE requiere_analitica) THEN
-    RAISE EXCEPTION 'Hay cuentas con analítica obligatoria: desmarcarlas antes'; END IF;
+    RAISE EXCEPTION 'Hay cuentas con analítica obligatoria'; END IF;
 
+  -- Dependencias posteriores: vistas, FKs o funciones externas que usen las tablas de 1B
+  SELECT string_agg(DISTINCT d.classid::regclass || ':' || d.objid, ', ') INTO v_dep
+    FROM pg_depend d
+   WHERE d.refobjid IN ('public.contab_centros_costo'::regclass, 'public.contab_subcentros_costo'::regclass,
+                        'public.contab_imputaciones_analiticas'::regclass)
+     AND d.deptype = 'n'
+     AND NOT EXISTS (SELECT 1 FROM pg_rewrite r WHERE r.oid = d.objid
+                      AND r.ev_class = 'public.contab_analitica_neta'::regclass)
+     AND NOT EXISTS (SELECT 1 FROM pg_constraint c WHERE c.oid = d.objid
+                      AND c.conrelid IN ('public.contab_subcentros_costo'::regclass,
+                                         'public.contab_imputaciones_analiticas'::regclass));
+  IF v_dep IS NOT NULL THEN RAISE EXCEPTION 'Otras estructuras dependen de 1B: %', v_dep; END IF;
+
+  -- Retiro en orden, sin CASCADE (si algo no previsto depende, falla y no se aplica nada)
   DROP TRIGGER contab_reversa_imputaciones ON public.contab_asientos;
   DROP TRIGGER contab_asiento_analitica ON public.contab_asientos;
   DROP TRIGGER contab_linea_tope ON public.contab_asiento_lineas;
   DROP VIEW public.contab_analitica_neta;
   DROP FUNCTION public.contab_subcentros_sugeridos();
+  ALTER TABLE public.contab_centros_costo DISABLE TRIGGER contab_auditar_centros;
   DELETE FROM public.contab_centros_costo WHERE codigo IN ('OBR','MAQ','TAL','ADM','DEP','GG');
-  DROP TABLE public.contab_imputaciones_analiticas;
-  DROP TABLE public.contab_subcentros_costo;
-  DROP TABLE public.contab_centros_costo;
+  DROP TABLE public.contab_imputaciones_analiticas RESTRICT;
+  DROP TABLE public.contab_subcentros_costo RESTRICT;
+  DROP TABLE public.contab_centros_costo RESTRICT;
   DROP FUNCTION public.contab_trg_reversa_imputaciones(), public.contab_trg_asiento_analitica(),
-    public.contab_trg_linea_tope(), public.contab_trg_imputacion_tope(), public.contab_validar_tope_linea(uuid),
-    public.contab_trg_imputacion_guarda(), public.contab_trg_subcentro_guarda(),
-    public.contab_trg_centro_guarda(), public.contab_puede_centros();
-  -- La columna requiere_analitica queda (aditiva, sin efecto) para no tocar el plan de cuentas.
+    public.contab_trg_tope_linea(), public.contab_trg_imputacion_guarda(),
+    public.contab_trg_vigencia_historica(), public.contab_trg_subcentro_guarda(),
+    public.contab_trg_centro_guarda(), public.contab_puede_centros() RESTRICT;
 END $$;
 ```
-Todo el bloque es una única transacción: si algo falla, no se aplica nada.
+Todo el bloque es una única transacción: si una verificación o un retiro falla, no se aplica nada.
 
-## Procedimiento de implementación (cuando lo apruebes)
-1. Lectura previa: conteos base de todos los módulos.
-2. Aplicar `contab_1b_centros_costo`.
-3. Cargar los 6 centros iniciales.
-4. Ejecutar verificaciones 1–13 con ROLLBACK y comparar conteos.
-5. Pantalla Contabilidad → Configuración → Centros de costo (centros, subcentros, sugeridos) e imputación por línea en asientos en borrador; tests y compilación.
-6. Prueba en navegador como admin sin guardar datos de prueba.
+## Implementación gradual (solo con tu autorización expresa)
+1. Controles previos (lectura) y registro de conteos.
+2. Aplicar la migración `contab_1b_centros_costo`.
+3. Controles posteriores inmediatos: objetos creados, permisos de funciones, RLS activa, conteos iguales.
+4. Cargar los 6 centros iniciales.
+5. Verificaciones 1–18 con ROLLBACK.
+6. Pantalla Contabilidad → Configuración → Centros de costo (centros, subcentros, sugeridos) e imputación por línea en asientos en borrador; tests y compilación.
+7. Prueba en navegador como admin, sin dejar datos de prueba.
