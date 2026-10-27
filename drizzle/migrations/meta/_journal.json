@@ -204,6 +204,13 @@
       "when": 1792785238514,
       "tag": "0028_contab_1a_fichas_fiscales",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793110551353,
+      "tag": "0029_contab_1b_centros_costo",
+      "breakpoints": true
     }
   ]
 }

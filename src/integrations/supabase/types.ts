@@ -548,6 +548,13 @@ export type Database = {
             foreignKeyName: "contab_asiento_lineas_asiento_id_fkey"
             columns: ["asiento_id"]
             isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["asiento_id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_asiento_id_fkey"
+            columns: ["asiento_id"]
+            isOneToOne: false
             referencedRelation: "contab_asientos"
             referencedColumns: ["id"]
           },
@@ -689,8 +696,22 @@ export type Database = {
             foreignKeyName: "contab_asientos_reversa_de_fkey"
             columns: ["reversa_de"]
             isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["asiento_id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_reversa_de_fkey"
+            columns: ["reversa_de"]
+            isOneToOne: false
             referencedRelation: "contab_asientos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_revertido_por_fkey"
+            columns: ["revertido_por"]
+            isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["asiento_id"]
           },
           {
             foreignKeyName: "contab_asientos_revertido_por_fkey"
@@ -731,6 +752,48 @@ export type Database = {
           registro_id?: string | null
           tabla?: string
           usuario?: string | null
+        }
+        Relationships: []
+      }
+      contab_centros_costo: {
+        Row: {
+          activo: boolean
+          codigo: string
+          created_at: string
+          created_by: string | null
+          id: string
+          nombre: string
+          orden: number
+          tipo: string
+          updated_at: string
+          vigente_desde: string
+          vigente_hasta: string | null
+        }
+        Insert: {
+          activo?: boolean
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre: string
+          orden?: number
+          tipo?: string
+          updated_at?: string
+          vigente_desde?: string
+          vigente_hasta?: string | null
+        }
+        Update: {
+          activo?: boolean
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre?: string
+          orden?: number
+          tipo?: string
+          updated_at?: string
+          vigente_desde?: string
+          vigente_hasta?: string | null
         }
         Relationships: []
       }
@@ -1115,6 +1178,118 @@ export type Database = {
         }
         Relationships: []
       }
+      contab_imputaciones_analiticas: {
+        Row: {
+          centro_codigo_snap: string | null
+          centro_id_snap: string | null
+          centro_nombre_snap: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          importe: number
+          linea_id: string
+          maquinaria_id: string | null
+          naturaleza: string
+          nota: string | null
+          obra_atribucion: string | null
+          obra_id: string | null
+          origen_imputacion_id: string | null
+          signo: number
+          subcentro_codigo_snap: string | null
+          subcentro_id: string
+          subcentro_nombre_snap: string | null
+          tipo_movimiento: string
+          updated_at: string
+        }
+        Insert: {
+          centro_codigo_snap?: string | null
+          centro_id_snap?: string | null
+          centro_nombre_snap?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          importe: number
+          linea_id: string
+          maquinaria_id?: string | null
+          naturaleza: string
+          nota?: string | null
+          obra_atribucion?: string | null
+          obra_id?: string | null
+          origen_imputacion_id?: string | null
+          signo?: number
+          subcentro_codigo_snap?: string | null
+          subcentro_id: string
+          subcentro_nombre_snap?: string | null
+          tipo_movimiento?: string
+          updated_at?: string
+        }
+        Update: {
+          centro_codigo_snap?: string | null
+          centro_id_snap?: string | null
+          centro_nombre_snap?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          importe?: number
+          linea_id?: string
+          maquinaria_id?: string | null
+          naturaleza?: string
+          nota?: string | null
+          obra_atribucion?: string | null
+          obra_id?: string | null
+          origen_imputacion_id?: string | null
+          signo?: number
+          subcentro_codigo_snap?: string | null
+          subcentro_id?: string
+          subcentro_nombre_snap?: string | null
+          tipo_movimiento?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_linea_id_fkey"
+            columns: ["linea_id"]
+            isOneToOne: false
+            referencedRelation: "contab_asiento_lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_origen_imputacion_id_fkey"
+            columns: ["origen_imputacion_id"]
+            isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_origen_imputacion_id_fkey"
+            columns: ["origen_imputacion_id"]
+            isOneToOne: false
+            referencedRelation: "contab_imputaciones_analiticas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_subcentro_id_fkey"
+            columns: ["subcentro_id"]
+            isOneToOne: false
+            referencedRelation: "contab_subcentros_costo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contab_pagos: {
         Row: {
           asiento_id: string | null
@@ -1271,6 +1446,7 @@ export type Database = {
           imputable: boolean
           nombre: string
           parent_id: string | null
+          requiere_analitica: boolean
           tipo: Database["public"]["Enums"]["contab_cuenta_tipo"]
           updated_at: string
         }
@@ -1283,6 +1459,7 @@ export type Database = {
           imputable?: boolean
           nombre: string
           parent_id?: string | null
+          requiere_analitica?: boolean
           tipo: Database["public"]["Enums"]["contab_cuenta_tipo"]
           updated_at?: string
         }
@@ -1295,6 +1472,7 @@ export type Database = {
           imputable?: boolean
           nombre?: string
           parent_id?: string | null
+          requiere_analitica?: boolean
           tipo?: Database["public"]["Enums"]["contab_cuenta_tipo"]
           updated_at?: string
         }
@@ -1342,6 +1520,88 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "contab_empresa"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_reversa_permisos: {
+        Row: {
+          asiento_reversa_id: string
+          txid: number
+        }
+        Insert: {
+          asiento_reversa_id: string
+          txid?: number
+        }
+        Update: {
+          asiento_reversa_id?: string
+          txid?: number
+        }
+        Relationships: []
+      }
+      contab_subcentros_costo: {
+        Row: {
+          activo: boolean
+          centro_id: string
+          codigo: string
+          created_at: string
+          created_by: string | null
+          id: string
+          maquinaria_id: string | null
+          nombre: string
+          obra_id: string | null
+          updated_at: string
+          vigente_desde: string
+          vigente_hasta: string | null
+        }
+        Insert: {
+          activo?: boolean
+          centro_id: string
+          codigo: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          maquinaria_id?: string | null
+          nombre: string
+          obra_id?: string | null
+          updated_at?: string
+          vigente_desde?: string
+          vigente_hasta?: string | null
+        }
+        Update: {
+          activo?: boolean
+          centro_id?: string
+          codigo?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          maquinaria_id?: string | null
+          nombre?: string
+          obra_id?: string | null
+          updated_at?: string
+          vigente_desde?: string
+          vigente_hasta?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_subcentros_costo_centro_id_fkey"
+            columns: ["centro_id"]
+            isOneToOne: false
+            referencedRelation: "contab_centros_costo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_subcentros_costo_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_subcentros_costo_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
             referencedColumns: ["id"]
           },
         ]
@@ -4508,6 +4768,49 @@ export type Database = {
       }
     }
     Views: {
+      contab_analitica_neta: {
+        Row: {
+          asiento_estado: string | null
+          asiento_id: string | null
+          centro_codigo: string | null
+          centro_id: string | null
+          centro_nombre: string | null
+          fecha: string | null
+          id: string | null
+          importe_neto: number | null
+          maquinaria_id: string | null
+          naturaleza: string | null
+          obra_atribucion: string | null
+          obra_id: string | null
+          subcentro_codigo: string | null
+          subcentro_id: string | null
+          subcentro_nombre: string | null
+          tipo_movimiento: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_subcentro_id_fkey"
+            columns: ["subcentro_id"]
+            isOneToOne: false
+            referencedRelation: "contab_subcentros_costo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contab_terceros_estado: {
         Row: {
           activo: boolean | null
@@ -4775,6 +5078,7 @@ export type Database = {
         Returns: string
       }
       contab_puede: { Args: { _accion: string }; Returns: boolean }
+      contab_puede_centros: { Args: never; Returns: boolean }
       contab_reabrir_periodo: {
         Args: { _motivo: string; _periodo_id: string }
         Returns: undefined
@@ -4782,6 +5086,15 @@ export type Database = {
       contab_revertir_asiento: {
         Args: { _asiento_id: string; _fecha?: string; _motivo: string }
         Returns: string
+      }
+      contab_subcentros_sugeridos: {
+        Args: never
+        Returns: {
+          estado: string
+          nombre: string
+          origen: string
+          ref_id: string
+        }[]
       }
       contab_vincular_ficha: {
         Args: {
