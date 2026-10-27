@@ -502,14 +502,14 @@ Permisos efectivos (simulando sesión con `request.jwt.claims` y `SET ROLE authe
 
 Inmutabilidad y reversas
 4. Editar o borrar imputaciones de asiento confirmado o revertido → rechazado (admin y contador).
-5. Insertar a mano una imputación `reversa` o `ajuste` (admin y contador) → rechazado.
+5. Insertar a mano una imputación `reversa` o `ajuste` (admin y contador) → rechazado; leer o escribir la tabla privada de permisos de reversa como cualquier usuario → rechazado.
 6. Revertir un asiento con 3 imputaciones (incluida una máquina + obra económica): se crean 3 contraimputaciones con mismo importe, subcentro, dimensiones y snapshot; neto 0 por centro, máquina y obra; una segunda reversa no duplica (índice único + regla de 0B).
 7. Revertir después de desactivar el subcentro → funciona.
 
 Importes
 8. Superar el importe de la línea en una o varias altas o ediciones → rechazo al confirmar la transacción.
 9. Bajar el importe de la línea por debajo de lo imputado → rechazo.
-10. Concurrencia: dos sesiones imputan la misma línea; la segunda espera al bloqueo y se rechaza si en conjunto exceden.
+10. Concurrencia real con dos sesiones: PENDIENTE documentada (no se ejecuta en la base productiva). Solo se verifica, con ROLLBACK, que la línea queda bloqueada y que el tope rechaza el exceso.
 11. Cuenta marcada sin imputar al 100 % → no confirma; con 100 % → confirma; cuenta no marcada → confirma sin imputar.
 
 Doble dimensión e historial
@@ -565,6 +565,7 @@ BEGIN
   DROP TABLE public.contab_imputaciones_analiticas RESTRICT;
   DROP TABLE public.contab_subcentros_costo RESTRICT;
   DROP TABLE public.contab_centros_costo RESTRICT;
+  DROP TABLE public.contab_reversa_permisos RESTRICT;   -- siempre vacía fuera de una reversa
   DROP FUNCTION public.contab_trg_reversa_imputaciones(), public.contab_trg_asiento_analitica(),
     public.contab_trg_tope_linea(), public.contab_trg_imputacion_guarda(),
     public.contab_trg_vigencia_historica(), public.contab_trg_subcentro_guarda(),
