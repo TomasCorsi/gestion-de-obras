@@ -14,11 +14,24 @@ Base: la misma de Lovable Cloud. Sin borrar datos. Sin 1C. Sin tocar obras, maqu
 - Columnas reales: `obras(id, nombre, numero, estado, cliente_id)`, `maquinarias(id, codigo, nombre, patente, estado)`, `contab_plan_cuentas(id, codigo, nombre, imputable, activa, …)`, `contab_asientos.estado` (borrador / confirmado / revertido) y `reversa_de`.
 - No existe ninguna tabla de centros de costo.
 
+## Corrección crítica final (autorización de reversas)
+
+- Se elimina todo control basado en `current_user`/`session_user` y en variables de sesión.
+- Autorización real: tabla privada `contab_reversa_permisos`, sin acceso para ningún usuario (sin permisos y RLS sin políticas). Solo el trigger de reversa —que se dispara únicamente dentro de `contab_revertir_asiento`, que ya exige `contab_puede('asiento_revertir')`— emite un permiso atado al asiento de reversa y a la transacción actual (`txid_current()`), inserta las contraimputaciones y lo consume.
+- El control de imputaciones exige ese permiso para cualquier alta `reversa` y valida espejo exacto con todos los campos, snapshot incluido.
+- Usuarios autorizados (admin/contador) solo pueden dar de alta `original`; `reversa` y `ajuste` manuales se rechazan; reversas y confirmadas no se editan ni borran.
+
+### Condiciones de ejecución (autorizadas)
+- No se ejecutan pruebas de concurrencia con dos sesiones sobre la base productiva: quedan **pendientes documentadas**. Se verifica solo, dentro de una transacción con ROLLBACK, que el bloqueo de línea existe y que el tope se aplica.
+- Antes de migrar: compatibilidad con 0B y 1A (firmas y cuerpo de `contab_revertir_asiento`, `contab_confirmar_asiento`, triggers de líneas y asientos, funciones de 1A).
+- Recuperación real: el procedimiento inverso transaccional de abajo; antes de migrar se confirma el dueño de las tablas y que ningún objeto con nombre de 1B existe.
+- Si cualquier verificación previa detecta una incompatibilidad, se detiene y se informa antes de continuar.
+
 ## Ajustes finales (revisión del SQL definitivo)
 
 | Punto | Corrección |
 |---|---|
-| 1. Reversas seguras | Se eliminó la variable `contab.reversa_en_curso`. Las contraimputaciones solo las puede insertar el trigger privilegiado de reversa (se comprueba el rol efectivo, no una variable). Además se valida que sean espejo exacto: misma línea por `orden`, mismo importe, subcentro, obra, máquina, atribución y naturaleza, del asiento indicado en `reversa_de`. No se pueden editar ni borrar. |
+| 1. Reversas seguras | Reemplazado por el permiso privado de un solo uso (ver arriba). Espejo exacto validado. No se pueden editar ni borrar. |
 | 2. Permisos de funciones | Ya no existe `contab_validar_tope_linea` suelta. Todas las funciones de trigger son privilegiadas, con ejecución revocada a todos los usuarios (Postgres no exige ese permiso al dispararse). Así validan sobre todas las filas sin depender de la RLS, y nadie las puede llamar directamente. Admin/contador operan por RLS normal. |
 | 3. Importes y concurrencia | Cada alta/edición/baja bloquea primero la línea (`FOR UPDATE`): dos sesiones sobre la misma línea se serializan. El tope se revisa al confirmar la transacción, en altas, ediciones y cambios de importe de la línea. La suma exacta se exige al confirmar el asiento en cuentas marcadas. |
 | 4. Modelo preparado para NC/ajustes | Nuevo `tipo_movimiento`: original, reversa, ajuste. "Ajuste" (NC, devoluciones, ajustes parciales con signo ±) queda reservado y bloqueado en 1B; no hará falta rediseñar. |
@@ -210,9 +223,6 @@ CREATE TRIGGER contab_subcentro_guarda BEFORE INSERT OR UPDATE OR DELETE ON publ
 CREATE OR REPLACE FUNCTION public.contab_trg_imputacion_guarda() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE v_estado text; v_fecha date; v_rev uuid; v_sub record; v_ori record; v_lr record;
-        v_es_sistema boolean := (current_user = (SELECT tableowner FROM pg_tables
-                                 WHERE schemaname='public' AND tablename='contab_imputaciones_analiticas'))
-                                AND session_user <> current_user;
 BEGIN
   -- UPDATE / DELETE: siempre por OLD; nunca sobre asientos no borrador ni reversas
   IF TG_OP IN ('UPDATE','DELETE') THEN
@@ -235,19 +245,29 @@ BEGIN
    WHERE l.id = NEW.linea_id FOR UPDATE OF l;
 
   IF NEW.tipo_movimiento = 'reversa' THEN
-    -- Solo el trigger privilegiado de reversa (SECURITY DEFINER) puede crearlas.
-    -- No depende de variables de sesión: lo decide el rol efectivo.
-    IF TG_OP <> 'INSERT' OR NOT v_es_sistema THEN
+    -- Autorización: debe existir un permiso de la tabla privada para ESTE asiento de
+    -- reversa y ESTA transacción. Ningún usuario puede crear ese permiso.
+    IF TG_OP <> 'INSERT' OR NOT EXISTS (
+         SELECT 1 FROM contab_reversa_permisos p
+          WHERE p.asiento_reversa_id = (SELECT asiento_id FROM contab_asiento_lineas WHERE id = NEW.linea_id)
+            AND p.txid = txid_current()) THEN
       RAISE EXCEPTION 'Las contraimputaciones solo las genera la reversa del asiento';
     END IF;
     SELECT i.*, lo.orden, lo.asiento_id INTO v_ori
       FROM contab_imputaciones_analiticas i JOIN contab_asiento_lineas lo ON lo.id = i.linea_id
      WHERE i.id = NEW.origen_imputacion_id;
     SELECT orden, asiento_id INTO v_lr FROM contab_asiento_lineas WHERE id = NEW.linea_id;
+    -- Espejo exacto, incluido todo el snapshot histórico
     IF v_ori.id IS NULL OR v_ori.tipo_movimiento <> 'original' OR v_rev IS DISTINCT FROM v_ori.asiento_id
-       OR v_lr.orden <> v_ori.orden OR NEW.importe <> v_ori.importe OR NEW.subcentro_id <> v_ori.subcentro_id
+       OR v_lr.orden <> v_ori.orden OR NEW.importe <> v_ori.importe OR NEW.signo <> -1
+       OR NEW.subcentro_id <> v_ori.subcentro_id
        OR NEW.obra_id IS DISTINCT FROM v_ori.obra_id OR NEW.maquinaria_id IS DISTINCT FROM v_ori.maquinaria_id
-       OR NEW.obra_atribucion IS DISTINCT FROM v_ori.obra_atribucion OR NEW.naturaleza <> v_ori.naturaleza THEN
+       OR NEW.obra_atribucion IS DISTINCT FROM v_ori.obra_atribucion OR NEW.naturaleza <> v_ori.naturaleza
+       OR NEW.centro_id_snap IS DISTINCT FROM v_ori.centro_id_snap
+       OR NEW.centro_codigo_snap IS DISTINCT FROM v_ori.centro_codigo_snap
+       OR NEW.centro_nombre_snap IS DISTINCT FROM v_ori.centro_nombre_snap
+       OR NEW.subcentro_codigo_snap IS DISTINCT FROM v_ori.subcentro_codigo_snap
+       OR NEW.subcentro_nombre_snap IS DISTINCT FROM v_ori.subcentro_nombre_snap THEN
       RAISE EXCEPTION 'La contraimputación no es espejo exacto del original';
     END IF;
     RETURN NEW;   -- copia exacta, incluido el snapshot del original
@@ -340,9 +360,22 @@ CREATE CONSTRAINT TRIGGER contab_asiento_analitica AFTER UPDATE OF estado ON pub
   EXECUTE FUNCTION public.contab_trg_asiento_analitica();
 
 -- 9) Reversa: contraimputaciones exactas creadas por el rol privilegiado (sin variables de sesión)
+-- Autorización real: tabla privada de permisos de un solo uso. Sin GRANT a anon/authenticated
+-- y con RLS sin políticas: ningún usuario puede leerla ni escribirla. Solo este trigger,
+-- disparado por contab_revertir_asiento (que ya exige contab_puede('asiento_revertir')),
+-- emite un permiso atado al asiento de reversa y a la transacción actual, y lo consume al final.
+CREATE TABLE public.contab_reversa_permisos (
+  asiento_reversa_id uuid NOT NULL,
+  txid bigint NOT NULL DEFAULT txid_current(),
+  PRIMARY KEY (asiento_reversa_id, txid)
+);
+REVOKE ALL ON public.contab_reversa_permisos FROM PUBLIC, anon, authenticated;
+ALTER TABLE public.contab_reversa_permisos ENABLE ROW LEVEL SECURITY;
+
 CREATE OR REPLACE FUNCTION public.contab_trg_reversa_imputaciones() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
+  INSERT INTO contab_reversa_permisos (asiento_reversa_id) VALUES (NEW.id);
   INSERT INTO contab_imputaciones_analiticas
     (linea_id, subcentro_id, obra_id, obra_atribucion, maquinaria_id, naturaleza, importe,
      signo, tipo_movimiento, origen_imputacion_id,
@@ -356,6 +389,7 @@ BEGIN
     JOIN contab_imputaciones_analiticas i ON i.linea_id = lo.id AND i.tipo_movimiento = 'original'
     JOIN contab_asiento_lineas lr ON lr.asiento_id = NEW.id AND lr.orden = lo.orden
    WHERE lo.asiento_id = NEW.reversa_de;
+  DELETE FROM contab_reversa_permisos WHERE asiento_reversa_id = NEW.id AND txid = txid_current();
   RETURN NULL;
 END $$;
 REVOKE EXECUTE ON FUNCTION public.contab_trg_reversa_imputaciones() FROM PUBLIC, anon, authenticated;
@@ -468,14 +502,14 @@ Permisos efectivos (simulando sesión con `request.jwt.claims` y `SET ROLE authe
 
 Inmutabilidad y reversas
 4. Editar o borrar imputaciones de asiento confirmado o revertido → rechazado (admin y contador).
-5. Insertar a mano una imputación `reversa` o `ajuste` (admin y contador) → rechazado.
+5. Insertar a mano una imputación `reversa` o `ajuste` (admin y contador) → rechazado; leer o escribir la tabla privada de permisos de reversa como cualquier usuario → rechazado.
 6. Revertir un asiento con 3 imputaciones (incluida una máquina + obra económica): se crean 3 contraimputaciones con mismo importe, subcentro, dimensiones y snapshot; neto 0 por centro, máquina y obra; una segunda reversa no duplica (índice único + regla de 0B).
 7. Revertir después de desactivar el subcentro → funciona.
 
 Importes
 8. Superar el importe de la línea en una o varias altas o ediciones → rechazo al confirmar la transacción.
 9. Bajar el importe de la línea por debajo de lo imputado → rechazo.
-10. Concurrencia: dos sesiones imputan la misma línea; la segunda espera al bloqueo y se rechaza si en conjunto exceden.
+10. Concurrencia real con dos sesiones: PENDIENTE documentada (no se ejecuta en la base productiva). Solo se verifica, con ROLLBACK, que la línea queda bloqueada y que el tope rechaza el exceso.
 11. Cuenta marcada sin imputar al 100 % → no confirma; con 100 % → confirma; cuenta no marcada → confirma sin imputar.
 
 Doble dimensión e historial
@@ -531,6 +565,7 @@ BEGIN
   DROP TABLE public.contab_imputaciones_analiticas RESTRICT;
   DROP TABLE public.contab_subcentros_costo RESTRICT;
   DROP TABLE public.contab_centros_costo RESTRICT;
+  DROP TABLE public.contab_reversa_permisos RESTRICT;   -- siempre vacía fuera de una reversa
   DROP FUNCTION public.contab_trg_reversa_imputaciones(), public.contab_trg_asiento_analitica(),
     public.contab_trg_tope_linea(), public.contab_trg_imputacion_guarda(),
     public.contab_trg_vigencia_historica(), public.contab_trg_subcentro_guarda(),
