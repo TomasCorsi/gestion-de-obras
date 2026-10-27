@@ -211,6 +211,13 @@
       "when": 1793110551353,
       "tag": "0029_contab_1b_centros_costo",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793123968631,
+      "tag": "0030_contab_1c_repartos_vinculos",
+      "breakpoints": true
     }
   ]
 }
