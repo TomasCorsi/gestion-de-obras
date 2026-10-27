@@ -508,10 +508,12 @@ export type Database = {
           haber: number
           id: string
           importe_origen: number | null
+          item_id: string | null
           maquinaria_id: string | null
           moneda: string
           obra_id: string | null
           orden: number
+          regla_cuenta: string | null
         }
         Insert: {
           asiento_id: string
@@ -523,10 +525,12 @@ export type Database = {
           haber?: number
           id?: string
           importe_origen?: number | null
+          item_id?: string | null
           maquinaria_id?: string | null
           moneda?: string
           obra_id?: string | null
           orden?: number
+          regla_cuenta?: string | null
         }
         Update: {
           asiento_id?: string
@@ -538,10 +542,12 @@ export type Database = {
           haber?: number
           id?: string
           importe_origen?: number | null
+          item_id?: string | null
           maquinaria_id?: string | null
           moneda?: string
           obra_id?: string | null
           orden?: number
+          regla_cuenta?: string | null
         }
         Relationships: [
           {
@@ -563,6 +569,13 @@ export type Database = {
             columns: ["cuenta_id"]
             isOneToOne: false
             referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobante_items"
             referencedColumns: ["id"]
           },
           {
@@ -802,6 +815,7 @@ export type Database = {
           alicuota_iva: number
           cantidad: number
           comprobante_id: string
+          concepto_fiscal: string
           created_at: string
           cuenta_id: string | null
           descripcion: string
@@ -818,6 +832,7 @@ export type Database = {
           alicuota_iva?: number
           cantidad?: number
           comprobante_id: string
+          concepto_fiscal?: string
           created_at?: string
           cuenta_id?: string | null
           descripcion: string
@@ -834,6 +849,7 @@ export type Database = {
           alicuota_iva?: number
           cantidad?: number
           comprobante_id?: string
+          concepto_fiscal?: string
           created_at?: string
           cuenta_id?: string | null
           descripcion?: string
@@ -1187,13 +1203,16 @@ export type Database = {
           created_by: string | null
           id: string
           importe: number
+          item_id: string | null
           linea_id: string
           maquinaria_id: string | null
           naturaleza: string
           nota: string | null
           obra_atribucion: string | null
           obra_id: string | null
+          origen_fuente: string
           origen_imputacion_id: string | null
+          reparto_id: string | null
           signo: number
           subcentro_codigo_snap: string | null
           subcentro_id: string
@@ -1209,13 +1228,16 @@ export type Database = {
           created_by?: string | null
           id?: string
           importe: number
+          item_id?: string | null
           linea_id: string
           maquinaria_id?: string | null
           naturaleza: string
           nota?: string | null
           obra_atribucion?: string | null
           obra_id?: string | null
+          origen_fuente?: string
           origen_imputacion_id?: string | null
+          reparto_id?: string | null
           signo?: number
           subcentro_codigo_snap?: string | null
           subcentro_id: string
@@ -1231,13 +1253,16 @@ export type Database = {
           created_by?: string | null
           id?: string
           importe?: number
+          item_id?: string | null
           linea_id?: string
           maquinaria_id?: string | null
           naturaleza?: string
           nota?: string | null
           obra_atribucion?: string | null
           obra_id?: string | null
+          origen_fuente?: string
           origen_imputacion_id?: string | null
+          reparto_id?: string | null
           signo?: number
           subcentro_codigo_snap?: string | null
           subcentro_id?: string
@@ -1271,6 +1296,13 @@ export type Database = {
             foreignKeyName: "contab_imputaciones_analiticas_origen_imputacion_id_fkey"
             columns: ["origen_imputacion_id"]
             isOneToOne: false
+            referencedRelation: "contab_analitica_efecto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_origen_imputacion_id_fkey"
+            columns: ["origen_imputacion_id"]
+            isOneToOne: false
             referencedRelation: "contab_analitica_neta"
             referencedColumns: ["id"]
           },
@@ -1283,6 +1315,89 @@ export type Database = {
           },
           {
             foreignKeyName: "contab_imputaciones_analiticas_subcentro_id_fkey"
+            columns: ["subcentro_id"]
+            isOneToOne: false
+            referencedRelation: "contab_subcentros_costo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_item_repartos: {
+        Row: {
+          ajuste_redondeo: number
+          created_at: string
+          created_by: string | null
+          id: string
+          importe: number
+          importe_efectivo: number | null
+          item_id: string
+          maquinaria_id: string | null
+          modo: string
+          nota: string | null
+          obra_atribucion: string | null
+          obra_id: string | null
+          porcentaje: number | null
+          subcentro_id: string
+          updated_at: string
+        }
+        Insert: {
+          ajuste_redondeo?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          importe: number
+          importe_efectivo?: number | null
+          item_id: string
+          maquinaria_id?: string | null
+          modo: string
+          nota?: string | null
+          obra_atribucion?: string | null
+          obra_id?: string | null
+          porcentaje?: number | null
+          subcentro_id: string
+          updated_at?: string
+        }
+        Update: {
+          ajuste_redondeo?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          importe?: number
+          importe_efectivo?: number | null
+          item_id?: string
+          maquinaria_id?: string | null
+          modo?: string
+          nota?: string | null
+          obra_atribucion?: string | null
+          obra_id?: string | null
+          porcentaje?: number | null
+          subcentro_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_item_repartos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobante_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_item_repartos_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_item_repartos_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_item_repartos_subcentro_id_fkey"
             columns: ["subcentro_id"]
             isOneToOne: false
             referencedRelation: "contab_subcentros_costo"
@@ -1524,6 +1639,39 @@ export type Database = {
           },
         ]
       }
+      contab_respaldo_funciones: {
+        Row: {
+          acl: string | null
+          created_at: string
+          definicion: string
+          fase: string
+          firma: string
+          id: number
+          nombre: string
+          owner_oid: unknown
+        }
+        Insert: {
+          acl?: string | null
+          created_at?: string
+          definicion: string
+          fase: string
+          firma: string
+          id?: number
+          nombre: string
+          owner_oid: unknown
+        }
+        Update: {
+          acl?: string | null
+          created_at?: string
+          definicion?: string
+          fase?: string
+          firma?: string
+          id?: number
+          nombre?: string
+          owner_oid?: unknown
+        }
+        Relationships: []
+      }
       contab_reversa_permisos: {
         Row: {
           asiento_reversa_id: string
@@ -1739,6 +1887,72 @@ export type Database = {
             columns: ["proveedor_id"]
             isOneToOne: false
             referencedRelation: "proveedores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_vinculos_operativos: {
+        Row: {
+          anulado_at: string | null
+          anulado_motivo: string | null
+          clase: string
+          comprobante_id: string
+          created_at: string
+          created_by: string | null
+          doc_id: string
+          doc_tipo: string
+          estado: string
+          id: string
+          importe_vinculado: number | null
+          item_id: string | null
+          nota: string | null
+          updated_at: string
+        }
+        Insert: {
+          anulado_at?: string | null
+          anulado_motivo?: string | null
+          clase: string
+          comprobante_id: string
+          created_at?: string
+          created_by?: string | null
+          doc_id: string
+          doc_tipo: string
+          estado?: string
+          id?: string
+          importe_vinculado?: number | null
+          item_id?: string | null
+          nota?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anulado_at?: string | null
+          anulado_motivo?: string | null
+          clase?: string
+          comprobante_id?: string
+          created_at?: string
+          created_by?: string | null
+          doc_id?: string
+          doc_tipo?: string
+          estado?: string
+          id?: string
+          importe_vinculado?: number | null
+          item_id?: string | null
+          nota?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_vinculos_operativos_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_vinculos_operativos_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobante_items"
             referencedColumns: ["id"]
           },
         ]
@@ -4768,6 +4982,90 @@ export type Database = {
       }
     }
     Views: {
+      contab_analitica_efecto: {
+        Row: {
+          asiento_estado: string | null
+          asiento_id: string | null
+          comprobante_id: string | null
+          efecto: number | null
+          fecha: string | null
+          id: string | null
+          importe: number | null
+          linea_id: string | null
+          maquinaria_id: string | null
+          naturaleza: string | null
+          obra_id: string | null
+          origen_fuente: string | null
+          reversa_de: string | null
+          subcentro_id: string | null
+          tipo_movimiento: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_asiento_lineas_asiento_id_fkey"
+            columns: ["asiento_id"]
+            isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["asiento_id"]
+          },
+          {
+            foreignKeyName: "contab_asiento_lineas_asiento_id_fkey"
+            columns: ["asiento_id"]
+            isOneToOne: false
+            referencedRelation: "contab_asientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_reversa_de_fkey"
+            columns: ["reversa_de"]
+            isOneToOne: false
+            referencedRelation: "contab_analitica_neta"
+            referencedColumns: ["asiento_id"]
+          },
+          {
+            foreignKeyName: "contab_asientos_reversa_de_fkey"
+            columns: ["reversa_de"]
+            isOneToOne: false
+            referencedRelation: "contab_asientos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_linea_id_fkey"
+            columns: ["linea_id"]
+            isOneToOne: false
+            referencedRelation: "contab_asiento_lineas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_maquinaria_id_fkey"
+            columns: ["maquinaria_id"]
+            isOneToOne: false
+            referencedRelation: "maquinarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_imputaciones_analiticas_subcentro_id_fkey"
+            columns: ["subcentro_id"]
+            isOneToOne: false
+            referencedRelation: "contab_subcentros_costo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contab_analitica_neta: {
         Row: {
           asiento_estado: string | null
@@ -4829,6 +5127,16 @@ export type Database = {
           telefono: string | null
           tercero_id: string | null
           tipo: Database["public"]["Enums"]["contab_tercero_tipo"] | null
+        }
+        Relationships: []
+      }
+      contab_vinculos_saldos: {
+        Row: {
+          doc_id: string | null
+          doc_tipo: string | null
+          facturado: number | null
+          importe_referencia: number | null
+          saldo_pendiente: number | null
         }
         Relationships: []
       }
@@ -5027,6 +5335,20 @@ export type Database = {
         Args: { _cbte_id: string; _motivo: string }
         Returns: undefined
       }
+      contab_cbte_lineas_esperadas: {
+        Args: { _cbte_id: string }
+        Returns: {
+          cuenta_id: string
+          debe: number
+          descripcion: string
+          haber: number
+          item_id: string
+          maquinaria_id: string
+          obra_id: string
+          orden: number
+          regla_cuenta: string
+        }[]
+      }
       contab_cerrar_periodo: {
         Args: { _periodo_id: string }
         Returns: undefined
@@ -5053,6 +5375,10 @@ export type Database = {
         Args: { _asiento_id: string }
         Returns: undefined
       }
+      contab_doc_referencia: {
+        Args: { _id: string; _tipo: string }
+        Returns: Record<string, unknown>
+      }
       contab_doc_valido: {
         Args: { _n: string; _tipo: string }
         Returns: boolean
@@ -5076,6 +5402,10 @@ export type Database = {
       contab_generar_asiento_pago: {
         Args: { _pago_id: string }
         Returns: string
+      }
+      contab_normalizar_repartos: {
+        Args: { _item_id: string }
+        Returns: undefined
       }
       contab_puede: { Args: { _accion: string }; Returns: boolean }
       contab_puede_centros: { Args: never; Returns: boolean }
