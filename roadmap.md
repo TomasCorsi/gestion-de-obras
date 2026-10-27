@@ -15,3 +15,10 @@
 - [ ] Ingreso con sesión real de contador (hoy no existe usuario con rol contador). Bloqueo: asignar el rol a la persona real.
 - [ ] Confirmar/Revertir desde la pantalla con datos reales (probado solo en transacción revertida).
 - [ ] Fechas reales del ejercicio fiscal de Calamina Sur antes de crear el primer ejercicio (no crear 2026 automáticamente).
+
+## Contabilidad 1B (centros de costo) — aplicada
+- [x] Tablas, validaciones, 6 centros iniciales, pantalla e imputación por línea
+- [ ] Pendiente: prueba de concurrencia real con dos sesiones (no se ejecuta en base productiva)
+- [ ] Pendiente: prueba con sesión real de contador (no existe usuario contador)
+- [ ] Pendiente 1A: corregir CUIT inválidos de terceros usados; usar cuenta específica por cliente/proveedor al generar asientos
+- [ ] Pendiente: definir con el contador qué cuentas exigen imputación analítica obligatoria
