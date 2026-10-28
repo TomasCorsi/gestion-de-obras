@@ -38,3 +38,10 @@
 - [x] Administrador conserva acceso completo a Proveedores, Órdenes de Compra y Gastos Generales; contador sin cambios.
 - [x] Navegación por proveedor_id / tercero_id y mensaje sin ficha fiscal; 93 pruebas pasan y compilación correcta. Interfaz real: órdenes por ID (sin registros del proveedor probado) y mensaje sin ficha. Comprobantes vinculados verificados con respuestas simuladas sin persistencia.
 - [ ] Verificar comprobantes desde un proveedor con ficha fiscal real vinculada: no hay proveedores activos vinculados disponibles en la sesión probada; no se crean datos de prueba.
+
+## Contabilidad 1D — Operación paralela (diseño aprobado, sin ejecutar)
+- [ ] Migración modo paralelo/oficial + bloqueo de fecha mínima. Bloqueo: autorización explícita para migrar.
+- [ ] Crear ejercicio paralelo 01/11/2026–31/07/2027. Bloqueo: contador confirma fecha de inicio.
+- [ ] Advertencia "Modo paralelo" en Contabilidad y en exportaciones.
+- [ ] Datos fiscales de empresa y plan de cuentas validado. Bloqueo: datos del contador.
+- [ ] Fases futuras: cuentas corrientes, Libro Banco, retenciones/percepciones, circuito NC, cierre de ejercicio, apertura 01/08/2027, exportaciones legales.
