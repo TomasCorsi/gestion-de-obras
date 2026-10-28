@@ -31,7 +31,16 @@ const COND_IVA: { v: CondIva; l: string }[] = [
 
 const TIPOS_CUENTA: CuentaTipo[] = ["activo", "pasivo", "patrimonio", "ingreso", "egreso", "resultado"];
 
-export function ConfigTab({ inicial }: { inicial?: "empresa" | "plan" | "terceros" | "centros" } = {}) {
+export type ConfigSeccion = "empresa" | "plan" | "terceros" | "centros" | "subcentros";
+
+/** Con `inicial`, muestra solo esa sección (sin pestañas): una única ubicación por función. */
+export function ConfigTab({ inicial }: { inicial?: ConfigSeccion } = {}) {
+  if (inicial) {
+    if (inicial === "empresa") return <EmpresaForm />;
+    if (inicial === "plan") return <PlanCuentas />;
+    if (inicial === "terceros") return <TercerosPanel />;
+    return <CentrosCostoPanel foco={inicial === "subcentros" ? "subcentros" : "centros"} />;
+  }
   return (
     <Tabs defaultValue={inicial ?? "empresa"} className="w-full">
       <TabsList>

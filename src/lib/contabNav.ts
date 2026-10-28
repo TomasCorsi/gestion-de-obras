@@ -20,7 +20,7 @@ export interface NavModulo { id: string; nombre: string; descripcion: string; ic
 export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores", "clientes"];
 export const SUBTABS: Partial<Record<Pantalla, string[]>> = {
   pagos: ["cobros", "pagos"], libros: ["diario", "mayor", "balance"],
-  reportes: ["iva", "obras", "maquinas"], config: ["empresa", "plan", "terceros", "centros"],
+  reportes: ["iva", "obras", "maquinas"], config: ["empresa", "plan", "terceros", "centros", "subcentros"],
 };
 
 const prox = (id: string, nombre: string): NavHoja => ({ id, nombre });
@@ -92,7 +92,7 @@ export const NAV: NavModulo[] = [
   ] },
   { id: "otras", nombre: "Otras Opciones", icono: "Settings", descripcion: "Centros de costos, empresa y fichas fiscales", hijos: [
     { id: "centros", nombre: "Centros de Costos", destino: { pantalla: "config", subtab: "centros" }, permiso: "centros" },
-    { id: "subcentros", nombre: "Sub Centros de Costos", destino: { pantalla: "config", subtab: "centros" }, permiso: "centros" },
+    { id: "subcentros", nombre: "Sub Centros de Costos", destino: { pantalla: "config", subtab: "subcentros" }, permiso: "centros" },
     { id: "empresa", nombre: "Empresa", destino: { pantalla: "config", subtab: "empresa" } },
     { id: "fichas", nombre: "Fichas fiscales", destino: { pantalla: "config", subtab: "terceros" } },
   ] },
