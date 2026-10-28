@@ -65,10 +65,25 @@ export function ContabLauncher({ permisos, recientes, onIr }: Props) {
           {resultados.map((r) => (
             <button key={`${r.m}/${r.s ?? ""}`} type="button" disabled={r.proximamente}
               onClick={r.proximamente ? undefined : () => onIr(r.m, r.s)}
-              className={cn("flex w-full items-center justify-between px-4 py-3 text-left text-sm",
-                r.proximamente ? "cursor-not-allowed text-muted-foreground" : "hover:bg-accent hover:text-accent-foreground")}>
-              <span>{r.etiqueta}{r.proximamente && " · Próximamente"}</span>
-              {!r.proximamente && <ChevronRight className="h-4 w-4" />}
+              className={cn("flex w-full items-center gap-3 px-4 py-3 text-left text-sm",
+                r.proximamente ? "cursor-not-allowed opacity-60" : "hover:bg-accent hover:text-accent-foreground")}>
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <NavIcon name={r.icono} className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1">
+                {r.sub ? (
+                  <>
+                    <span className="text-muted-foreground">{r.modulo}</span>
+                    <span className="mx-1.5 text-muted-foreground">›</span>
+                    <span className="font-medium text-foreground">{r.sub}</span>
+                  </>
+                ) : (
+                  <span className="font-medium text-foreground">{r.modulo}</span>
+                )}
+              </span>
+              {r.proximamente
+                ? <Badge variant="outline" className="shrink-0">Próximamente</Badge>
+                : <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
             </button>
           ))}
         </div>
