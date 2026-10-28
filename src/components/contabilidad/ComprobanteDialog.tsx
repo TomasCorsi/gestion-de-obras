@@ -207,6 +207,25 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
     return { ...acc, subtotalNeto, subtotalIva, total };
   }, [items, percIva, percIibb, percOtras]);
 
+  // Cambios sin guardar: se derivan comparando el formulario con lo que devolvió la base.
+  const pendientes = useMemo(() => cambiosPendientes(
+    existing ? {
+      cab: { tipo: existing.tipo, punto_venta: existing.punto_venta, numero: existing.numero, fecha: existing.fecha, fecha_vto: existing.fecha_vto ?? null,
+        tercero_id: existing.tercero_id ?? null, obra_id: existing.obra_id ?? null, maquinaria_id: existing.maquinaria_id ?? null,
+        observaciones: existing.observaciones ?? null, perc_iva: +existing.perc_iva, perc_iibb: +existing.perc_iibb, perc_otras: +existing.perc_otras },
+      items: existingItems as any[],
+    } : null,
+    { cab: { tipo, punto_venta: puntoVenta, numero, fecha, fecha_vto: fechaVto || null, tercero_id: terceroId || null, obra_id: obraId || null,
+        maquinaria_id: maqId || null, observaciones, perc_iva: percIva, perc_iibb: percIibb, perc_otras: percOtras }, items },
+  ), [existing, existingItems, tipo, puntoVenta, numero, fecha, fechaVto, terceroId, obraId, maqId, observaciones, percIva, percIibb, percOtras, items]);
+  const dirty = !!existing && pendientes.length > 0;
+  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const incompatibles = useMemo(() => existing ? problemasCompatibilidad({
+    tipo: existing.tipo, items: existingItems.map((i) => ({ id: i.id, neto: +i.neto })), repartos, vinculos,
+  }) : [], [existing, existingItems, repartos, vinculos]);
+  const bloqueoAsiento = dirty || incompatibles.length > 0;
+
+
   const handleSave = async () => {
     if (!terceroId) return;
     setErrorGuardado(null);
