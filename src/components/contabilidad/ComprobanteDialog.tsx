@@ -270,6 +270,9 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         })),
       });
       if (!comprobanteId) setCreadoId(id);
+      // Releer desde la base todo lo que depende del comprobante antes de rehabilitar operaciones.
+      await Promise.all(["contab_cbte_one", "contab_cbte_items", "contab_repartos", "contab_vinculos", "contab_asiento_cbte", "contab_docs_op"]
+        .map((k) => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e: any) {
       setErrorGuardado(e?.message ?? "No se pudo guardar");
     }
@@ -465,7 +468,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                   {abierto === it.id && it.id && existing && (
                     <tr className="bg-muted/20">
                       <td colSpan={10} className="p-3 space-y-4">
-                        {dirty && <p className="text-xs text-destructive">Hay cambios sin guardar: guardá antes de repartir o vincular.</p>}
+                        {dirty && <p role="alert" className="text-xs text-destructive">{MSG_CAMBIOS_PENDIENTES}</p>}
                         <RepartosItemPanel itemId={it.id} neto={+it.neto} repartos={repartos.filter((r) => r.item_id === it.id)}
                           editable={permisos.editarRepartos} fecha={existing.fecha} obras={obras as any} maquinas={maquinas as any} />
                         <VinculosItemPanel cbteId={existing.id} itemId={it.id} neto={+it.neto} esVenta={esVenta} fecha={existing.fecha}
@@ -503,15 +506,25 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
 
         {existing?.asiento_id && <div className="mt-4"><AsientoComprobanteView asientoId={existing.asiento_id} /></div>}
 
+        {dirty && (
+          <div role="alert" data-testid="cambios-pendientes" className="mt-4 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
+            {MSG_CAMBIOS_PENDIENTES}. Repartos, vínculos y asiento quedan deshabilitados hasta guardar.
+          </div>
+        )}
+        {!dirty && incompatibles.length > 0 && (permisosBase.generar || permisosBase.regenerar) && (
+          <div role="alert" data-testid="incompatibles" className="mt-4 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
+            Revisá repartos y vínculos antes de generar el asiento: {incompatibles.join("; ")}.
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
-          {permisos.generar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending}>
+          {permisosBase.generar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending || !permisos.generar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Generar asiento borrador
             </Button>
           )}
-          {permisos.regenerar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending}>
+          {permisosBase.regenerar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending || !permisos.regenerar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Regenerar borrador
             </Button>
           )}
