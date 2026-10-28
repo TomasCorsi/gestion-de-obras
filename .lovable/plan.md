@@ -1,91 +1,86 @@
-# Fase 1D: transición gradual CONTAD → Calamina ERP (diseño breve)
+# Fase 1D: puesta en marcha del ERP con corte limpio (diseño)
 
-Este diseño reemplaza la propuesta anterior de 1D. No se trasladan deudas ni créditos abiertos de CONTAD al ERP. No se crean ejercicios ni se migran saldos hasta que lo apruebes.
+## Regla de transición
+- Todo lo que nace antes de la fecha de inicio del ERP se carga, se paga o se cobra y se cierra en CONTAD.
+- Todo lo que nace desde la fecha de inicio se carga, se paga o se cobra y se cierra solo en Calamina ERP.
+- El ERP no guarda nada de CONTAD: ni saldos abiertos, ni clientes o proveedores históricos, ni cuentas puente, ni referencias, ni conciliaciones entre sistemas.
 
 ## Situación actual de la base (relevada hoy)
-- No hay ejercicios, períodos, asientos, comprobantes, pagos ni fichas fiscales: todo está en 0.
-- Faltan los datos de la empresa: CUIT y condición de IVA están vacíos.
-- Hay un plan de cuentas base con 79 cuentas y 9 cuentas configuradas: caja, banco, deudores, IVA crédito fiscal, percepciones, proveedores, IVA débito fiscal, ventas y compras.
-- No existe una cuenta de transición CONTAD, ni cuentas separadas por cada banco.
+- Hay cero ejercicios, períodos, asientos, comprobantes y pagos. El ERP está limpio.
+- Los datos fiscales de la empresa están vacíos.
+- Hay un plan de cuentas base de 79 cuentas, sin validar por el contador, y no tiene una cuenta por cada banco.
 
-## 1. Fecha de inicio del ERP y bloqueo
-- La fecha de inicio es el primer día de un mes. Desde esa fecha, todo comprobante nuevo se carga solo en el ERP.
-- La base rechaza comprobantes de compra y venta del ERP con fecha anterior al inicio. El único asiento permitido con fecha anterior es el de apertura.
-- Los períodos anteriores al inicio no existen en el ERP.
-- Se cargan en el ERP solo los comprobantes con fecha igual o posterior al inicio. En CONTAD se cargan solo los de fecha anterior. Esta regla es de procedimiento: el ERP no puede controlar lo que se carga en CONTAD. Hay que acordarla con el contador.
+## 1. Fecha de inicio del ERP
+- La fecha de inicio es el primer día de un mes y la fija el contador.
+- La base rechaza comprobantes, pagos y asientos con fecha anterior al inicio.
+- Un pago o cobro en el ERP solo puede aplicarse a comprobantes del ERP. Esto ya pasa hoy, porque no existen comprobantes de CONTAD dentro del ERP.
 
-## 2. Bancos y caja durante la convivencia
-- Los saldos reales de bancos y caja se llevan solo en el ERP, desde la apertura. CONTAD deja de llevar bancos para movimientos nuevos.
-- Cuando un pago o un cobro cancela una deuda o un crédito histórico de CONTAD, el dinero igual sale o entra de un banco del ERP. Ese movimiento se registra en el ERP contra la cuenta puente, sin comprobante, sin IVA y sin resultado.
-- En CONTAD, la misma cancelación se registra contra una cuenta espejo "ERP – bancos", así CONTAD baja la deuda o el crédito sin mover sus bancos.
+## 2. Ejercicio y períodos contables
+- Se crea un ejercicio con las fechas fiscales reales. Si la fecha de inicio cae a mitad del ejercicio, el ejercicio arranca en esa fecha en el ERP. Los meses anteriores quedan en CONTAD.
+- Los períodos son mensuales y se generan automáticamente. Al cerrarlos se usan los controles de 1A que ya existen.
 
-## 3. Cuenta puente "Transición CONTAD"
-- Se crean dos cuentas patrimoniales: "Transición CONTAD – Proveedores históricos" y "Transición CONTAD – Clientes históricos". Si el contador lo prefiere, puede ser una sola cuenta con detalle por tercero.
-- Pago a un proveedor histórico: Debe a la cuenta puente, Haber al banco.
-- Cobro a un cliente histórico: Debe al banco, Haber a la cuenta puente.
-- Se registra con un nuevo tipo de operación "Cancelación histórica". Indica el tercero y la referencia del comprobante en CONTAD, como texto de consulta.
-- Al inicio, la cuenta puente arranca con el saldo neto de lo que queda abierto en CONTAD (proveedores menos clientes). Así, cada cancelación la va llevando hacia cero.
-- No genera IVA, ni ingresos, ni gastos, ni imputación analítica.
+## 3. Datos fiscales de la empresa
+CUIT, razón social, condición de IVA, número de IIBB, inicio de actividades, domicilio fiscal y puntos de venta. Se cargan una sola vez, en la ficha de empresa que ya existe.
 
-## 4. Saldos mínimos de apertura en el ERP
-Se cargan en un único asiento de apertura, a la fecha de inicio:
-- Bancos: cada cuenta con su saldo según extracto conciliado. Caja: arqueo.
-- Impuestos: saldo de IVA a favor o a pagar, retenciones y percepciones sufridas a computar, IIBB, cargas sociales y planes de pago vigentes.
-- Préstamos y deudas financieras: saldo de capital.
-- Bienes de uso: valor de origen y amortización acumulada.
-- Cheques diferidos emitidos o en cartera. Hay que definir si quedan en CONTAD o se abren en el ERP.
-- Cuenta puente: saldo neto de clientes y proveedores históricos abiertos.
-- Patrimonio: capital, y resultados acumulados como diferencia para que el asiento cierre.
-No se cargan facturas abiertas ni cuentas corrientes por tercero.
+## 4. Plan de cuentas definitivo
+- El contador valida el plan base: altas, bajas y códigos.
+- Se agrega una cuenta por cada banco y por cada caja.
+- Se marcan las cuentas que exigen obra o máquina como dato de analítica.
+- Se completan las cuentas que usan los asientos automáticos (caja, banco, deudores, IVA, ventas, compras, entre otras).
 
-## 5. Conciliación periódica (mensual) mientras convivan
-Control 1, cuenta puente: el saldo de la cuenta puente en el ERP tiene que ser igual al total abierto en CONTAD de clientes y proveedores históricos. La diferencia tiene que ser 0.
-Control 2, bancos: el saldo de cada banco en el ERP tiene que coincidir con su extracto.
-Control 3, sin duplicados: cada pago o cobro histórico debe figurar en los dos sistemas. En el ERP aparece contra la cuenta puente y en CONTAD contra la cuenta espejo. Se revisa con un reporte del ERP que lista las cancelaciones históricas del mes, para cruzar con CONTAD.
-El contador firma la conciliación del mes. Se guarda en el ERP como una constancia con la fecha, los saldos y las observaciones.
+## 5. Saldos patrimoniales mínimos para empezar
+Mientras CONTAD siga activo, el ERP no arranca con saldos iniciales: empieza en cero y registra solo las operaciones nuevas. Los saldos patrimoniales se cargan una sola vez, en la puesta en marcha definitiva (punto 7).
+Los saldos que van a hacer falta en ese momento son:
+- bancos y caja;
+- posición de impuestos: IVA, IIBB, retenciones y percepciones a computar o a depositar, y cargas sociales;
+- préstamos y planes de pago;
+- bienes de uso y su amortización acumulada;
+- capital y resultados acumulados.
+No se cargan facturas ni cuentas corrientes por cliente o proveedor.
 
-## 6. Condiciones para dar por terminado CONTAD
-- Proveedores históricos cancelados, o reclasificados con acuerdo del contador.
-- Clientes históricos cobrados, o pasados a incobrables.
-- Cheques y documentos históricos acreditados, debitados o anulados.
-- Retenciones y percepciones históricas presentadas.
-- Cuenta puente en el ERP en 0, o con un remanente justificado.
-- Última conciliación firmada sin diferencias.
+## 6. Bancos y caja mientras conviven los dos sistemas
+- Cada sistema registra únicamente los movimientos que le corresponden:
+  - en CONTAD, los pagos y cobros de operaciones viejas;
+  - en el ERP, los de operaciones nuevas.
+- En el ERP, cada banco muestra solo el movimiento de las operaciones nuevas. No va a coincidir con el extracto, y eso es esperable durante la convivencia.
+- El saldo real del banco se controla fuera del ERP, sumando el saldo del banco en CONTAD y el del ERP contra el extracto. Lo hace el contador; el ERP no guarda ese control.
+- Regla operativa: cada pago o cobro se carga en el sistema donde nació su comprobante. Los gastos bancarios del mes los registra un solo sistema, a elección del contador.
+- Lo mismo vale para las declaraciones de impuestos: el contador las arma sumando las dos fuentes mientras dure la convivencia.
 
-## 7. Cierre definitivo de la transición
-1. Conciliación final firmada.
-2. Si queda un remanente en la cuenta puente, un asiento de ajuste lo reclasifica a la cuenta que defina el contador, con su explicación.
-3. Se bloquea la cuenta puente para nuevos movimientos y se desactiva el tipo "Cancelación histórica".
-4. CONTAD se cierra a la fecha de fin de la transición y queda solo para consulta. Desde el ERP se puede guardar el número de referencia de CONTAD para identificar cada caso.
+## 7. Cuándo terminar CONTAD y hacer la puesta en marcha definitiva
+**Condiciones para terminar CONTAD:**
+- todos los proveedores históricos pagados;
+- todos los clientes históricos cobrados o dados de baja;
+- los cheques y documentos acreditados, debitados o anulados;
+- las retenciones y percepciones presentadas.
+
+Con eso cumplido, el contador cierra CONTAD a una fecha, que se llama fecha de cierre de transición.
+
+**Puesta en marcha definitiva**, con un solo asiento en el ERP a la fecha de cierre de transición:
+- Lleva bancos y caja a su saldo real según el extracto: la diferencia contra el saldo que ya tiene el ERP.
+- Carga los saldos patrimoniales del punto 5 según el balance de cierre de CONTAD.
+- La contrapartida va a "Resultados acumulados / Saldos de puesta en marcha".
+
+Es un único asiento de totales, sin detalle histórico. Desde ese momento, CONTAD queda solo para consulta y el ERP pasa a ser el único sistema contable.
 
 ## Información que hay que definir con el contador
-1. La fecha de inicio del ERP y las fechas del ejercicio fiscal.
-2. Los datos fiscales de la empresa.
-3. Si la cuenta puente es única o se separa en clientes y proveedores, con qué códigos, y qué cuenta espejo usa CONTAD.
-4. El listado de bancos y cajas, con el saldo conciliado a la fecha de inicio.
-5. La posición de impuestos a la fecha de inicio: IVA, IIBB, retenciones, percepciones y cargas sociales.
-6. Los saldos de préstamos, bienes de uso, amortizaciones, y el criterio para los cheques diferidos.
-7. El total abierto en CONTAD de clientes y proveedores a la fecha de inicio, para el saldo inicial de la cuenta puente.
-8. Quién firma la conciliación mensual, y el plazo máximo estimado de convivencia.
-9. El tratamiento de los anticipos históricos: si se cancelan en CONTAD o se abren en el ERP.
-10. Si hay saldos en moneda extranjera y a qué cotización.
+1. Fecha de inicio del ERP y fechas del ejercicio fiscal.
+2. Datos fiscales de la empresa y puntos de venta.
+3. Validación del plan de cuentas, listado de bancos y cajas, y cuentas que exigen analítica.
+4. En qué sistema se registran los gastos bancarios y los impuestos bancarios durante la convivencia.
+5. Cómo consolida IVA e IIBB mientras convivan los dos sistemas.
+6. Plazo estimado para cerrar CONTAD y quién aprueba el asiento de puesta en marcha definitiva.
 
-## Ya puede implementarse (cuando se apruebe)
-- Bloqueo de fechas anteriores al inicio, aplicado por la base.
-- Asiento de apertura con un asistente que controla que el debe y el haber cierren.
-- Operación "Cancelación histórica": banco contra cuenta puente, sin IVA ni analítica.
-- Reporte de cancelaciones del mes y constancia de conciliación.
-- Bloqueo de la cuenta puente al cierre de la transición.
+## Ya puede implementarse (cuando lo apruebes)
+- Bloqueo de fechas anteriores a la fecha de inicio, aplicado en la base.
+- Pantalla de configuración de la puesta en marcha: fecha de inicio, ejercicio, datos fiscales y validación del plan de cuentas.
+- Asistente del asiento de puesta en marcha definitiva: queda en borrador, controla que debe y haber cierren, se confirma una sola vez y no se puede editar. Para corregirlo, se revierte.
 
-## Pendiente de las definiciones del contador
-Las cuentas exactas, los saldos de apertura, la fecha de inicio y el criterio para cheques y anticipos.
-
-## Detalle técnico (para la etapa de implementación)
-- Una migración para 1D, sin tocar 1A, 1B ni 1C:
-  - En `contab_ejercicios` se agrega `fecha_inicio_erp`.
-  - Un trigger de fecha mínima en comprobantes, pagos y asientos. Deja pasar el origen `apertura`.
-  - Tabla `contab_cancelaciones_historicas`: tercero, banco o caja, importe, sentido, referencia a CONTAD y asiento.
-  - Tabla `contab_conciliaciones_transicion`: período, saldos, diferencia, firmado por y observaciones.
-  - Las tablas nuevas tienen GRANT y RLS con `contab_puede`.
-- Los asientos se generan como borrador y se confirman con `contab_confirmar_asiento`, la función que ya existe.
-- No se cambian la navegación, los módulos operativos ni la rentabilidad. No se importan movimientos de CONTAD.
+## Detalle técnico
+- Hace falta una migración chica, sin tocar 1A, 1B ni 1C:
+  - en `contab_ejercicios`, dos fechas que se pueden dejar vacías: `fecha_inicio_erp` y `fecha_cierre_transicion`;
+  - un trigger de fecha mínima en `contab_comprobantes`, `contab_pagos` y `contab_asientos`;
+  - un índice único que permite un solo asiento de puesta en marcha confirmado.
+- El asiento de puesta en marcha se identifica con `origen_tipo = 'puesta_en_marcha'` y se confirma con `contab_confirmar_asiento`, la función que ya existe.
+- No se crean tablas que guarden datos de CONTAD.
+- No cambian la navegación, los módulos operativos ni la rentabilidad. No se crean ejercicios ni se cargan saldos hasta tener las definiciones.
