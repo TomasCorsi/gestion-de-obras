@@ -115,3 +115,64 @@ export function traducirError(msg: string | null | undefined): string {
   for (const [re, t] of ERRORES) if (re.test(m)) return t;
   return m;
 }
+
+// ---------- Control de cambios sin guardar ----------
+export const MSG_CAMBIOS_PENDIENTES = "Guardá los cambios del comprobante antes de continuar";
+
+export interface CabeceraCbte {
+  tipo: string; punto_venta: number; numero: number; fecha: string; fecha_vto: string | null;
+  tercero_id: string | null; obra_id: string | null; maquinaria_id: string | null; observaciones: string | null;
+  perc_iva: number; perc_iibb: number; perc_otras: number;
+}
+export interface ItemCbteDraft {
+  id?: string; descripcion: string; cuenta_id: string | null; cantidad: number; precio_unit: number;
+  alicuota_iva: number; obra_id: string | null; maquinaria_id: string | null;
+}
+
+const normCab = (c: CabeceraCbte) => [
+  c.tipo, Number(c.punto_venta) || 0, Number(c.numero) || 0, c.fecha || "", c.fecha_vto || "",
+  c.tercero_id || "", c.obra_id || "", c.maquinaria_id || "", (c.observaciones ?? "").trim(),
+  r2(Number(c.perc_iva) || 0), r2(Number(c.perc_iibb) || 0), r2(Number(c.perc_otras) || 0),
+];
+const normItem = (i: ItemCbteDraft) => [
+  i.id ?? "", (i.descripcion ?? "").trim(), i.cuenta_id || "", Number(i.cantidad) || 0,
+  Number(i.precio_unit) || 0, Number(i.alicuota_iva) || 0, i.obra_id || "", i.maquinaria_id || "",
+];
+
+/** Devuelve qué secciones difieren de lo guardado en la base (vacío = sin cambios). */
+export function cambiosPendientes(
+  guardado: { cab: CabeceraCbte; items: ItemCbteDraft[] } | null,
+  actual: { cab: CabeceraCbte; items: ItemCbteDraft[] },
+): string[] {
+  if (!guardado) return ["nuevo"];
+  const out: string[] = [];
+  const g = normCab(guardado.cab), a = normCab(actual.cab);
+  if (g.slice(0, 9).some((v, k) => v !== a[k])) out.push("cabecera");
+  if (g.slice(9).some((v, k) => v !== a[k + 9])) out.push("percepciones");
+  const gi = JSON.stringify(guardado.items.map(normItem)), ai = JSON.stringify(actual.items.map(normItem));
+  if (gi !== ai) out.push("items");
+  return out;
+}
+
+/** Verifica que repartos y vínculos guardados sigan siendo compatibles con el comprobante guardado. */
+export function problemasCompatibilidad(p: {
+  tipo: string;
+  items: { id: string; neto: number }[];
+  repartos: { item_id: string; importe_efectivo: number }[];
+  vinculos: { item_id: string | null; estado: string; clase: string; importe_vinculado: number | null }[];
+}): string[] {
+  const out: string[] = [];
+  const ids = new Set(p.items.map((i) => i.id));
+  for (const it of p.items) {
+    const efectivos = p.repartos.filter((r) => r.item_id === it.id).map((r) => Number(r.importe_efectivo));
+    if (saldoItem(Number(it.neto), efectivos) < 0) out.push(`Los repartos superan el neto de un renglón`);
+    const fact = p.vinculos.filter((v) => v.item_id === it.id && v.estado === "vigente" && v.clase === "facturable")
+      .reduce((a, v) => a + Number(v.importe_vinculado ?? 0), 0);
+    if (r2(fact) > r2(Math.abs(Number(it.neto)))) out.push(`Los vínculos facturables superan el neto de un renglón`);
+  }
+  if (p.repartos.some((r) => !ids.has(r.item_id))) out.push("Hay repartos de renglones inexistentes");
+  const vig = p.vinculos.filter((v) => v.estado === "vigente");
+  if (vig.some((v) => v.item_id && !ids.has(v.item_id))) out.push("Hay vínculos de renglones inexistentes");
+  if (esNotaCredito(p.tipo) && vig.length > 0) out.push("Las notas de crédito no admiten vínculos operativos");
+  return Array.from(new Set(out));
+}
