@@ -100,7 +100,7 @@ export function resolver(m: string | null | undefined, s: string | null | undefi
   return { modulo: mod, hoja, destino: hoja.destino, proximamente: !hoja.destino };
 }
 
-export interface ResultadoBusqueda { m: string; s?: string; etiqueta: string; proximamente: boolean; }
+export interface ResultadoBusqueda { m: string; s?: string; etiqueta: string; modulo: string; sub?: string; icono: string; proximamente: boolean; }
 
 const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
@@ -110,19 +110,21 @@ export function buscar(q: string, p: Permisos): ResultadoBusqueda[] {
   if (!t) return [];
   const out: ResultadoBusqueda[] = [];
   for (const m of navPermitida(p)) {
-    if (norm(`${m.nombre} ${m.descripcion}`).includes(t)) out.push({ m: m.id, etiqueta: m.nombre, proximamente: esProximamente(m) });
+    if (norm(`${m.nombre} ${m.descripcion}`).includes(t))
+      out.push({ m: m.id, etiqueta: m.nombre, modulo: m.nombre, icono: m.icono, proximamente: esProximamente(m) });
     for (const h of m.hijos) {
-      if (norm(`${m.nombre} ${h.nombre}`).includes(t)) out.push({ m: m.id, s: h.id, etiqueta: `${m.nombre} > ${h.nombre}`, proximamente: !h.destino });
+      if (norm(`${m.nombre} ${h.nombre}`).includes(t))
+        out.push({ m: m.id, s: h.id, etiqueta: `${m.nombre} > ${h.nombre}`, modulo: m.nombre, sub: h.nombre, icono: m.icono, proximamente: !h.destino });
     }
   }
   return out;
 }
 
-/** Migas: Inicio Contable > Módulo > Subacceso (recorrido elegido, no la pantalla de destino). */
+/** Migas: Módulo > Subacceso (recorrido elegido, no la pantalla de destino).
+ *  "Inicio Contable" no se repite: ya está el botón de regreso al launcher. */
 export function migas(r: Resolucion | null): { etiqueta: string; m?: string; s?: string }[] {
-  const out: { etiqueta: string; m?: string; s?: string }[] = [{ etiqueta: "Inicio Contable" }];
-  if (!r) return out;
-  out.push({ etiqueta: r.modulo.nombre, m: r.modulo.id });
+  if (!r) return [];
+  const out: { etiqueta: string; m?: string; s?: string }[] = [{ etiqueta: r.modulo.nombre, m: r.modulo.id }];
   if (r.hoja) out.push({ etiqueta: r.hoja.nombre, m: r.modulo.id, s: r.hoja.id });
   return out;
 }

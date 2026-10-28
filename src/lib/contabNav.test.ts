@@ -56,13 +56,23 @@ describe("búsqueda", () => {
     const r = buscar("cuenta corriente", todo).find((x) => x.etiqueta === "Proveedores > Cuenta Corriente");
     expect(r?.proximamente).toBe(true);
   });
+  it("los resultados llevan módulo, subacceso e icono para mostrar la jerarquía", () => {
+    const mayor = buscar("mayor", todo).find((x) => x.sub === "Mayor de Cuentas");
+    expect(mayor).toMatchObject({ m: "contable", s: "mayor", modulo: "Contable", icono: "BookOpen", proximamente: false });
+    const banco = buscar("banco", todo).find((x) => !x.sub);
+    expect(banco).toMatchObject({ m: "banco", modulo: "Libro Banco", icono: "Landmark", proximamente: true });
+    // "retenciones" también coincide con la descripción del módulo Impuestos (disponible); los accesos pendientes van marcados.
+    expect(buscar("retenciones", todo).filter((x) => x.sub).every((x) => x.proximamente)).toBe(true);
+    expect(buscar("pago", todo).some((x) => x.m === "egresos" && x.s === "orden-pago" && !x.proximamente)).toBe(true);
+  });
 });
 
 describe("breadcrumb", () => {
-  it("conserva el recorrido elegido aunque la pantalla sea compartida", () => {
-    expect(migas(resolver("proveedores", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Inicio Contable", "Proveedores", "Comprobantes"]);
-    expect(migas(resolver("compras", null, todo)).map((c) => c.etiqueta)).toEqual(["Inicio Contable", "Compras"]);
-    expect(migas(null).map((c) => c.etiqueta)).toEqual(["Inicio Contable"]);
+  it("conserva el recorrido elegido aunque la pantalla sea compartida, sin repetir Inicio Contable", () => {
+    expect(migas(resolver("proveedores", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Proveedores", "Comprobantes"]);
+    expect(migas(resolver("contable", "mayor", todo)).map((c) => c.etiqueta)).toEqual(["Contable", "Mayor de Cuentas"]);
+    expect(migas(resolver("compras", null, todo)).map((c) => c.etiqueta)).toEqual(["Compras"]);
+    expect(migas(null)).toEqual([]);
   });
   it("subacceso inexistente no resuelve", () => {
     expect(resolver("contable", "inventado", todo)).toBeNull();
