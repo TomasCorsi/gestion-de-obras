@@ -8,7 +8,7 @@ import { RepartosItemPanel } from "./RepartosItemPanel";
 import { VinculosItemPanel } from "./VinculosItemPanel";
 import { AsientoComprobanteView } from "./AsientoComprobanteView";
 import { useRepartos, useVinculos, useAsientoCbte, useGenerarAsientoCbte } from "@/hooks/useContab1c";
-import { etapaComprobante, permisosComprobante, ETAPA_LABEL } from "@/lib/contab1c";
+import { etapaComprobante, permisosComprobante, ETAPA_LABEL, cambiosPendientes, problemasCompatibilidad, MSG_CAMBIOS_PENDIENTES } from "@/lib/contab1c";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -26,7 +26,7 @@ import {
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   open: boolean;
@@ -91,7 +91,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const generar = useGenerarAsientoCbte();
   const [creadoId, setCreadoId] = useState<string | null>(null);
   const comprobanteId = idInicial ?? creadoId;
-  const [dirty, setDirty] = useState(false);
+  const qc = useQueryClient();
   const [abierto, setAbierto] = useState<string | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
@@ -108,7 +108,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const { data: existingItems = [] } = useContabComprobanteItems(comprobanteId);
   const { data: asientoData } = useAsientoCbte(existing?.asiento_id ?? null);
   const etapa = existing ? etapaComprobante(existing.estado, existing.asiento_id, (asientoData as any)?.asiento?.estado ?? (existing.asiento_id ? "borrador" : null)) : "registrado";
-  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const permisosBase = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing, puedeCargar: true });
   const itemIds = useMemo(() => existingItems.map((i) => i.id), [existingItems]);
   const { data: repartos = [] } = useRepartos(itemIds);
   const { data: vinculos = [] } = useVinculos(comprobanteId);
@@ -350,7 +350,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           <div className="flex items-center justify-between mb-2">
             <Label className="text-base">Renglones</Label>
             {!isReadOnly && (
-              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()]);}>
+              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()])}>
                 <Plus className="w-4 h-4 mr-1" />Agregar renglón
               </Button>
             )}
@@ -437,7 +437,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         </Button>
                       )}
                       {!isReadOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx));}>
+                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx))}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
