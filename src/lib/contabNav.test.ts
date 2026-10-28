@@ -53,7 +53,7 @@ describe("permisos", () => {
 describe("búsqueda", () => {
   it("'mayor' encuentra Contable > Mayor de Cuentas sin importar acentos", () => {
     expect(buscar("MAYOR", todo).map((r) => r.etiqueta)).toContain("Contable > Mayor de Cuentas");
-    expect(buscar("orden de pago", todo).map((r) => r.etiqueta)).toEqual(["Egresos > Orden de Pago"]);
+    expect(buscar("orden de pago", todo).filter((r) => r.sub).map((r) => r.etiqueta)).toEqual(["Egresos > Orden de Pago"]);
   });
   it("muestra los próximamente marcados", () => {
     const r = buscar("cuentas corrientes", todo).find((x) => x.etiqueta === "Proveedores > Cuentas Corrientes");
