@@ -164,3 +164,18 @@ describe("mapa CONTAD: una única ubicación principal por función", () => {
     expect(recientesValidos([{ m: "config", s: "plan" }, { m: "contable", s: "plan" }], todo)).toEqual([{ m: "contable", s: "plan" }]);
   });
 });
+
+describe("secciones internas de Otras Opciones / Contable", () => {
+  it("cada acceso abre su sección propia de la configuración", () => {
+    const sub = (m: string, s: string) => resolver(m, s, todo)?.destino.subtab;
+    expect(sub("contable", "plan")).toBe("plan");
+    expect(sub("otras", "empresa")).toBe("empresa");
+    expect(sub("otras", "fichas")).toBe("terceros");
+    expect(sub("otras", "centros")).toBe("centros");
+    expect(sub("otras", "subcentros")).toBe("subcentros");
+  });
+  it("Listado de Asientos es solo consulta y Cierre de Mes abre períodos", () => {
+    expect(resolver("contable", "listado", todo)?.destino).toMatchObject({ pantalla: "asientos", modo: "listado" });
+    expect(resolver("contable", "cierre-mes", todo)?.destino.pantalla).toBe("periodos");
+  });
+});
