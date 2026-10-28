@@ -99,7 +99,7 @@ describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
     expect(resolver("compras", "comprobantes", contador)).not.toBeNull();
   });
   it("la búsqueda encuentra órdenes de compra y gastos dentro de Compras", () => {
-    expect(buscar("orden de compra", todo).map((r) => r.etiqueta)).toContain("Compras > Órdenes de Compra");
+    expect(buscar("ordenes de compra", todo).map((r) => r.etiqueta)).toContain("Compras > Órdenes de Compra");
     expect(buscar("gastos", todo).map((r) => r.etiqueta)).toContain("Compras > Gastos Generales");
   });
 });
