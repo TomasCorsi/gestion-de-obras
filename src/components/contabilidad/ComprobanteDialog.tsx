@@ -52,6 +52,7 @@ const TIPOS_COMPRA: { v: CbteTipo; l: string }[] = [
 ];
 
 type ItemDraft = {
+  id?: string;
   descripcion: string;
   cuenta_id: string | null;
   cantidad: number;
@@ -75,12 +76,18 @@ const blankItem = (): ItemDraft => ({
   maquinaria_id: null,
 });
 
-export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Props) {
+export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esVenta }: Props) {
   const { data: terceros = [] } = useContabTerceros();
   const { data: cuentas = [] } = useContabPlanCuentas();
   const { obras = [] } = useObras();
   const { maquinarias: maquinas = [] } = useMaquinarias();
   const save = useSaveComprobante();
+  const generar = useGenerarAsientoCbte();
+  const [creadoId, setCreadoId] = useState<string | null>(null);
+  const comprobanteId = idInicial ?? creadoId;
+  const [dirty, setDirty] = useState(false);
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
   // Carga comprobante existente
   const { data: existing } = useQuery({
@@ -93,6 +100,12 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
     },
   });
   const { data: existingItems = [] } = useContabComprobanteItems(comprobanteId);
+  const { data: asientoData } = useAsientoCbte(existing?.asiento_id ?? null);
+  const etapa = existing ? etapaComprobante(existing.estado, existing.asiento_id, (asientoData as any)?.asiento?.estado ?? (existing.asiento_id ? "borrador" : null)) : "registrado";
+  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const itemIds = useMemo(() => existingItems.map((i) => i.id), [existingItems]);
+  const { data: repartos = [] } = useRepartos(itemIds);
+  const { data: vinculos = [] } = useVinculos(comprobanteId);
 
   const [tipo, setTipo] = useState<CbteTipo>(esVenta ? "FA_B" : "FA_CPA_A");
   const [puntoVenta, setPuntoVenta] = useState(1);
@@ -109,11 +122,13 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
   const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
   const elegirMaestro = (id: string) => {
     setMaestroElegido(id);
+    setDirty(true);
     const m = delRol.find((x) => x.maestro_id === id);
     if (!m) { setTerceroId(""); return; }
     if (m.tercero_id) setTerceroId(m.tercero_id);
     else { setTerceroId(""); setFichaPara(m); }
   };
+  const tercero = (terceros as any[]).find((t) => t.id === (existing?.tercero_id ?? ""));
   const [obraId, setObraId] = useState<string>("");
   const [maqId, setMaqId] = useState<string>("");
   const [observaciones, setObservaciones] = useState("");
@@ -142,6 +157,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
   useEffect(() => {
     if (existingItems.length > 0) {
       setItems(existingItems.map((i) => ({
+        id: i.id,
         descripcion: i.descripcion,
         cuenta_id: i.cuenta_id,
         cantidad: +i.cantidad,
@@ -152,6 +168,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
         obra_id: i.obra_id,
         maquinaria_id: i.maquinaria_id,
       })));
+      setDirty(false);
     }
   }, [existingItems]);
 
