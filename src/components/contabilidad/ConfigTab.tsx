@@ -31,9 +31,9 @@ const COND_IVA: { v: CondIva; l: string }[] = [
 
 const TIPOS_CUENTA: CuentaTipo[] = ["activo", "pasivo", "patrimonio", "ingreso", "egreso", "resultado"];
 
-export function ConfigTab() {
+export function ConfigTab({ inicial }: { inicial?: "empresa" | "plan" | "terceros" | "centros" } = {}) {
   return (
-    <Tabs defaultValue="empresa" className="w-full">
+    <Tabs defaultValue={inicial ?? "empresa"} className="w-full">
       <TabsList>
         <TabsTrigger value="empresa"><Building2 className="w-4 h-4 mr-2" />Empresa</TabsTrigger>
         <TabsTrigger value="plan"><BookOpen className="w-4 h-4 mr-2" />Plan de cuentas</TabsTrigger>

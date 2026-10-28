@@ -23,12 +23,12 @@ const MEDIOS: PagoMedio[] = ["efectivo", "transferencia", "cheque", "tarjeta", "
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const fmtDate = (s: string) => { const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; };
 
-export function PagosTab() {
-  const [tab, setTab] = useState<"cobros" | "pagos">("cobros");
+export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos"; abrirAlta?: boolean } = {}) {
+  const [tab, setTab] = useState<"cobros" | "pagos">(inicial ?? "cobros");
   const esCobro = tab === "cobros";
   const { data = [] } = useContabPagos({ esCobro });
   const del = useDeletePago();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(!!abrirAlta);
 
   return (
     <div className="space-y-3">
