@@ -61,7 +61,8 @@ describe("búsqueda", () => {
     expect(mayor).toMatchObject({ m: "contable", s: "mayor", modulo: "Contable", icono: "BookOpen", proximamente: false });
     const banco = buscar("banco", todo).find((x) => !x.sub);
     expect(banco).toMatchObject({ m: "banco", modulo: "Libro Banco", icono: "Landmark", proximamente: true });
-    expect(buscar("retenciones", todo).every((x) => x.proximamente)).toBe(true);
+    // "retenciones" también coincide con la descripción del módulo Impuestos (disponible); los accesos pendientes van marcados.
+    expect(buscar("retenciones", todo).filter((x) => x.sub).every((x) => x.proximamente)).toBe(true);
     expect(buscar("pago", todo).some((x) => x.m === "egresos" && x.s === "orden-pago" && !x.proximamente)).toBe(true);
   });
 });
