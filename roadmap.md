@@ -35,4 +35,5 @@
 - [ ] Pendiente (no bloquea): prueba con cuenta real de contador.
 - [ ] Pendiente (no bloquea): prueba responsive real en celular.
 
-- [ ] Decidir si el rol contador accede a Órdenes de Compra, Gastos Generales y maestro de Proveedores (hoy solo admin).
+- [x] Administrador conserva acceso completo a Proveedores, Órdenes de Compra y Gastos Generales; contador sin cambios.
+- [ ] Corregir navegación desde proveedores por proveedor_id / tercero_id, mensaje sin ficha fiscal y pruebas sin escrituras.
