@@ -205,58 +205,74 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
 
   const handleSave = async () => {
     if (!terceroId) return;
-    await save.mutateAsync({
-      cbte: {
-        id: comprobanteId ?? undefined,
-        tipo,
-        punto_venta: puntoVenta,
-        numero,
-        fecha,
-        fecha_vto: fechaVto || null,
-        tercero_id: terceroId || null,
-        es_venta: esVenta,
-        estado: existing?.estado ?? "borrador",
-        neto_21: totales.neto_21, iva_21: totales.iva_21,
-        neto_105: totales.neto_105, iva_105: totales.iva_105,
-        neto_27: totales.neto_27, iva_27: totales.iva_27,
-        neto_0: totales.neto_0,
-        exento: 0, no_gravado: 0,
-        perc_iva: +percIva || 0,
-        perc_iibb: +percIibb || 0,
-        perc_otras: +percOtras || 0,
-        total: totales.total,
-        moneda: "ARS",
-        cotizacion: 1,
-        obra_id: obraId || null,
-        maquinaria_id: maqId || null,
-        observaciones,
-      } as any,
-      items: items.map((i) => ({
-        descripcion: i.descripcion,
-        cuenta_id: i.cuenta_id,
-        cantidad: i.cantidad,
-        precio_unit: i.precio_unit,
-        neto: i.neto,
-        alicuota_iva: i.alicuota_iva,
-        iva: i.iva,
-        obra_id: i.obra_id,
-        maquinaria_id: i.maquinaria_id,
-      })),
-    });
-    onClose();
+    setErrorGuardado(null);
+    try {
+      const id = await save.mutateAsync({
+        cbte: {
+          id: comprobanteId ?? undefined,
+          tipo,
+          punto_venta: puntoVenta,
+          numero,
+          fecha,
+          fecha_vto: fechaVto || null,
+          tercero_id: terceroId || null,
+          es_venta: esVenta,
+          estado: existing?.estado ?? "borrador",
+          neto_21: totales.neto_21, iva_21: totales.iva_21,
+          neto_105: totales.neto_105, iva_105: totales.iva_105,
+          neto_27: totales.neto_27, iva_27: totales.iva_27,
+          neto_0: totales.neto_0,
+          exento: 0, no_gravado: 0,
+          perc_iva: +percIva || 0,
+          perc_iibb: +percIibb || 0,
+          perc_otras: +percOtras || 0,
+          total: totales.total,
+          moneda: "ARS",
+          cotizacion: 1,
+          obra_id: obraId || null,
+          maquinaria_id: maqId || null,
+          observaciones,
+        } as any,
+        items: items.map((i) => ({
+          id: i.id,
+          descripcion: i.descripcion,
+          cuenta_id: i.cuenta_id,
+          cantidad: i.cantidad,
+          precio_unit: i.precio_unit,
+          neto: i.neto,
+          alicuota_iva: i.alicuota_iva,
+          iva: i.iva,
+          obra_id: i.obra_id,
+          maquinaria_id: i.maquinaria_id,
+        })),
+      });
+      if (!comprobanteId) setCreadoId(id);
+      setDirty(false);
+    } catch (e: any) {
+      setErrorGuardado(e?.message ?? "No se pudo guardar");
+    }
   };
 
-  const isReadOnly = existing?.estado && existing.estado !== "borrador";
+  const isReadOnly = !!existing && !permisos.editarItems;
   const tipos = esVenta ? TIPOS_VENTA : TIPOS_COMPRA;
+  const fmtM = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
             {comprobanteId ? "Editar" : "Nuevo"} comprobante de {esVenta ? "venta" : "compra"}
+            {existing && (
+              <Badge data-testid="etapa-cbte" variant={etapa === "contabilizado" ? "default" : etapa === "anulado" ? "destructive" : "secondary"}>
+                {ETAPA_LABEL[etapa]}
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
+        {errorGuardado && <div role="alert" className="rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">{errorGuardado}</div>}
+        {etapa === "asiento_borrador" && <p className="text-xs text-muted-foreground">Con asiento en borrador los renglones quedan bloqueados; podés ajustar repartos y vínculos y regenerar el borrador.</p>}
+        {(etapa === "contabilizado" || etapa === "anulado") && <p className="text-xs text-muted-foreground">Comprobante {etapa === "anulado" ? "anulado" : "contabilizado"}: todo en solo lectura.</p>}
 
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-3">
