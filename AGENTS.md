@@ -9,4 +9,4 @@
 
 - Contabilidad navigation reuses existing operational screens (purchase orders, general expenses, supplier master) through contabNav destinations instead of copying them; operational-only screens stay admin-gated via the "admin" nav permission.
 - Supplier navigation carries explicit supplier/fiscal-third-party IDs in URL parameters and query cache keys, with exact server-side filters; fiscal links are resolved from current data before navigation to avoid name collisions and stale relationships.
-- The Contabilidad launcher map is frozen with one primary location per function (CONTAD naming); old locations live only as aliases in contabNav and secondary entry points must be contextual actions, so functions never appear twice in navigation.
+- The Contabilidad launcher map is definitively frozen with one primary location per function (CONTAD naming), also inside shared screens (a shortcut into ConfigTab shows only its own section, no internal tabs); old locations live only as aliases in contabNav and secondary entry points must be contextual actions, so functions never appear twice in navigation.
