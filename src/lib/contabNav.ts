@@ -1,7 +1,7 @@
 // Árbol de navegación del Inicio Contable (terminología CONTAD). Solo navegación: cada destino
 // apunta a una pantalla existente; los "próximamente" no tienen destino.
 
-export type Pantalla = "compras" | "ventas" | "pagos" | "asientos" | "periodos" | "libros" | "reportes" | "config" | "ordenes" | "gastos" | "proveedores";
+export type Pantalla = "compras" | "ventas" | "pagos" | "asientos" | "periodos" | "libros" | "reportes" | "config" | "ordenes" | "gastos" | "proveedores" | "clientes";
 /** "admin": pantallas operativas que hoy son solo de administradores (verificado en servidor). */
 export type Permiso = "ver" | "centros" | "admin";
 
@@ -10,75 +10,116 @@ export interface Destino {
   subtab?: string;
   ivaTipo?: "ventas" | "compras";
   abrirAlta?: boolean;
+  /** Estado inicial de una pantalla compartida (p. ej. Listado de Asientos = solo consulta). */
+  modo?: "listado" | "cierre";
 }
 
 export interface NavHoja { id: string; nombre: string; descripcion?: string; destino?: Destino; permiso?: Permiso; }
 export interface NavModulo { id: string; nombre: string; descripcion: string; icono: string; permiso?: Permiso; destino?: Destino; hijos: NavHoja[]; }
 
-export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores"];
+export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores", "clientes"];
 export const SUBTABS: Partial<Record<Pantalla, string[]>> = {
   pagos: ["cobros", "pagos"], libros: ["diario", "mayor", "balance"],
   reportes: ["iva", "obras", "maquinas"], config: ["empresa", "plan", "terceros", "centros"],
 };
 
+const prox = (id: string, nombre: string): NavHoja => ({ id, nombre });
+
+/** Mapa principal congelado: cada función tiene UNA ubicación principal (nomenclatura CONTAD). */
 export const NAV: NavModulo[] = [
-  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Comprobantes, órdenes de compra y gastos generales", hijos: [
-    { id: "comprobantes", nombre: "Comprobantes de compra", destino: { pantalla: "compras" } },
+  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Registro de compras, órdenes de compra y gastos generales", hijos: [
+    { id: "comprobantes", nombre: "Registro de Compras", destino: { pantalla: "compras" } },
     { id: "ordenes", nombre: "Órdenes de Compra", destino: { pantalla: "ordenes" }, permiso: "admin" },
     { id: "gastos", nombre: "Gastos Generales", destino: { pantalla: "gastos" }, permiso: "admin" },
   ] },
-  { id: "ventas", nombre: "Ventas", icono: "Receipt", descripcion: "Facturas y comprobantes a clientes",
+  { id: "ventas", nombre: "Ventas", icono: "Receipt", descripcion: "Facturación y comprobantes a clientes",
     destino: { pantalla: "ventas" }, hijos: [] },
-  { id: "egresos", nombre: "Egresos", icono: "ArrowUpRight", descripcion: "Órdenes de pago y pagos realizados", hijos: [
+  { id: "egresos", nombre: "Egresos", icono: "ArrowUpRight", descripcion: "Orden de pago y pagos realizados", hijos: [
     { id: "orden-pago", nombre: "Orden de Pago", descripcion: "Registrar un nuevo pago", destino: { pantalla: "pagos", subtab: "pagos", abrirAlta: true } },
     { id: "pagos", nombre: "Pagos realizados", destino: { pantalla: "pagos", subtab: "pagos" } },
-    { id: "retenciones", nombre: "Retenciones" },
   ] },
-  { id: "ingresos", nombre: "Ingresos", icono: "ArrowDownLeft", descripcion: "Recibos y cobranzas", hijos: [
-    { id: "recibo", nombre: "Recibos de Cobranza", descripcion: "Registrar una nueva cobranza", destino: { pantalla: "pagos", subtab: "cobros", abrirAlta: true } },
-    { id: "cobranzas", nombre: "Cobranzas realizadas", destino: { pantalla: "pagos", subtab: "cobros" } },
+  { id: "ingresos", nombre: "Ingresos", icono: "ArrowDownLeft", descripcion: "Recibos y cobranzas efectuadas", hijos: [
+    { id: "recibo", nombre: "Recibos de Cobranzas", descripcion: "Registrar una nueva cobranza", destino: { pantalla: "pagos", subtab: "cobros", abrirAlta: true } },
+    { id: "cobranzas", nombre: "Cobranzas Efectuadas", destino: { pantalla: "pagos", subtab: "cobros" } },
   ] },
-  { id: "proveedores", nombre: "Proveedores", icono: "Truck", descripcion: "Maestro, cuenta corriente y comprobantes", hijos: [
-    { id: "maestro", nombre: "Proveedores", descripcion: "Datos de los proveedores", destino: { pantalla: "proveedores" }, permiso: "admin" },
-    { id: "cta-cte", nombre: "Cuenta Corriente" },
-    { id: "totales", nombre: "Totales de Proveedores" },
-    { id: "ordenes-pago", nombre: "Órdenes de Pago", destino: { pantalla: "pagos", subtab: "pagos" } },
-    { id: "comprobantes", nombre: "Comprobantes", destino: { pantalla: "compras" } },
-    { id: "fichas", nombre: "Fichas fiscales", destino: { pantalla: "config", subtab: "terceros" } },
+  { id: "proveedores", nombre: "Proveedores", icono: "Truck", descripcion: "Códigos de proveedores, cuentas corrientes y deuda", hijos: [
+    { id: "maestro", nombre: "Códigos de Proveedores", descripcion: "Datos de los proveedores", destino: { pantalla: "proveedores" }, permiso: "admin" },
+    prox("cta-cte", "Cuentas Corrientes"),
+    prox("totales", "Totales por Proveedores"),
+    prox("mov-conceptos", "Movimientos por Conceptos"),
+    prox("totales-vto", "Totales por Proveedores y por Vencimientos"),
+    prox("deuda-vencida", "Deuda Vencida por Proveedores"),
+    prox("agenda-pagos", "Agenda de Pagos"),
   ] },
-  { id: "clientes", nombre: "Clientes", icono: "Users", descripcion: "Cuenta corriente, cobranzas y comprobantes", hijos: [
-    { id: "cta-cte", nombre: "Cuenta Corriente" },
-    { id: "totales", nombre: "Totales de Clientes" },
-    { id: "cobranzas", nombre: "Cobranzas", destino: { pantalla: "pagos", subtab: "cobros" } },
-    { id: "comprobantes", nombre: "Comprobantes", destino: { pantalla: "ventas" } },
-    { id: "fichas", nombre: "Fichas fiscales", destino: { pantalla: "config", subtab: "terceros" } },
+  { id: "clientes", nombre: "Clientes", icono: "Users", descripcion: "Códigos de clientes, cuentas corrientes y deuda", hijos: [
+    { id: "maestro", nombre: "Códigos de Clientes", descripcion: "Datos de los clientes", destino: { pantalla: "clientes" }, permiso: "admin" },
+    prox("cta-cte", "Cuentas Corrientes"),
+    prox("totales", "Totales por Clientes"),
+    prox("totales-vto", "Totales por Clientes y por Vencimientos"),
+    prox("deuda-vencida", "Deuda Vencida por Clientes"),
+    prox("informe", "Informe por Cliente"),
+    prox("pendientes", "Facturas Pendientes de Cobro"),
   ] },
-  { id: "contable", nombre: "Contable", icono: "BookOpen", descripcion: "Asientos, libros, plan de cuentas y ejercicios", hijos: [
+  { id: "contable", nombre: "Contable", icono: "BookOpen", descripcion: "Asientos, libros, plan de cuentas, ejercicios y cierres", hijos: [
     { id: "asientos", nombre: "Asientos Generales", destino: { pantalla: "asientos" } },
-    { id: "diario", nombre: "Libro Diario", destino: { pantalla: "libros", subtab: "diario" } },
     { id: "mayor", nombre: "Mayor de Cuentas", destino: { pantalla: "libros", subtab: "mayor" } },
     { id: "sumas", nombre: "Sumas y Saldos", destino: { pantalla: "libros", subtab: "balance" } },
     { id: "plan", nombre: "Plan de Cuentas", destino: { pantalla: "config", subtab: "plan" } },
+    { id: "listado", nombre: "Listado de Asientos", descripcion: "Consulta de asientos", destino: { pantalla: "asientos", modo: "listado" } },
+    { id: "diario", nombre: "Libro Diario", destino: { pantalla: "libros", subtab: "diario" } },
     { id: "ejercicios", nombre: "Ejercicios", destino: { pantalla: "periodos" } },
+    prox("banco", "Libro Banco"),
+    { id: "cierre-mes", nombre: "Cierre de Mes", descripcion: "Cierre de períodos mensuales", destino: { pantalla: "periodos", modo: "cierre" } },
+    prox("cierre-ejercicio", "Cierre de Ejercicio"),
+    prox("apertura-ejercicio", "Apertura de Ejercicio"),
   ] },
-  { id: "banco", nombre: "Libro Banco", icono: "Landmark", descripcion: "Movimientos bancarios", hijos: [] },
-  { id: "impuestos", nombre: "Impuestos", icono: "Percent", descripcion: "Libros de IVA y retenciones", hijos: [
-    { id: "iva-compras", nombre: "Libro IVA Compras", destino: { pantalla: "reportes", subtab: "iva", ivaTipo: "compras" } },
-    { id: "iva-ventas", nombre: "Libro IVA Ventas", destino: { pantalla: "reportes", subtab: "iva", ivaTipo: "ventas" } },
-    { id: "ret-perc", nombre: "Retenciones / Percepciones" },
-  ] },
-  { id: "informes", nombre: "Informes", icono: "BarChart3", descripcion: "Rentabilidad por obra y costo por máquina", hijos: [
+  { id: "informes", nombre: "Informes", icono: "BarChart3", descripcion: "Rentabilidad por obra, costo por máquina e informes", hijos: [
+    prox("posicion-iva", "Posición IVA"),
+    prox("mov-mensual", "Movimiento Mensual de Cuentas"),
+    prox("caja-bancos", "Saldos de Caja y Bancos"),
+    prox("compras", "Informes de Compras"),
+    prox("ventas", "Informes de Ventas"),
     { id: "obras", nombre: "Rentabilidad por Obra", destino: { pantalla: "reportes", subtab: "obras" } },
     { id: "maquinas", nombre: "Costo por Máquina", destino: { pantalla: "reportes", subtab: "maquinas" } },
   ] },
-  { id: "centros", nombre: "Centros de costo", icono: "Network", descripcion: "Centros y subcentros", permiso: "centros",
-    destino: { pantalla: "config", subtab: "centros" }, hijos: [] },
-  { id: "config", nombre: "Configuración", icono: "Settings", descripcion: "Empresa, plan de cuentas y fichas fiscales", hijos: [
-    { id: "empresa", nombre: "Datos de la Empresa", destino: { pantalla: "config", subtab: "empresa" } },
-    { id: "plan", nombre: "Plan de Cuentas", destino: { pantalla: "config", subtab: "plan" } },
+  { id: "impuestos", nombre: "Impuestos", icono: "Percent", descripcion: "IVA, IIBB, retenciones y percepciones", hijos: [
+    { id: "iva-compras", nombre: "IVA · Libro IVA Compras", destino: { pantalla: "reportes", subtab: "iva", ivaTipo: "compras" } },
+    { id: "iva-ventas", nombre: "IVA · Libro IVA Ventas", destino: { pantalla: "reportes", subtab: "iva", ivaTipo: "ventas" } },
+    prox("iibb", "Impuesto IIBB"),
+    prox("ret-perc", "Retenciones / Percepciones"),
+    prox("info-cv", "Información de Compras/Ventas"),
+    prox("iva-digital", "IVA Digital"),
+  ] },
+  { id: "otras", nombre: "Otras Opciones", icono: "Settings", descripcion: "Centros de costos, empresa y fichas fiscales", hijos: [
+    { id: "centros", nombre: "Centros de Costos", destino: { pantalla: "config", subtab: "centros" }, permiso: "centros" },
+    { id: "subcentros", nombre: "Sub Centros de Costos", destino: { pantalla: "config", subtab: "centros" }, permiso: "centros" },
+    { id: "empresa", nombre: "Empresa", destino: { pantalla: "config", subtab: "empresa" } },
     { id: "fichas", nombre: "Fichas fiscales", destino: { pantalla: "config", subtab: "terceros" } },
   ] },
 ];
+
+/** Ubicaciones anteriores → ubicación principal actual (para no romper URLs ni recientes). */
+export const ALIAS: Record<string, [string, string?]> = {
+  "banco": ["contable", "banco"],
+  "centros": ["otras", "centros"],
+  "config": ["otras"],
+  "config/empresa": ["otras", "empresa"],
+  "config/plan": ["contable", "plan"],
+  "config/fichas": ["otras", "fichas"],
+  "proveedores/ordenes-pago": ["egresos", "orden-pago"],
+  "proveedores/comprobantes": ["compras", "comprobantes"],
+  "proveedores/fichas": ["otras", "fichas"],
+  "clientes/cobranzas": ["ingresos", "cobranzas"],
+  "clientes/comprobantes": ["ventas"],
+  "clientes/fichas": ["otras", "fichas"],
+  "egresos/retenciones": ["impuestos", "ret-perc"],
+};
+
+/** Traduce una ubicación antigua a la actual; si no hay alias, devuelve la misma. */
+export function canonico(m: string, s?: string | null): [string, string | undefined] {
+  const a = ALIAS[s ? `${m}/${s}` : m] ?? (s ? undefined : undefined);
+  return a ? [a[0], a[1]] : [m, s ?? undefined];
+}
 
 export type Permisos = Record<Permiso, boolean>;
 const permitido = (p: Permisos, ...req: (Permiso | undefined)[]) => req.every((r) => p[r ?? "ver"]);
@@ -97,6 +138,7 @@ export interface Resolucion { modulo: NavModulo; hoja?: NavHoja; destino?: Desti
 /** Resuelve ?m=&s= contra el árbol permitido. null = no existe o no autorizado. */
 export function resolver(m: string | null | undefined, s: string | null | undefined, p: Permisos): Resolucion | null {
   if (!m) return null;
+  [m, s] = canonico(m, s);
   const mod = navPermitida(p).find((x) => x.id === m);
   if (!mod) return null;
   if (!s) return { modulo: mod, destino: mod.destino, proximamente: esProximamente(mod) };
