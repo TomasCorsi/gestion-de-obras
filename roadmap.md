@@ -36,4 +36,5 @@
 - [ ] Pendiente (no bloquea): prueba responsive real en celular.
 
 - [x] Administrador conserva acceso completo a Proveedores, Órdenes de Compra y Gastos Generales; contador sin cambios.
-- [ ] Corregir navegación desde proveedores por proveedor_id / tercero_id, mensaje sin ficha fiscal y pruebas sin escrituras.
+- [x] Navegación por proveedor_id / tercero_id y mensaje sin ficha fiscal; 93 pruebas pasan y compilación correcta. Interfaz real: órdenes por ID (sin registros del proveedor probado) y mensaje sin ficha. Comprobantes vinculados verificados con respuestas simuladas sin persistencia.
+- [ ] Verificar comprobantes desde un proveedor con ficha fiscal real vinculada: no hay proveedores activos vinculados disponibles en la sesión probada; no se crean datos de prueba.
