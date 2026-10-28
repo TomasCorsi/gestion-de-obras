@@ -43,6 +43,15 @@ Inicio Contable  (buscador de módulos + accesos recientes + 12 tarjetas)
 
 Pendientes que quedarían como "Próximamente": Cuenta Corriente y Totales de proveedores y clientes, Retenciones, Libro Banco y Retenciones/Percepciones en Impuestos. Se construirían en fases posteriores.
 
+## Ajustes aprobados
+
+- El módulo se sigue llamando "Contable".
+- Los accesos "Próximamente" también aparecen en el buscador, deshabilitados y sin acción (por ejemplo "Proveedores > Cuenta Corriente · Próximamente").
+- Permisos: cada acceso indica el permiso que necesita, y este se consulta en el servidor con las verificaciones contables que ya existen (ver contabilidad, centros de costo). La entrada a la sección sigue reservada a administrador y contador. El launcher, el buscador y los recientes ocultan lo no autorizado. Abrir un enlace o un reciente sin permiso vuelve al Inicio Contable.
+- Los recientes se vuelven a validar contra el árbol y los permisos actuales antes de navegar; si un reciente ya no es válido, se descarta.
+- Los accesos que llevan a la misma pantalla usan el mismo componente. Solo cambian sus valores iniciales; no se duplica ni la pantalla ni la lógica.
+- La dirección guarda `m` y `s`, y el breadcrumb muestra el recorrido elegido (por ejemplo Proveedores > Comprobantes, aunque la pantalla sea la de Compras).
+
 ## Experiencia
 
 - Pantalla de inicio con tarjetas grandes: icono, nombre CONTAD y una línea descriptiva. Grilla adaptable (4, 3, 2 o 1 columnas), con efecto al pasar el mouse en el rojo de Calamina.
