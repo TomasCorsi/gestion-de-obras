@@ -42,7 +42,7 @@ export function PeriodosTab({ enfoqueCierre = false }: { enfoqueCierre?: boolean
         </CardContent>
       </Card>
 
-      <Card className={enfoqueCierre ? "md:order-first md:col-span-2 ring-1 ring-primary/40" : undefined}>
+      <Card className={enfoqueCierre ? "md:order-first md:col-span-2 ring-2 ring-primary" : undefined}>
         <CardHeader className="pb-2"><CardTitle className="text-base">{enfoqueCierre ? "Cierre de Mes · Períodos mensuales" : "Períodos mensuales"}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">

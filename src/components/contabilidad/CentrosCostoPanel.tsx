@@ -21,7 +21,7 @@ const TIPOS: { v: TipoCentro; l: string }[] = [
 const fmtDate = (s?: string | null) => { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const codigoDe = (t: string) => t.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "SC";
 
-export function CentrosCostoPanel() {
+export function CentrosCostoPanel({ foco = "centros" }: { foco?: "centros" | "subcentros" } = {}) {
   const { data: centros = [] } = useCentros();
   const { data: subs = [] } = useSubcentros();
   const [sel, setSel] = useState<string | null>(null);
@@ -34,7 +34,8 @@ export function CentrosCostoPanel() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
-      <Card>
+      <h2 className="lg:col-span-2 text-lg font-semibold" data-testid="config-seccion">{foco === "subcentros" ? "Sub Centros de Costos" : "Centros de Costos"}</h2>
+      <Card className={foco === "centros" ? "ring-2 ring-primary" : undefined}>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle className="text-base">Centros de costo</CardTitle>
           <Button size="sm" onClick={() => setEditC({ tipo: "otro", activo: true, orden: centros.length + 1 })}><Plus className="w-4 h-4 mr-1" />Nuevo</Button>
@@ -54,7 +55,7 @@ export function CentrosCostoPanel() {
       </Card>
 
       {centro && (
-        <Card>
+        <Card className={foco === "subcentros" ? "ring-2 ring-primary" : undefined}>
           <CardHeader className="flex-row items-center justify-between space-y-0 gap-2 flex-wrap">
             <div>
               <CardTitle className="text-base">{centro.codigo} · {centro.nombre}</CardTitle>
