@@ -8,7 +8,7 @@ import { RepartosItemPanel } from "./RepartosItemPanel";
 import { VinculosItemPanel } from "./VinculosItemPanel";
 import { AsientoComprobanteView } from "./AsientoComprobanteView";
 import { useRepartos, useVinculos, useAsientoCbte, useGenerarAsientoCbte } from "@/hooks/useContab1c";
-import { etapaComprobante, permisosComprobante, ETAPA_LABEL } from "@/lib/contab1c";
+import { etapaComprobante, permisosComprobante, ETAPA_LABEL, cambiosPendientes, problemasCompatibilidad, MSG_CAMBIOS_PENDIENTES } from "@/lib/contab1c";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -26,7 +26,7 @@ import {
 import { useObras } from "@/hooks/useObras";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Props {
   open: boolean;
@@ -91,7 +91,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const generar = useGenerarAsientoCbte();
   const [creadoId, setCreadoId] = useState<string | null>(null);
   const comprobanteId = idInicial ?? creadoId;
-  const [dirty, setDirty] = useState(false);
+  const qc = useQueryClient();
   const [abierto, setAbierto] = useState<string | null>(null);
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
@@ -108,7 +108,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const { data: existingItems = [] } = useContabComprobanteItems(comprobanteId);
   const { data: asientoData } = useAsientoCbte(existing?.asiento_id ?? null);
   const etapa = existing ? etapaComprobante(existing.estado, existing.asiento_id, (asientoData as any)?.asiento?.estado ?? (existing.asiento_id ? "borrador" : null)) : "registrado";
-  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const permisosBase = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing, puedeCargar: true });
   const itemIds = useMemo(() => existingItems.map((i) => i.id), [existingItems]);
   const { data: repartos = [] } = useRepartos(itemIds);
   const { data: vinculos = [] } = useVinculos(comprobanteId);
@@ -128,7 +128,6 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
   const elegirMaestro = (id: string) => {
     setMaestroElegido(id);
-    setDirty(true);
     const m = delRol.find((x) => x.maestro_id === id);
     if (!m) { setTerceroId(""); return; }
     if (m.tercero_id) setTerceroId(m.tercero_id);
@@ -174,14 +173,12 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         obra_id: i.obra_id,
         maquinaria_id: i.maquinaria_id,
       })));
-      setDirty(false);
     }
   }, [existingItems]);
 
   const cuentasImputables = useMemo(() => cuentas.filter((c) => c.imputable && c.activa), [cuentas]);
 
   const updateItem = (idx: number, patch: Partial<ItemDraft>) => {
-    setDirty(true);
     setItems((arr) => {
       const next = [...arr];
       const it = { ...next[idx], ...patch };
@@ -209,6 +206,25 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
     const total = subtotalNeto + subtotalIva + (+percIva || 0) + (+percIibb || 0) + (+percOtras || 0);
     return { ...acc, subtotalNeto, subtotalIva, total };
   }, [items, percIva, percIibb, percOtras]);
+
+  // Cambios sin guardar: se derivan comparando el formulario con lo que devolvió la base.
+  const pendientes = useMemo(() => cambiosPendientes(
+    existing ? {
+      cab: { tipo: existing.tipo, punto_venta: existing.punto_venta, numero: existing.numero, fecha: existing.fecha, fecha_vto: existing.fecha_vto ?? null,
+        tercero_id: existing.tercero_id ?? null, obra_id: existing.obra_id ?? null, maquinaria_id: existing.maquinaria_id ?? null,
+        observaciones: existing.observaciones ?? null, perc_iva: +existing.perc_iva, perc_iibb: +existing.perc_iibb, perc_otras: +existing.perc_otras },
+      items: existingItems as any[],
+    } : null,
+    { cab: { tipo, punto_venta: puntoVenta, numero, fecha, fecha_vto: fechaVto || null, tercero_id: terceroId || null, obra_id: obraId || null,
+        maquinaria_id: maqId || null, observaciones, perc_iva: percIva, perc_iibb: percIibb, perc_otras: percOtras }, items },
+  ), [existing, existingItems, tipo, puntoVenta, numero, fecha, fechaVto, terceroId, obraId, maqId, observaciones, percIva, percIibb, percOtras, items]);
+  const dirty = !!existing && pendientes.length > 0;
+  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const incompatibles = useMemo(() => existing ? problemasCompatibilidad({
+    tipo: existing.tipo, items: existingItems.map((i) => ({ id: i.id, neto: +i.neto })), repartos, vinculos,
+  }) : [], [existing, existingItems, repartos, vinculos]);
+  const bloqueoAsiento = dirty || incompatibles.length > 0;
+
 
   const handleSave = async () => {
     if (!terceroId) return;
@@ -254,7 +270,9 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         })),
       });
       if (!comprobanteId) setCreadoId(id);
-      setDirty(false);
+      // Releer desde la base todo lo que depende del comprobante antes de rehabilitar operaciones.
+      await Promise.all(["contab_cbte_one", "contab_cbte_items", "contab_repartos", "contab_vinculos", "contab_asiento_cbte", "contab_docs_op"]
+        .map((k) => qc.invalidateQueries({ queryKey: [k] })));
     } catch (e: any) {
       setErrorGuardado(e?.message ?? "No se pudo guardar");
     }
@@ -354,7 +372,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           <div className="flex items-center justify-between mb-2">
             <Label className="text-base">Renglones</Label>
             {!isReadOnly && (
-              <Button size="sm" variant="outline" onClick={() => { setDirty(true); setItems((a) => [...a, blankItem()]); }}>
+              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()])}>
                 <Plus className="w-4 h-4 mr-1" />Agregar renglón
               </Button>
             )}
@@ -441,7 +459,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         </Button>
                       )}
                       {!isReadOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => { setDirty(true); setItems((a) => a.filter((_, i) => i !== idx)); }}>
+                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx))}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
@@ -450,7 +468,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                   {abierto === it.id && it.id && existing && (
                     <tr className="bg-muted/20">
                       <td colSpan={10} className="p-3 space-y-4">
-                        {dirty && <p className="text-xs text-destructive">Hay cambios sin guardar: guardá antes de repartir o vincular.</p>}
+                        {dirty && <p role="alert" className="text-xs text-destructive">{MSG_CAMBIOS_PENDIENTES}</p>}
                         <RepartosItemPanel itemId={it.id} neto={+it.neto} repartos={repartos.filter((r) => r.item_id === it.id)}
                           editable={permisos.editarRepartos} fecha={existing.fecha} obras={obras as any} maquinas={maquinas as any} />
                         <VinculosItemPanel cbteId={existing.id} itemId={it.id} neto={+it.neto} esVenta={esVenta} fecha={existing.fecha}
@@ -478,9 +496,9 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
             <div className="flex justify-between"><span>Subtotal Neto</span><span className="tabular-nums">{totales.subtotalNeto.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>IVA</span><span className="tabular-nums">{totales.subtotalIva.toFixed(2)}</span></div>
             <div className="grid grid-cols-3 gap-2 my-2">
-              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => { setDirty(true); setPercIva(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => { setDirty(true); setPercIibb(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => { setDirty(true); setPercOtras(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => setPercIva(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => setPercIibb(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => setPercOtras(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
             </div>
             <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="tabular-nums">${totales.total.toFixed(2)}</span></div>
           </div>
@@ -488,15 +506,25 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
 
         {existing?.asiento_id && <div className="mt-4"><AsientoComprobanteView asientoId={existing.asiento_id} /></div>}
 
+        {dirty && (
+          <div role="alert" data-testid="cambios-pendientes" className="mt-4 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
+            {MSG_CAMBIOS_PENDIENTES}. Repartos, vínculos y asiento quedan deshabilitados hasta guardar.
+          </div>
+        )}
+        {!dirty && incompatibles.length > 0 && (permisosBase.generar || permisosBase.regenerar) && (
+          <div role="alert" data-testid="incompatibles" className="mt-4 rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">
+            Revisá repartos y vínculos antes de generar el asiento: {incompatibles.join("; ")}.
+          </div>
+        )}
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
-          {permisos.generar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending}>
+          {permisosBase.generar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending || !permisos.generar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Generar asiento borrador
             </Button>
           )}
-          {permisos.regenerar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending}>
+          {permisosBase.regenerar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending || !permisos.regenerar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Regenerar borrador
             </Button>
           )}
