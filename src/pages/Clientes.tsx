@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,8 +48,8 @@ import { useClientes, ClienteDB, ClienteForm } from "@/hooks/useClientes";
 import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 
-function Marco({ embebido, children }: { embebido: boolean; children: React.ReactNode }) {
-  return embebido ? <>{children}</> : <Marco embebido={embebido}>{children}</Marco>;
+function Marco({ embebido, children }: { embebido: boolean; children: ReactNode }) {
+  return embebido ? <>{children}</> : <MainLayout title="Clientes" subtitle="Gestión de clientes">{children}</MainLayout>;
 }
 
 /** Maestro de clientes; `embebido` lo muestra dentro de Contabilidad › Clientes › Códigos de Clientes. */
