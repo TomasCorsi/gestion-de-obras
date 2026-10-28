@@ -104,7 +104,7 @@ const fetchOrdenes = async (proveedorId?: string): Promise<OrdenCompraWithRelati
     .order("fecha", { ascending: false })
     .order("created_at", { ascending: false });
 
-  const { data, error } = await aplicarFiltroId(query, "proveedor_id", proveedorId);
+  const { data, error } = await aplicarFiltroId(query as any, "proveedor_id", proveedorId);
 
   if (error) throw error;
   return (data as any) || [];
