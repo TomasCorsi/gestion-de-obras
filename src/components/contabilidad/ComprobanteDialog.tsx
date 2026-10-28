@@ -424,18 +424,40 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-1 py-1">
+                    <td className="px-1 py-1 whitespace-nowrap">
+                      {it.id && existing && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAbierto(abierto === it.id ? null : it.id!)}
+                          aria-label={`Repartos y vínculos del renglón ${idx + 1}`}>
+                          <SplitSquareHorizontal className="w-4 h-4 mr-1" />
+                          {fmtM(+it.neto - (repartos.filter((r) => r.item_id === it.id).reduce((a, r) => a + Number(r.importe_efectivo), 0)))}
+                        </Button>
+                      )}
                       {!isReadOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx))}>
+                        <Button size="icon" variant="ghost" onClick={() => { setDirty(true); setItems((a) => a.filter((_, i) => i !== idx)); }}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
                     </td>
                   </tr>
+                  {abierto === it.id && it.id && existing && (
+                    <tr className="bg-muted/20">
+                      <td colSpan={10} className="p-3 space-y-4">
+                        {dirty && <p className="text-xs text-destructive">Hay cambios sin guardar: guardá antes de repartir o vincular.</p>}
+                        <RepartosItemPanel itemId={it.id} neto={+it.neto} repartos={repartos.filter((r) => r.item_id === it.id)}
+                          editable={permisos.editarRepartos} fecha={existing.fecha} obras={obras as any} maquinas={maquinas as any} />
+                        <VinculosItemPanel cbteId={existing.id} itemId={it.id} neto={+it.neto} esVenta={esVenta} fecha={existing.fecha}
+                          proveedorId={tercero?.proveedor_id ?? null} clienteId={tercero?.cliente_id ?? null}
+                          vinculos={vinculos.filter((v) => v.item_id === it.id)} habilitado={permisos.vincular} motivo={permisos.motivoSinVinculos} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
+          {existing && !dirty && <p className="mt-1 text-xs text-muted-foreground">El botón de cada renglón muestra el importe pendiente de repartir y abre repartos y vínculos.</p>}
+          {!existing && <p className="mt-1 text-xs text-muted-foreground">Guardá el comprobante para habilitar repartos y vínculos.</p>}
         </div>
 
         {/* TOTALES */}
@@ -448,16 +470,28 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
             <div className="flex justify-between"><span>Subtotal Neto</span><span className="tabular-nums">{totales.subtotalNeto.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>IVA</span><span className="tabular-nums">{totales.subtotalIva.toFixed(2)}</span></div>
             <div className="grid grid-cols-3 gap-2 my-2">
-              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => setPercIva(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => setPercIibb(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => setPercOtras(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => { setDirty(true); setPercIva(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => { setDirty(true); setPercIibb(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => { setDirty(true); setPercOtras(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
             </div>
             <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="tabular-nums">${totales.total.toFixed(2)}</span></div>
           </div>
         </div>
 
+        {existing?.asiento_id && <div className="mt-4"><AsientoComprobanteView asientoId={existing.asiento_id} /></div>}
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          {permisos.generar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending}>
+              Generar asiento borrador
+            </Button>
+          )}
+          {permisos.regenerar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending}>
+              Regenerar borrador
+            </Button>
+          )}
           {!isReadOnly && (
             <Button onClick={handleSave} disabled={save.isPending || !terceroId}>
               {save.isPending ? "Guardando…" : "Guardar borrador"}
