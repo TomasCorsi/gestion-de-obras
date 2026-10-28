@@ -1,8 +1,9 @@
 // Árbol de navegación del Inicio Contable (terminología CONTAD). Solo navegación: cada destino
 // apunta a una pantalla existente; los "próximamente" no tienen destino.
 
-export type Pantalla = "compras" | "ventas" | "pagos" | "asientos" | "periodos" | "libros" | "reportes" | "config";
-export type Permiso = "ver" | "centros";
+export type Pantalla = "compras" | "ventas" | "pagos" | "asientos" | "periodos" | "libros" | "reportes" | "config" | "ordenes" | "gastos" | "proveedores";
+/** "admin": pantallas operativas que hoy son solo de administradores (verificado en servidor). */
+export type Permiso = "ver" | "centros" | "admin";
 
 export interface Destino {
   pantalla: Pantalla;
@@ -14,15 +15,18 @@ export interface Destino {
 export interface NavHoja { id: string; nombre: string; descripcion?: string; destino?: Destino; permiso?: Permiso; }
 export interface NavModulo { id: string; nombre: string; descripcion: string; icono: string; permiso?: Permiso; destino?: Destino; hijos: NavHoja[]; }
 
-export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config"];
+export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores"];
 export const SUBTABS: Partial<Record<Pantalla, string[]>> = {
   pagos: ["cobros", "pagos"], libros: ["diario", "mayor", "balance"],
   reportes: ["iva", "obras", "maquinas"], config: ["empresa", "plan", "terceros", "centros"],
 };
 
 export const NAV: NavModulo[] = [
-  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Facturas y comprobantes de proveedores",
-    destino: { pantalla: "compras" }, hijos: [] },
+  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Comprobantes, órdenes de compra y gastos generales", hijos: [
+    { id: "comprobantes", nombre: "Comprobantes de compra", destino: { pantalla: "compras" } },
+    { id: "ordenes", nombre: "Órdenes de Compra", destino: { pantalla: "ordenes" }, permiso: "admin" },
+    { id: "gastos", nombre: "Gastos Generales", destino: { pantalla: "gastos" }, permiso: "admin" },
+  ] },
   { id: "ventas", nombre: "Ventas", icono: "Receipt", descripcion: "Facturas y comprobantes a clientes",
     destino: { pantalla: "ventas" }, hijos: [] },
   { id: "egresos", nombre: "Egresos", icono: "ArrowUpRight", descripcion: "Órdenes de pago y pagos realizados", hijos: [
@@ -34,7 +38,8 @@ export const NAV: NavModulo[] = [
     { id: "recibo", nombre: "Recibos de Cobranza", descripcion: "Registrar una nueva cobranza", destino: { pantalla: "pagos", subtab: "cobros", abrirAlta: true } },
     { id: "cobranzas", nombre: "Cobranzas realizadas", destino: { pantalla: "pagos", subtab: "cobros" } },
   ] },
-  { id: "proveedores", nombre: "Proveedores", icono: "Truck", descripcion: "Cuenta corriente, pagos y comprobantes", hijos: [
+  { id: "proveedores", nombre: "Proveedores", icono: "Truck", descripcion: "Maestro, cuenta corriente y comprobantes", hijos: [
+    { id: "maestro", nombre: "Proveedores", descripcion: "Datos de los proveedores", destino: { pantalla: "proveedores" }, permiso: "admin" },
     { id: "cta-cte", nombre: "Cuenta Corriente" },
     { id: "totales", nombre: "Totales de Proveedores" },
     { id: "ordenes-pago", nombre: "Órdenes de Pago", destino: { pantalla: "pagos", subtab: "pagos" } },
