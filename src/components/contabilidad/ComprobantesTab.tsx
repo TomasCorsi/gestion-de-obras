@@ -15,6 +15,7 @@ import {
 import { ComprobanteDialog } from "./ComprobanteDialog";
 import { useContabAsientos } from "@/hooks/useContabilidad";
 import { estadosComprobante, type EstadoContable } from "@/lib/contabEstados";
+import { etapaComprobante, ETAPA_LABEL } from "@/lib/contab1c";
 
 const TIPO_LABEL: Record<CbteTipo, string> = {
   FA_A: "Factura A", FA_B: "Factura B", FA_C: "Factura C",
@@ -132,17 +133,17 @@ export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
                       <td className="px-3 py-2 text-right tabular-nums">{fmt(iva)}</td>
                       <td className="px-3 py-2 text-right tabular-nums font-semibold">{fmt(c.total)}</td>
                       <td className="px-3 py-2">
-                        <Badge variant={CONTABLE[est.contable].variant}>{CONTABLE[est.contable].label}</Badge>
-                        {est.contable === "registrado" && c.estado !== "borrador" && <div className="text-[10px] text-muted-foreground mt-0.5">asiento en borrador</div>}
-                        {c.estado === "borrador" && <div className="text-[10px] text-muted-foreground mt-0.5">sin asiento</div>}
+                        {(() => { const et = etapaComprobante(c.estado, c.asiento_id, c.asiento_id ? estadoAsiento.get(c.asiento_id) : null); return (
+                          <Badge variant={et === "contabilizado" ? "default" : et === "anulado" ? "destructive" : et === "asiento_borrador" ? "outline" : "secondary"}>{ETAPA_LABEL[et]}</Badge>
+                        ); })()}
                       </td>
                       <td className="px-3 py-2 text-xs">{est.financiero ? FINANCIERO[est.financiero] : "—"}</td>
                       <td className="px-3 py-2 whitespace-nowrap text-right">
                         <Button size="icon" variant="ghost" onClick={() => handleEdit(c)} title="Ver / editar">
                           <Edit3 className="w-4 h-4" />
                         </Button>
-                        {c.estado === "borrador" && (
-                          <Button size="icon" variant="ghost" onClick={() => confirmar.mutate(c.id)} title="Generar asiento">
+                        {c.estado === "borrador" && !c.asiento_id && (
+                          <Button size="icon" variant="ghost" onClick={() => confirmar.mutate(c.id)} title="Generar asiento borrador">
                             <CheckCircle2 className="w-4 h-4 text-green-600" />
                           </Button>
                         )}
@@ -151,7 +152,7 @@ export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
                             <Ban className="w-4 h-4 text-amber-600" />
                           </Button>
                         )}
-                        {c.estado === "borrador" && (
+                        {c.estado === "borrador" && !c.asiento_id && (
                           <Button size="icon" variant="ghost" onClick={() => setDelId(c.id)} title="Eliminar">
                             <Trash2 className="w-4 h-4 text-destructive" />
                           </Button>

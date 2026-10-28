@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { traducirError } from "@/lib/contab1c";
 
 // ============== TYPES ==============
 export type CbteTipo =
@@ -332,32 +333,52 @@ export const useSaveComprobante = () => {
         if (payload[k] === "") payload[k] = null;
       });
       let id = payload.id;
+      const limpiar = (it: Partial<ContabCbteItem>, idx: number) => {
+        const r: any = { ...it, comprobante_id: id, orden: idx + 1 };
+        ["cuenta_id","obra_id","maquinaria_id"].forEach((k) => { if (r[k] === "") r[k] = null; });
+        delete r.id;
+        return r;
+      };
       if (id) {
+        // Edición: se conservan los ítems existentes (sus repartos y vínculos dependen de ellos).
         const { error } = await (supabase as any).from("contab_comprobantes").update(payload).eq("id", id);
-        if (error) throw error;
-        await (supabase as any).from("contab_comprobante_items").delete().eq("comprobante_id", id);
+        if (error) throw new Error(`No se guardó la cabecera: ${traducirError(error.message)}`);
+        const { data: prev, error: ePrev } = await (supabase as any).from("contab_comprobante_items").select("id").eq("comprobante_id", id);
+        if (ePrev) throw ePrev;
+        const quedan = new Set(items.filter((i) => i.id).map((i) => i.id));
+        const borrar = (prev ?? []).map((p: any) => p.id).filter((x: string) => !quedan.has(x));
+        if (borrar.length) {
+          const { error: eDel } = await (supabase as any).from("contab_comprobante_items").delete().in("id", borrar);
+          if (eDel) throw new Error(`No se pudo quitar un renglón: ${traducirError(eDel.message)}`);
+        }
+        for (const [idx, it] of items.entries()) {
+          const row = limpiar(it, idx);
+          const { error: eIt } = it.id
+            ? await (supabase as any).from("contab_comprobante_items").update(row).eq("id", it.id)
+            : await (supabase as any).from("contab_comprobante_items").insert(row);
+          if (eIt) throw new Error(`No se guardó el renglón ${idx + 1}: ${traducirError(eIt.message)}`);
+        }
       } else {
+        // Alta: cabecera + ítems; si los ítems fallan se elimina la cabecera para no dejar un comprobante incompleto.
         const { data: ud } = await supabase.auth.getUser();
         payload.created_by = ud?.user?.id ?? null;
         const { data, error } = await (supabase as any).from("contab_comprobantes").insert(payload).select("id").single();
-        if (error) throw error;
+        if (error) throw new Error(`No se guardó el comprobante: ${traducirError(error.message)}`);
         id = data.id;
-      }
-      if (items.length > 0) {
-        const rows = items.map((it, idx) => {
-          const r: any = { ...it, comprobante_id: id, orden: idx + 1 };
-          ["cuenta_id","obra_id","maquinaria_id"].forEach((k) => { if (r[k] === "") r[k] = null; });
-          delete r.id;
-          return r;
-        });
-        const { error } = await (supabase as any).from("contab_comprobante_items").insert(rows);
-        if (error) throw error;
+        if (items.length > 0) {
+          const { error: eIt } = await (supabase as any).from("contab_comprobante_items").insert(items.map(limpiar));
+          if (eIt) {
+            const { error: eRb } = await (supabase as any).from("contab_comprobantes").delete().eq("id", id);
+            throw new Error(`No se guardaron los renglones: ${traducirError(eIt.message)}.${eRb ? " ATENCIÓN: quedó una cabecera sin renglones; eliminála desde la lista." : " No se guardó nada."}`);
+          }
+        }
       }
       return id as string;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
       qc.invalidateQueries({ queryKey: ["contab_cbte_items"] });
+      qc.invalidateQueries({ queryKey: ["contab_cbte_one"] });
       toast.success("Comprobante guardado");
     },
     onError: (e: any) => toast.error(e.message),
@@ -375,7 +396,7 @@ export const useConfirmarComprobante = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
       qc.invalidateQueries({ queryKey: ["contab_asientos"] });
-      toast.success("Comprobante confirmado y asiento generado");
+      toast.success("Asiento borrador generado");
     },
     onError: (e: any) => toast.error(e.message),
   });

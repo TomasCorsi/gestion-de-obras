@@ -1,8 +1,14 @@
 import { Combobox } from "@/components/ui/combobox";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
 import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, SplitSquareHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RepartosItemPanel } from "./RepartosItemPanel";
+import { VinculosItemPanel } from "./VinculosItemPanel";
+import { AsientoComprobanteView } from "./AsientoComprobanteView";
+import { useRepartos, useVinculos, useAsientoCbte, useGenerarAsientoCbte } from "@/hooks/useContab1c";
+import { etapaComprobante, permisosComprobante, ETAPA_LABEL } from "@/lib/contab1c";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -52,6 +58,7 @@ const TIPOS_COMPRA: { v: CbteTipo; l: string }[] = [
 ];
 
 type ItemDraft = {
+  id?: string;
   descripcion: string;
   cuenta_id: string | null;
   cantidad: number;
@@ -75,12 +82,18 @@ const blankItem = (): ItemDraft => ({
   maquinaria_id: null,
 });
 
-export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Props) {
+export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esVenta }: Props) {
   const { data: terceros = [] } = useContabTerceros();
   const { data: cuentas = [] } = useContabPlanCuentas();
   const { obras = [] } = useObras();
   const { maquinarias: maquinas = [] } = useMaquinarias();
   const save = useSaveComprobante();
+  const generar = useGenerarAsientoCbte();
+  const [creadoId, setCreadoId] = useState<string | null>(null);
+  const comprobanteId = idInicial ?? creadoId;
+  const [dirty, setDirty] = useState(false);
+  const [abierto, setAbierto] = useState<string | null>(null);
+  const [errorGuardado, setErrorGuardado] = useState<string | null>(null);
 
   // Carga comprobante existente
   const { data: existing } = useQuery({
@@ -93,6 +106,12 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
     },
   });
   const { data: existingItems = [] } = useContabComprobanteItems(comprobanteId);
+  const { data: asientoData } = useAsientoCbte(existing?.asiento_id ?? null);
+  const etapa = existing ? etapaComprobante(existing.estado, existing.asiento_id, (asientoData as any)?.asiento?.estado ?? (existing.asiento_id ? "borrador" : null)) : "registrado";
+  const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
+  const itemIds = useMemo(() => existingItems.map((i) => i.id), [existingItems]);
+  const { data: repartos = [] } = useRepartos(itemIds);
+  const { data: vinculos = [] } = useVinculos(comprobanteId);
 
   const [tipo, setTipo] = useState<CbteTipo>(esVenta ? "FA_B" : "FA_CPA_A");
   const [puntoVenta, setPuntoVenta] = useState(1);
@@ -109,11 +128,13 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
   const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
   const elegirMaestro = (id: string) => {
     setMaestroElegido(id);
+    setDirty(true);
     const m = delRol.find((x) => x.maestro_id === id);
     if (!m) { setTerceroId(""); return; }
     if (m.tercero_id) setTerceroId(m.tercero_id);
     else { setTerceroId(""); setFichaPara(m); }
   };
+  const tercero = (terceros as any[]).find((t) => t.id === (existing?.tercero_id ?? ""));
   const [obraId, setObraId] = useState<string>("");
   const [maqId, setMaqId] = useState<string>("");
   const [observaciones, setObservaciones] = useState("");
@@ -142,6 +163,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
   useEffect(() => {
     if (existingItems.length > 0) {
       setItems(existingItems.map((i) => ({
+        id: i.id,
         descripcion: i.descripcion,
         cuenta_id: i.cuenta_id,
         cantidad: +i.cantidad,
@@ -152,12 +174,14 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
         obra_id: i.obra_id,
         maquinaria_id: i.maquinaria_id,
       })));
+      setDirty(false);
     }
   }, [existingItems]);
 
   const cuentasImputables = useMemo(() => cuentas.filter((c) => c.imputable && c.activa), [cuentas]);
 
   const updateItem = (idx: number, patch: Partial<ItemDraft>) => {
+    setDirty(true);
     setItems((arr) => {
       const next = [...arr];
       const it = { ...next[idx], ...patch };
@@ -188,58 +212,74 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
 
   const handleSave = async () => {
     if (!terceroId) return;
-    await save.mutateAsync({
-      cbte: {
-        id: comprobanteId ?? undefined,
-        tipo,
-        punto_venta: puntoVenta,
-        numero,
-        fecha,
-        fecha_vto: fechaVto || null,
-        tercero_id: terceroId || null,
-        es_venta: esVenta,
-        estado: existing?.estado ?? "borrador",
-        neto_21: totales.neto_21, iva_21: totales.iva_21,
-        neto_105: totales.neto_105, iva_105: totales.iva_105,
-        neto_27: totales.neto_27, iva_27: totales.iva_27,
-        neto_0: totales.neto_0,
-        exento: 0, no_gravado: 0,
-        perc_iva: +percIva || 0,
-        perc_iibb: +percIibb || 0,
-        perc_otras: +percOtras || 0,
-        total: totales.total,
-        moneda: "ARS",
-        cotizacion: 1,
-        obra_id: obraId || null,
-        maquinaria_id: maqId || null,
-        observaciones,
-      } as any,
-      items: items.map((i) => ({
-        descripcion: i.descripcion,
-        cuenta_id: i.cuenta_id,
-        cantidad: i.cantidad,
-        precio_unit: i.precio_unit,
-        neto: i.neto,
-        alicuota_iva: i.alicuota_iva,
-        iva: i.iva,
-        obra_id: i.obra_id,
-        maquinaria_id: i.maquinaria_id,
-      })),
-    });
-    onClose();
+    setErrorGuardado(null);
+    try {
+      const id = await save.mutateAsync({
+        cbte: {
+          id: comprobanteId ?? undefined,
+          tipo,
+          punto_venta: puntoVenta,
+          numero,
+          fecha,
+          fecha_vto: fechaVto || null,
+          tercero_id: terceroId || null,
+          es_venta: esVenta,
+          estado: existing?.estado ?? "borrador",
+          neto_21: totales.neto_21, iva_21: totales.iva_21,
+          neto_105: totales.neto_105, iva_105: totales.iva_105,
+          neto_27: totales.neto_27, iva_27: totales.iva_27,
+          neto_0: totales.neto_0,
+          exento: 0, no_gravado: 0,
+          perc_iva: +percIva || 0,
+          perc_iibb: +percIibb || 0,
+          perc_otras: +percOtras || 0,
+          total: totales.total,
+          moneda: "ARS",
+          cotizacion: 1,
+          obra_id: obraId || null,
+          maquinaria_id: maqId || null,
+          observaciones,
+        } as any,
+        items: items.map((i) => ({
+          id: i.id,
+          descripcion: i.descripcion,
+          cuenta_id: i.cuenta_id,
+          cantidad: i.cantidad,
+          precio_unit: i.precio_unit,
+          neto: i.neto,
+          alicuota_iva: i.alicuota_iva,
+          iva: i.iva,
+          obra_id: i.obra_id,
+          maquinaria_id: i.maquinaria_id,
+        })),
+      });
+      if (!comprobanteId) setCreadoId(id);
+      setDirty(false);
+    } catch (e: any) {
+      setErrorGuardado(e?.message ?? "No se pudo guardar");
+    }
   };
 
-  const isReadOnly = existing?.estado && existing.estado !== "borrador";
+  const isReadOnly = !!existing && !permisos.editarItems;
   const tipos = esVenta ? TIPOS_VENTA : TIPOS_COMPRA;
+  const fmtM = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
             {comprobanteId ? "Editar" : "Nuevo"} comprobante de {esVenta ? "venta" : "compra"}
+            {existing && (
+              <Badge data-testid="etapa-cbte" variant={etapa === "contabilizado" ? "default" : etapa === "anulado" ? "destructive" : "secondary"}>
+                {ETAPA_LABEL[etapa]}
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
+        {errorGuardado && <div role="alert" className="rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">{errorGuardado}</div>}
+        {etapa === "asiento_borrador" && <p className="text-xs text-muted-foreground">Con asiento en borrador los renglones quedan bloqueados; podés ajustar repartos y vínculos y regenerar el borrador.</p>}
+        {(etapa === "contabilizado" || etapa === "anulado") && <p className="text-xs text-muted-foreground">Comprobante {etapa === "anulado" ? "anulado" : "contabilizado"}: todo en solo lectura.</p>}
 
         <div className="grid grid-cols-12 gap-3">
           <div className="col-span-3">
@@ -314,7 +354,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
           <div className="flex items-center justify-between mb-2">
             <Label className="text-base">Renglones</Label>
             {!isReadOnly && (
-              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()])}>
+              <Button size="sm" variant="outline" onClick={() => { setDirty(true); setItems((a) => [...a, blankItem()]); }}>
                 <Plus className="w-4 h-4 mr-1" />Agregar renglón
               </Button>
             )}
@@ -337,7 +377,8 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
               </thead>
               <tbody>
                 {items.map((it, idx) => (
-                  <tr key={idx} className="border-t">
+                  <Fragment key={it.id ?? `n${idx}`}>
+                  <tr className="border-t">
                     <td className="px-1 py-1">
                       <Input value={it.descripcion} onChange={(e) => updateItem(idx, { descripcion: e.target.value })} disabled={!!isReadOnly} className="h-7" />
                     </td>
@@ -391,18 +432,40 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
                         </SelectContent>
                       </Select>
                     </td>
-                    <td className="px-1 py-1">
+                    <td className="px-1 py-1 whitespace-nowrap">
+                      {it.id && existing && (
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAbierto(abierto === it.id ? null : it.id!)}
+                          aria-label={`Repartos y vínculos del renglón ${idx + 1}`}>
+                          <SplitSquareHorizontal className="w-4 h-4 mr-1" />
+                          {fmtM(+it.neto - (repartos.filter((r) => r.item_id === it.id).reduce((a, r) => a + Number(r.importe_efectivo), 0)))}
+                        </Button>
+                      )}
                       {!isReadOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx))}>
+                        <Button size="icon" variant="ghost" onClick={() => { setDirty(true); setItems((a) => a.filter((_, i) => i !== idx)); }}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
                     </td>
                   </tr>
+                  {abierto === it.id && it.id && existing && (
+                    <tr className="bg-muted/20">
+                      <td colSpan={10} className="p-3 space-y-4">
+                        {dirty && <p className="text-xs text-destructive">Hay cambios sin guardar: guardá antes de repartir o vincular.</p>}
+                        <RepartosItemPanel itemId={it.id} neto={+it.neto} repartos={repartos.filter((r) => r.item_id === it.id)}
+                          editable={permisos.editarRepartos} fecha={existing.fecha} obras={obras as any} maquinas={maquinas as any} />
+                        <VinculosItemPanel cbteId={existing.id} itemId={it.id} neto={+it.neto} esVenta={esVenta} fecha={existing.fecha}
+                          proveedorId={tercero?.proveedor_id ?? null} clienteId={tercero?.cliente_id ?? null}
+                          vinculos={vinculos.filter((v) => v.item_id === it.id)} habilitado={permisos.vincular} motivo={permisos.motivoSinVinculos} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
+          {existing && !dirty && <p className="mt-1 text-xs text-muted-foreground">El botón de cada renglón muestra el importe pendiente de repartir y abre repartos y vínculos.</p>}
+          {!existing && <p className="mt-1 text-xs text-muted-foreground">Guardá el comprobante para habilitar repartos y vínculos.</p>}
         </div>
 
         {/* TOTALES */}
@@ -415,16 +478,28 @@ export function ComprobanteDialog({ open, onClose, comprobanteId, esVenta }: Pro
             <div className="flex justify-between"><span>Subtotal Neto</span><span className="tabular-nums">{totales.subtotalNeto.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>IVA</span><span className="tabular-nums">{totales.subtotalIva.toFixed(2)}</span></div>
             <div className="grid grid-cols-3 gap-2 my-2">
-              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => setPercIva(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => setPercIibb(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => setPercOtras(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => { setDirty(true); setPercIva(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => { setDirty(true); setPercIibb(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => { setDirty(true); setPercOtras(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
             </div>
             <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="tabular-nums">${totales.total.toFixed(2)}</span></div>
           </div>
         </div>
 
+        {existing?.asiento_id && <div className="mt-4"><AsientoComprobanteView asientoId={existing.asiento_id} /></div>}
+
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
+          {permisos.generar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending}>
+              Generar asiento borrador
+            </Button>
+          )}
+          {permisos.regenerar && (
+            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending}>
+              Regenerar borrador
+            </Button>
+          )}
           {!isReadOnly && (
             <Button onClick={handleSave} disabled={save.isPending || !terceroId}>
               {save.isPending ? "Guardando…" : "Guardar borrador"}
