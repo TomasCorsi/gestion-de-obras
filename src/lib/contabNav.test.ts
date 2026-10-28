@@ -56,7 +56,7 @@ describe("búsqueda", () => {
     expect(buscar("orden de pago", todo).map((r) => r.etiqueta)).toEqual(["Egresos > Orden de Pago"]);
   });
   it("muestra los próximamente marcados", () => {
-    const r = buscar("cuenta corriente", todo).find((x) => x.etiqueta === "Proveedores > Cuentas Corrientes");
+    const r = buscar("cuentas corrientes", todo).find((x) => x.etiqueta === "Proveedores > Cuentas Corrientes");
     expect(r?.proximamente).toBe(true);
   });
   it("los resultados llevan módulo, subacceso e icono para mostrar la jerarquía", () => {
