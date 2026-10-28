@@ -14,7 +14,7 @@ const fmt = (n: number) => new Intl.NumberFormat("es-AR", { minimumFractionDigit
 const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 const safe = (v: any) => (typeof v === "string" && /^[=+\-@]/.test(v) ? `'${v}` : v);
 
-export function LibrosTab() {
+export function LibrosTab({ inicial }: { inicial?: "diario" | "mayor" | "balance" } = {}) {
   const y = new Date().getFullYear();
   const [desde, setDesde] = useState(`${y}-01-01`);
   const [hasta, setHasta] = useState(`${y}-12-31`);
@@ -45,7 +45,7 @@ export function LibrosTab() {
         <Button variant="outline" onClick={exportar}><Download className="w-4 h-4 mr-1" />Excel</Button>
         <p className="text-xs text-muted-foreground">Solo incluye asientos confirmados (y revertidos con su contraasiento).</p>
       </div>
-      <Tabs defaultValue="diario">
+      <Tabs defaultValue={inicial ?? "diario"}>
         <TabsList><TabsTrigger value="diario">Libro Diario</TabsTrigger><TabsTrigger value="mayor">Libro Mayor</TabsTrigger><TabsTrigger value="balance">Sumas y Saldos</TabsTrigger></TabsList>
         <TabsContent value="mayor"><LibroMayor desde={desde} hasta={hasta} /></TabsContent>
         <TabsContent value="diario">

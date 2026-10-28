@@ -32,26 +32,26 @@ const download = (filename: string, content: string) => {
   a.click();
 };
 
-export function ReportesTab() {
+export function ReportesTab({ inicial, ivaTipo }: { inicial?: "iva" | "obras" | "maquinas"; ivaTipo?: "ventas" | "compras" } = {}) {
   return (
-    <Tabs defaultValue="iva" className="w-full">
+    <Tabs defaultValue={inicial ?? "iva"} className="w-full">
       <TabsList>
         <TabsTrigger value="iva">Libro IVA</TabsTrigger>
         <TabsTrigger value="obras">Rentabilidad por Obra</TabsTrigger>
         <TabsTrigger value="maquinas">Costo por Máquina</TabsTrigger>
       </TabsList>
-      <TabsContent value="iva" className="mt-4"><IvaReport /></TabsContent>
+      <TabsContent value="iva" className="mt-4"><IvaReport tipoInicial={ivaTipo} /></TabsContent>
       <TabsContent value="obras" className="mt-4"><RentabilidadObra /></TabsContent>
       <TabsContent value="maquinas" className="mt-4"><CostoMaquina /></TabsContent>
     </Tabs>
   );
 }
 
-function IvaReport() {
+function IvaReport({ tipoInicial }: { tipoInicial?: "ventas" | "compras" }) {
   const now = new Date();
   const [anio, setAnio] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
-  const [tipo, setTipo] = useState<"ventas" | "compras">("ventas");
+  const [tipo, setTipo] = useState<"ventas" | "compras">(tipoInicial ?? "ventas");
   const { data = [] } = useIvaMes(anio, mes, tipo === "ventas");
 
   const totales = useMemo(() => {
