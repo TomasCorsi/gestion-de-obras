@@ -1,8 +1,14 @@
 import { Combobox } from "@/components/ui/combobox";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
 import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
-import { useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { Plus, Trash2, SplitSquareHorizontal } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { RepartosItemPanel } from "./RepartosItemPanel";
+import { VinculosItemPanel } from "./VinculosItemPanel";
+import { AsientoComprobanteView } from "./AsientoComprobanteView";
+import { useRepartos, useVinculos, useAsientoCbte, useGenerarAsientoCbte } from "@/hooks/useContab1c";
+import { etapaComprobante, permisosComprobante, ETAPA_LABEL } from "@/lib/contab1c";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -175,6 +181,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const cuentasImputables = useMemo(() => cuentas.filter((c) => c.imputable && c.activa), [cuentas]);
 
   const updateItem = (idx: number, patch: Partial<ItemDraft>) => {
+    setDirty(true);
     setItems((arr) => {
       const next = [...arr];
       const it = { ...next[idx], ...patch };
@@ -347,7 +354,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           <div className="flex items-center justify-between mb-2">
             <Label className="text-base">Renglones</Label>
             {!isReadOnly && (
-              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()])}>
+              <Button size="sm" variant="outline" onClick={() => { setDirty(true); setItems((a) => [...a, blankItem()]); }}>
                 <Plus className="w-4 h-4 mr-1" />Agregar renglón
               </Button>
             )}
@@ -370,7 +377,8 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
               </thead>
               <tbody>
                 {items.map((it, idx) => (
-                  <tr key={idx} className="border-t">
+                  <Fragment key={it.id ?? `n${idx}`}>
+                  <tr className="border-t">
                     <td className="px-1 py-1">
                       <Input value={it.descripcion} onChange={(e) => updateItem(idx, { descripcion: e.target.value })} disabled={!!isReadOnly} className="h-7" />
                     </td>
