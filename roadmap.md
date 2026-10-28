@@ -34,3 +34,5 @@
 - [x] Breadcrumb sin duplicar "Inicio Contable" (botón de regreso conservado) y buscador con jerarquía, iconos y "Próximamente" claro; 81 pruebas pasan y verificación visual en navegador aprobada.
 - [ ] Pendiente (no bloquea): prueba con cuenta real de contador.
 - [ ] Pendiente (no bloquea): prueba responsive real en celular.
+
+- [ ] Decidir si el rol contador accede a Órdenes de Compra, Gastos Generales y maestro de Proveedores (hoy solo admin).

@@ -6,3 +6,5 @@
 - Fiscal records (contab_terceros) must link to an existing cliente/proveedor and store only tax data; contact data is read from the operational master, and each comprobante snapshots its fiscal data, so masters are never duplicated.
 - Cost-center analytics live in separate imputation rows per ledger line (one amount, optional obra+máquina dimensions, snapshot of center names); reversal mirrors are created only by a DB trigger authorized via a private per-transaction permit table, so costs are never duplicated and history is immutable.
 - Comprobante edits keep existing item rows (update by id, never delete-and-reinsert) and roll back a new header if its items fail; repartos and vínculos hang off item ids and must survive edits.
+
+- Contabilidad navigation reuses existing operational screens (purchase orders, general expenses, supplier master) through contabNav destinations instead of copying them; operational-only screens stay admin-gated via the "admin" nav permission.
