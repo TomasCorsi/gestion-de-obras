@@ -396,7 +396,7 @@ export const useConfirmarComprobante = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
       qc.invalidateQueries({ queryKey: ["contab_asientos"] });
-      toast.success("Comprobante confirmado y asiento generado");
+      toast.success("Asiento borrador generado");
     },
     onError: (e: any) => toast.error(e.message),
   });
