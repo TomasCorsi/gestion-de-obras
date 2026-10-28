@@ -30,6 +30,10 @@ const emptyForm: ProveedorForm = {
   activo: true,
 };
 
+function Marco({ embebido, children }: { embebido: boolean; children: React.ReactNode }) {
+  return embebido ? <>{children}</> : <MainLayout title="Proveedores">{children}</MainLayout>;
+}
+
 export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } = {}) {
   const navigate = useNavigate();
   const { proveedores, loading, createProveedor, updateProveedor, deleteProveedor } = useProveedores();
@@ -110,16 +114,14 @@ export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } 
     }
   };
 
-  const Marco = ({ children }: { children: React.ReactNode }) =>
-    embebido ? <>{children}</> : <MainLayout title="Proveedores">{children}</MainLayout>;
   const verEnCompras = (s: string, p: ProveedorDB) =>
     navigate(`/contabilidad?m=compras&s=${s}&prov=${encodeURIComponent(p.nombre)}`);
 
-  if (loading) return <Marco><LoadingScreen /></Marco>;
+  if (loading) return <Marco embebido={embebido}><LoadingScreen /></Marco>;
 
 
   return (
-    <Marco>
+    <Marco embebido={embebido}>
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
