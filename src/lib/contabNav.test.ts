@@ -7,9 +7,9 @@ const nada = { ver: false, centros: false, admin: false };
 const contador = { ver: true, centros: false, admin: false };
 
 describe("árbol de navegación contable", () => {
-  it("tiene las 12 entradas principales con los nombres CONTAD", () => {
+  it("tiene las 10 entradas principales con los nombres CONTAD", () => {
     expect(NAV.map((m) => m.nombre)).toEqual(["Compras", "Ventas", "Egresos", "Ingresos", "Proveedores", "Clientes", "Contable",
-      "Libro Banco", "Impuestos", "Informes", "Centros de costo", "Configuración"]);
+      "Informes", "Impuestos", "Otras Opciones"]);
   });
   it("cada destino apunta a una pantalla y subpestaña existentes", () => {
     for (const m of NAV) for (const d of [m.destino, ...m.hijos.map((h) => h.destino)]) {
@@ -18,23 +18,25 @@ describe("árbol de navegación contable", () => {
       if (d.subtab) expect(SUBTABS[d.pantalla]).toContain(d.subtab);
     }
   });
-  it("Compras y Proveedores > Comprobantes comparten la misma pantalla", () => {
-    expect(resolver("compras", "comprobantes", todo)!.destino).toEqual(resolver("proveedores", "comprobantes", todo)!.destino);
+  it("el enlace viejo Proveedores > Comprobantes abre Compras > Registro de Compras", () => {
+    expect(resolver("proveedores", "comprobantes", todo)).toMatchObject({ modulo: { id: "compras" }, hoja: { id: "comprobantes" } });
   });
 });
 
 describe("permisos", () => {
   it("sin permiso de centros se oculta Centros de costo y no se puede entrar", () => {
-    expect(navPermitida(sinCentros).some((m) => m.id === "centros")).toBe(false);
+    const otras = navPermitida(sinCentros).find((m) => m.id === "otras")!;
+    expect(otras.hijos.some((h) => h.id === "centros" || h.id === "subcentros")).toBe(false);
     expect(resolver("centros", null, sinCentros)).toBeNull();
-    expect(buscar("centros", sinCentros)).toEqual([]);
+    expect(resolver("otras", "subcentros", sinCentros)).toBeNull();
+    expect(buscar("centros", sinCentros).filter((r) => r.sub)).toEqual([]);
   });
   it("sin permiso de ver no hay nada", () => {
     expect(navPermitida(nada)).toEqual([]);
     expect(resolver("compras", null, nada)).toBeNull();
   });
   it("recientes no autorizados, inexistentes o próximamente se descartan", () => {
-    const lista = [{ m: "centros" }, { m: "contable", s: "mayor" }, { m: "nada" }, { m: "proveedores", s: "cta-cte" }, "basura"];
+    const lista = [{ m: "centros" }, { m: "contable", s: "mayor" }, { m: "nada" }, { m: "proveedores", s: "cta-cte" }, { m: "banco" }, "basura"];
     expect(recientesValidos(lista, sinCentros)).toEqual([{ m: "contable", s: "mayor" }]);
     expect(recientesValidos("x", todo)).toEqual([]);
   });
@@ -51,17 +53,17 @@ describe("permisos", () => {
 describe("búsqueda", () => {
   it("'mayor' encuentra Contable > Mayor de Cuentas sin importar acentos", () => {
     expect(buscar("MAYOR", todo).map((r) => r.etiqueta)).toContain("Contable > Mayor de Cuentas");
-    expect(buscar("ordenes de pago", todo).map((r) => r.etiqueta)).toContain("Proveedores > Órdenes de Pago");
+    expect(buscar("orden de pago", todo).map((r) => r.etiqueta)).toEqual(["Egresos > Orden de Pago"]);
   });
   it("muestra los próximamente marcados", () => {
-    const r = buscar("cuenta corriente", todo).find((x) => x.etiqueta === "Proveedores > Cuenta Corriente");
+    const r = buscar("cuenta corriente", todo).find((x) => x.etiqueta === "Proveedores > Cuentas Corrientes");
     expect(r?.proximamente).toBe(true);
   });
   it("los resultados llevan módulo, subacceso e icono para mostrar la jerarquía", () => {
     const mayor = buscar("mayor", todo).find((x) => x.sub === "Mayor de Cuentas");
     expect(mayor).toMatchObject({ m: "contable", s: "mayor", modulo: "Contable", icono: "BookOpen", proximamente: false });
-    const banco = buscar("banco", todo).find((x) => !x.sub);
-    expect(banco).toMatchObject({ m: "banco", modulo: "Libro Banco", icono: "Landmark", proximamente: true });
+    const banco = buscar("libro banco", todo);
+    expect(banco).toEqual([expect.objectContaining({ m: "contable", s: "banco", modulo: "Contable", proximamente: true })]);
     // "retenciones" también coincide con la descripción del módulo Impuestos (disponible); los accesos pendientes van marcados.
     expect(buscar("retenciones", todo).filter((x) => x.sub).every((x) => x.proximamente)).toBe(true);
     expect(buscar("pago", todo).some((x) => x.m === "egresos" && x.s === "orden-pago" && !x.proximamente)).toBe(true);
@@ -70,9 +72,9 @@ describe("búsqueda", () => {
 
 describe("breadcrumb", () => {
   it("conserva el recorrido elegido aunque la pantalla sea compartida, sin repetir Inicio Contable", () => {
-    expect(migas(resolver("proveedores", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Proveedores", "Comprobantes"]);
+    expect(migas(resolver("proveedores", "maestro", todo)).map((c) => c.etiqueta)).toEqual(["Proveedores", "Códigos de Proveedores"]);
     expect(migas(resolver("contable", "mayor", todo)).map((c) => c.etiqueta)).toEqual(["Contable", "Mayor de Cuentas"]);
-    expect(migas(resolver("compras", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Compras", "Comprobantes de compra"]);
+    expect(migas(resolver("compras", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Compras", "Registro de Compras"]);
     expect(migas(null)).toEqual([]);
   });
   it("subacceso inexistente no resuelve", () => {
@@ -82,7 +84,7 @@ describe("breadcrumb", () => {
 
 describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
   it("Compras tiene Comprobantes, Órdenes de Compra y Gastos Generales", () => {
-    expect(NAV.find((m) => m.id === "compras")!.hijos.map((h) => h.nombre)).toEqual(["Comprobantes de compra", "Órdenes de Compra", "Gastos Generales"]);
+    expect(NAV.find((m) => m.id === "compras")!.hijos.map((h) => h.nombre)).toEqual(["Registro de Compras", "Órdenes de Compra", "Gastos Generales"]);
   });
   it("Proveedores tiene el maestro primero y sin órdenes de compra", () => {
     const h = NAV.find((m) => m.id === "proveedores")!.hijos;
@@ -106,5 +108,59 @@ describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
   it("la búsqueda encuentra órdenes de compra y gastos dentro de Compras", () => {
     expect(buscar("ordenes de compra", todo).map((r) => r.etiqueta)).toContain("Compras > Órdenes de Compra");
     expect(buscar("gastos", todo).map((r) => r.etiqueta)).toContain("Compras > Gastos Generales");
+  });
+});
+
+describe("mapa CONTAD: una única ubicación principal por función", () => {
+  const clave = (d: any) => JSON.stringify(d);
+  it("ningún destino se repite, salvo estados iniciales distintos explícitos", () => {
+    const vistos = new Map<string, string>();
+    for (const m of NAV) for (const h of m.hijos) {
+      if (!h.destino) continue;
+      if (h.id === "subcentros") continue; // misma pantalla de Centros y Subcentros
+      const k = clave(h.destino);
+      expect(vistos.get(k), `${m.id}/${h.id} duplica ${vistos.get(k)}`).toBeUndefined();
+      vistos.set(k, `${m.id}/${h.id}`);
+    }
+  });
+  it("Orden de Pago solo en Egresos; Retenciones fuera de Egresos", () => {
+    const prov = NAV.find((m) => m.id === "proveedores")!.hijos;
+    expect(prov.some((h) => h.destino?.pantalla === "pagos")).toBe(false);
+    expect(NAV.find((m) => m.id === "egresos")!.hijos.some((h) => /retenc/i.test(h.nombre))).toBe(false);
+  });
+  it("Clientes no repite Cobranzas, Comprobantes ni Fichas; Proveedores no repite Fichas", () => {
+    for (const id of ["clientes", "proveedores"]) {
+      const h = NAV.find((m) => m.id === id)!.hijos;
+      expect(h.some((x) => ["pagos", "ventas", "compras", "config"].includes(x.destino?.pantalla ?? ""))).toBe(false);
+    }
+  });
+  it("Posición IVA es Próximamente y no abre el Libro IVA", () => {
+    const r = resolver("informes", "posicion-iva", todo)!;
+    expect(r.proximamente).toBe(true);
+    expect(r.destino).toBeUndefined();
+  });
+  it("Listado de Asientos y Cierre de Mes reutilizan pantallas con estado inicial propio", () => {
+    expect(resolver("contable", "listado", todo)!.destino).toEqual({ pantalla: "asientos", modo: "listado" });
+    expect(resolver("contable", "cierre-mes", todo)!.destino).toEqual({ pantalla: "periodos", modo: "cierre" });
+  });
+  it("Códigos de Clientes abre el maestro de clientes", () => {
+    expect(resolver("clientes", "maestro", todo)!.destino?.pantalla).toBe("clientes");
+  });
+  it("rutas antiguas resuelven a la nueva ubicación", () => {
+    const casos: [string, string | null, string, string | undefined][] = [
+      ["banco", null, "contable", "banco"], ["centros", null, "otras", "centros"], ["config", null, "otras", undefined],
+      ["config", "plan", "contable", "plan"], ["config", "empresa", "otras", "empresa"], ["config", "fichas", "otras", "fichas"],
+      ["proveedores", "ordenes-pago", "egresos", "orden-pago"], ["proveedores", "fichas", "otras", "fichas"],
+      ["clientes", "cobranzas", "ingresos", "cobranzas"], ["clientes", "comprobantes", "ventas", undefined],
+      ["egresos", "retenciones", "impuestos", "ret-perc"],
+    ];
+    for (const [m, s, m2, s2] of casos) {
+      const r = resolver(m, s, todo)!;
+      expect(r.modulo.id, `${m}/${s}`).toBe(m2);
+      expect(r.hoja?.id).toBe(s2);
+    }
+  });
+  it("recientes antiguos se convierten a la ubicación nueva", () => {
+    expect(recientesValidos([{ m: "config", s: "plan" }, { m: "contable", s: "plan" }], todo)).toEqual([{ m: "contable", s: "plan" }]);
   });
 });
