@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { NAV, PANTALLAS, SUBTABS, buscar, resolver, migas, navPermitida, recientesValidos, agregarReciente, MAX_RECIENTES } from "./contabNav";
 
-const todo = { ver: true, centros: true };
-const sinCentros = { ver: true, centros: false };
-const nada = { ver: false, centros: false };
+const todo = { ver: true, centros: true, admin: true };
+const sinCentros = { ver: true, centros: false, admin: true };
+const nada = { ver: false, centros: false, admin: false };
+const contador = { ver: true, centros: false, admin: false };
 
 describe("árbol de navegación contable", () => {
   it("tiene las 12 entradas principales con los nombres CONTAD", () => {
@@ -18,7 +19,7 @@ describe("árbol de navegación contable", () => {
     }
   });
   it("Compras y Proveedores > Comprobantes comparten la misma pantalla", () => {
-    expect(resolver("compras", null, todo)!.destino).toEqual(resolver("proveedores", "comprobantes", todo)!.destino);
+    expect(resolver("compras", "comprobantes", todo)!.destino).toEqual(resolver("proveedores", "comprobantes", todo)!.destino);
   });
 });
 
@@ -71,10 +72,34 @@ describe("breadcrumb", () => {
   it("conserva el recorrido elegido aunque la pantalla sea compartida, sin repetir Inicio Contable", () => {
     expect(migas(resolver("proveedores", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Proveedores", "Comprobantes"]);
     expect(migas(resolver("contable", "mayor", todo)).map((c) => c.etiqueta)).toEqual(["Contable", "Mayor de Cuentas"]);
-    expect(migas(resolver("compras", null, todo)).map((c) => c.etiqueta)).toEqual(["Compras"]);
+    expect(migas(resolver("compras", "comprobantes", todo)).map((c) => c.etiqueta)).toEqual(["Compras", "Comprobantes de compra"]);
     expect(migas(null)).toEqual([]);
   });
   it("subacceso inexistente no resuelve", () => {
     expect(resolver("contable", "inventado", todo)).toBeNull();
+  });
+});
+
+describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
+  it("Compras tiene Comprobantes, Órdenes de Compra y Gastos Generales", () => {
+    expect(NAV.find((m) => m.id === "compras")!.hijos.map((h) => h.nombre)).toEqual(["Comprobantes de compra", "Órdenes de Compra", "Gastos Generales"]);
+  });
+  it("Proveedores tiene el maestro primero y sin órdenes de compra", () => {
+    const h = NAV.find((m) => m.id === "proveedores")!.hijos;
+    expect(h[0]).toMatchObject({ id: "maestro", destino: { pantalla: "proveedores" } });
+    expect(h.some((x) => x.destino?.pantalla === "ordenes" || x.destino?.pantalla === "gastos")).toBe(false);
+  });
+  it("breadcrumb Compras › Órdenes de Compra", () => {
+    expect(migas(resolver("compras", "ordenes", todo)).map((c) => c.etiqueta)).toEqual(["Compras", "Órdenes de Compra"]);
+  });
+  it("un contador sin rol admin no entra a órdenes, gastos ni maestro", () => {
+    expect(resolver("compras", "ordenes", contador)).toBeNull();
+    expect(resolver("compras", "gastos", contador)).toBeNull();
+    expect(resolver("proveedores", "maestro", contador)).toBeNull();
+    expect(resolver("compras", "comprobantes", contador)).not.toBeNull();
+  });
+  it("la búsqueda encuentra órdenes de compra y gastos dentro de Compras", () => {
+    expect(buscar("ordenes de compra", todo).map((r) => r.etiqueta)).toContain("Compras > Órdenes de Compra");
+    expect(buscar("gastos", todo).map((r) => r.etiqueta)).toContain("Compras > Gastos Generales");
   });
 });

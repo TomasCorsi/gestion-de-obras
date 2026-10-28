@@ -39,8 +39,8 @@ const fmtDate = (s: string) => {
   return `${d}/${m}/${y}`;
 };
 
-export function ComprobantesTab({ esVenta }: { esVenta: boolean }) {
-  const [search, setSearch] = useState("");
+export function ComprobantesTab({ esVenta, busquedaInicial }: { esVenta: boolean; busquedaInicial?: string }) {
+  const [search, setSearch] = useState(busquedaInicial ?? "");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);

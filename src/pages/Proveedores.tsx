@@ -13,12 +13,9 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, Eye, Pencil, Trash2, Truck, FileText, Receipt } from "lucide-react";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
-import { OrdenesCompraTab } from "@/components/proveedores/OrdenesCompraTab";
-import { GastosGeneralesTab } from "@/components/proveedores/GastosGeneralesTab";
-import { useUrlTab } from "@/hooks/useUrlState";
 
 const emptyForm: ProveedorForm = {
   nombre: "",
@@ -33,7 +30,12 @@ const emptyForm: ProveedorForm = {
   activo: true,
 };
 
-export default function Proveedores() {
+function Marco({ embebido, children }: { embebido: boolean; children: React.ReactNode }) {
+  return embebido ? <>{children}</> : <MainLayout title="Proveedores">{children}</MainLayout>;
+}
+
+export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } = {}) {
+  const navigate = useNavigate();
   const { proveedores, loading, createProveedor, updateProveedor, deleteProveedor } = useProveedores();
 
   const [search, setSearch] = useState("");
@@ -112,27 +114,15 @@ export default function Proveedores() {
     }
   };
 
-  const [tab, setTab] = useUrlTab("proveedores");
+  const verEnCompras = (s: string, p: ProveedorDB) =>
+    navigate(`/contabilidad?m=compras&s=${s}&prov=${encodeURIComponent(p.nombre)}`);
 
-  if (loading) return <MainLayout title="Proveedores"><LoadingScreen /></MainLayout>;
+  if (loading) return <Marco embebido={embebido}><LoadingScreen /></Marco>;
 
 
   return (
-    <MainLayout title="Proveedores">
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="proveedores" className="gap-2">
-            <Truck className="w-4 h-4" /> Proveedores
-          </TabsTrigger>
-          <TabsTrigger value="ordenes" className="gap-2">
-            <FileText className="w-4 h-4" /> Órdenes de Compra
-          </TabsTrigger>
-          <TabsTrigger value="gastos" className="gap-2">
-            <Receipt className="w-4 h-4" /> Gastos Generales
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="proveedores" className="space-y-6 mt-0">
+    <Marco embebido={embebido}>
+        <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -201,6 +191,12 @@ export default function Proveedores() {
                             <Button variant="ghost" size="icon" onClick={() => openDetail(p)}>
                               <Eye className="w-4 h-4" />
                             </Button>
+                            <Button variant="ghost" size="icon" title="Ver comprobantes" onClick={() => verEnCompras("comprobantes", p)}>
+                              <Receipt className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" title="Ver órdenes de compra" onClick={() => verEnCompras("ordenes", p)}>
+                              <FileText className="w-4 h-4" />
+                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                               <Pencil className="w-4 h-4" />
                             </Button>
@@ -216,16 +212,7 @@ export default function Proveedores() {
               </Table>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        <TabsContent value="ordenes" className="mt-0">
-          <OrdenesCompraTab />
-        </TabsContent>
-
-        <TabsContent value="gastos" className="mt-0">
-          <GastosGeneralesTab />
-        </TabsContent>
-      </Tabs>
+        </div>
 
       {/* Form Dialog */}
       <FormDialog
@@ -311,6 +298,14 @@ export default function Proveedores() {
         title="Eliminar Proveedor"
         description={`¿Estás seguro de eliminar a "${selectedProveedor?.nombre}"? Esta acción no se puede deshacer.`}
       />
-    </MainLayout>
+    </Marco>
   );
+}
+
+/** Pestañas viejas (?tab=ordenes / ?tab=gastos) se movieron a Contabilidad › Compras. */
+export default function Proveedores() {
+  const [params] = useSearchParams();
+  const tab = params.get("tab");
+  if (tab === "ordenes" || tab === "gastos") return <Navigate to={`/contabilidad?m=compras&s=${tab}`} replace />;
+  return <ProveedoresMaestro />;
 }

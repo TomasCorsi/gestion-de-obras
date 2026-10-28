@@ -26,10 +26,10 @@ const estadoLabels: Record<EstadoOrdenCompra, string> = {
   cancelada: "Cancelada",
 };
 
-export function OrdenesCompraTab() {
+export function OrdenesCompraTab({ busquedaInicial }: { busquedaInicial?: string } = {}) {
   const { ordenes, loading, createOrden, updateOrden, deleteOrden, updateEstado } = useOrdenesCompra();
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(busquedaInicial ?? "");
   const [estadoFilter, setEstadoFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<OrdenCompraWithRelations | null>(null);

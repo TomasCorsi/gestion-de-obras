@@ -12,6 +12,9 @@ import { AsientosTab } from "@/components/contabilidad/AsientosTab";
 import { ReportesTab } from "@/components/contabilidad/ReportesTab";
 import { ConfigTab } from "@/components/contabilidad/ConfigTab";
 import { PeriodosTab } from "@/components/contabilidad/PeriodosTab";
+import { OrdenesCompraTab } from "@/components/proveedores/OrdenesCompraTab";
+import { GastosGeneralesTab } from "@/components/proveedores/GastosGeneralesTab";
+import { ProveedoresMaestro } from "@/pages/Proveedores";
 import { LibrosTab } from "@/components/contabilidad/LibrosTab";
 import { ContabLauncher, Tile, NavIcon } from "@/components/contabilidad/ContabLauncher";
 import { agregarReciente, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
@@ -23,11 +26,13 @@ function usePermisosContab() {
     queryKey: ["contab_permisos_nav"],
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<Permisos> => {
-      const [ver, centros] = await Promise.all([
+      const { data: u } = await supabase.auth.getUser();
+      const [ver, centros, admin] = await Promise.all([
         supabase.rpc("contab_puede", { _accion: "ver" }),
         supabase.rpc("contab_puede_centros"),
+        u.user ? supabase.rpc("has_role", { _role: "admin", _user_id: u.user.id }) : Promise.resolve({ data: false }),
       ]);
-      return { ver: ver.data === true, centros: centros.data === true };
+      return { ver: ver.data === true, centros: centros.data === true, admin: admin.data === true };
     },
   });
 }
@@ -37,10 +42,10 @@ function leerRecientes(): unknown {
 }
 
 /** Renderiza la pantalla existente; los accesos que comparten pantalla usan el mismo componente. */
-function Pantalla({ d }: { d: Destino }) {
+function Pantalla({ d, prov }: { d: Destino; prov?: string }) {
   const k = `${d.pantalla}/${d.subtab ?? ""}/${d.ivaTipo ?? ""}/${d.abrirAlta ? 1 : 0}`;
   switch (d.pantalla) {
-    case "compras": return <ComprobantesTab esVenta={false} />;
+    case "compras": return <ComprobantesTab key={prov} esVenta={false} busquedaInicial={prov} />;
     case "ventas": return <ComprobantesTab esVenta={true} />;
     case "pagos": return <PagosTab key={k} inicial={d.subtab as any} abrirAlta={d.abrirAlta} />;
     case "asientos": return <AsientosTab />;
@@ -48,6 +53,9 @@ function Pantalla({ d }: { d: Destino }) {
     case "libros": return <LibrosTab key={k} inicial={d.subtab as any} />;
     case "reportes": return <ReportesTab key={k} inicial={d.subtab as any} ivaTipo={d.ivaTipo} />;
     case "config": return <ConfigTab key={k} inicial={d.subtab as any} />;
+    case "ordenes": return <OrdenesCompraTab key={prov} busquedaInicial={prov} />;
+    case "gastos": return <GastosGeneralesTab />;
+    case "proveedores": return <ProveedoresMaestro embebido />;
   }
 }
 
@@ -114,7 +122,7 @@ export default function Contabilidad() {
 
           {!res && <ContabLauncher permisos={permisos} recientes={recientes} onIr={irValidado} />}
 
-          {res && res.destino && <Pantalla d={res.destino} />}
+          {res && res.destino && <Pantalla d={res.destino} prov={params.get("prov") ?? undefined} />}
 
           {res && !res.destino && !res.hoja && res.modulo.hijos.length > 0 && (
             <div>
