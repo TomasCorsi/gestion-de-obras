@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { traducirError } from "@/lib/contab1c";
+import { aplicarFiltroId } from "@/lib/contabProveedorNav";
 
 // ============== TYPES ==============
 export type CbteTipo =
@@ -290,7 +291,7 @@ export const useDeleteTercero = () => {
 };
 
 // ============== COMPROBANTES ==============
-export const useContabComprobantes = (filters?: { esVenta?: boolean; desde?: string; hasta?: string }) =>
+export const useContabComprobantes = (filters?: { esVenta?: boolean; desde?: string; hasta?: string; terceroId?: string }) =>
   useQuery({
     queryKey: ["contab_comprobantes", filters],
     queryFn: async () => {
@@ -300,6 +301,7 @@ export const useContabComprobantes = (filters?: { esVenta?: boolean; desde?: str
         .order("fecha", { ascending: false })
         .order("created_at", { ascending: false });
       if (filters?.esVenta !== undefined) q = q.eq("es_venta", filters.esVenta);
+      q = aplicarFiltroId(q, "tercero_id", filters?.terceroId);
       if (filters?.desde) q = q.gte("fecha", filters.desde);
       if (filters?.hasta) q = q.lte("fecha", filters.hasta);
       const { data, error } = await q;

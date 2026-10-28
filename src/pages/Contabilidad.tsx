@@ -42,10 +42,10 @@ function leerRecientes(): unknown {
 }
 
 /** Renderiza la pantalla existente; los accesos que comparten pantalla usan el mismo componente. */
-function Pantalla({ d, prov }: { d: Destino; prov?: string }) {
+function Pantalla({ d, proveedorId, terceroId }: { d: Destino; proveedorId?: string; terceroId?: string }) {
   const k = `${d.pantalla}/${d.subtab ?? ""}/${d.ivaTipo ?? ""}/${d.abrirAlta ? 1 : 0}`;
   switch (d.pantalla) {
-    case "compras": return <ComprobantesTab key={prov} esVenta={false} busquedaInicial={prov} />;
+    case "compras": return <ComprobantesTab key={terceroId} esVenta={false} terceroId={terceroId} />;
     case "ventas": return <ComprobantesTab esVenta={true} />;
     case "pagos": return <PagosTab key={k} inicial={d.subtab as any} abrirAlta={d.abrirAlta} />;
     case "asientos": return <AsientosTab />;
@@ -53,7 +53,7 @@ function Pantalla({ d, prov }: { d: Destino; prov?: string }) {
     case "libros": return <LibrosTab key={k} inicial={d.subtab as any} />;
     case "reportes": return <ReportesTab key={k} inicial={d.subtab as any} ivaTipo={d.ivaTipo} />;
     case "config": return <ConfigTab key={k} inicial={d.subtab as any} />;
-    case "ordenes": return <OrdenesCompraTab key={prov} busquedaInicial={prov} />;
+    case "ordenes": return <OrdenesCompraTab key={proveedorId} proveedorId={proveedorId} />;
     case "gastos": return <GastosGeneralesTab />;
     case "proveedores": return <ProveedoresMaestro embebido />;
   }
@@ -122,7 +122,7 @@ export default function Contabilidad() {
 
           {!res && <ContabLauncher permisos={permisos} recientes={recientes} onIr={irValidado} />}
 
-          {res && res.destino && <Pantalla d={res.destino} prov={params.get("prov") ?? undefined} />}
+          {res && res.destino && <Pantalla d={res.destino} proveedorId={params.get("proveedor_id") || undefined} terceroId={params.get("tercero_id") || undefined} />}
 
           {res && !res.destino && !res.hoja && res.modulo.hijos.length > 0 && (
             <div>

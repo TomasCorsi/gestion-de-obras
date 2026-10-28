@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { aplicarFiltroId } from "@/lib/contabProveedorNav";
 
 export type EstadoOrdenCompra = "borrador" | "emitida" | "recibida" | "cancelada";
 export type MonedaOrdenCompra = "ARS" | "USD";
@@ -90,8 +91,8 @@ export interface OrdenCompraForm {
   items: OrdenCompraItemForm[];
 }
 
-const fetchOrdenes = async (): Promise<OrdenCompraWithRelations[]> => {
-  const { data, error } = await supabase
+const fetchOrdenes = async (proveedorId?: string): Promise<OrdenCompraWithRelations[]> => {
+  const query = supabase
     .from("ordenes_compra")
     .select(`
       *,
@@ -102,6 +103,8 @@ const fetchOrdenes = async (): Promise<OrdenCompraWithRelations[]> => {
     `)
     .order("fecha", { ascending: false })
     .order("created_at", { ascending: false });
+
+  const { data, error } = await aplicarFiltroId(query, "proveedor_id", proveedorId);
 
   if (error) throw error;
   return (data as any) || [];
@@ -157,12 +160,12 @@ function buildPayload(form: OrdenCompraForm, includeNumero = false) {
   return payload;
 }
 
-export function useOrdenesCompra() {
+export function useOrdenesCompra(proveedorId?: string) {
   const queryClient = useQueryClient();
 
   const { data: ordenes = [], isLoading: loading, refetch } = useQuery({
-    queryKey: ["ordenes_compra"],
-    queryFn: fetchOrdenes,
+    queryKey: ["ordenes_compra", proveedorId],
+    queryFn: () => fetchOrdenes(proveedorId),
   });
 
   const createMutation = useMutation({

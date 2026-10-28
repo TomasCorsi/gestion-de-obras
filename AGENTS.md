@@ -8,3 +8,4 @@
 - Comprobante edits keep existing item rows (update by id, never delete-and-reinsert) and roll back a new header if its items fail; repartos and vínculos hang off item ids and must survive edits.
 
 - Contabilidad navigation reuses existing operational screens (purchase orders, general expenses, supplier master) through contabNav destinations instead of copying them; operational-only screens stay admin-gated via the "admin" nav permission.
+- Supplier navigation carries explicit supplier/fiscal-third-party IDs in URL parameters and query cache keys, with exact server-side filters; fiscal links are resolved from current data before navigation to avoid name collisions and stale relationships.
