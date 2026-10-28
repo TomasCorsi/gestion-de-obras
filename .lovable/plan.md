@@ -1,86 +1,71 @@
-# Fase 1D: puesta en marcha del ERP con corte limpio (diseño)
+# Fase 1D: operación paralela y preparación del próximo ejercicio
 
-## Regla de transición
-- Todo lo que nace antes de la fecha de inicio del ERP se carga, se paga o se cobra y se cierra en CONTAD.
-- Todo lo que nace desde la fecha de inicio se carga, se paga o se cobra y se cierra solo en Calamina ERP.
-- El ERP no guarda nada de CONTAD: ni saldos abiertos, ni clientes o proveedores históricos, ni cuentas puente, ni referencias, ni conciliaciones entre sistemas.
+## Fechas
+- **Ejercicio fiscal actual:** 01/08/2026 al 31/07/2027. Lo lleva CONTAD, que es el sistema oficial.
+- **Inicio de la operación paralela:** 01/11/2026, a confirmar con el contador.
+- **Inicio oficial del ERP:** 01/08/2027, con el ejercicio 01/08/2027 al 31/07/2028.
 
 ## Situación actual de la base (relevada hoy)
-- Hay cero ejercicios, períodos, asientos, comprobantes y pagos. El ERP está limpio.
+- No hay ejercicios, períodos, asientos, comprobantes ni pagos cargados.
 - Los datos fiscales de la empresa están vacíos.
-- Hay un plan de cuentas base de 79 cuentas, sin validar por el contador, y no tiene una cuenta por cada banco.
+- El plan de cuentas es el base, de 79 cuentas, y todavía no lo validó el contador.
+- Ya existen las pantallas de compras, ventas, pagos, cobranzas, asientos, Libro Diario, Mayor, Sumas y Saldos, IVA Compras y Ventas, centros de costo y ejercicios.
+- Siguen como "Próximamente": cuentas corrientes y totales de clientes y proveedores, Libro Banco, retenciones y percepciones.
 
-## 1. Fecha de inicio del ERP
-- La fecha de inicio es el primer día de un mes y la fija el contador.
-- La base rechaza comprobantes, pagos y asientos con fecha anterior al inicio.
-- Un pago o cobro en el ERP solo puede aplicarse a comprobantes del ERP. Esto ya pasa hoy, porque no existen comprobantes de CONTAD dentro del ERP.
+## 1. Qué hay que implementar para activar el modo paralelo
+1. **Marcar un ejercicio como paralelo o como oficial.**
+   - Se crea, cuando lo apruebes, un ejercicio de prueba del 01/11/2026 al 31/07/2027, marcado "paralelo", con sus períodos mensuales.
+   - El ejercicio 2027/28 se va a crear después, marcado "oficial".
+2. **Advertencia fija** en todas las pantallas de Contabilidad mientras haya un ejercicio paralelo activo: "Modo paralelo — CONTAD continúa siendo el sistema contable oficial hasta el 31/07/2027."
+   - La misma leyenda aparece en el encabezado de los libros y reportes que se exportan o imprimen, para que nadie los tome como oficiales.
+3. **Bloqueo de fechas anteriores** al inicio de la operación paralela: la base rechaza comprobantes, pagos y asientos con fecha previa.
+4. **Datos fiscales de la empresa y validación del plan de cuentas.** Se cargan una vez y sirven también para el ejercicio oficial.
+5. **El ejercicio paralelo queda aislado.** Sus saldos no pasan al ejercicio oficial y no generan asiento de apertura.
 
-## 2. Ejercicio y períodos contables
-- Se crea un ejercicio con las fechas fiscales reales. Si la fecha de inicio cae a mitad del ejercicio, el ejercicio arranca en esa fecha en el ERP. Los meses anteriores quedan en CONTAD.
-- Los períodos son mensuales y se generan automáticamente. Al cerrarlos se usan los controles de 1A que ya existen.
+No se migran datos de CONTAD, ni saldos ni cuentas corrientes.
 
-## 3. Datos fiscales de la empresa
-CUIT, razón social, condición de IVA, número de IIBB, inicio de actividades, domicilio fiscal y puntos de venta. Se cargan una sola vez, en la ficha de empresa que ya existe.
+## 2. Qué controles se pueden probar entre noviembre y julio
+- Compras, ventas, notas de crédito y su IVA. Se cruzan cada mes contra los Libros IVA de CONTAD.
+- Pagos y cobranzas de las operaciones nuevas cargadas en el ERP.
+- Repartos por centro y subcentro de costo, y los vínculos con obras y máquinas.
+- Asientos automáticos y manuales, su numeración, la reversa y que no se puedan editar una vez confirmados.
+- Libro Diario, Mayor y Sumas y Saldos: que cuadren y que se pueda seguir cada asiento hasta su comprobante.
+- Cierre mensual de períodos, el bloqueo de períodos cerrados y la reapertura solo por un administrador.
+- Permisos de cada rol trabajando con usuarios reales.
 
-## 4. Plan de cuentas definitivo
-- El contador valida el plan base: altas, bajas y códigos.
-- Se agrega una cuenta por cada banco y por cada caja.
-- Se marcan las cuentas que exigen obra o máquina como dato de analítica.
-- Se completan las cuentas que usan los asientos automáticos (caja, banco, deudores, IVA, ventas, compras, entre otras).
+**Comparación mensual sugerida:** IVA de compras y ventas del ERP contra CONTAD, para las mismas operaciones del mes. Se hace fuera del sistema y no se carga nada de CONTAD en el ERP.
 
-## 5. Saldos patrimoniales mínimos para empezar
-Mientras CONTAD siga activo, el ERP no arranca con saldos iniciales: empieza en cero y registra solo las operaciones nuevas. Los saldos patrimoniales se cargan una sola vez, en la puesta en marcha definitiva (punto 7).
-Los saldos que van a hacer falta en ese momento son:
-- bancos y caja;
-- posición de impuestos: IVA, IIBB, retenciones y percepciones a computar o a depositar, y cargas sociales;
-- préstamos y planes de pago;
-- bienes de uso y su amortización acumulada;
-- capital y resultados acumulados.
-No se cargan facturas ni cuentas corrientes por cliente o proveedor.
+## 3. Qué falta construir para llegar seguros al 01/08/2027
+1. Cuentas corrientes y totales de clientes y proveedores.
+2. Libro Banco y conciliación bancaria.
+3. Retenciones y percepciones, emitidas y sufridas.
+4. El circuito completo de las notas de crédito, incluidos sus vínculos.
+5. El cierre del ejercicio: asiento de refundición de resultados y bloqueo del ejercicio.
+6. El asiento de apertura del ejercicio oficial, con un asistente que controle que debe y haber cierren y que se confirme una sola vez.
+7. Las exportaciones legales que pida el contador: Libro Diario, IVA Digital y otras.
+8. Las pruebas pendientes: con un usuario contador real, en celular y con varios usuarios trabajando a la vez.
 
-## 6. Bancos y caja mientras conviven los dos sistemas
-- Cada sistema registra únicamente los movimientos que le corresponden:
-  - en CONTAD, los pagos y cobros de operaciones viejas;
-  - en el ERP, los de operaciones nuevas.
-- En el ERP, cada banco muestra solo el movimiento de las operaciones nuevas. No va a coincidir con el extracto, y eso es esperable durante la convivencia.
-- El saldo real del banco se controla fuera del ERP, sumando el saldo del banco en CONTAD y el del ERP contra el extracto. Lo hace el contador; el ERP no guarda ese control.
-- Regla operativa: cada pago o cobro se carga en el sistema donde nació su comprobante. Los gastos bancarios del mes los registra un solo sistema, a elección del contador.
-- Lo mismo vale para las declaraciones de impuestos: el contador las arma sumando las dos fuentes mientras dure la convivencia.
+Estas piezas se planifican como fases separadas.
 
-## 7. Cuándo terminar CONTAD y hacer la puesta en marcha definitiva
-**Condiciones para terminar CONTAD:**
-- todos los proveedores históricos pagados;
-- todos los clientes históricos cobrados o dados de baja;
-- los cheques y documentos acreditados, debitados o anulados;
-- las retenciones y percepciones presentadas.
+## 4. Qué queda para el cierre del 31/07/2027
+- El cierre definitivo de CONTAD y la validación de los saldos finales, a cargo del contador.
+- La creación del ejercicio oficial 2027/28 en el ERP.
+- El asiento de apertura del ejercicio oficial con los saldos validados de CONTAD, cargados como totales por cuenta.
+- Qué hacer con el ejercicio paralelo: archivarlo como prueba o descartarlo.
+- El tratamiento de los comprobantes de clientes y proveedores que sigan abiertos. Se decide en ese momento, según cuántos queden.
+- Desactivar el modo paralelo. Desde el 01/08/2027, el ERP pasa a ser el sistema oficial.
 
-Con eso cumplido, el contador cierra CONTAD a una fecha, que se llama fecha de cierre de transición.
+## Qué hay que definir con el contador
+1. Que confirme el 01/11/2026 como inicio de la operación paralela.
+2. Los datos fiscales de la empresa y los puntos de venta.
+3. La validación del plan de cuentas, con una cuenta por cada banco y cada caja, y qué cuentas exigen obra o máquina.
+4. Qué controles mensuales quiere comparar contra CONTAD y quién los revisa.
+5. Las exportaciones legales que va a necesitar desde agosto de 2027.
 
-**Puesta en marcha definitiva**, con un solo asiento en el ERP a la fecha de cierre de transición:
-- Lleva bancos y caja a su saldo real según el extracto: la diferencia contra el saldo que ya tiene el ERP.
-- Carga los saldos patrimoniales del punto 5 según el balance de cierre de CONTAD.
-- La contrapartida va a "Resultados acumulados / Saldos de puesta en marcha".
-
-Es un único asiento de totales, sin detalle histórico. Desde ese momento, CONTAD queda solo para consulta y el ERP pasa a ser el único sistema contable.
-
-## Información que hay que definir con el contador
-1. Fecha de inicio del ERP y fechas del ejercicio fiscal.
-2. Datos fiscales de la empresa y puntos de venta.
-3. Validación del plan de cuentas, listado de bancos y cajas, y cuentas que exigen analítica.
-4. En qué sistema se registran los gastos bancarios y los impuestos bancarios durante la convivencia.
-5. Cómo consolida IVA e IIBB mientras convivan los dos sistemas.
-6. Plazo estimado para cerrar CONTAD y quién aprueba el asiento de puesta en marcha definitiva.
-
-## Ya puede implementarse (cuando lo apruebes)
-- Bloqueo de fechas anteriores a la fecha de inicio, aplicado en la base.
-- Pantalla de configuración de la puesta en marcha: fecha de inicio, ejercicio, datos fiscales y validación del plan de cuentas.
-- Asistente del asiento de puesta en marcha definitiva: queda en borrador, controla que debe y haber cierren, se confirma una sola vez y no se puede editar. Para corregirlo, se revierte.
-
-## Detalle técnico
-- Hace falta una migración chica, sin tocar 1A, 1B ni 1C:
-  - en `contab_ejercicios`, dos fechas que se pueden dejar vacías: `fecha_inicio_erp` y `fecha_cierre_transicion`;
-  - un trigger de fecha mínima en `contab_comprobantes`, `contab_pagos` y `contab_asientos`;
-  - un índice único que permite un solo asiento de puesta en marcha confirmado.
-- El asiento de puesta en marcha se identifica con `origen_tipo = 'puesta_en_marcha'` y se confirma con `contab_confirmar_asiento`, la función que ya existe.
-- No se crean tablas que guarden datos de CONTAD.
-- No cambian la navegación, los módulos operativos ni la rentabilidad. No se crean ejercicios ni se cargan saldos hasta tener las definiciones.
+## Detalle técnico (implementación posterior)
+- Una migración chica, sin tocar lo que ya hacen 1A, 1B y 1C:
+  - En `contab_ejercicios` se agregan las columnas `modo` ('paralelo' u 'oficial', por defecto 'oficial') y `fecha_inicio_operacion`.
+  - Un trigger de fecha mínima en comprobantes, pagos y asientos.
+  - Una función que avisa si hay un ejercicio paralelo activo.
+- En las pantallas se agrega una sola advertencia fija en la pantalla de Contabilidad, y una leyenda en los encabezados de PDF y Excel de libros y reportes.
+- No cambian la navegación, los módulos operativos ni la rentabilidad. El ejercicio paralelo no se crea hasta que lo apruebes.
