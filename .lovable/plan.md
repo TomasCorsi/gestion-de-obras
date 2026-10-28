@@ -24,7 +24,14 @@ No se ejecutan migraciones nuevas ni se rediseña SQL. Solo interfaz y pruebas s
 ## Pruebas
 - Unitarias: cálculo de saldo pendiente, reglas de habilitación (NC sin vínculos, bloqueo por estado), traducción de mensajes de error.
 - **Regresión 1B**: el control de importes fue corregido en `0030_contab_1c_repartos_vinculos.sql` (función guarda de imputaciones: la suma de imputaciones originales no puede superar el importe de la línea). Se agrega una prueba que replica esa regla y un test transaccional que se deshace al final, sin dejar datos.
-- Flujo completo desde la pantalla con Playwright (admin): crear comprobante de prueba, repartir, vincular, generar, regenerar, ver mensajes de error (exceso de reparto, vínculo sobre saldo, NC con vínculo). Al terminar, borrar el comprobante de prueba en borrador (descartar asiento borrador primero). Nada confirmado.
+- Flujo desde la pantalla con Playwright (admin) **sin persistencia**: las escrituras se interceptan en el navegador y se responden simuladas; se verifican formularios, estados, bloqueos y mensajes de error. No se crean comprobantes de prueba en producción.
+- Validación de base: bloques transaccionales con ROLLBACK (repartos, vínculos, generar/regenerar sin duplicar).
+
+## Ajustes incorporados
+- **Guardado consistente**: un comprobante nuevo y sus ítems se guardan primero; repartos y vínculos se habilitan recién cuando el guardado terminó bien. Si falla, se informa el error y no se avanza.
+- **Filtro de documentos**: vínculos filtrados por compra/venta, cliente/proveedor del comprobante y saldo disponible; la base sigue siendo la validación final.
+- Imputaciones de asientos de comprobantes siempre en solo lectura; repartos editables y regeneración solo con asiento en borrador.
+- Importes y porcentajes mostrados son los que devuelve la base. No se crean subcentros automáticamente.
 - Recuperación: queda pendiente, sin ejecutar en la base productiva.
 
 ## Fuera de alcance
