@@ -22,3 +22,10 @@
 - [ ] Pendiente: prueba con sesión real de contador (no existe usuario contador)
 - [ ] Pendiente 1A: corregir CUIT inválidos de terceros usados; usar cuenta específica por cliente/proveedor al generar asientos
 - [ ] Pendiente: definir con el contador qué cuentas exigen imputación analítica obligatoria
+
+## Contabilidad 1C — pantallas
+- [x] Repartos por ítem, vínculos operativos, generar/regenerar borrador, etapas y bloqueos
+- [x] Regresión 1B (control de importes, corregido en 0030)
+- [ ] Prueba de recuperación de funciones (bloqueada: falta forma segura de validarla fuera de producción)
+- [ ] Vínculos de notas de crédito con factura original
+- [ ] Sesión real de contador y concurrencia real
