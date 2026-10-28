@@ -117,7 +117,7 @@ export const ALIAS: Record<string, [string, string?]> = {
 
 /** Traduce una ubicación antigua a la actual; si no hay alias, devuelve la misma. */
 export function canonico(m: string, s?: string | null): [string, string | undefined] {
-  const a = ALIAS[s ? `${m}/${s}` : m] ?? (s ? undefined : undefined);
+  const a = ALIAS[s ? `${m}/${s}` : m];
   return a ? [a[0], a[1]] : [m, s ?? undefined];
 }
 
@@ -189,6 +189,9 @@ export function agregarReciente(lista: Reciente[], r: Reciente): Reciente[] {
 export function recientesValidos(lista: unknown, p: Permisos): Reciente[] {
   if (!Array.isArray(lista)) return [];
   return lista.filter((x): x is Reciente => !!x && typeof (x as any).m === "string")
-    .filter((x) => { const r = resolver(x.m, x.s, p); return !!r && !r.proximamente; })
+    .map((x) => resolver(x.m, x.s, p))
+    .filter((r): r is Resolucion => !!r && !r.proximamente)
+    .map((r) => (r.hoja ? { m: r.modulo.id, s: r.hoja.id } : { m: r.modulo.id }))
+    .filter((x, i, arr) => arr.findIndex((y) => y.m === x.m && y.s === x.s) === i)
     .slice(0, MAX_RECIENTES);
 }

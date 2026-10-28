@@ -15,6 +15,7 @@ import { PeriodosTab } from "@/components/contabilidad/PeriodosTab";
 import { OrdenesCompraTab } from "@/components/proveedores/OrdenesCompraTab";
 import { GastosGeneralesTab } from "@/components/proveedores/GastosGeneralesTab";
 import { ProveedoresMaestro } from "@/pages/Proveedores";
+import Clientes from "@/pages/Clientes";
 import { LibrosTab } from "@/components/contabilidad/LibrosTab";
 import { ContabLauncher, Tile, NavIcon } from "@/components/contabilidad/ContabLauncher";
 import { agregarReciente, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
@@ -48,14 +49,15 @@ function Pantalla({ d, proveedorId, terceroId }: { d: Destino; proveedorId?: str
     case "compras": return <ComprobantesTab key={terceroId} esVenta={false} terceroId={terceroId} />;
     case "ventas": return <ComprobantesTab esVenta={true} />;
     case "pagos": return <PagosTab key={k} inicial={d.subtab as any} abrirAlta={d.abrirAlta} />;
-    case "asientos": return <AsientosTab />;
-    case "periodos": return <PeriodosTab />;
+    case "asientos": return <AsientosTab key={k + (d.modo ?? "")} soloConsulta={d.modo === "listado"} />;
+    case "periodos": return <PeriodosTab key={k + (d.modo ?? "")} enfoqueCierre={d.modo === "cierre"} />;
     case "libros": return <LibrosTab key={k} inicial={d.subtab as any} />;
     case "reportes": return <ReportesTab key={k} inicial={d.subtab as any} ivaTipo={d.ivaTipo} />;
     case "config": return <ConfigTab key={k} inicial={d.subtab as any} />;
     case "ordenes": return <OrdenesCompraTab key={proveedorId} proveedorId={proveedorId} />;
     case "gastos": return <GastosGeneralesTab />;
     case "proveedores": return <ProveedoresMaestro embebido />;
+    case "clientes": return <Clientes embebido />;
   }
 }
 

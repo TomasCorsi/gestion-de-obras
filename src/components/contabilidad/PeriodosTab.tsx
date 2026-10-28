@@ -11,7 +11,7 @@ import { useCerrarPeriodo, useCrearEjercicio, useEjercicios, usePeriodos, useRea
 const MESES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const fmtDate = (s: string) => { const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
 
-export function PeriodosTab() {
+export function PeriodosTab({ enfoqueCierre = false }: { enfoqueCierre?: boolean } = {}) {
   const { data: ejercicios = [], isLoading } = useEjercicios();
   const [sel, setSel] = useState<string | null>(null);
   const [nuevo, setNuevo] = useState(false);
@@ -42,8 +42,8 @@ export function PeriodosTab() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Períodos mensuales</CardTitle></CardHeader>
+      <Card className={enfoqueCierre ? "md:order-first md:col-span-2 ring-1 ring-primary/40" : undefined}>
+        <CardHeader className="pb-2"><CardTitle className="text-base">{enfoqueCierre ? "Cierre de Mes · Períodos mensuales" : "Períodos mensuales"}</CardTitle></CardHeader>
         <CardContent className="p-0">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">

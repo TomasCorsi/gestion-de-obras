@@ -48,7 +48,12 @@ import { useClientes, ClienteDB, ClienteForm } from "@/hooks/useClientes";
 import { useObras } from "@/hooks/useObras";
 import { cn } from "@/lib/utils";
 
-export default function Clientes() {
+function Marco({ embebido, children }: { embebido: boolean; children: React.ReactNode }) {
+  return embebido ? <>{children}</> : <Marco embebido={embebido}>{children}</Marco>;
+}
+
+/** Maestro de clientes; `embebido` lo muestra dentro de Contabilidad › Clientes › Códigos de Clientes. */
+export default function Clientes({ embebido = false }: { embebido?: boolean } = {}) {
   const { clientes, loading, createCliente, updateCliente, deleteCliente } = useClientes();
   const { obras } = useObras();
 
@@ -153,12 +158,12 @@ export default function Clientes() {
 
   if (loading) {
     return (
-      <MainLayout title="Clientes" subtitle="Gestión de clientes">
+      <Marco embebido={embebido}>
         <div className="space-y-4">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-64 w-full" />
         </div>
-      </MainLayout>
+      </Marco>
     );
   }
 
@@ -166,7 +171,7 @@ export default function Clientes() {
   const inactivos = clientes.filter((c) => !c.activo).length;
 
   return (
-    <MainLayout title="Clientes" subtitle="Gestión de clientes">
+    <Marco embebido={embebido}>
       {/* Actions Bar */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
@@ -509,6 +514,6 @@ export default function Clientes() {
         title="Eliminar Cliente"
         description={`¿Estás seguro de que deseas eliminar el cliente "${selectedCliente?.nombre}"? Las obras asociadas quedarán sin cliente asignado.`}
       />
-    </MainLayout>
+    </Marco>
   );
 }

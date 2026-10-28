@@ -20,7 +20,7 @@ const ESTADOS: Record<string, { label: string; variant: "secondary" | "default" 
   revertido: { label: "Revertido", variant: "destructive" },
 };
 
-export function AsientosTab() {
+export function AsientosTab({ soloConsulta = false }: { soloConsulta?: boolean } = {}) {
   const { data = [] } = useContabAsientos();
   const [openId, setOpenId] = useState<string | null>(null);
   const [filtro, setFiltro] = useState<string>("todos");
@@ -31,7 +31,7 @@ export function AsientosTab() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" className="mr-auto" onClick={() => setManual(true)}>Nuevo asiento manual</Button>
+        {soloConsulta ? <span className="mr-auto self-center text-sm text-muted-foreground">Consulta de asientos</span> : <Button size="sm" className="mr-auto" onClick={() => setManual(true)}>Nuevo asiento manual</Button>}
         {["todos", "borrador", "confirmado", "revertido"].map((f) => (
           <Button key={f} size="sm" variant={filtro === f ? "default" : "outline"} onClick={() => setFiltro(f)}>
             {f === "todos" ? "Todos" : ESTADOS[f].label} ({f === "todos" ? data.length : data.filter((a: any) => (a.estado ?? "borrador") === f).length})
