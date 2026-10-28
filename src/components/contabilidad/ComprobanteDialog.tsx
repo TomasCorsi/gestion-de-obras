@@ -128,7 +128,6 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
   const elegirMaestro = (id: string) => {
     setMaestroElegido(id);
-    setDirty(true);
     const m = delRol.find((x) => x.maestro_id === id);
     if (!m) { setTerceroId(""); return; }
     if (m.tercero_id) setTerceroId(m.tercero_id);
@@ -174,14 +173,12 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         obra_id: i.obra_id,
         maquinaria_id: i.maquinaria_id,
       })));
-      setDirty(false);
     }
   }, [existingItems]);
 
   const cuentasImputables = useMemo(() => cuentas.filter((c) => c.imputable && c.activa), [cuentas]);
 
   const updateItem = (idx: number, patch: Partial<ItemDraft>) => {
-    setDirty(true);
     setItems((arr) => {
       const next = [...arr];
       const it = { ...next[idx], ...patch };
@@ -254,7 +251,6 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         })),
       });
       if (!comprobanteId) setCreadoId(id);
-      setDirty(false);
     } catch (e: any) {
       setErrorGuardado(e?.message ?? "No se pudo guardar");
     }
@@ -354,7 +350,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           <div className="flex items-center justify-between mb-2">
             <Label className="text-base">Renglones</Label>
             {!isReadOnly && (
-              <Button size="sm" variant="outline" onClick={() => { setDirty(true); setItems((a) => [...a, blankItem()]); }}>
+              <Button size="sm" variant="outline" onClick={() => setItems((a) => [...a, blankItem()]);}>
                 <Plus className="w-4 h-4 mr-1" />Agregar renglón
               </Button>
             )}
@@ -441,7 +437,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         </Button>
                       )}
                       {!isReadOnly && (
-                        <Button size="icon" variant="ghost" onClick={() => { setDirty(true); setItems((a) => a.filter((_, i) => i !== idx)); }}>
+                        <Button size="icon" variant="ghost" onClick={() => setItems((a) => a.filter((_, i) => i !== idx));}>
                           <Trash2 className="w-4 h-4 text-destructive" />
                         </Button>
                       )}
@@ -478,9 +474,9 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
             <div className="flex justify-between"><span>Subtotal Neto</span><span className="tabular-nums">{totales.subtotalNeto.toFixed(2)}</span></div>
             <div className="flex justify-between"><span>IVA</span><span className="tabular-nums">{totales.subtotalIva.toFixed(2)}</span></div>
             <div className="grid grid-cols-3 gap-2 my-2">
-              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => { setDirty(true); setPercIva(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => { setDirty(true); setPercIibb(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
-              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => { setDirty(true); setPercOtras(+e.target.value); }} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IVA</Label><Input type="number" value={percIva} onChange={(e) => setPercIva(+e.target.value);} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => setPercIibb(+e.target.value);} disabled={!!isReadOnly} className="h-7" /></div>
+              <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => setPercOtras(+e.target.value);} disabled={!!isReadOnly} className="h-7" /></div>
             </div>
             <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="tabular-nums">${totales.total.toFixed(2)}</span></div>
           </div>
