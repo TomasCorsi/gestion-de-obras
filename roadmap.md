@@ -29,3 +29,8 @@
 - [ ] Prueba de recuperación de funciones (bloqueada: falta forma segura de validarla fuera de producción)
 - [ ] Vínculos de notas de crédito con factura original
 - [ ] Sesión real de contador y concurrencia real
+
+## Inicio Contable (launcher) — cerrado
+- [x] Breadcrumb sin duplicar "Inicio Contable" (botón de regreso conservado) y buscador con jerarquía, iconos y "Próximamente" claro; 81 pruebas pasan y verificación visual en navegador aprobada.
+- [ ] Pendiente (no bloquea): prueba con cuenta real de contador.
+- [ ] Pendiente (no bloquea): prueba responsive real en celular.
