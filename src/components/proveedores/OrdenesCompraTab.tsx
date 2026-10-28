@@ -26,10 +26,10 @@ const estadoLabels: Record<EstadoOrdenCompra, string> = {
   cancelada: "Cancelada",
 };
 
-export function OrdenesCompraTab({ busquedaInicial }: { busquedaInicial?: string } = {}) {
-  const { ordenes, loading, createOrden, updateOrden, deleteOrden, updateEstado } = useOrdenesCompra();
+export function OrdenesCompraTab({ proveedorId }: { proveedorId?: string } = {}) {
+  const { ordenes, loading, createOrden, updateOrden, deleteOrden, updateEstado } = useOrdenesCompra(proveedorId);
 
-  const [search, setSearch] = useState(busquedaInicial ?? "");
+  const [search, setSearch] = useState("");
   const [estadoFilter, setEstadoFilter] = useState<string>("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<OrdenCompraWithRelations | null>(null);
@@ -77,6 +77,7 @@ export function OrdenesCompraTab({ busquedaInicial }: { busquedaInicial?: string
 
   return (
     <div className="space-y-4">
+      {proveedorId && <Badge variant="outline">Proveedor seleccionado</Badge>}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">

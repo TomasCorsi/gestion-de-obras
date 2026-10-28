@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, Search, Eye, Pencil, Trash2, Truck, FileText, Receipt } from "lucide-react";
 import { LoadingScreen } from "@/components/shared/LoadingScreen";
+import { supabase } from "@/integrations/supabase/client";
+import { destinoProveedor } from "@/lib/contabProveedorNav";
 
 const emptyForm: ProveedorForm = {
   nombre: "",
@@ -39,6 +41,8 @@ export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } 
   const { proveedores, loading, createProveedor, updateProveedor, deleteProveedor } = useProveedores();
 
   const [search, setSearch] = useState("");
+  const [consultaFiscal, setConsultaFiscal] = useState(false);
+  const [mensajeFiscal, setMensajeFiscal] = useState<string | null>(null);
   const [showInactive, setShowInactive] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -114,8 +118,27 @@ export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } 
     }
   };
 
-  const verEnCompras = (s: string, p: ProveedorDB) =>
-    navigate(`/contabilidad?m=compras&s=${s}&prov=${encodeURIComponent(p.nombre)}`);
+  const verEnCompras = async (s: "ordenes" | "comprobantes", p: ProveedorDB) => {
+    setMensajeFiscal(null);
+    if (s === "ordenes") {
+      const destino = destinoProveedor(s, p.id);
+      if (destino) navigate(destino);
+      return;
+    }
+    setConsultaFiscal(true);
+    try {
+      const { data, error } = await supabase.from("contab_terceros")
+        .select("id").eq("proveedor_id", p.id).maybeSingle();
+      if (error) throw error;
+      const destino = destinoProveedor(s, p.id, data?.id);
+      if (destino) navigate(destino);
+      else setMensajeFiscal(`El proveedor «${p.nombre}» no tiene una ficha fiscal vinculada. Vinculá su ficha fiscal para ver sus comprobantes.`);
+    } catch {
+      setMensajeFiscal("No se pudo consultar la ficha fiscal del proveedor. Intentá nuevamente.");
+    } finally {
+      setConsultaFiscal(false);
+    }
+  };
 
   if (loading) return <Marco embebido={embebido}><LoadingScreen /></Marco>;
 
@@ -151,6 +174,8 @@ export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } 
               <Label htmlFor="show-inactive" className="text-sm text-muted-foreground">Mostrar inactivos</Label>
             </div>
           </div>
+
+          {mensajeFiscal && <p role="alert" className="text-sm text-foreground border-l-2 border-primary pl-3">{mensajeFiscal}</p>}
 
           <Card className="border-border">
             <CardContent className="p-0">
@@ -191,10 +216,10 @@ export function ProveedoresMaestro({ embebido = false }: { embebido?: boolean } 
                             <Button variant="ghost" size="icon" onClick={() => openDetail(p)}>
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Ver comprobantes" onClick={() => verEnCompras("comprobantes", p)}>
+                            <Button variant="ghost" size="icon" title="Ver comprobantes" aria-label="Ver comprobantes" disabled={consultaFiscal} onClick={() => verEnCompras("comprobantes", p)}>
                               <Receipt className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" title="Ver órdenes de compra" onClick={() => verEnCompras("ordenes", p)}>
+                            <Button variant="ghost" size="icon" title="Ver órdenes de compra" aria-label="Ver órdenes de compra" onClick={() => verEnCompras("ordenes", p)}>
                               <FileText className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>

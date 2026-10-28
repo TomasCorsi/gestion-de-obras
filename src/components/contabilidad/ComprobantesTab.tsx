@@ -39,13 +39,13 @@ const fmtDate = (s: string) => {
   return `${d}/${m}/${y}`;
 };
 
-export function ComprobantesTab({ esVenta, busquedaInicial }: { esVenta: boolean; busquedaInicial?: string }) {
-  const [search, setSearch] = useState(busquedaInicial ?? "");
+export function ComprobantesTab({ esVenta, terceroId }: { esVenta: boolean; terceroId?: string }) {
+  const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);
 
-  const { data = [], isLoading } = useContabComprobantes({ esVenta });
+  const { data = [], isLoading, isError } = useContabComprobantes({ esVenta, terceroId });
   const del = useDeleteComprobante();
   const confirmar = useConfirmarComprobante();
   const anular = useAnularComprobante();
@@ -73,6 +73,8 @@ export function ComprobantesTab({ esVenta, busquedaInicial }: { esVenta: boolean
 
   return (
     <div className="space-y-4">
+      {terceroId && <Badge variant="outline">Ficha fiscal seleccionada</Badge>}
+      {isError && <p role="alert" className="text-sm text-destructive">No se pudieron cargar los comprobantes. Intentá nuevamente.</p>}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <Input
           placeholder="Buscar por tercero, número, CUIT…"
@@ -110,7 +112,7 @@ export function ComprobantesTab({ esVenta, busquedaInicial }: { esVenta: boolean
                 {isLoading && (
                   <tr><td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">Cargando…</td></tr>
                 )}
-                {!isLoading && filtered.length === 0 && (
+                {!isLoading && !isError && filtered.length === 0 && (
                   <tr><td colSpan={12} className="px-3 py-6 text-center text-muted-foreground">
                     <FileText className="inline w-4 h-4 mr-2" />Sin comprobantes
                   </td></tr>
