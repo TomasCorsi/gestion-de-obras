@@ -711,6 +711,42 @@ export function LiquidacionClienteDialog({
   };
 
   const hasSelection = selectedClientes.size > 0;
+  const viajesIncluidos = remitosCliente.filter((r) => !r.tipo_material || selectedTypes.has(r.tipo_material));
+  const idsPorTipo = {
+    viajes: [...new Set(viajesIncluidos.map((r) => r.id))],
+    materiales: [...new Set(otrosCliente.filter((r) => r.seccion === "Materiales").map((r) => r.remitoId))],
+    maquinas: [...new Set(otrosCliente.filter((r) => r.seccion === "Máquinas").map((r) => r.remitoId))],
+  };
+  const totalAMarcar = idsPorTipo.viajes.length + idsPorTipo.materiales.length + idsPorTipo.maquinas.length;
+  const yaLiquidadosEnSeleccion = viajesIncluidos.filter((r) => r.liquidado).length + new Set(otrosCliente.filter((r) => r.liquidado).map((r) => r.remitoId)).size;
+  const excluidosLiquidados = incluirLiquidados ? 0 : paraLiquidar(remitosBase.filter((r) => enRango(r.fecha, desde, hasta)), false).yaLiquidados + new Set(otrosAll.filter((r) => r.liquidado && enRango(r.fecha, desde, hasta)).map((r) => r.remitoId)).size;
+  const sinPrecioSeleccion = viajesIncluidos.filter((r) => !((r.precio_total || 0) + totalItems(itemsMap[r.id]))).length + new Set(otrosCliente.filter((r) => !r.importe).map((r) => r.remitoId)).size;
+  const marcarLiquidados = async (valor: boolean) => {
+    if (!totalAMarcar) return;
+    const msg = valor ? `¿Marcar ${totalAMarcar} remitos como liquidados?` : `¿Desmarcar ${totalAMarcar} remitos? Volverán a figurar como pendientes.`;
+    if (!window.confirm(msg)) return;
+    setMarcando(true);
+    try {
+      let n = 0;
+      for (const [tipo, ids] of Object.entries(idsPorTipo)) {
+        if (!ids.length) continue;
+        const { data, error } = await (supabase as any).rpc("marcar_remitos_liquidados", { _tipo: tipo, _ids: ids, _valor: valor });
+        if (error) throw error;
+        n += Number(data) || 0;
+      }
+      toast.success(valor ? `${n} remitos marcados como liquidados` : `${n} remitos vuelven a pendientes`);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["remitos"] }),
+        qc.invalidateQueries({ queryKey: ["liquidacion_remitos_otros"] }),
+        qc.invalidateQueries({ queryKey: ["remitos_materiales"] }),
+        qc.invalidateQueries({ queryKey: ["remitos_maquinas"] }),
+      ]);
+    } catch (e: any) {
+      toast.error("No se pudo actualizar: " + (e?.message || e));
+    } finally {
+      setMarcando(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -741,6 +777,11 @@ export function LiquidacionClienteDialog({
               ))}
               {cargandoOtros && <span className="text-xs text-muted-foreground">Cargando materiales y máquinas…</span>}
             </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer mt-2">
+              <Checkbox checked={incluirLiquidados} onCheckedChange={(v) => { setIncluirLiquidados(!!v); setTypesInitialized(false); }} />
+              Incluir remitos ya liquidados
+            </label>
+            {excluidosLiquidados > 0 && <p className="text-xs text-muted-foreground mt-1">{excluidosLiquidados} remitos del período ya están liquidados y no se incluyen.</p>}
             {tipoCliente === "cliente_cantera" && <p className="text-xs text-muted-foreground mt-1">Materiales y máquinas no tienen cliente cantera; solo se liquidan viajes.</p>}
           </div>
           {/* Tipo de cliente selector */}
@@ -907,8 +948,21 @@ export function LiquidacionClienteDialog({
             </>
           )}
 
-          {hasSelection && resumen.some((r) => r.precioTotal === 0) && (
-            <p className="text-xs text-muted-foreground">Hay renglones sin precio: revisalos antes de enviar la liquidación.</p>
+          {hasSelection && sinPrecioSeleccion > 0 && (
+            <p className="text-sm text-destructive">{sinPrecioSeleccion} remitos sin precio: no suman al total. Revisalos antes de enviar la liquidación.</p>
+          )}
+          {hasSelection && yaLiquidadosEnSeleccion > 0 && (
+            <p className="text-sm text-destructive">Atención: {yaLiquidadosEnSeleccion} remitos de esta liquidación ya figuran como liquidados.</p>
+          )}
+          {hasSelection && totalAMarcar > 0 && (
+            <div className="flex flex-wrap justify-end gap-2">
+              {esAdmin && yaLiquidadosEnSeleccion > 0 && (
+                <Button variant="ghost" disabled={marcando} onClick={() => marcarLiquidados(false)}>Desmarcar liquidados</Button>
+              )}
+              <Button disabled={marcando} onClick={() => marcarLiquidados(true)}>
+                {marcando && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Marcar {totalAMarcar} remitos como liquidados
+              </Button>
+            </div>
           )}
           {hasSelection && remitosCliente.length === 0 && otrosCliente.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
