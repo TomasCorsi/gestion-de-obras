@@ -520,7 +520,7 @@ export function MaterialesRemitosPanel() {
       ) : listado}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4">
           <DialogHeader><DialogTitle>{editId ? "Editar" : "Nuevo"} remito de materiales</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Fecha</Label><Input type="date" value={head.fecha} onChange={(e) => setH("fecha", e.target.value)} className="h-9" /></div>
@@ -567,8 +567,9 @@ export function MaterialesRemitosPanel() {
             </div>
           </div>
 
+          <RemitoFotoField value={head.foto_url || ""} onChange={(v) => setH("foto_url", v)} />
           <div className="space-y-1.5"><Label className="text-xs">Observaciones</Label><Textarea value={head.observaciones} onChange={(e) => setH("observaciones", e.target.value)} rows={2} /></div>
-          <DialogFooter>
+          <DialogFooter className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:-mb-4 max-sm:border-t max-sm:border-border max-sm:bg-background max-sm:p-3 max-sm:flex-row max-sm:gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Guardar</Button>
           </DialogFooter>
