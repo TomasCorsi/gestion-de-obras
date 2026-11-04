@@ -31,6 +31,10 @@ import { toast } from "sonner";
 import ExcelJS from "exceljs";
 import { useQuery } from "@tanstack/react-query";
 import { fetchRenglonesOtros } from "@/lib/remitosOtros";
+import { paraLiquidar } from "@/lib/remitosControl";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
 import { enRango, type RenglonRemito, type SeccionRemito } from "@/lib/remitosResumen";
 import { Label } from "@/components/ui/label";
 
@@ -77,14 +81,19 @@ export function LiquidacionClienteDialog({
     enabled: open,
     staleTime: 60_000,
   });
+  const [incluirLiquidados, setIncluirLiquidados] = useState(false);
+  const [marcando, setMarcando] = useState(false);
+  const { roles } = useAuth();
+  const esAdmin = roles?.includes("admin");
+  const qc = useQueryClient();
   const otros = useMemo(
-    () => otrosAll.filter((r) => r.cliente && secciones.has(r.seccion) && enRango(r.fecha, desde, hasta)),
-    [otrosAll, secciones, desde, hasta]
+    () => paraLiquidar(otrosAll.filter((r) => r.cliente && secciones.has(r.seccion) && enRango(r.fecha, desde, hasta)), incluirLiquidados).rows,
+    [otrosAll, secciones, desde, hasta, incluirLiquidados]
   );
   const remitosBase = remitos;
   remitos = useMemo(
-    () => (secciones.has("Viajes") ? remitosBase.filter((r) => enRango(r.fecha, desde, hasta)) : []),
-    [remitosBase, secciones, desde, hasta]
+    () => (secciones.has("Viajes") ? paraLiquidar(remitosBase.filter((r) => enRango(r.fecha, desde, hasta)), incluirLiquidados).rows : []),
+    [remitosBase, secciones, desde, hasta, incluirLiquidados]
   );
 
   // Get unique clients based on tipoCliente

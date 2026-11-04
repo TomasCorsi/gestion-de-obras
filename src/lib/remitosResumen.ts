@@ -17,6 +17,7 @@ export interface RenglonRemito {
   precioUnitario: number;
   importe: number;
   viajes?: number;
+  liquidado?: boolean;
   extra?: Record<string, string | number>;
 }
 

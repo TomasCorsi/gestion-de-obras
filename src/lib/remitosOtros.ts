@@ -43,7 +43,7 @@ export async function fetchRenglonesOtros(): Promise<RenglonRemito[]> {
     for (const i of its) {
       const cant = Number(i.cantidad) || 0, pu = Number(i.precio_unitario) || 0;
       out.push({
-        seccion: "Materiales", remitoId: r.id, fecha: r.fecha, numero: r.numero_remito || "",
+        seccion: "Materiales", remitoId: r.id, liquidado: !!r.liquidado, fecha: r.fecha, numero: r.numero_remito || "",
         cliente: obra?.cliente_id ? C[obra.cliente_id]?.nombre || "" : "",
         obra: obraLbl(r.obra_destino_id), detalle: CAT[i.material_id]?.nombre || i._legacy || "",
         cantidad: cant, unidad: i.unidad || "", precioUnitario: pu, importe: cant * pu,
@@ -59,7 +59,7 @@ export async function fetchRenglonesOtros(): Promise<RenglonRemito[]> {
       const m = M[i.maquinaria_id];
       const cant = Number(i.cantidad) || 0, pu = Number(i.precio_unitario) || 0;
       out.push({
-        seccion: "Máquinas", remitoId: r.id, fecha: r.fecha, numero: r.numero_remito || "", cliente, obra: obraLbl(r.obra_id),
+        seccion: "Máquinas", remitoId: r.id, liquidado: !!r.liquidado, fecha: r.fecha, numero: r.numero_remito || "", cliente, obra: obraLbl(r.obra_id),
         detalle: m ? [m.codigo, m.nombre].filter(Boolean).join(" - ") : "",
         cantidad: cant, unidad: i.unidad === "HORA" ? "Horas" : "Días", precioUnitario: pu, importe: cant * pu,
         extra: { Patente: m?.patente || "", Operador: i.operador || "", Observaciones: r.observaciones || "" },
@@ -74,7 +74,7 @@ export function renglonesViajes(remitos: RemitoWithRelations[], itemsMap: Record
   const out: RenglonRemito[] = [];
   for (const r of remitos) {
     const base = {
-      seccion: "Viajes" as const, remitoId: r.id, fecha: r.fecha, numero: r.remito_tercero || r.remito_local || r.numero || "",
+      seccion: "Viajes" as const, remitoId: r.id, liquidado: !!r.liquidado, fecha: r.fecha, numero: r.remito_tercero || r.remito_local || r.numero || "",
       cliente: r.cliente || r.cliente_destino || "", obra: r.obra?.nombre || r.hasta || "",
     };
     const extra = { Desde: r.desde || "", Hasta: r.hasta || "", Transporte: r.tipo_transporte || "", Patente: r.maquinaria?.patente || r.patente_tercero || "", "Cliente destino": r.cliente_destino || "", "Forma de pago": r.forma_pago || "" };
