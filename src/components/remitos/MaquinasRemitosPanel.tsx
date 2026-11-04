@@ -127,7 +127,7 @@ export function MaquinasRemitosPanel() {
     let h = emptyHeader(), ls = [nuevaMaquinaLinea()];
     try {
       const saved = draftKey ? localStorage.getItem(draftKey) : null;
-      if (saved) { const d = JSON.parse(saved); if (d.header && Array.isArray(d.lineas) && d.lineas.length) { h = d.header; ls = d.lineas; } }
+      if (saved) { const d = JSON.parse(saved); if (d.header && Array.isArray(d.lineas) && d.lineas.length) { h = { ...emptyHeader(), ...d.header }; ls = d.lineas; } }
     } catch { /* Ignore invalid drafts */ }
     setHeader(h); setLineas(ls); setEditId(null); setOpen(true);
   };
