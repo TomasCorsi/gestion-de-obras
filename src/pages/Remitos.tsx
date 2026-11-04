@@ -61,6 +61,7 @@ import { toast } from "sonner";
 import { CombustibleRepartidorPanel } from "@/components/gastos/CombustibleRepartidorPanel";
 import { MaquinasRemitosPanel } from "@/components/remitos/MaquinasRemitosPanel";
 import { MaterialesRemitosPanel } from "@/components/remitos/MaterialesRemitosPanel";
+import { ExportRemitosDialog } from "@/components/remitos/ExportRemitosDialog";
 
 // Lazy-load heavy dialogs to keep initial Remitos render snappy
 const RemitosCSVImportDialog = lazy(() =>
@@ -133,6 +134,7 @@ export default function Remitos() {
   const [hastaFilter, setHastaFilter] = useState<string[]>([]);
 
   const [liquidacionOpen, setLiquidacionOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [liquidacionObraOpen, setLiquidacionObraOpen] = useState(false);
   const [recalculando, setRecalculando] = useState(false);
   const [preciosOpen, setPreciosOpen] = useState(false);
@@ -575,7 +577,8 @@ export default function Remitos() {
     { v: "maquinas", l: "Remitos de máquinas" },
   ];
   const TipoTabs = () => (
-    <div className="mb-4 inline-flex flex-wrap rounded-lg border border-border bg-card p-1">
+    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="inline-flex flex-wrap rounded-lg border border-border bg-card p-1">
       {TIPOS.map((t) => (
         <button
           key={t.v}
@@ -589,6 +592,25 @@ export default function Remitos() {
         </button>
       ))}
     </div>
+      <div className="flex-1" />
+      <Button variant="outline" className="gap-2" onClick={() => setExportOpen(true)}>
+        <Download className="w-4 h-4" />Exportar Excel (todos)
+      </Button>
+      {!isOwnOnly && (
+        <Button variant="outline" className="gap-2" onClick={() => setLiquidacionOpen(true)}>
+          <DollarSign className="w-4 h-4" />Liquidar cliente
+        </Button>
+      )}
+    </div>
+  );
+
+  const sharedDialogs = (
+    <Suspense fallback={null}>
+      {exportOpen && <ExportRemitosDialog open={exportOpen} onOpenChange={setExportOpen} remitos={remitos} itemsMap={itemsMap} historicoCompleto={!!loadAll} />}
+      {liquidacionOpen && tipoRemito !== "viajes" && tipoRemito && (
+        <LiquidacionClienteDialog open={liquidacionOpen} onOpenChange={setLiquidacionOpen} remitos={remitos} />
+      )}
+    </Suspense>
   );
 
   const SeccionTabs = () =>
@@ -626,6 +648,7 @@ export default function Remitos() {
         <SeccionTabs />
         <div><TipoTabs /></div>
         {tipoRemito === "materiales" ? <MaterialesRemitosPanel /> : <MaquinasRemitosPanel />}
+        {sharedDialogs}
       </MainLayout>
     );
   }
@@ -802,9 +825,10 @@ export default function Remitos() {
           variant="outline"
           onClick={exportarExcel}
           className="gap-2"
+          title="Solo la grilla de viajes con los filtros aplicados"
         >
           <Download className="w-4 h-4" />
-          Exportar
+          Exportar viajes filtrados
         </Button>
         {!loadAll && (
           <Button
@@ -1031,6 +1055,7 @@ export default function Remitos() {
         )}
       </Suspense>
 
+      {exportOpen && <ExportRemitosDialog open={exportOpen} onOpenChange={setExportOpen} remitos={remitos} itemsMap={itemsMap} historicoCompleto={!!loadAll} />}
       {/* Delete Confirm Dialog (lightweight, stays eager) */}
       <DeleteConfirmDialog
         open={!!deleteId}

@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useObras } from "@/hooks/useObras";
 import { useProveedores } from "@/hooks/useProveedores";
 import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { useClientes } from "@/hooks/useClientes";
+import { useUrlState } from "@/hooks/useUrlState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,12 +48,12 @@ const money = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigi
 const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "" });
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
-function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string; keywords?: string }[] }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const sel = options.find((o) => o.value === value);
-  const tokens = q.toLowerCase().split(/\s+/).filter(Boolean);
-  const list = options.filter((o) => tokens.every((t) => o.label.toLowerCase().includes(t)));
+  const tokens = normalizarMaterial(q).split(" ").filter(Boolean);
+  const list = options.filter((o) => { const t = normalizarMaterial(`${o.label} ${o.keywords || ""}`); return tokens.every((w) => t.includes(w)); });
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
@@ -232,9 +234,15 @@ export function MaterialesRemitosPanel() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [desde, setDesde] = useState("");
-  const [hasta, setHasta] = useState("");
+  const [search, setSearch] = useUrlState<string>({ key: "mat_q", defaultValue: "" });
+  const [desde, setDesde] = useUrlState<string>({ key: "mat_desde", defaultValue: "" });
+  const [hasta, setHasta] = useUrlState<string>({ key: "mat_hasta", defaultValue: "" });
+  const [clienteF, setClienteF] = useUrlState<string>({ key: "mat_cli", defaultValue: "" });
+  const [obraF, setObraF] = useUrlState<string>({ key: "mat_obra", defaultValue: "" });
+  const [materialF, setMaterialF] = useUrlState<string>({ key: "mat_mat", defaultValue: "" });
+  const [provF, setProvF] = useUrlState<string>({ key: "mat_prov", defaultValue: "" });
+  const [unidadF, setUnidadF] = useUrlState<string>({ key: "mat_uni", defaultValue: "" });
+  const { clientes } = useClientes();
 
   const { data: remitos = [], isLoading } = useQuery<Row[]>({
     queryKey: ["remitos_materiales"],
@@ -260,6 +268,8 @@ export function MaterialesRemitosPanel() {
 
   const matName = useMemo(() => Object.fromEntries(catalogo.map((m) => [m.id, m.nombre])), [catalogo]);
   const obraName = useMemo(() => Object.fromEntries((obras || []).map((o: any) => [o.id, o.nombre])), [obras]);
+  const obraCliente = useMemo(() => Object.fromEntries((obras || []).map((o: any) => [o.id, o.cliente_id || ""])), [obras]) as Record<string, string>;
+  const clienteName = useMemo(() => Object.fromEntries((clientes || []).map((c: any) => [c.id, c.nombre])), [clientes]) as Record<string, string>;
   const provName = useMemo(() => Object.fromEntries((proveedores || []).map((p: any) => [p.id, p.nombre])), [proveedores]);
   const maqName = useMemo(() => Object.fromEntries((maquinarias || []).map((m: any) => [m.id, [m.codigo, m.nombre].filter(Boolean).join(" - ")])), [maquinarias]);
   const choferName = useMemo(() => Object.fromEntries((personal || []).map((p: any) => [p.id, `${p.apellido || ""} ${p.nombre || ""}`.trim()])), [personal]);
@@ -267,14 +277,15 @@ export function MaterialesRemitosPanel() {
   const filas = useMemo(() => {
     const byRemito: Record<string, Row[]> = {};
     items.forEach((i) => (byRemito[i.remito_id] ||= []).push(i));
-    const out: { remito: Row; d: Record<string, string | number> }[] = [];
+    const out: { remito: Row; materialId: string | null; unidad: string; d: Record<string, string | number> }[] = [];
     remitos.forEach((r) => {
       const its = byRemito[r.id]?.length ? byRemito[r.id] : [{ material_id: null, cantidad: r.cantidad, unidad: r.unidad, precio_unitario: r.precio_unitario, _legacy: r.material }];
       its.forEach((i) => out.push({
-        remito: r,
+        remito: r, materialId: i.material_id, unidad: i.unidad,
         d: {
           Fecha: formatDate(r.fecha),
           "N° Remito": r.numero_remito || "",
+          Cliente: clienteName[obraCliente[r.obra_destino_id]] || "",
           Movimiento: MOVIMIENTOS[r.movimiento] || r.movimiento,
           Proveedor: provName[r.proveedor_id] || "",
           "Obra origen": obraName[r.obra_origen_id] || "",
@@ -291,17 +302,22 @@ export function MaterialesRemitosPanel() {
       }));
     });
     const q = normalizarMaterial(search);
-    return out.filter(({ remito: r, d }) => {
+    return out.filter(({ remito: r, d, materialId, unidad }) => {
       if (desde && r.fecha < desde) return false;
       if (hasta && r.fecha > hasta) return false;
+      if (obraF && r.obra_destino_id !== obraF && r.obra_origen_id !== obraF) return false;
+      if (clienteF && obraCliente[r.obra_destino_id] !== clienteF) return false;
+      if (materialF && materialId !== materialF) return false;
+      if (provF && r.proveedor_id !== provF) return false;
+      if (unidadF && unidad !== unidadF) return false;
       if (!q) return true;
       const txt = normalizarMaterial(Object.values(d).join(" "));
       return q.split(" ").every((t) => txt.includes(t));
     });
-  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta]);
+  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, provF, unidadF, clienteName, obraCliente]);
 
   const total = filas.reduce((s, f) => s + Number(f.d.Importe), 0);
-  const cols = ["Fecha", "N° Remito", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
+  const cols = ["Fecha", "N° Remito", "Cliente", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
   const setH = (k: string, v: any) => setHead((f) => ({ ...f, [k]: v }));
   const setR = (idx: number, patch: Partial<Renglon>) => setRenglones((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
@@ -416,7 +432,11 @@ export function MaterialesRemitosPanel() {
     XLSX.writeFile(wb, `remitos_materiales_${today()}.xlsx`);
   };
 
-  const obraOpts = (obras || []).map((o: any) => ({ value: o.id, label: o.nombre }));
+  const obraOpts = (obras || []).map((o: any) => ({ value: o.id, label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre }));
+  const provOpts = (proveedores || []).map((p: any) => ({ value: p.id, label: p.nombre, keywords: p.cuit || "" }));
+  const clienteOpts = (clientes || []).map((c: any) => ({ value: c.id, label: c.nombre, keywords: c.cuit || "" }));
+  const matOpts = catalogo.map((m) => ({ value: m.id, label: m.nombre }));
+  const uniOpts = UNIDADES.map((u) => ({ value: u, label: u }));
   const camionOpts = (maquinarias || []).filter((m: any) => ["camion", "batea", "acoplado", "carreton"].includes(m.tipo) || m.id === head.camion_id).map((m: any) => ({ value: m.id, label: maqName[m.id] }));
   const choferOpts = (personal || []).filter((p: any) => p.rol === "chofer" || p.id === head.chofer_id).map((p: any) => ({ value: p.id, label: `${p.apellido || ""} ${p.nombre || ""}`.trim() }));
   const totalForm = totalRemitoMateriales(renglones.map((r) => ({ cantidad: num(r.cantidad), precio_unitario: num(r.precio_unitario) })));
@@ -431,9 +451,17 @@ export function MaterialesRemitosPanel() {
         </div>
         <div className="space-y-1"><Label className="text-xs">Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-9 w-40" /></div>
         <div className="space-y-1"><Label className="text-xs">Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="h-9 w-40" /></div>
-        <div className="flex-1" />
+        <div className="w-52"><Pick label="Cliente" value={clienteF} onChange={setClienteF} options={clienteOpts} /></div>
+        <div className="w-52"><Pick label="Obra" value={obraF} onChange={setObraF} options={obraOpts} /></div>
+        <div className="w-52"><Pick label="Material" value={materialF} onChange={setMaterialF} options={matOpts} /></div>
+        <div className="w-52"><Pick label="Proveedor" value={provF} onChange={setProvF} options={provOpts} /></div>
+        <div className="w-32"><Pick label="Unidad" value={unidadF} onChange={setUnidadF} options={uniOpts} /></div>
+        {(search || desde || hasta || clienteF || obraF || materialF || provF || unidadF) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteF(""); setObraF(""); setMaterialF(""); setProvF(""); setUnidadF(""); }}>Limpiar filtros</Button>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{filas.length} renglones · Total {money(total)}</span>
-        <Button variant="outline" onClick={exportar} disabled={!filas.length}><Download className="w-4 h-4 mr-1" />Excel</Button>
+        <div className="flex-1" />
+        <Button variant="outline" onClick={exportar} disabled={!filas.length}><Download className="w-4 h-4 mr-1" />Excel materiales</Button>
         <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nuevo remito</Button>
       </div>
       <div className="rounded-lg border border-border bg-card overflow-auto">
@@ -487,7 +515,7 @@ export function MaterialesRemitosPanel() {
             <div className="space-y-1.5"><Label className="text-xs">N° Remito</Label><Input value={head.numero_remito} onChange={(e) => setH("numero_remito", e.target.value)} className="h-9" /></div>
             <Pick label="Movimiento" value={head.movimiento} onChange={(v) => setH("movimiento", v || "ingreso_proveedor")} options={Object.entries(MOVIMIENTOS).map(([value, label]) => ({ value, label }))} />
             {head.movimiento === "ingreso_proveedor" ? (
-              <Pick label="Proveedor" value={head.proveedor_id} onChange={(v) => setH("proveedor_id", v)} options={(proveedores || []).map((p: any) => ({ value: p.id, label: p.nombre }))} />
+              <Pick label="Proveedor" value={head.proveedor_id} onChange={(v) => setH("proveedor_id", v)} options={provOpts} />
             ) : (
               <Pick label="Obra origen" value={head.obra_origen_id} onChange={(v) => setH("obra_origen_id", v)} options={obraOpts} />
             )}
@@ -511,12 +539,8 @@ export function MaterialesRemitosPanel() {
                   <MaterialCombo value={r.material_id} catalogo={catalogo} onPick={(m) => setR(idx, { material_id: m.id, unidad: m.unidad_default })} onCreate={(n) => crearMaterial(idx, n)} />
                 </div>
                 <div className="col-span-4 sm:col-span-2 space-y-1"><Label className="text-xs">Cantidad</Label><Input inputMode="decimal" value={r.cantidad} onChange={(e) => setR(idx, { cantidad: e.target.value })} className="h-9" /></div>
-                <div className="col-span-4 sm:col-span-2 space-y-1">
-                  <Label className="text-xs">Unidad</Label>
-                  <Select value={r.unidad} onValueChange={(v) => setR(idx, { unidad: v })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="col-span-4 sm:col-span-2">
+                  <Pick label="Unidad" value={r.unidad} onChange={(v) => setR(idx, { unidad: v || "UN" })} options={uniOpts} />
                 </div>
                 <div className="col-span-4 sm:col-span-2 space-y-1"><Label className="text-xs">Precio unit.</Label><Input inputMode="decimal" value={r.precio_unitario} onChange={(e) => setR(idx, { precio_unitario: e.target.value })} placeholder="0" className="h-9" /></div>
                 <div className="col-span-10 sm:col-span-1 text-sm pb-2 whitespace-nowrap">{money(num(r.cantidad) * num(r.precio_unitario))}</div>
