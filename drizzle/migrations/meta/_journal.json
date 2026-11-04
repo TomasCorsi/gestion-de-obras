@@ -218,6 +218,13 @@
       "when": 1793123968631,
       "tag": "0030_contab_1c_repartos_vinculos",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793800627308,
+      "tag": "0031_remitos_liquidado_fotos",
+      "breakpoints": true
     }
   ]
 }
