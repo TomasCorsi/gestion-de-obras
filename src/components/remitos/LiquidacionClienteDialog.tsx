@@ -29,6 +29,10 @@ import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
 import ExcelJS from "exceljs";
+import { useQuery } from "@tanstack/react-query";
+import { fetchRenglonesOtros } from "@/lib/remitosOtros";
+import { enRango, type RenglonRemito, type SeccionRemito } from "@/lib/remitosResumen";
+import { Label } from "@/components/ui/label";
 
 interface LiquidacionClienteDialogProps {
   open: boolean;
@@ -37,6 +41,7 @@ interface LiquidacionClienteDialogProps {
 }
 
 interface TipoResumen {
+  seccion?: SeccionRemito;
   tipo: string;
   viajes: number;
   cantidad: number;
@@ -63,6 +68,24 @@ export function LiquidacionClienteDialog({
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [typesInitialized, setTypesInitialized] = useState(false);
   const { itemsMap } = useRemitoItemsMap();
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [secciones, setSecciones] = useState<Set<SeccionRemito>>(new Set(["Viajes", "Materiales", "Máquinas"]));
+  const { data: otrosAll = [], isLoading: cargandoOtros } = useQuery({
+    queryKey: ["liquidacion_remitos_otros"],
+    queryFn: fetchRenglonesOtros,
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const otros = useMemo(
+    () => otrosAll.filter((r) => r.cliente && secciones.has(r.seccion) && enRango(r.fecha, desde, hasta)),
+    [otrosAll, secciones, desde, hasta]
+  );
+  const remitosBase = remitos;
+  remitos = useMemo(
+    () => (secciones.has("Viajes") ? remitosBase.filter((r) => enRango(r.fecha, desde, hasta)) : []),
+    [remitosBase, secciones, desde, hasta]
+  );
 
   // Get unique clients based on tipoCliente
   const clientesUnicos = useMemo(() => {
@@ -77,8 +100,9 @@ export function LiquidacionClienteDialog({
         if (r.cliente_cantera) set.add(r.cliente_cantera);
       }
     });
+    if (tipoCliente !== "cliente_cantera") otros.forEach((r) => set.add(r.cliente));
     return [...set].sort();
-  }, [remitos, tipoCliente]);
+  }, [remitos, tipoCliente, otros]);
 
   const filteredClientes = useMemo(() => {
     const q = searchCliente.trim().toLowerCase();
@@ -103,6 +127,20 @@ export function LiquidacionClienteDialog({
       return false;
     });
   }, [remitos, selectedClientes, tipoCliente]);
+
+  const otrosCliente: RenglonRemito[] = useMemo(
+    () => (tipoCliente === "cliente_cantera" ? [] : otros.filter((r) => selectedClientes.has(r.cliente))),
+    [otros, selectedClientes, tipoCliente]
+  );
+  const agregarOtros = (map: Record<string, TipoResumen>, rows: RenglonRemito[]) => {
+    rows.forEach((r) => {
+      const key = `${r.seccion} · ${r.detalle || "Sin detalle"} (${r.unidad})`;
+      map[key] ||= { seccion: r.seccion, tipo: key, viajes: 0, cantidad: 0, unidad: r.unidad, precioTotal: 0 };
+      map[key].cantidad += r.cantidad || 0;
+      map[key].precioTotal += r.importe || 0;
+    });
+  };
+  const ordenSeccion = (t: TipoResumen) => ["Viajes", "Materiales", "Máquinas"].indexOf(t.seccion || "Viajes");
 
   // Get unique types for selected clients
   const tiposUnicos = useMemo(() => {
@@ -170,7 +208,7 @@ export function LiquidacionClienteDialog({
       .forEach((r) => {
         const tipo = r.tipo_material!;
         if (!map[tipo]) {
-          map[tipo] = { tipo, viajes: 0, cantidad: 0, unidad: r.unidad || "M3", precioTotal: 0 };
+          map[tipo] = { seccion: "Viajes", tipo, viajes: 0, cantidad: 0, unidad: r.unidad || "M3", precioTotal: 0 };
         }
         map[tipo].viajes += r.cantidad_viajes || 1;
         map[tipo].cantidad += r.cantidad || 0;
@@ -183,15 +221,21 @@ export function LiquidacionClienteDialog({
         for (const it of itemsMap[r.id] || []) {
           const key = it.concepto || "Ítems adicionales";
           if (!map[key]) {
-            map[key] = { tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
+            map[key] = { seccion: "Viajes", tipo: key, viajes: 0, cantidad: 0, unidad: it.unidad || "DIA", precioTotal: 0 };
           }
           map[key].cantidad += it.cantidad || 0;
           map[key].precioTotal += it.precio_total || 0;
         }
       });
+    agregarOtros(map, otrosCliente);
 
-    return Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
-  }, [remitosCliente, selectedTypes]);
+    return Object.values(map).sort((a, b) => ordenSeccion(a) - ordenSeccion(b) || a.tipo.localeCompare(b.tipo));
+  }, [remitosCliente, selectedTypes, otrosCliente, itemsMap]);
+  const subtotalesSeccion = useMemo(() => {
+    const m: Record<string, number> = {};
+    resumen.forEach((r) => { m[r.seccion || "Viajes"] = (m[r.seccion || "Viajes"] || 0) + r.precioTotal; });
+    return m;
+  }, [resumen]);
 
   const totales = useMemo(
     () => ({
@@ -326,7 +370,10 @@ export function LiquidacionClienteDialog({
               totalesPorFormaPago[fpKey] += it.precio_total || 0;
             }
           });
-        const tipos = Object.values(map).sort((a, b) => a.tipo.localeCompare(b.tipo));
+        const otrosDeCliente = otrosCliente.filter((r) => r.cliente === cliente);
+        agregarOtros(map, otrosDeCliente);
+        otrosDeCliente.forEach((r) => { totalesPorFormaPago.sin_especificar += r.importe || 0; });
+        const tipos = Object.values(map).sort((a, b) => ordenSeccion(a) - ordenSeccion(b) || a.tipo.localeCompare(b.tipo));
         return {
           cliente,
           tipos,
@@ -608,6 +655,25 @@ export function LiquidacionClienteDialog({
       };
     }
 
+    for (const sec of ["Materiales", "Máquinas"] as const) {
+      const rows = otrosCliente.filter((r) => r.seccion === sec).sort((a, b) => (a.fecha || "").localeCompare(b.fecha || ""));
+      if (!rows.length) continue;
+      const wsO = wb.addWorksheet(`Detalle ${sec}`, { views: [{ state: "frozen", ySplit: 1 }] });
+      const hs = ["Fecha", "N° Remito", "Cliente", "Obra", sec === "Materiales" ? "Material" : "Máquina", "Cantidad", "Unidad", "Precio Unitario", "Importe"];
+      wsO.columns = hs.map((h) => ({ width: ["Cliente", "Obra", "Material", "Máquina"].includes(h) ? 30 : 15 }));
+      applyHeaderStyle(wsO.addRow(hs));
+      rows.forEach((r) => {
+        const row = wsO.addRow([fmtFecha(r.fecha), r.numero, r.cliente, r.obra, r.detalle, r.cantidad, r.unidad, r.precioUnitario, r.importe]);
+        row.eachCell((c) => { c.border = thinBorder; });
+        row.getCell(8).numFmt = '"$"#,##0.00';
+        row.getCell(9).numFmt = '"$"#,##0.00';
+      });
+      const tot = wsO.addRow(["TOTAL", "", "", "", "", "", "", "", rows.reduce((s, r) => s + r.importe, 0)]);
+      applyTotalStyle(tot);
+      tot.getCell(9).numFmt = '"$"#,##0.00';
+      wsO.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: hs.length } };
+    }
+
     // ---------- Download ----------
     const prefijo =
       tipoCliente === "cliente_cantera"
@@ -648,6 +714,26 @@ export function LiquidacionClienteDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1"><Label htmlFor="liq-desde" className="text-xs">Desde</Label><Input id="liq-desde" type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="bg-card" /></div>
+            <div className="space-y-1"><Label htmlFor="liq-hasta" className="text-xs">Hasta</Label><Input id="liq-hasta" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="bg-card" /></div>
+          </div>
+          <div>
+            <span className="text-sm font-medium text-foreground mb-1 block">Tipos de remito a incluir</span>
+            <div className="flex flex-wrap gap-4">
+              {(["Viajes", "Materiales", "Máquinas"] as SeccionRemito[]).map((sec) => (
+                <label key={sec} className="flex items-center gap-2 text-sm cursor-pointer">
+                  <Checkbox
+                    checked={secciones.has(sec)}
+                    onCheckedChange={() => { setSecciones((p) => { const n = new Set(p); if (n.has(sec)) n.delete(sec); else n.add(sec); return n; }); setTypesInitialized(false); }}
+                  />
+                  {sec}
+                </label>
+              ))}
+              {cargandoOtros && <span className="text-xs text-muted-foreground">Cargando materiales y máquinas…</span>}
+            </div>
+            {tipoCliente === "cliente_cantera" && <p className="text-xs text-muted-foreground mt-1">Materiales y máquinas no tienen cliente cantera; solo se liquidan viajes.</p>}
+          </div>
           {/* Tipo de cliente selector */}
           <div>
             <label className="text-sm font-medium text-foreground mb-1 block">
@@ -759,7 +845,8 @@ export function LiquidacionClienteDialog({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Tipo Material</TableHead>
+                      <TableHead>Sección</TableHead>
+                      <TableHead>Detalle</TableHead>
                       <TableHead className="text-center">Viajes</TableHead>
                       <TableHead className="text-center">Cantidad</TableHead>
                       <TableHead className="text-center">Unidad</TableHead>
@@ -769,7 +856,8 @@ export function LiquidacionClienteDialog({
                   <TableBody>
                     {resumen.map((r) => (
                       <TableRow key={r.tipo}>
-                        <TableCell className="font-medium">{r.tipo}</TableCell>
+                        <TableCell className="text-muted-foreground">{r.seccion || "Viajes"}</TableCell>
+                        <TableCell className="font-medium">{r.tipo.replace(/^(Materiales|Máquinas) · /, "")}</TableCell>
                         <TableCell className="text-center">{r.viajes}</TableCell>
                         <TableCell className="text-center">
                           {r.cantidad.toLocaleString("es-AR")}
@@ -780,8 +868,14 @@ export function LiquidacionClienteDialog({
                         </TableCell>
                       </TableRow>
                     ))}
+                    {Object.entries(subtotalesSeccion).map(([sec, v]) => (
+                      <TableRow key={`sub-${sec}`} className="bg-muted/30">
+                        <TableCell colSpan={5} className="font-semibold">Subtotal {sec}</TableCell>
+                        <TableCell className="text-right font-semibold">${v.toLocaleString("es-AR")}</TableCell>
+                      </TableRow>
+                    ))}
                     <TableRow className="bg-muted/50 font-bold">
-                      <TableCell>TOTAL</TableCell>
+                      <TableCell colSpan={2}>TOTAL</TableCell>
                       <TableCell className="text-center">{totales.viajes}</TableCell>
                       <TableCell className="text-center">
                         {totales.cantidad.toLocaleString("es-AR")}
@@ -804,7 +898,10 @@ export function LiquidacionClienteDialog({
             </>
           )}
 
-          {hasSelection && remitosCliente.length === 0 && (
+          {hasSelection && resumen.some((r) => r.precioTotal === 0) && (
+            <p className="text-xs text-muted-foreground">Hay renglones sin precio: revisalos antes de enviar la liquidación.</p>
+          )}
+          {hasSelection && remitosCliente.length === 0 && otrosCliente.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">
               No hay remitos para los clientes seleccionados en el período.
             </p>
