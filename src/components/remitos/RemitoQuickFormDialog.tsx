@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
+import { RemitoFotoField } from "@/components/remitos/RemitoFoto";
+import { advertenciaGuardado } from "@/lib/remitosControl";
 import {
   Dialog,
   DialogContent,
@@ -76,6 +78,7 @@ export interface RemitoEditData {
   observaciones: string;
   forma_pago: string;
   cliente_cantera?: string;
+  evidencia_url?: string;
 }
 
 interface RemitoQuickFormDialogProps {
@@ -161,6 +164,7 @@ export function RemitoQuickFormDialog({
       observaciones: "",
       forma_pago: "",
       cliente_cantera: "",
+      evidencia_url: "",
     };
   }
 
@@ -190,6 +194,7 @@ export function RemitoQuickFormDialog({
           observaciones: editingRemito.observaciones || "",
           forma_pago: editingRemito.forma_pago || "",
           cliente_cantera: (editingRemito as any).cliente_cantera || "",
+          evidencia_url: (editingRemito as any).evidencia_url || "",
         });
       } else {
         setForm(getInitialForm());
@@ -336,6 +341,8 @@ export function RemitoQuickFormDialog({
 
   const handleSubmit = async () => {
     if (!form.fecha) return;
+    const aviso = advertenciaGuardado({ importe: (form.precio_total || 0) + totalItems(items), obra: form.desde || form.hasta || "" });
+    if (aviso && !window.confirm(aviso)) return;
     setSaving(true);
     try {
       const cantidad = (form.cantidad_uni || 0) * (form.cantidad_viajes || 0);
@@ -367,7 +374,8 @@ export function RemitoQuickFormDialog({
         observaciones: form.observaciones || undefined,
         forma_pago: form.forma_pago || null,
         cliente_cantera: form.cliente_cantera || null,
-      };
+        evidencia_url: form.evidencia_url || (editingRemito ? null : undefined),
+      } as any;
       if (editingRemito) {
         remito.id = editingRemito.id;
       }
@@ -383,7 +391,7 @@ export function RemitoQuickFormDialog({
   return (
     <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border" {...dirtyProps}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto bg-card border-border max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4" {...dirtyProps}>
         <DialogHeader>
           <DialogTitle className="text-foreground">{editingRemito ? "Editar Remito" : "Nuevo Remito"}</DialogTitle>
         </DialogHeader>
@@ -579,6 +587,9 @@ export function RemitoQuickFormDialog({
           <div className="col-span-1 sm:col-span-2 md:col-span-3 space-y-1.5">
             <Label className="text-xs truncate block">Observaciones</Label>
             <Textarea value={form.observaciones} onChange={(e) => set("observaciones", e.target.value)} className="text-sm h-16 resize-none" placeholder="Observaciones..." />
+          </div>
+          <div className="col-span-1 sm:col-span-2 md:col-span-3">
+            <RemitoFotoField value={form.evidencia_url || ""} onChange={(v) => set("evidencia_url", v)} />
           </div>
         </div>
 

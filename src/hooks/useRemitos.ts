@@ -15,6 +15,8 @@ export interface RemitoDB {
   recibido_por: string;
   firmado: boolean;
   evidencia_url: string | null;
+  liquidado?: boolean;
+  liquidado_at?: string | null;
   observaciones: string | null;
   created_at: string;
   updated_at: string;
@@ -106,7 +108,7 @@ const fetchRemitosFromDB = async (
         cliente, cliente_destino, remito_tercero, remito_local, desde, hasta, cantidad_viajes,
         tipo_material, precio_total, tipo_transporte, maquinaria_id, patente_tercero,
         cantidad_uni, precio_unitario, precio_calc_mode, forma_pago, created_by, cliente_cantera,
-        obra_nombre, maquinaria_codigo, maquinaria_patente
+        obra_nombre, maquinaria_codigo, maquinaria_patente, liquidado, liquidado_at
       `)
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })

@@ -1,7 +1,8 @@
 import { memo, useMemo, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, Pencil, Trash2 } from "lucide-react";
+import { abrirFotoRemito } from "@/components/remitos/RemitoFoto";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { RemitoItem, resumenItems } from "@/hooks/useRemitoItems";
 import { ObraWithRelations } from "@/hooks/useObras";
@@ -92,6 +93,8 @@ const Row = memo(function Row({
               className={`${cellBase} flex items-center justify-center gap-1`}
               style={{ width: c.width, minWidth: c.width }}
             >
+              {!isItem && r.liquidado && <span title="Liquidado"><CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" aria-label="Liquidado" /></span>}
+              {!isItem && r.evidencia_url && <Button variant="ghost" size="icon" className="h-7 w-7" title="Ver foto del remito" aria-label="Ver foto del remito" onClick={() => abrirFotoRemito(r.evidencia_url!)}><Camera className="h-3.5 w-3.5 text-primary" /></Button>}
               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(r)} title={isItem ? "Editar remito e ítems" : "Editar"}>
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
