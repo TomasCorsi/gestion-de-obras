@@ -24,7 +24,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Download, FileText, Search } from "lucide-react";
+import { Download, FileText, Loader2, Search } from "lucide-react";
+import { totalItems } from "@/hooks/useRemitoItems";
 import { RemitoWithRelations } from "@/hooks/useRemitos";
 import { useRemitoItemsMap } from "@/hooks/useRemitoItems";
 import { toast } from "sonner";
