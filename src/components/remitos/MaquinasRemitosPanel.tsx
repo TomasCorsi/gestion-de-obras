@@ -20,13 +20,16 @@ import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { importeMaquinaLinea, MaquinaLineaInput, nuevaMaquinaLinea, prepararMaquinaLineas, validarMaquinaLineas } from "@/lib/remitos-maquinas";
 import type { Tables } from "@/integrations/supabase/types";
+import { RemitosControlBar, LiquidadoBadge } from "@/components/remitos/RemitosControlBar";
+import { RemitoFotoField, FotoRemitoBoton } from "@/components/remitos/RemitoFoto";
+import { advertenciaGuardado, AlertaRemito, EstadoLiquidacion, idsFiltrados, sinObra, sinPrecio } from "@/lib/remitosControl";
 
 type Receipt = Tables<"remitos_maquinas"> & { remito_maquina_items: Tables<"remito_maquina_items">[] };
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-const emptyHeader = () => ({ fecha: today(), numero_remito: "", obra_id: "", cliente_id: "", observaciones: "" });
+const emptyHeader = () => ({ fecha: today(), numero_remito: "", obra_id: "", cliente_id: "", observaciones: "", foto_url: "" });
 const UNIDAD_OPTS = [{ value: "DIA", label: "Días" }, { value: "HORA", label: "Horas" }];
 const money = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 });
 type Option = { value: string; label: string; keywords?: string };
@@ -72,6 +75,8 @@ export function MaquinasRemitosPanel() {
   const [search, setSearch] = useUrlState<string>({ key: "maq_q", defaultValue: "" });
   const [desde, setDesde] = useUrlState<string>({ key: "maq_desde", defaultValue: "" });
   const [hasta, setHasta] = useUrlState<string>({ key: "maq_hasta", defaultValue: "" });
+  const [estadoLiq, setEstadoLiq] = useUrlState<string>({ key: "maq_liq", defaultValue: "" });
+  const [alerta, setAlerta] = useUrlState<string>({ key: "maq_alerta", defaultValue: "" });
   const draftKey = user ? `remito_maquinas_draft_${user.id}` : null;
   useEffect(() => {
     if (!open || !draftKey || editId) return;
@@ -109,9 +114,12 @@ export function MaquinasRemitosPanel() {
     "Precio unit.": Number(l.precio_unitario), Importe: importeMaquinaLinea(l), Operador: l.operador,
     "Nota máquina": l.observaciones, Observaciones: r.observaciones || "",
   });
-  const filtered = receipts.filter(r => (!desde || r.fecha >= desde) && (!hasta || r.fecha <= hasta) &&
+  const filteredBase = receipts.filter(r => (!desde || r.fecha >= desde) && (!hasta || r.fecha <= hasta) &&
     (!clienteFilter || clienteDe(r) === clienteFilter) && (!obraFilter || r.obra_id === obraFilter) &&
     (!maqFilter || receiptLines(r).some(l => l.maquinaria_id === maqFilter)) && (!unidadFilter || receiptLines(r).some(l => l.unidad === unidadFilter)) && (!search.trim() || receiptLines(r).some((l, i) => Object.values(display(r, l, i)).join(" ").toLowerCase().includes(search.trim().toLowerCase()))));
+  const filasControl = filteredBase.map(r => ({ id: r.id, cliente: labelOf(clienteOptions, clienteDe(r)), obra: labelOf(obraOptions, r.obra_id), importe: receiptLines(r).reduce((s, l) => s + importeMaquinaLinea(l), 0), liquidado: r.liquidado }));
+  const idsOk = idsFiltrados(filasControl, estadoLiq as EstadoLiquidacion, alerta as AlertaRemito);
+  const filtered = filteredBase.filter(r => idsOk.has(r.id));
   const total = filtered.reduce((sum, r) => sum + receiptLines(r).reduce((s, l) => s + importeMaquinaLinea(l), 0), 0);
   const cols = ["Fecha", "N° Remito", "Renglón", "Cliente", "Obra", "Máquina", "Cantidad", "Unidad", "Precio unit.", "Importe", "Operador", "Nota máquina", "Observaciones"] as const;
   const setLine = (index: number, patch: Partial<MaquinaLineaInput>) => setLineas(prev => prev.map((l, i) => i === index ? { ...l, ...patch } : l));
@@ -124,7 +132,7 @@ export function MaquinasRemitosPanel() {
     setHeader(h); setLineas(ls); setEditId(null); setOpen(true);
   };
   const openEdit = (r: Receipt) => {
-    setHeader({ fecha: r.fecha, numero_remito: r.numero_remito || "", obra_id: r.obra_id || "", cliente_id: r.cliente_id || "", observaciones: r.observaciones || "" });
+    setHeader({ fecha: r.fecha, numero_remito: r.numero_remito || "", obra_id: r.obra_id || "", cliente_id: r.cliente_id || "", observaciones: r.observaciones || "", foto_url: r.foto_url || "" });
     setLineas(receiptLines(r)); setEditId(r.id); setOpen(true);
   };
   const save = async () => {
@@ -132,10 +140,15 @@ export function MaquinasRemitosPanel() {
     if (!header.fecha) return toast.error("La fecha es obligatoria");
     const invalid = validarMaquinaLineas(lineas);
     if (invalid) return toast.error(invalid);
+    const aviso = advertenciaGuardado({ importe: lineas.reduce((s, l) => s + importeMaquinaLinea(l), 0), obra: header.obra_id });
+    if (aviso && !window.confirm(aviso)) return;
     setSaving(true);
     try {
-      const { error } = await supabase.rpc("guardar_remito_maquinas", { p_cabecera: header, p_items: prepararMaquinaLineas(lineas), p_id: editId || undefined });
+      const { foto_url, ...cabecera } = header;
+      const { data: id, error } = await supabase.rpc("guardar_remito_maquinas", { p_cabecera: cabecera, p_items: prepararMaquinaLineas(lineas), p_id: editId || undefined });
       if (error) throw error;
+      const { error: eFoto } = await supabase.from("remitos_maquinas").update({ foto_url: foto_url || null }).eq("id", (id as string) || editId!);
+      if (eFoto) toast.error("El remito se guardó, pero no la foto: " + eFoto.message);
       setOpen(false);
       if (!editId && draftKey) { try { localStorage.removeItem(draftKey); } catch { /* Storage unavailable */ } }
       await qc.invalidateQueries({ queryKey: ["remitos_maquinas"] });
@@ -170,6 +183,7 @@ export function MaquinasRemitosPanel() {
       <div className="w-36"><Lookup label="Se cobra por" value={unidadFilter} options={UNIDAD_OPTS} onChange={setUnidadFilter} /></div>
       {(search || desde || hasta || clienteFilter || obraFilter || maqFilter || unidadFilter) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteFilter(""); setObraFilter(""); setMaqFilter(""); setUnidadFilter(""); }}>Limpiar filtros</Button>}
     </div>
+    <RemitosControlBar filas={filasControl} estado={estadoLiq as EstadoLiquidacion} onEstado={setEstadoLiq} alerta={alerta as AlertaRemito} onAlerta={setAlerta} />
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">{filtered.length} remitos · Total {money(total)}</span>
       <div className="flex-1" />
@@ -181,15 +195,17 @@ export function MaquinasRemitosPanel() {
         <TableHeader><TableRow>{cols.map(c => <TableHead key={c} className="whitespace-nowrap">{c}</TableHead>)}<TableHead>Acciones</TableHead></TableRow></TableHeader>
         <TableBody>{filtered.flatMap(r => receiptLines(r).map((l, i) => {
           const d = display(r, l, i);
-          return <TableRow key={`${r.id}-${i}`} className={i === 0 ? "border-t-2 border-border" : "bg-muted/30"}>
+          const fc = filasControl.find(f => f.id === r.id)!;
+          const alertaFila = sinPrecio(fc) || sinObra(fc);
+          return <TableRow key={`${r.id}-${i}`} className={`${i === 0 ? "border-t-2 border-border" : "bg-muted/30"} ${alertaFila ? "bg-destructive/10" : ""}`}>
             {cols.map(c => <TableCell key={c} className="whitespace-nowrap">{c === "Precio unit." || c === "Importe" ? money(Number(d[c])) : typeof d[c] === "number" ? Number(d[c]).toLocaleString("es-AR") : d[c]}</TableCell>)}
-            <TableCell className="whitespace-nowrap"><Button variant="ghost" size="icon" aria-label={`Editar remito ${r.numero_remito || "sin número"}, renglón ${i + 1}`} title="Editar remito completo" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>{i === 0 && <Button variant="ghost" size="icon" aria-label={`Eliminar remito ${r.numero_remito || "sin número"}`} title="Eliminar remito completo" onClick={() => setDeleteId(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</TableCell>
+            <TableCell className="whitespace-nowrap">{i === 0 && <><LiquidadoBadge liquidado={r.liquidado} /><FotoRemitoBoton path={r.foto_url} /></>}<Button variant="ghost" size="icon" aria-label={`Editar remito ${r.numero_remito || "sin número"}, renglón ${i + 1}`} title="Editar remito completo" onClick={() => openEdit(r)}><Pencil className="h-4 w-4" /></Button>{i === 0 && <Button variant="ghost" size="icon" aria-label={`Eliminar remito ${r.numero_remito || "sin número"}`} title="Eliminar remito completo" onClick={() => setDeleteId(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>}</TableCell>
           </TableRow>;
         }))}</TableBody>
       </Table>}
     </div>
     <Dialog open={open} onOpenChange={v => { if (!saving) setOpen(v); }}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto" onInteractOutside={e => e.preventDefault()}>
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4" onInteractOutside={e => e.preventDefault()}>
         <DialogHeader><DialogTitle>{editId ? "Editar" : "Nuevo"} remito de máquinas</DialogTitle></DialogHeader>
         <fieldset disabled={saving} className="space-y-5 min-w-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -210,9 +226,10 @@ export function MaquinasRemitosPanel() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div className="space-y-1.5"><Label htmlFor={`operador-${i}`} className="text-xs">Operador</Label><Input id={`operador-${i}`} value={l.operador} onChange={e => setLine(i, { operador: e.target.value })} className="h-9" /></div><div className="space-y-1.5"><Label htmlFor={`nota-${i}`} className="text-xs">Nota máquina</Label><Input id={`nota-${i}`} value={l.observaciones} onChange={e => setLine(i, { observaciones: e.target.value })} className="h-9" /></div></div>
           </div>)}</div>
+          <RemitoFotoField value={header.foto_url} onChange={foto_url => setHeader(h => ({ ...h, foto_url }))} />
           <div className="space-y-1.5"><Label htmlFor="maq-observaciones" className="text-xs">Observaciones del remito</Label><Textarea id="maq-observaciones" value={header.observaciones} onChange={e => setHeader(h => ({ ...h, observaciones: e.target.value }))} rows={2} /></div>
         </fieldset>
-        <DialogFooter className="items-center gap-3"><span className="sm:mr-auto font-semibold">Total {money(lineas.reduce((s, l) => s + importeMaquinaLinea(l), 0))}</span><Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={saving} onClick={save}>{saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Guardar</Button></DialogFooter>
+        <DialogFooter className="items-center gap-3 max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:-mb-4 max-sm:border-t max-sm:border-border max-sm:bg-background max-sm:p-3"><span className="sm:mr-auto font-semibold">Total {money(lineas.reduce((s, l) => s + importeMaquinaLinea(l), 0))}</span><Button variant="outline" disabled={saving} onClick={() => setOpen(false)}>Cancelar</Button><Button disabled={saving} onClick={save}>{saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Guardar</Button></DialogFooter>
       </DialogContent>
     </Dialog>
     <DeleteConfirmDialog open={!!deleteId} onOpenChange={v => { if (!v && !deleting) setDeleteId(null); }} onConfirm={remove} title="¿Eliminar remito?" description="Se eliminarán todos sus renglones de máquinas. Esta acción no se puede deshacer." />
