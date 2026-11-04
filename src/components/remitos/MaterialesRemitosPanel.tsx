@@ -539,12 +539,8 @@ export function MaterialesRemitosPanel() {
                   <MaterialCombo value={r.material_id} catalogo={catalogo} onPick={(m) => setR(idx, { material_id: m.id, unidad: m.unidad_default })} onCreate={(n) => crearMaterial(idx, n)} />
                 </div>
                 <div className="col-span-4 sm:col-span-2 space-y-1"><Label className="text-xs">Cantidad</Label><Input inputMode="decimal" value={r.cantidad} onChange={(e) => setR(idx, { cantidad: e.target.value })} className="h-9" /></div>
-                <div className="col-span-4 sm:col-span-2 space-y-1">
-                  <Label className="text-xs">Unidad</Label>
-                  <Select value={r.unidad} onValueChange={(v) => setR(idx, { unidad: v })}>
-                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                    <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="col-span-4 sm:col-span-2">
+                  <Pick label="Unidad" value={r.unidad} onChange={(v) => setR(idx, { unidad: v || "UN" })} options={uniOpts} />
                 </div>
                 <div className="col-span-4 sm:col-span-2 space-y-1"><Label className="text-xs">Precio unit.</Label><Input inputMode="decimal" value={r.precio_unitario} onChange={(e) => setR(idx, { precio_unitario: e.target.value })} placeholder="0" className="h-9" /></div>
                 <div className="col-span-10 sm:col-span-1 text-sm pb-2 whitespace-nowrap">{money(num(r.cantidad) * num(r.precio_unitario))}</div>
