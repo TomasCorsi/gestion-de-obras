@@ -56,6 +56,8 @@ import { useClientes } from "@/hooks/useClientes";
 import { useTiposMaterial } from "@/hooks/useTiposMaterial";
 import { useProveedores } from "@/hooks/useProveedores";
 import { RemitosSimpleGrid } from "@/components/remitos/RemitosSimpleGrid";
+import { RemitosControlBar } from "@/components/remitos/RemitosControlBar";
+import { AlertaRemito, EstadoLiquidacion, idsFiltrados } from "@/lib/remitosControl";
 import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { toast } from "sonner";
 import { CombustibleRepartidorPanel } from "@/components/gastos/CombustibleRepartidorPanel";
@@ -316,11 +318,28 @@ export default function Remitos() {
         .every(k => matchers[k]!(r))
     );
 
-  const filteredRemitos = useMemo(
+  const [estadoLiq, setEstadoLiq] = useUrlState<string>({ key: "via_liq", defaultValue: "" });
+  const [alertaVia, setAlertaVia] = useUrlState<string>({ key: "via_alerta", defaultValue: "" });
+  const filteredBase = useMemo(
     () => applyMatchers(baseRemitos as RemitoWithRelations[]),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [baseRemitos, matchers]
   );
+  const filasControl = useMemo(
+    () => filteredBase.map(r => ({
+      id: r.id,
+      cliente: r.cliente || r.cliente_destino || "",
+      obra: r.obra?.nombre || r.hasta || "",
+      importe: (r.precio_total || 0) + totalItems(itemsMap[r.id]),
+      liquidado: !!r.liquidado,
+    })),
+    [filteredBase, itemsMap]
+  );
+  const filteredRemitos = useMemo(() => {
+    if (!estadoLiq && !alertaVia) return filteredBase;
+    const ok = idsFiltrados(filasControl, estadoLiq as EstadoLiquidacion, alertaVia as AlertaRemito);
+    return filteredBase.filter(r => ok.has(r.id));
+  }, [filteredBase, filasControl, estadoLiq, alertaVia]);
 
   // Conteos por opción, calculados sobre el resto de filtros activos
   const conteos = useMemo(() => {
@@ -944,6 +963,10 @@ export default function Remitos() {
           </div>
           <DollarSign className="w-8 h-8 text-muted-foreground" />
         </div>
+      </div>
+
+      <div className="mb-4">
+        <RemitosControlBar filas={filasControl} estado={estadoLiq as EstadoLiquidacion} onEstado={setEstadoLiq} alerta={alertaVia as AlertaRemito} onAlerta={setAlertaVia} />
       </div>
 
       {/* Read-only Grid */}
