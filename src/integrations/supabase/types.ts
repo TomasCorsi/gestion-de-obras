@@ -5313,6 +5313,8 @@ export type Database = {
           forma_pago: string | null
           hasta: string | null
           id: string | null
+          liquidado: boolean | null
+          liquidado_at: string | null
           maquinaria_codigo: string | null
           maquinaria_id: string | null
           maquinaria_patente: string | null
