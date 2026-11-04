@@ -63,7 +63,7 @@ function formatCurrency(value: number): string {
 async function loadImageAsBase64(url: string): Promise<ImageData> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = "Anonymous";
+    img.crossOrigin = "anonymous";
     img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.width;
