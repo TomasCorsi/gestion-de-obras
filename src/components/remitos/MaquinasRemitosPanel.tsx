@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,8 +27,9 @@ const today = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 const emptyHeader = () => ({ fecha: today(), numero_remito: "", obra_id: "", cliente_id: "", observaciones: "" });
+const UNIDAD_OPTS = [{ value: "DIA", label: "Días" }, { value: "HORA", label: "Horas" }];
 const money = (n: number) => n.toLocaleString("es-AR", { style: "currency", currency: "ARS", maximumFractionDigits: 2 });
-type Option = { value: string; label: string };
+type Option = { value: string; label: string; keywords?: string };
 
 function Lookup({ label, value, options, onChange }: { label: string; value: string; options: Option[]; onChange: (value: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -42,7 +42,7 @@ function Lookup({ label, value, options, onChange }: { label: string; value: str
       <PopoverContent className="w-[min(360px,85vw)] p-0" align="start">
         <Command><CommandInput placeholder={`Buscar ${label.toLowerCase()}...`} /><CommandList><CommandEmpty>Sin resultados</CommandEmpty><CommandGroup>
           <CommandItem value="Sin seleccionar" onSelect={() => { onChange(""); setOpen(false); }}>— Sin seleccionar —</CommandItem>
-          {options.map(o => <CommandItem key={o.value} value={`${o.label} ${o.value}`} onSelect={() => { onChange(o.value); setOpen(false); }}>
+          {options.map(o => <CommandItem key={o.value} value={`${o.label} ${o.keywords || ""} ${o.value}`} onSelect={() => { onChange(o.value); setOpen(false); }}>
             <Check className={`mr-2 h-4 w-4 ${value === o.value ? "opacity-100" : "opacity-0"}`} />{o.label}
           </CommandItem>)}
         </CommandGroup></CommandList></Command>
@@ -94,19 +94,26 @@ export function MaquinasRemitosPanel() {
     },
   });
   const maqOptions = useMemo(() => maquinarias.map(m => ({ value: m.id, label: [m.codigo, m.nombre, m.patente].filter(Boolean).join(" - ") })), [maquinarias]);
-  const obraOptions = obras.map(o => ({ value: o.id, label: o.nombre }));
-  const clienteOptions = clientes.map(c => ({ value: c.id, label: c.nombre }));
+  const obraOptions = obras.map(o => ({ value: o.id, label: o.numero ? `${o.numero} - ${o.nombre}` : o.nombre }));
+  const clienteOptions = clientes.map(c => ({ value: c.id, label: c.nombre, keywords: (c as { cuit?: string | null }).cuit || "" }));
+  const [clienteFilter, setClienteFilter] = useUrlState<string>({ key: "maq_cli", defaultValue: "" });
+  const [obraFilter, setObraFilter] = useUrlState<string>({ key: "maq_obra", defaultValue: "" });
+  const [maqFilter, setMaqFilter] = useUrlState<string>({ key: "maq_maq", defaultValue: "" });
+  const [unidadFilter, setUnidadFilter] = useUrlState<string>({ key: "maq_uni", defaultValue: "" });
+  const clienteDe = (r: Receipt) => r.cliente_id || obras.find(o => o.id === r.obra_id)?.cliente_id || "";
   const labelOf = (options: Option[], id: string | null) => options.find(o => o.value === id)?.label || "";
   const display = (r: Receipt, l: MaquinaLineaInput, index: number) => ({
     Fecha: formatDate(r.fecha), "N° Remito": r.numero_remito || "", Renglón: index + 1,
-    Obra: labelOf(obraOptions, r.obra_id), Cliente: labelOf(clienteOptions, r.cliente_id),
+    Obra: labelOf(obraOptions, r.obra_id), Cliente: labelOf(clienteOptions, clienteDe(r)),
     Máquina: labelOf(maqOptions, l.maquinaria_id), Cantidad: Number(l.cantidad), Unidad: l.unidad === "DIA" ? "Días" : "Horas",
     "Precio unit.": Number(l.precio_unitario), Importe: importeMaquinaLinea(l), Operador: l.operador,
     "Nota máquina": l.observaciones, Observaciones: r.observaciones || "",
   });
-  const filtered = receipts.filter(r => (!desde || r.fecha >= desde) && (!hasta || r.fecha <= hasta) && (!search.trim() || receiptLines(r).some((l, i) => Object.values(display(r, l, i)).join(" ").toLowerCase().includes(search.trim().toLowerCase()))));
+  const filtered = receipts.filter(r => (!desde || r.fecha >= desde) && (!hasta || r.fecha <= hasta) &&
+    (!clienteFilter || clienteDe(r) === clienteFilter) && (!obraFilter || r.obra_id === obraFilter) &&
+    (!maqFilter || receiptLines(r).some(l => l.maquinaria_id === maqFilter)) && (!unidadFilter || receiptLines(r).some(l => l.unidad === unidadFilter)) && (!search.trim() || receiptLines(r).some((l, i) => Object.values(display(r, l, i)).join(" ").toLowerCase().includes(search.trim().toLowerCase()))));
   const total = filtered.reduce((sum, r) => sum + receiptLines(r).reduce((s, l) => s + importeMaquinaLinea(l), 0), 0);
-  const cols = ["Fecha", "N° Remito", "Renglón", "Obra", "Cliente", "Máquina", "Cantidad", "Unidad", "Precio unit.", "Importe", "Operador", "Nota máquina", "Observaciones"] as const;
+  const cols = ["Fecha", "N° Remito", "Renglón", "Cliente", "Obra", "Máquina", "Cantidad", "Unidad", "Precio unit.", "Importe", "Operador", "Nota máquina", "Observaciones"] as const;
   const setLine = (index: number, patch: Partial<MaquinaLineaInput>) => setLineas(prev => prev.map((l, i) => i === index ? { ...l, ...patch } : l));
   const openNew = () => {
     let h = emptyHeader(), ls = [nuevaMaquinaLinea()];
@@ -157,8 +164,16 @@ export function MaquinasRemitosPanel() {
       <div className="relative w-64 max-w-full"><Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" /><Input aria-label="Buscar remitos de máquinas" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar..." className="pl-8 h-9" /></div>
       <div className="space-y-1"><Label htmlFor="maq-desde" className="text-xs">Desde</Label><Input id="maq-desde" type="date" value={desde} onChange={e => setDesde(e.target.value)} className="h-9 w-40" /></div>
       <div className="space-y-1"><Label htmlFor="maq-hasta" className="text-xs">Hasta</Label><Input id="maq-hasta" type="date" value={hasta} onChange={e => setHasta(e.target.value)} className="h-9 w-40" /></div>
-      <div className="flex-1" /><span className="text-sm text-muted-foreground">{filtered.length} remitos · Total {money(total)}</span>
-      <Button variant="outline" onClick={exportar} disabled={!filtered.length || isError}><Download className="w-4 h-4 mr-1" />Excel</Button>
+      <div className="w-52"><Lookup label="Cliente" value={clienteFilter} options={clienteOptions} onChange={setClienteFilter} /></div>
+      <div className="w-52"><Lookup label="Obra" value={obraFilter} options={obraOptions} onChange={setObraFilter} /></div>
+      <div className="w-52"><Lookup label="Máquina" value={maqFilter} options={maqOptions} onChange={setMaqFilter} /></div>
+      <div className="w-36"><Lookup label="Se cobra por" value={unidadFilter} options={UNIDAD_OPTS} onChange={setUnidadFilter} /></div>
+      {(search || desde || hasta || clienteFilter || obraFilter || maqFilter || unidadFilter) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteFilter(""); setObraFilter(""); setMaqFilter(""); setUnidadFilter(""); }}>Limpiar filtros</Button>}
+    </div>
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm text-muted-foreground">{filtered.length} remitos · Total {money(total)}</span>
+      <div className="flex-1" />
+      <Button variant="outline" onClick={exportar} disabled={!filtered.length || isError}><Download className="w-4 h-4 mr-1" />Excel máquinas</Button>
       <Button onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nuevo remito</Button>
     </div>
     <div className="border border-border overflow-auto rounded-md">
@@ -180,7 +195,7 @@ export function MaquinasRemitosPanel() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="space-y-1.5"><Label htmlFor="maq-fecha" className="text-xs">Fecha</Label><Input id="maq-fecha" type="date" value={header.fecha} onChange={e => setHeader(h => ({ ...h, fecha: e.target.value }))} className="h-9" /></div>
             <div className="space-y-1.5"><Label htmlFor="maq-numero" className="text-xs">N° Remito</Label><Input id="maq-numero" value={header.numero_remito} onChange={e => setHeader(h => ({ ...h, numero_remito: e.target.value }))} className="h-9" /></div>
-            <Lookup label="Obra" value={header.obra_id} options={obraOptions} onChange={obra_id => setHeader(h => ({ ...h, obra_id }))} />
+            <Lookup label="Obra" value={header.obra_id} options={obraOptions} onChange={obra_id => setHeader(h => ({ ...h, obra_id, cliente_id: h.cliente_id || obras.find(o => o.id === obra_id)?.cliente_id || "" }))} />
             <Lookup label="Cliente" value={header.cliente_id} options={clienteOptions} onChange={cliente_id => setHeader(h => ({ ...h, cliente_id }))} />
           </div>
           <div className="flex justify-between items-center gap-2"><h3 className="font-semibold">Máquinas · {lineas.length}</h3><Button variant="outline" onClick={() => setLineas(ls => [...ls, nuevaMaquinaLinea()])}><Plus className="mr-1 h-4 w-4" />Agregar máquina</Button></div>
@@ -188,7 +203,7 @@ export function MaquinasRemitosPanel() {
             <div className="flex justify-between items-center"><span className="text-xs font-medium text-muted-foreground">Máquina {i + 1}</span><Button variant="ghost" size="icon" aria-label={`Quitar máquina ${i + 1}`} title="Quitar máquina" disabled={lineas.length === 1} onClick={() => setLineas(ls => ls.filter((_, index) => index !== i))}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
             <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
               <div className="col-span-2"><Lookup label={`Máquina ${i + 1}`} value={l.maquinaria_id} options={maqOptions} onChange={maquinaria_id => setLine(i, { maquinaria_id })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Se cobra por</Label><Select value={l.unidad} onValueChange={unidad => setLine(i, { unidad })}><SelectTrigger className="h-9" aria-label={`Unidad máquina ${i + 1}`}><SelectValue /></SelectTrigger><SelectContent><SelectItem value="DIA">Días</SelectItem><SelectItem value="HORA">Horas</SelectItem></SelectContent></Select></div>
+              <Lookup label="Se cobra por" value={l.unidad} options={UNIDAD_OPTS} onChange={unidad => setLine(i, { unidad: unidad || "DIA" })} />
               <div className="space-y-1.5"><Label htmlFor={`cantidad-${i}`} className="text-xs">Cantidad</Label><Input id={`cantidad-${i}`} aria-label={`Cantidad máquina ${i + 1}`} inputMode="decimal" value={l.cantidad} onChange={e => setLine(i, { cantidad: e.target.value })} className="h-9" /></div>
               <div className="space-y-1.5"><Label htmlFor={`precio-${i}`} className="text-xs">Precio unitario</Label><Input id={`precio-${i}`} aria-label={`Precio máquina ${i + 1}`} inputMode="decimal" value={l.precio_unitario} onChange={e => setLine(i, { precio_unitario: e.target.value })} placeholder="0" className="h-9" /></div>
               <div className="space-y-1.5"><Label className="text-xs">Importe</Label><div className="h-9 flex items-center text-sm font-semibold whitespace-nowrap overflow-x-auto">{money(importeMaquinaLinea(l))}</div></div>
