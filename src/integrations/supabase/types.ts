@@ -4100,6 +4100,9 @@ export type Database = {
           forma_pago: string | null
           hasta: string | null
           id: string
+          liquidado: boolean
+          liquidado_at: string | null
+          liquidado_by: string | null
           maquinaria_id: string | null
           material: string
           numero: string
@@ -4138,6 +4141,9 @@ export type Database = {
           forma_pago?: string | null
           hasta?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           maquinaria_id?: string | null
           material: string
           numero: string
@@ -4176,6 +4182,9 @@ export type Database = {
           forma_pago?: string | null
           hasta?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           maquinaria_id?: string | null
           material?: string
           numero?: string
@@ -4236,7 +4245,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           fecha: string
+          foto_url: string | null
           id: string
+          liquidado: boolean
+          liquidado_at: string | null
+          liquidado_by: string | null
           maquinaria_id: string | null
           numero_remito: string | null
           obra_id: string | null
@@ -4252,7 +4265,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha?: string
+          foto_url?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           maquinaria_id?: string | null
           numero_remito?: string | null
           obra_id?: string | null
@@ -4268,7 +4285,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha?: string
+          foto_url?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           maquinaria_id?: string | null
           numero_remito?: string | null
           obra_id?: string | null
@@ -4311,7 +4332,11 @@ export type Database = {
           created_at: string
           created_by: string | null
           fecha: string
+          foto_url: string | null
           id: string
+          liquidado: boolean
+          liquidado_at: string | null
+          liquidado_by: string | null
           material: string
           movimiento: string
           numero_remito: string | null
@@ -4332,7 +4357,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha?: string
+          foto_url?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           material: string
           movimiento?: string
           numero_remito?: string | null
@@ -4353,7 +4382,11 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           fecha?: string
+          foto_url?: string | null
           id?: string
+          liquidado?: boolean
+          liquidado_at?: string | null
+          liquidado_by?: string | null
           material?: string
           movimiento?: string
           numero_remito?: string | null
@@ -5280,6 +5313,8 @@ export type Database = {
           forma_pago: string | null
           hasta: string | null
           id: string | null
+          liquidado: boolean | null
+          liquidado_at: string | null
           maquinaria_codigo: string | null
           maquinaria_id: string | null
           maquinaria_patente: string | null
@@ -5476,6 +5511,10 @@ export type Database = {
       map_personal_rol_to_app_role: {
         Args: { _rol: Database["public"]["Enums"]["rol_personal"] }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      marcar_remitos_liquidados: {
+        Args: { _ids: string[]; _tipo: string; _valor: boolean }
+        Returns: number
       }
       normalizar_material: { Args: { _t: string }; Returns: string }
       recalcular_horas_maquinas: { Args: never; Returns: number }

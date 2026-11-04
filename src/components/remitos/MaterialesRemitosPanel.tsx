@@ -22,6 +22,9 @@ import { DeleteConfirmDialog } from "@/components/shared/DeleteConfirmDialog";
 import { ChevronsUpDown, Download, Loader2, Merge, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
+import { RemitosControlBar, LiquidadoBadge } from "@/components/remitos/RemitosControlBar";
+import { RemitoFotoField, FotoRemitoBoton } from "@/components/remitos/RemitoFoto";
+import { advertenciaGuardado, AlertaRemito, EstadoLiquidacion, idsFiltrados, sinObra, sinPrecio } from "@/lib/remitosControl";
 import { formatearNombreMaterial, normalizarMaterial, totalRemitoMateriales } from "@/lib/materiales";
 
 type Row = Record<string, any>;
@@ -45,7 +48,7 @@ const num = (v: any) => {
   return isNaN(n) ? 0 : n;
 };
 const money = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
-const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "" });
+const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "", foto_url: "" });
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string; keywords?: string }[] }) {
@@ -243,6 +246,8 @@ export function MaterialesRemitosPanel() {
   const [provF, setProvF] = useUrlState<string>({ key: "mat_prov", defaultValue: "" });
   const [unidadF, setUnidadF] = useUrlState<string>({ key: "mat_uni", defaultValue: "" });
   const { clientes } = useClientes();
+  const [estadoLiq, setEstadoLiq] = useUrlState<string>({ key: "mat_liq", defaultValue: "" });
+  const [alerta, setAlerta] = useUrlState<string>({ key: "mat_alerta", defaultValue: "" });
 
   const { data: remitos = [], isLoading } = useQuery<Row[]>({
     queryKey: ["remitos_materiales"],
@@ -274,7 +279,7 @@ export function MaterialesRemitosPanel() {
   const maqName = useMemo(() => Object.fromEntries((maquinarias || []).map((m: any) => [m.id, [m.codigo, m.nombre].filter(Boolean).join(" - ")])), [maquinarias]);
   const choferName = useMemo(() => Object.fromEntries((personal || []).map((p: any) => [p.id, `${p.apellido || ""} ${p.nombre || ""}`.trim()])), [personal]);
 
-  const filas = useMemo(() => {
+  const filasBase = useMemo(() => {
     const byRemito: Record<string, Row[]> = {};
     items.forEach((i) => (byRemito[i.remito_id] ||= []).push(i));
     const out: { remito: Row; materialId: string | null; unidad: string; d: Record<string, string | number> }[] = [];
@@ -316,6 +321,9 @@ export function MaterialesRemitosPanel() {
     });
   }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, provF, unidadF, clienteName, obraCliente]);
 
+  const filasControl = useMemo(() => filasBase.map((f) => ({ id: f.remito.id, cliente: String(f.d.Cliente || ""), obra: String(f.d["Obra destino"] || ""), importe: Number(f.d.Importe) || 0, liquidado: f.remito.liquidado })), [filasBase]);
+  const filas = useMemo(() => { const ok = idsFiltrados(filasControl, estadoLiq as EstadoLiquidacion, alerta as AlertaRemito); return filasBase.filter((f) => ok.has(f.remito.id)); }, [filasBase, filasControl, estadoLiq, alerta]);
+  const controlPorId = useMemo(() => { const m: Record<string, { importe: number; obra: string }> = {}; filasControl.forEach((f) => { m[f.id] ||= { importe: 0, obra: f.obra }; m[f.id].importe += f.importe; }); return m; }, [filasControl]);
   const total = filas.reduce((s, f) => s + Number(f.d.Importe), 0);
   const cols = ["Fecha", "N° Remito", "Cliente", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
   const setH = (k: string, v: any) => setHead((f) => ({ ...f, [k]: v }));
@@ -348,6 +356,8 @@ export function MaterialesRemitosPanel() {
     if (!validos.length) return toast.error("Agregá al menos un material");
     if (validos.some((r) => !r.material_id)) return toast.error("Hay renglones sin material elegido");
     if (validos.some((r) => num(r.cantidad) <= 0)) return toast.error("Cada cantidad debe ser mayor a 0");
+    const aviso = advertenciaGuardado({ importe: totalRemitoMateriales(validos.map((r) => ({ cantidad: num(r.cantidad), precio_unitario: num(r.precio_unitario) }))), obra: head.obra_destino_id });
+    if (aviso && !window.confirm(aviso)) return;
     const parsed = validos.map((r) => ({ ...r, cantidad: num(r.cantidad), precio_unitario: num(r.precio_unitario) }));
     const payload: Row = {};
     Object.entries(head).forEach(([k, v]) => (payload[k] = v === "" ? null : v));
@@ -458,6 +468,7 @@ export function MaterialesRemitosPanel() {
         <div className="w-32"><Pick label="Unidad" value={unidadF} onChange={setUnidadF} options={uniOpts} /></div>
         {(search || desde || hasta || clienteF || obraF || materialF || provF || unidadF) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteF(""); setObraF(""); setMaterialF(""); setProvF(""); setUnidadF(""); }}>Limpiar filtros</Button>}
       </div>
+      <RemitosControlBar filas={filasControl} estado={estadoLiq as EstadoLiquidacion} onEstado={setEstadoLiq} alerta={alerta as AlertaRemito} onAlerta={setAlerta} />
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm text-muted-foreground">{filas.length} renglones · Total {money(total)}</span>
         <div className="flex-1" />
@@ -477,13 +488,14 @@ export function MaterialesRemitosPanel() {
                 const primero = r.id !== prevId;
                 prevId = r.id;
                 return (
-                  <TableRow key={`${r.id}-${idx}`} className={primero ? "border-t-2 border-border" : ""}>
+                  <TableRow key={`${r.id}-${idx}`} className={`${primero ? "border-t-2 border-border" : ""} ${controlPorId[r.id] && (sinPrecio(controlPorId[r.id]) || sinObra(controlPorId[r.id])) ? "bg-destructive/10" : ""}`}>
                     {cols.map((c) => (
                       <TableCell key={c} className="whitespace-nowrap">
                         {c === "Precio unit." || c === "Importe" ? money(Number(d[c])) : typeof d[c] === "number" ? Number(d[c]).toLocaleString("es-AR") : d[c]}
                       </TableCell>
                     ))}
                     <TableCell className="whitespace-nowrap">
+                      {primero && <><LiquidadoBadge liquidado={r.liquidado} /><FotoRemitoBoton path={r.foto_url} /></>}
                       <Button size="icon" variant="ghost" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
                       {primero && <Button size="icon" variant="ghost" onClick={() => setDeleteId(r.id)}><Trash2 className="w-4 h-4 text-destructive" /></Button>}
                     </TableCell>
@@ -508,7 +520,7 @@ export function MaterialesRemitosPanel() {
       ) : listado}
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-screen max-sm:max-w-none max-sm:rounded-none max-sm:p-4">
           <DialogHeader><DialogTitle>{editId ? "Editar" : "Nuevo"} remito de materiales</DialogTitle></DialogHeader>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label className="text-xs">Fecha</Label><Input type="date" value={head.fecha} onChange={(e) => setH("fecha", e.target.value)} className="h-9" /></div>
@@ -555,8 +567,9 @@ export function MaterialesRemitosPanel() {
             </div>
           </div>
 
+          <RemitoFotoField value={head.foto_url || ""} onChange={(v) => setH("foto_url", v)} />
           <div className="space-y-1.5"><Label className="text-xs">Observaciones</Label><Textarea value={head.observaciones} onChange={(e) => setH("observaciones", e.target.value)} rows={2} /></div>
-          <DialogFooter>
+          <DialogFooter className="max-sm:sticky max-sm:bottom-0 max-sm:-mx-4 max-sm:-mb-4 max-sm:border-t max-sm:border-border max-sm:bg-background max-sm:p-3 max-sm:flex-row max-sm:gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={save} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}Guardar</Button>
           </DialogFooter>
