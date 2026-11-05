@@ -470,3 +470,11 @@
 .animate-loading-bar {
   animation: loading-bar 1.5s ease-in-out infinite;
 }
+
+/* Inicio Contable: tono por módulo (H S L) */
+:root {
+  --mod-compras: 239 70% 60%; --mod-ventas: 217 85% 58%; --mod-egresos: 350 80% 58%;
+  --mod-ingresos: 152 60% 42%; --mod-proveedores: 25 90% 55%; --mod-clientes: 199 85% 50%;
+  --mod-contable: 271 70% 60%; --mod-informes: 172 60% 40%; --mod-impuestos: 38 90% 50%;
+  --mod-otras: 220 10% 50%;
+}
