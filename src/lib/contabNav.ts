@@ -14,7 +14,7 @@ export interface Destino {
   modo?: "listado" | "cierre";
 }
 
-export interface NavHoja { id: string; nombre: string; descripcion?: string; destino?: Destino; permiso?: Permiso; }
+export interface NavHoja { id: string; nombre: string; descripcion?: string; icono?: string; destino?: Destino; permiso?: Permiso; }
 export interface NavModulo { id: string; nombre: string; descripcion: string; icono: string; permiso?: Permiso; destino?: Destino; hijos: NavHoja[]; }
 
 export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores", "clientes"];
@@ -195,3 +195,16 @@ export function recientesValidos(lista: unknown, p: Permisos): Reciente[] {
     .filter((x, i, arr) => arr.findIndex((y) => y.m === x.m && y.s === x.s) === i)
     .slice(0, MAX_RECIENTES);
 }
+
+const ICONOS_HOJA: Record<string, string> = {
+  comprobantes: "FileText", ordenes: "ClipboardList", gastos: "Wallet", "orden-pago": "Send", pagos: "Banknote",
+  recibo: "ReceiptText", cobranzas: "HandCoins", maestro: "Contact", "cta-cte": "ScrollText", totales: "Sigma",
+  "mov-conceptos": "ListTree", "totales-vto": "CalendarClock", "deuda-vencida": "AlertTriangle", "agenda-pagos": "CalendarDays",
+  informe: "FileBarChart", pendientes: "Hourglass", asientos: "NotebookPen", mayor: "BookMarked", sumas: "Scale",
+  plan: "ListTree", listado: "List", diario: "BookText", ejercicios: "Calendar", banco: "Landmark", "cierre-mes": "CalendarCheck",
+  "cierre-ejercicio": "Lock", "apertura-ejercicio": "Unlock", iva: "Percent", obras: "HardHat", maquinas: "Tractor",
+  empresa: "Building2", terceros: "IdCard", centros: "Network", subcentros: "GitBranch", retenciones: "ShieldCheck",
+  percepciones: "BadgePercent", iibb: "Landmark",
+};
+/** Icono de un subacceso; si no tiene uno propio se usa el del módulo. */
+export const iconoHoja = (h: NavHoja, m: NavModulo) => h.icono ?? ICONOS_HOJA[h.id] ?? m.icono;
