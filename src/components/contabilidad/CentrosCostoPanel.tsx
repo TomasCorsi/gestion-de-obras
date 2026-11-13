@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { proponerCodigoSubcentro } from "@/lib/subcentroCodigo";
 import {
   useCentros, useSubcentros, useSugeridos, useSaveCentro, useSaveSubcentro, useDeleteSubcentro,
   type CentroCosto, type SubcentroCosto, type TipoCentro, type Sugerido,
@@ -19,7 +20,6 @@ const TIPOS: { v: TipoCentro; l: string }[] = [
   { v: "generales", l: "Gastos generales" }, { v: "otro", l: "Otro" },
 ];
 const fmtDate = (s?: string | null) => { if (!s) return "—"; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
-const codigoDe = (t: string) => t.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30) || "SC";
 
 export function CentrosCostoPanel({ foco = "centros" }: { foco?: "centros" | "subcentros" } = {}) {
   const { data: centros = [] } = useCentros();
@@ -151,9 +151,11 @@ function CentroDialog({ value, onClose }: { value: Partial<CentroCosto>; onClose
   );
 }
 
-function SubcentroDialog({ value, onClose }: { value: Partial<SubcentroCosto>; onClose: () => void }) {
+function SubcentroDialog({ value, onClose, onSaved = onClose }: { value: Partial<SubcentroCosto>; onClose: () => void; onSaved?: () => void }) {
   const [f, setF] = useState<any>(value);
   const save = useSaveSubcentro();
+  const { data: subs = [], isLoading: cargandoSubs } = useSubcentros();
+  const duplicado = subs.some((s) => s.centro_id === f.centro_id && s.id !== f.id && s.codigo === f.codigo);
   const set = (k: string, v: any) => setF((x: any) => ({ ...x, [k]: v }));
   const ok = /^[A-Z0-9][A-Z0-9._-]{0,29}$/.test(f.codigo ?? "") && (f.nombre ?? "").trim();
   return (
@@ -163,12 +165,13 @@ function SubcentroDialog({ value, onClose }: { value: Partial<SubcentroCosto>; o
         <div className="grid grid-cols-2 gap-3">
           <div><Label>Código</Label><Input value={f.codigo ?? ""} onChange={(e) => set("codigo", e.target.value.toUpperCase())} /></div>
           <div><Label>Nombre</Label><Input value={f.nombre ?? ""} onChange={(e) => set("nombre", e.target.value)} /></div>
+          {duplicado && <p role="alert" className="col-span-2 text-sm text-destructive">Este código ya existe en el centro. Elegí otro.</p>}
           <VigenciaActivo f={f} set={set} />
           {(f.obra_id || f.maquinaria_id) && <p className="col-span-2 text-xs text-muted-foreground">Vinculado a {f.obra_id ? "una obra" : "una máquina"}. El vínculo no se puede cambiar si ya tiene movimientos.</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button disabled={!ok || save.isPending} onClick={() => save.mutate(f, { onSuccess: onClose })}>Guardar</Button>
+          <Button disabled={!ok || duplicado || cargandoSubs || save.isPending} onClick={() => save.mutate(f, { onSuccess: onSaved })}>Guardar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -177,26 +180,27 @@ function SubcentroDialog({ value, onClose }: { value: Partial<SubcentroCosto>; o
 
 function SugeridosDialog({ centro, onClose }: { centro: CentroCosto; onClose: () => void }) {
   const { data = [], isLoading } = useSugeridos();
-  const save = useSaveSubcentro();
+  const { data: subs = [], isLoading: cargandoSubs } = useSubcentros();
+  const [seleccionado, setSeleccionado] = useState<Partial<SubcentroCosto> | null>(null);
   const [q, setQ] = useState("");
   const origen = centro.tipo === "obras" ? "obra" : "maquina";
   const lista = useMemo(() => data.filter((s) => s.origen === origen && s.nombre.toLowerCase().includes(q.toLowerCase())), [data, origen, q]);
-  const crear = (s: Sugerido) => save.mutate({
-    centro_id: centro.id, codigo: codigoDe(`${centro.codigo}-${s.nombre.split(" ")[0]}`).slice(0, 30), nombre: s.nombre, activo: true,
+  const crear = (s: Sugerido) => setSeleccionado({
+    centro_id: centro.id, codigo: proponerCodigoSubcentro(centro.codigo, s.nombre, subs.filter((sub) => sub.centro_id === centro.id).map((sub) => sub.codigo)), nombre: s.nombre, activo: true,
     obra_id: s.origen === "obra" ? s.ref_id : null, maquinaria_id: s.origen === "maquina" ? s.ref_id : null,
   });
+  if (seleccionado) return <SubcentroDialog value={seleccionado} onClose={() => setSeleccionado(null)} onSaved={onClose} />;
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{origen === "obra" ? "Obras" : "Máquinas"} sin subcentro</DialogTitle></DialogHeader>
-        <p className="text-xs text-muted-foreground">Nada se crea solo: elegí cuáles necesitás. El código propuesto se puede editar después.</p>
         <Input placeholder="Buscar…" value={q} onChange={(e) => setQ(e.target.value)} />
         {isLoading ? <p className="text-sm">Cargando…</p> : (
           <div className="divide-y rounded-md border">
             {lista.slice(0, 200).map((s) => (
               <div key={s.ref_id} className="flex items-center justify-between px-3 py-2 text-sm">
                 <span>{s.nombre} {s.estado && <span className="text-xs text-muted-foreground">· {s.estado}</span>}</span>
-                <Button size="sm" variant="outline" disabled={save.isPending} onClick={() => crear(s)}>Crear subcentro</Button>
+                <Button size="sm" variant="outline" disabled={cargandoSubs} onClick={() => crear(s)}>Crear subcentro</Button>
               </div>
             ))}
             {lista.length === 0 && <p className="p-3 text-sm text-muted-foreground">No hay pendientes.</p>}
