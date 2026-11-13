@@ -1,3 +1,4 @@
+import { cuentasConNivel } from "@/lib/planCuentas";
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Trash2, Building2, BookOpen, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -106,6 +107,7 @@ function PlanCuentas() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ codigo: "", nombre: "", tipo: "activo" as CuentaTipo, imputable: true, parent_id: null as string | null });
   const set = (k: keyof typeof form, v: any) => setForm((f) => ({ ...f, [k]: v }));
+  const arbol = useMemo(() => cuentasConNivel(cuentas as any[]), [cuentas]);
 
   const handleSave = async () => {
     await save.mutateAsync(form as any);
@@ -117,7 +119,7 @@ function PlanCuentas() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span>Plan de cuentas ({cuentas.length})</span>
+          <span>Plan de cuentas ({arbol.length})</span>
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-1" />Nueva cuenta</Button>
         </CardTitle>
       </CardHeader>
@@ -130,16 +132,18 @@ function PlanCuentas() {
                 <th className="px-2 py-1">Nombre</th>
                 <th className="px-2 py-1">Tipo</th>
                 <th className="px-2 py-1">Imputable</th>
+                <th className="px-2 py-1">C. costo</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {cuentas.map((c) => (
-                <tr key={c.id} className="border-t">
+              {arbol.map((c: any) => (
+                <tr key={c.id} className={`border-t ${c.imputable ? "" : "font-semibold bg-muted/30"}`}>
                   <td className="px-2 py-1 font-mono">{c.codigo}</td>
-                  <td className="px-2 py-1" style={{ paddingLeft: `${(c.codigo.split(".").length - 1) * 12 + 8}px` }}>{c.nombre}</td>
+                  <td className="px-2 py-1" style={{ paddingLeft: `${c.nivel * 14 + 8}px` }}>{c.nombre}</td>
                   <td className="px-2 py-1 capitalize text-xs">{c.tipo}</td>
                   <td className="px-2 py-1 text-xs">{c.imputable ? "Sí" : "—"}</td>
+                  <td className="px-2 py-1 text-xs">{c.requiere_analitica ? "Obligatorio" : "—"}</td>
                   <td className="px-2 py-1 text-right">
                     <Button size="icon" variant="ghost" onClick={() => del.mutate(c.id)}>
                       <Trash2 className="w-4 h-4 text-destructive" />
@@ -156,7 +160,7 @@ function PlanCuentas() {
         <DialogContent>
           <DialogHeader><DialogTitle>Nueva cuenta</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div><Label>Código *</Label><Input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="Ej: 5.2.1.99" /></div>
+            <div><Label>Código *</Label><Input value={form.codigo} onChange={(e) => set("codigo", e.target.value)} placeholder="Ej: 421199" /></div>
             <div>
               <Label>Tipo</Label>
               <Select value={form.tipo} onValueChange={(v) => set("tipo", v as CuentaTipo)}>
