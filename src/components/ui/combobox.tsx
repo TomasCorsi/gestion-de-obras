@@ -75,7 +75,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50 max-h-[80vh]" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50 max-h-[80vh]" align="start" onEscapeKeyDown={(event) => event.stopPropagation()}>
         <Command className="bg-popover" shouldFilter={!allowCustom}>
           <CommandInput
             placeholder={searchPlaceholder}

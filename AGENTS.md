@@ -1,5 +1,5 @@
 # Architecture rules
-- Accounting entry forms reuse Combobox with shared resource option builders including number/code and name; search never changes the stored resource IDs or existing save rules.
+- Accounting entry forms reuse Combobox via a simple Select-compatible adapter and shared resource option builders including number/code and name; search never changes the stored resource IDs or existing save rules.
 - Suggested subcenters use full-name codes checked against the selected center and open the existing edit form before saving; this avoids first-word collisions without duplicating forms or bypassing database constraints.
 - Machine receipts use a header and ordered child lines, saved through a security-invoker transactional function; this prevents partial saves and keeps all machines grouped in editing and exports.
 - Keep a top-level error boundary and a visible startup loading state so rejected imports cannot leave the application empty.
