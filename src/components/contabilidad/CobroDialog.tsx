@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { esCuentaDisponibilidad } from "@/lib/planCuentas";
 import {
-  totalCobro, errorValores, esCheque, renglonesPorForma, diferenciaDeclarada, FORMAS_PAGO,
+  totalCobro, errorValores, esCheque, renglonesPorForma, FORMAS_PAGO,
   type ValorCobro, type FormaPago, type Moneda,
 } from "@/lib/cobroValores";
 import { useContabTerceros, useContabPlanCuentas, useContabComprobantes, useSaveCobroValores } from "@/hooks/useContabilidad";
@@ -42,8 +42,6 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [provisorio, setProvisorio] = useState("");
   const [tercero, setTercero] = useState("");
   const [forma, setForma] = useState<FormaPago>("cheque");
-  const [monedaDecl, setMonedaDecl] = useState<Moneda>("ARS");
-  const [declarado, setDeclarado] = useState<number>(0);
   const [concepto, setConcepto] = useState("");
   const [cbteId, setCbteId] = useState("");
   const [obra, setObra] = useState("");
@@ -60,14 +58,13 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
   const cambiarForma = (f: FormaPago) => {
     setForma(f);
     const vacios = valores.every((v) => !Number(v.importe_moneda));
-    if (vacios) setValores(renglonesPorForma(f, monedaDecl === "USD" ? valores[0]?.cotizacion ?? 1 : 1).map((v) => ({ ...v, moneda: monedaDecl })));
+    if (vacios) setValores(renglonesPorForma(f));
   };
   const setValor = (i: number, p: Partial<ValorCobro>) => setValores((vs) => vs.map((v, j) => (j === i ? { ...v, ...p } : v)));
   const agregar = () => setValores((vs) => [...vs, { medio: vs.at(-1)?.medio ?? "cheque", moneda: vs.at(-1)?.moneda ?? "ARS", importe_moneda: 0, cotizacion: vs.at(-1)?.cotizacion ?? 1 }]);
 
   const totalPesos = totalCobro(valores);
   const totalUsd = Math.round(valores.filter((v) => v.moneda === "USD").reduce((s, v) => s + Number(v.importe_moneda || 0), 0) * 100) / 100;
-  const dif = diferenciaDeclarada(valores, declarado, monedaDecl);
   const err = !tercero ? "Elegí el cliente" : errorValores(valores);
 
   const handleSave = async () => {
@@ -75,7 +72,7 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
     await save.mutateAsync({
       cabecera: {
         es_cobro: true, fecha, tercero_id: tercero, recibo_numero: numero, recibo_provisorio: provisorio,
-        concepto, moneda_declarada: monedaDecl, importe_declarado: declarado || "", comprobante_id: cbteId, obra_id: obra, maquinaria_id: maq,
+        concepto, moneda_declarada: "ARS", importe_declarado: "", comprobante_id: cbteId, obra_id: obra, maquinaria_id: maq,
       },
       valores: valores.map((v) => ({ ...v, cotizacion: v.moneda === "ARS" ? 1 : v.cotizacion })),
     });
@@ -127,12 +124,7 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
         </div>
 
         <Bloque titulo="Se recibe">
-          <div className="grid gap-3 md:grid-cols-[auto_180px_1fr] items-end">
-            <RadioGroup value={monedaDecl} onValueChange={(v) => setMonedaDecl(v as Moneda)} className="flex gap-4 pb-2">
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="ARS" /> Pesos</label>
-              <label className="flex items-center gap-2 text-sm"><RadioGroupItem value="USD" /> Dólares</label>
-            </RadioGroup>
-            <div><Label className="text-xs">La suma de {monedaDecl === "USD" ? "US$" : "$"}</Label><Input type="number" value={declarado || ""} onChange={(e) => setDeclarado(+e.target.value)} /></div>
+          <div className="grid gap-3 grid-cols-1">
             <div><Label className="text-xs">En concepto de</Label><Input value={concepto} onChange={(e) => setConcepto(e.target.value)} /></div>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
@@ -222,11 +214,6 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="flex flex-wrap items-center justify-end gap-6 text-sm">
           <span>Totales: <strong className="tabular-nums">{fmt(totalPesos)}</strong></span>
           <span>US$: <strong className="tabular-nums">{fmt(totalUsd, "USD")}</strong></span>
-          {dif != null && (
-            <span className={dif === 0 ? "text-muted-foreground" : "text-destructive"}>
-              {dif === 0 ? "Coincide con la suma recibida" : `Diferencia con la suma recibida: ${fmt(dif, monedaDecl)}`}
-            </span>
-          )}
         </div>
         {err && <p className="text-xs text-destructive text-right">{err}</p>}
 
