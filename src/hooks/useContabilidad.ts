@@ -568,3 +568,50 @@ export const useMayorCuenta = (cuentaId: string | null, desde: string, hasta: st
       return (data ?? []) as any[];
     },
   });
+
+// ============== COBROS CON VARIOS VALORES ==============
+export const useSaveCobroValores = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ cabecera, valores }: { cabecera: Record<string, any>; valores: any[] }) => {
+      const { data, error } = await (supabase as any).rpc("contab_guardar_cobro_valores", { p_cabecera: cabecera, p_valores: valores });
+      if (error) throw error;
+      return data as string;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["contab_pagos"] });
+      qc.invalidateQueries({ queryKey: ["contab_cheques"] });
+      qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
+      qc.invalidateQueries({ queryKey: ["contab_asientos"] });
+      toast.success("Cobro registrado");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+};
+
+export const useChequesRecibidos = () =>
+  useQuery({
+    queryKey: ["contab_cheques"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("contab_pago_valores")
+        .select("*, pago:contab_pagos!inner(fecha, es_cobro, tercero:contab_terceros(razon_social))")
+        .eq("medio", "cheque")
+        .eq("pago.es_cobro", true)
+        .order("cheque_fecha_pago", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+export const useUpdateChequeEstado = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, estado }: { id: string; estado: string }) => {
+      const { error } = await (supabase as any).from("contab_pago_valores").update({ cheque_estado: estado }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["contab_cheques"] }); toast.success("Estado actualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+};

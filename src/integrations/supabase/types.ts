@@ -1405,6 +1405,81 @@ export type Database = {
           },
         ]
       }
+      contab_pago_valores: {
+        Row: {
+          cheque_banco: string | null
+          cheque_estado: string
+          cheque_fecha_pago: string | null
+          cheque_librador: string | null
+          cheque_numero: string | null
+          cotizacion: number
+          created_at: string
+          cuenta_id: string | null
+          id: string
+          importe: number
+          importe_moneda: number
+          medio: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda: string
+          orden: number
+          pago_id: string
+          referencia: string | null
+          updated_at: string
+        }
+        Insert: {
+          cheque_banco?: string | null
+          cheque_estado?: string
+          cheque_fecha_pago?: string | null
+          cheque_librador?: string | null
+          cheque_numero?: string | null
+          cotizacion?: number
+          created_at?: string
+          cuenta_id?: string | null
+          id?: string
+          importe: number
+          importe_moneda: number
+          medio: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda?: string
+          orden?: number
+          pago_id: string
+          referencia?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cheque_banco?: string | null
+          cheque_estado?: string
+          cheque_fecha_pago?: string | null
+          cheque_librador?: string | null
+          cheque_numero?: string | null
+          cotizacion?: number
+          created_at?: string
+          cuenta_id?: string | null
+          id?: string
+          importe?: number
+          importe_moneda?: number
+          medio?: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda?: string
+          orden?: number
+          pago_id?: string
+          referencia?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_pago_valores_cuenta_id_fkey"
+            columns: ["cuenta_id"]
+            isOneToOne: false
+            referencedRelation: "contab_plan_cuentas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_pago_valores_pago_id_fkey"
+            columns: ["pago_id"]
+            isOneToOne: false
+            referencedRelation: "contab_pagos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contab_pagos: {
         Row: {
           asiento_id: string | null
@@ -5439,6 +5514,10 @@ export type Database = {
       }
       contab_generar_asiento_pago: {
         Args: { _pago_id: string }
+        Returns: string
+      }
+      contab_guardar_cobro_valores: {
+        Args: { p_cabecera: Json; p_valores: Json }
         Returns: string
       }
       contab_normalizar_repartos: {
