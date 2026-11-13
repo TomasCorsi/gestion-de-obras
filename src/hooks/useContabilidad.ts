@@ -16,7 +16,7 @@ export type CbteEstado = "borrador" | "confirmado" | "anulado" | "pagado" | "par
 export type CondIva = "RI" | "MT" | "EX" | "CF" | "NR";
 export type CuentaTipo = "activo" | "pasivo" | "patrimonio" | "ingreso" | "egreso" | "resultado";
 export type TerceroTipo = "cliente" | "proveedor" | "ambos";
-export type PagoMedio = "efectivo" | "transferencia" | "cheque" | "tarjeta" | "deposito" | "otro";
+export type PagoMedio = "echeck" | "efectivo" | "transferencia" | "cheque" | "tarjeta" | "deposito" | "otro";
 
 export interface ContabEmpresa {
   id: string;
@@ -596,7 +596,7 @@ export const useChequesRecibidos = () =>
       const { data, error } = await (supabase as any)
         .from("contab_pago_valores")
         .select("*, pago:contab_pagos!inner(fecha, es_cobro, tercero:contab_terceros(razon_social))")
-        .eq("medio", "cheque")
+        .in("medio", ["cheque", "echeck"])
         .eq("pago.es_cobro", true)
         .order("cheque_fecha_pago", { ascending: true });
       if (error) throw error;

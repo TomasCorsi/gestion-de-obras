@@ -1408,6 +1408,7 @@ export type Database = {
       contab_pago_valores: {
         Row: {
           cheque_banco: string | null
+          cheque_cuit: string | null
           cheque_estado: string
           cheque_fecha_pago: string | null
           cheque_librador: string | null
@@ -1427,6 +1428,7 @@ export type Database = {
         }
         Insert: {
           cheque_banco?: string | null
+          cheque_cuit?: string | null
           cheque_estado?: string
           cheque_fecha_pago?: string | null
           cheque_librador?: string | null
@@ -1446,6 +1448,7 @@ export type Database = {
         }
         Update: {
           cheque_banco?: string | null
+          cheque_cuit?: string | null
           cheque_estado?: string
           cheque_fecha_pago?: string | null
           cheque_librador?: string | null
@@ -1484,17 +1487,22 @@ export type Database = {
         Row: {
           asiento_id: string | null
           comprobante_id: string | null
+          concepto: string | null
           created_at: string
           created_by: string | null
           cuenta_id: string | null
           es_cobro: boolean
           fecha: string
           id: string
+          importe_declarado: number | null
           maquinaria_id: string | null
           medio: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda_declarada: string
           monto: number
           obra_id: string | null
           observaciones: string | null
+          recibo_numero: string | null
+          recibo_provisorio: string | null
           referencia: string | null
           tercero_id: string | null
           updated_at: string
@@ -1502,17 +1510,22 @@ export type Database = {
         Insert: {
           asiento_id?: string | null
           comprobante_id?: string | null
+          concepto?: string | null
           created_at?: string
           created_by?: string | null
           cuenta_id?: string | null
           es_cobro?: boolean
           fecha: string
           id?: string
+          importe_declarado?: number | null
           maquinaria_id?: string | null
           medio?: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda_declarada?: string
           monto?: number
           obra_id?: string | null
           observaciones?: string | null
+          recibo_numero?: string | null
+          recibo_provisorio?: string | null
           referencia?: string | null
           tercero_id?: string | null
           updated_at?: string
@@ -1520,17 +1533,22 @@ export type Database = {
         Update: {
           asiento_id?: string | null
           comprobante_id?: string | null
+          concepto?: string | null
           created_at?: string
           created_by?: string | null
           cuenta_id?: string | null
           es_cobro?: boolean
           fecha?: string
           id?: string
+          importe_declarado?: number | null
           maquinaria_id?: string | null
           medio?: Database["public"]["Enums"]["contab_pago_medio"]
+          moneda_declarada?: string
           monto?: number
           obra_id?: string | null
           observaciones?: string | null
+          recibo_numero?: string | null
+          recibo_provisorio?: string | null
           referencia?: string | null
           tercero_id?: string | null
           updated_at?: string
@@ -5656,6 +5674,7 @@ export type Database = {
         | "tarjeta"
         | "deposito"
         | "otro"
+        | "echeck"
       contab_tercero_tipo: "cliente" | "proveedor" | "ambos"
       cuota_estado: "pendiente" | "aplicada"
       estado_certificado: "borrador" | "emitido" | "cobrado"
@@ -5916,6 +5935,7 @@ export const Constants = {
         "tarjeta",
         "deposito",
         "otro",
+        "echeck",
       ],
       contab_tercero_tipo: ["cliente", "proveedor", "ambos"],
       cuota_estado: ["pendiente", "aplicada"],
