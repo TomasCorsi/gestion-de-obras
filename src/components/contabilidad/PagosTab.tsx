@@ -2,6 +2,7 @@ import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { esCuentaDisponibilidad } from "@/lib/planCuentas";
 import { totalCobro, importeEnPesos, errorValores, type ValorCobro } from "@/lib/cobroValores";
 import { useMemo, useState } from "react";
+import { CobroDialog } from "./CobroDialog";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -76,7 +77,7 @@ export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos";
                     <td className="px-3 py-2 text-xs font-mono">
                       {p.comprobante ? `${p.comprobante.tipo} ${String(p.comprobante.punto_venta).padStart(5,"0")}-${String(p.comprobante.numero).padStart(8,"0")}` : "—"}
                     </td>
-                    <td className="px-3 py-2 capitalize">{p.medio === "otro" && esCobro ? "varios" : p.medio}</td>
+                    <td className="px-3 py-2 capitalize">{p.medio === "otro" && esCobro ? "varios" : p.medio === "echeck" ? "e-check" : p.medio}</td>
                     <td className="px-3 py-2 text-xs">{p.referencia ?? "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(p.monto)}</td>
                     <td className="px-3 py-2 text-right">
@@ -92,7 +93,7 @@ export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos";
         </CardContent>
       </Card>}
 
-      {open && <PagoDialog open={open} onClose={() => setOpen(false)} esCobro={esCobro} />}
+      {open && (esCobro ? <CobroDialog open={open} onClose={() => setOpen(false)} /> : <PagoDialog open={open} onClose={() => setOpen(false)} esCobro={esCobro} />)}
     </div>
   );
 }
@@ -365,12 +366,12 @@ function ChequesRecibidos() {
           <table className="w-full text-sm">
             <thead className="bg-muted/50 text-left">
               <tr>
-                <th className="px-3 py-2">Fecha de pago</th><th className="px-3 py-2">Cliente</th><th className="px-3 py-2">Nº</th>
+                <th className="px-3 py-2">Fecha de pago</th><th className="px-3 py-2">Cliente</th><th className="px-3 py-2">Nº</th><th className="px-3 py-2">CUIT</th>
                 <th className="px-3 py-2">Banco</th><th className="px-3 py-2">Librador</th><th className="px-3 py-2 text-right">Importe</th><th className="px-3 py-2">Estado</th>
               </tr>
             </thead>
             <tbody>
-              {data.length === 0 && <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">Sin cheques recibidos</td></tr>}
+              {data.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin cheques recibidos</td></tr>}
               {data.map((c) => (
                 <tr key={c.id} className="border-t">
                   <td className={`px-3 py-2 ${c.cheque_estado === "en_cartera" && c.cheque_fecha_pago && c.cheque_fecha_pago <= hoy ? "text-destructive font-medium" : ""}`}>
@@ -378,6 +379,7 @@ function ChequesRecibidos() {
                   </td>
                   <td className="px-3 py-2">{c.pago?.tercero?.razon_social ?? "—"}</td>
                   <td className="px-3 py-2 font-mono text-xs">{c.cheque_numero ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">{c.cheque_cuit ?? "—"}</td>
                   <td className="px-3 py-2">{c.cheque_banco ?? "—"}</td>
                   <td className="px-3 py-2">{c.cheque_librador ?? "—"}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{fmt(c.importe)}</td>
