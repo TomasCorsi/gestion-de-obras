@@ -232,6 +232,13 @@
       "when": 1793800836835,
       "tag": "0032_remitos_list_view_liquidado",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1794590024988,
+      "tag": "0033_plan_cuentas_contad_mon",
+      "breakpoints": true
     }
   ]
 }
