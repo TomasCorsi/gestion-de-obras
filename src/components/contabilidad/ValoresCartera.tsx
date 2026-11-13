@@ -113,7 +113,7 @@ export function ValoresCartera() {
               <div><Label className="text-xs">Hasta</Label><Input type="date" className="h-8" value={hasta} onChange={(e) => setHasta(e.target.value)} /></div>
             </div>
           </fieldset>
-          <Opciones titulo="Tipo de valores" value={tipo} onChange={setTipo} items={[["fisicos", "Val. Físicos"], ["echeqs", "ECheqs"], ["ambos", "Ambos"]]} />
+          <Opciones<TipoValor> titulo="Tipo de valores" value={tipo} onChange={setTipo} items={[["fisicos", "Val. Físicos"], ["echeqs", "ECheqs"], ["ambos", "Ambos"]]} />
           <fieldset className="rounded-md border p-2 min-w-[240px]">
             <legend className="px-1 text-xs font-medium text-muted-foreground">De un cliente</legend>
             <Select value={cliente || "__todos"} onValueChange={(v) => setCliente(v === "__todos" ? "" : v)}>
@@ -124,7 +124,7 @@ export function ValoresCartera() {
               </SelectContent>
             </Select>
           </fieldset>
-          <Opciones titulo="Valores a incluir" value={incluir} onChange={setIncluir} items={[["todos", "Todos"], ["cartera", "En Cartera"], ["endosados", "Endosados"]]} />
+          <Opciones<Incluir> titulo="Valores a incluir" value={incluir} onChange={setIncluir} items={[["todos", "Todos"], ["cartera", "En Cartera"], ["endosados", "Endosados"]]} />
           <Button variant="outline" onClick={exportar} disabled={rows.length === 0}><FileSpreadsheet className="w-4 h-4 mr-2" />Exportar a Excel</Button>
         </div>
         <div className="rounded-md border">
