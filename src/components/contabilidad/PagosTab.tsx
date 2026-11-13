@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useContabPagos, useSavePago, useDeletePago, useContabTerceros, useContabPlanCuentas, useContabComprobantes,
-  useSaveCobroValores, useChequesRecibidos, useUpdateChequeEstado,
+  useSaveCobroValores,
   type PagoMedio,
 } from "@/hooks/useContabilidad";
 import { useObras } from "@/hooks/useObras";
@@ -274,7 +274,6 @@ function PagoDialog({ open, onClose, esCobro }: { open: boolean; onClose: () => 
   );
 }
 
-const ESTADOS_CHEQUE: Record<string, string> = { en_cartera: "En cartera", depositado: "Depositado", entregado: "Entregado a proveedor", rechazado: "Rechazado" };
 
 function ValoresEditor({ valores, setValor, onAgregar, onQuitar, cuentasCaja, total, saldoCbte, error }: {
   valores: ValorCobro[]; setValor: (i: number, p: Partial<ValorCobro>) => void; onAgregar: () => void; onQuitar: (i: number) => void;
