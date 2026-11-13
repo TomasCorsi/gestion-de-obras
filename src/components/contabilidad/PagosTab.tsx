@@ -1,3 +1,4 @@
+import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { esCuentaDisponibilidad } from "@/lib/planCuentas";
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/searchable-select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useContabPagos, useSavePago, useDeletePago, useContabTerceros, useContabPlanCuentas, useContabComprobantes,
@@ -199,7 +200,7 @@ function PagoDialog({ open, onClose, esCobro }: { open: boolean; onClose: () => 
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_">—</SelectItem>
-                {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                {obras.map((o) => <SelectItem key={o.id} value={o.id}>{opcionObra(o).label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -209,7 +210,7 @@ function PagoDialog({ open, onClose, esCobro }: { open: boolean; onClose: () => 
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_">—</SelectItem>
-                {maquinas.map((m: any) => <SelectItem key={m.id} value={m.id}>{m.codigo || m.nombre}</SelectItem>)}
+                {maquinas.map((m: any) => <SelectItem key={m.id} value={m.id}>{opcionMaquina(m).label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

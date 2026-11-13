@@ -1,3 +1,4 @@
+import { Combobox } from "@/components/ui/combobox";
 import { useState, type ReactNode } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
@@ -419,18 +420,11 @@ export default function Clientes({ embebido = false }: { embebido?: boolean } = 
             {isEditing && (
               <div className="space-y-2">
                 <Label htmlFor="activo">Estado</Label>
-                <Select
+                <Combobox
                   value={formData.activo === false ? "inactivo" : "activo"}
                   onValueChange={(value) => setFormData({ ...formData, activo: value === "activo" })}
-                >
-                  <SelectTrigger className="bg-muted border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
+                  options={[{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }]}
+                />
               </div>
             )}
             <div className="md:col-span-2 space-y-2">

@@ -1,3 +1,4 @@
+import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { Combobox } from "@/components/ui/combobox";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
 import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
@@ -18,7 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/searchable-select";
 import {
   useContabComprobanteItems, useSaveComprobante, useContabTerceros, useContabPlanCuentas,
   type ContabComprobante, type ContabCbteItem, type CbteTipo,
@@ -349,7 +350,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="_">— sin obra —</SelectItem>
-                {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                {obras.map((o) => <SelectItem key={o.id} value={o.id}>{opcionObra(o).label}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -360,7 +361,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
               <SelectContent>
                 <SelectItem value="_">— sin máquina —</SelectItem>
                 {maquinas.map((m: any) => (
-                  <SelectItem key={m.id} value={m.id}>{m.codigo || m.nombre}</SelectItem>
+                  <SelectItem key={m.id} value={m.id}>{opcionMaquina(m).label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -435,7 +436,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         <SelectTrigger className="h-7"><SelectValue placeholder="—" /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="_">—</SelectItem>
-                          {obras.map((o) => <SelectItem key={o.id} value={o.id}>{o.nombre}</SelectItem>)}
+                          {obras.map((o) => <SelectItem key={o.id} value={o.id}>{opcionObra(o).label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </td>
@@ -445,7 +446,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                         <SelectContent>
                           <SelectItem value="_">—</SelectItem>
                           {maquinas.map((m: any) => (
-                            <SelectItem key={m.id} value={m.id}>{m.codigo || m.nombre}</SelectItem>
+                            <SelectItem key={m.id} value={m.id}>{opcionMaquina(m).label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
