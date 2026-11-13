@@ -214,9 +214,6 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="flex flex-wrap items-center justify-end gap-6 text-sm">
           <span>Totales: <strong className="tabular-nums">{fmt(totalPesos)}</strong></span>
           <span>US$: <strong className="tabular-nums">{fmt(totalUsd, "USD")}</strong></span>
-`}
-            </span>
-          )}
         </div>
         {err && <p className="text-xs text-destructive text-right">{err}</p>}
 
