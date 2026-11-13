@@ -18,7 +18,7 @@ import { ProveedoresMaestro } from "@/pages/Proveedores";
 import Clientes from "@/pages/Clientes";
 import { LibrosTab } from "@/components/contabilidad/LibrosTab";
 import { ContabLauncher, Tile, NavIcon, ModuloTile } from "@/components/contabilidad/ContabLauncher";
-import { agregarReciente, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
+import { agregarReciente, iconoHoja, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
 import { Fragment } from "react";
 
 /** Permisos consultados en el servidor con las funciones contables existentes. */
