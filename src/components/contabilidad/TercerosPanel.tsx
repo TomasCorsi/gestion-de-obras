@@ -1,3 +1,4 @@
+import { Select as FilterSelect, SelectContent as FilterContent, SelectItem as FilterItem, SelectTrigger as FilterTrigger, SelectValue as FilterValue } from "@/components/ui/select";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/searchable-select";
 import { useTercerosEstado, useFicha, useGuardarFicha, useVincularFicha, type TerceroEstado } from "@/hooks/useTercerosFiscal";
 import { useContabPlanCuentas } from "@/hooks/useContabilidad";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
@@ -31,14 +32,14 @@ export function TercerosPanel() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <Input placeholder="Buscar nombre o CUIT…" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-xs" />
-        <Select value={rol} onValueChange={setRol}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="todos">Clientes y proveedores</SelectItem><SelectItem value="cliente">Clientes</SelectItem><SelectItem value="proveedor">Proveedores</SelectItem></SelectContent>
-        </Select>
-        <Select value={estado} onValueChange={setEstado}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent><SelectItem value="todos">Todos</SelectItem><SelectItem value="con">Con ficha</SelectItem><SelectItem value="sin">Sin ficha</SelectItem></SelectContent>
-        </Select>
+        <FilterSelect value={rol} onValueChange={setRol}>
+          <FilterTrigger className="w-40"><FilterValue /></FilterTrigger>
+          <FilterContent><FilterItem value="todos">Clientes y proveedores</FilterItem><FilterItem value="cliente">Clientes</FilterItem><FilterItem value="proveedor">Proveedores</FilterItem></FilterContent>
+        </FilterSelect>
+        <FilterSelect value={estado} onValueChange={setEstado}>
+          <FilterTrigger className="w-40"><FilterValue /></FilterTrigger>
+          <FilterContent><FilterItem value="todos">Todos</FilterItem><FilterItem value="con">Con ficha</FilterItem><FilterItem value="sin">Sin ficha</FilterItem></FilterContent>
+        </FilterSelect>
         <p className="text-xs text-muted-foreground">{sinFicha} sin ficha fiscal. Los datos de contacto se editan en Clientes y Proveedores.</p>
       </div>
       <Card><CardContent className="p-0 overflow-x-auto">

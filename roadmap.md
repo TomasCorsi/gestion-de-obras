@@ -1,4 +1,7 @@
 # Pantalla en blanco
+## Buscadores de carga de Contabilidad
+- [x] Desplegables buscables en todos los formularios contables y pantallas compartidas; obras y máquinas por número o nombre.
+- [x] 123 pruebas aprobadas; búsqueda y selección de recursos verificadas con sesión real, además de comprobantes, pagos/cobros, asientos, cuentas, centros, órdenes, gastos y empresa. No se guardaron movimientos de prueba.
 ## Revisión de avisos de monitoreo
 - [x] Fotos: almacenamiento privado existente y políticas de carga/lectura verificados; aviso descartado.
 - [x] Subcentros sugeridos: códigos sin colisiones y revisión antes de guardar; 37 pruebas aprobadas, compilación correcta e interfaz con sesión real verificada sin guardar datos de prueba.

@@ -3,7 +3,7 @@ import { Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/searchable-select";
 import { useDocsOperativos, useAddVinculo, useAnularVinculo, useSaldosVinculados, type Vinculo } from "@/hooks/useContab1c";
 import { DOC_LABEL, docTiposPara, admiteFacturable, docFacturable, saldoDocumento, type DocTipo } from "@/lib/contab1c";
 

@@ -1,10 +1,11 @@
+import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/searchable-select";
 import { useCentros, useSubcentros, useImputacionesAsiento, useAddImputacion, useDeleteImputacion } from "@/hooks/useCentrosCosto";
 import { useObras } from "@/hooks/useObras";
 import { saldoSinImputar, excedeLinea } from "@/lib/analitica";
@@ -16,7 +17,7 @@ export function ImputacionesAsiento({ lineas, editable }: { lineas: any[]; edita
   const { data: imps = [] } = useImputacionesAsiento(ids);
   const { data: centros = [] } = useCentros();
   const { data: subs = [] } = useSubcentros();
-  const { data: obras = [] } = useObras() as any;
+  const { obras = [] } = useObras();
   const add = useAddImputacion();
   const del = useDeleteImputacion();
   const [form, setForm] = useState<Record<string, any>>({});
@@ -25,7 +26,7 @@ export function ImputacionesAsiento({ lineas, editable }: { lineas: any[]; edita
     const c = centros.find((x) => x.id === s.centro_id);
     return { value: s.id, label: `${c?.codigo ?? ""} › ${s.codigo} · ${s.nombre}` };
   });
-  const obraOpts = (obras as any[]).map((o) => ({ value: o.id, label: o.nombre }));
+  const obraOpts = (obras as any[]).map((o) => opcionObra(o));
 
   if (lineas.length === 0) return null;
   return (

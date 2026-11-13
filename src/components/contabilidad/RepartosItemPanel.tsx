@@ -1,9 +1,10 @@
+import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/searchable-select";
 import { useCentros, useSubcentros } from "@/hooks/useCentrosCosto";
 import { useSaveReparto, useDeleteReparto, type Reparto } from "@/hooks/useContab1c";
 import { saldoItem } from "@/lib/contab1c";
@@ -13,7 +14,7 @@ const num = (s: string) => Number(String(s).replace(",", "."));
 
 export function RepartosItemPanel({ itemId, neto, repartos, editable, fecha, obras, maquinas }: {
   itemId: string; neto: number; repartos: Reparto[]; editable: boolean; fecha: string;
-  obras: { id: string; nombre: string }[]; maquinas: any[];
+  obras: { id: string; nombre: string; numero?: string | null }[]; maquinas: any[];
 }) {
   const { data: centros = [] } = useCentros();
   const { data: subs = [] } = useSubcentros();
@@ -82,12 +83,12 @@ export function RepartosItemPanel({ itemId, neto, repartos, editable, fecha, obr
             <div className="col-span-2"><Input aria-label="Valor del reparto" inputMode="decimal" placeholder={f.modo === "porcentaje" ? "%" : "$"} value={f.valor} onChange={(e) => setF({ ...f, valor: e.target.value })} /></div>
             <div className="col-span-2">
               {subSel?.obra_id ? <p className="text-[11px] text-muted-foreground">Obra del subcentro</p> : (
-                <Combobox options={obras.map((o) => ({ value: o.id, label: o.nombre }))} value={f.obra} onValueChange={(v) => setF({ ...f, obra: v })} placeholder="Obra (opc.)" searchPlaceholder="Buscar…" />
+                <Combobox options={obras.map((o) => opcionObra(o))} value={f.obra} onValueChange={(v) => setF({ ...f, obra: v })} placeholder="Obra (opc.)" searchPlaceholder="Buscar…" />
               )}
             </div>
             <div className="col-span-2">
               {subSel?.maquinaria_id ? <p className="text-[11px] text-muted-foreground">Máquina del subcentro</p> : (
-                <Combobox options={maquinas.map((m: any) => ({ value: m.id, label: m.codigo || m.nombre }))} value={f.maq} onValueChange={(v) => setF({ ...f, maq: v })} placeholder="Máquina (opc.)" searchPlaceholder="Buscar…" />
+                <Combobox options={maquinas.map((m: any) => opcionMaquina(m))} value={f.maq} onValueChange={(v) => setF({ ...f, maq: v })} placeholder="Máquina (opc.)" searchPlaceholder="Buscar…" />
               )}
             </div>
             <div className="col-span-10"><Input placeholder="Nota (opcional)" value={f.nota} onChange={(e) => setF({ ...f, nota: e.target.value })} /></div>

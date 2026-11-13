@@ -32,6 +32,7 @@ interface ComboboxProps {
   className?: string;
   allowCustom?: boolean;
   customLabel?: string;
+  disabled?: boolean;
 }
 
 export function Combobox({
@@ -44,6 +45,7 @@ export function Combobox({
   className,
   allowCustom = false,
   customLabel = "Agregar",
+  disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -59,6 +61,8 @@ export function Combobox({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={disabled}
+          type="button"
           role="combobox"
           aria-expanded={open}
           className={cn(
@@ -71,7 +75,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50 max-h-[80vh]" align="start">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0 bg-popover border-border z-50 max-h-[80vh]" align="start" onEscapeKeyDown={(event) => event.stopPropagation()}>
         <Command className="bg-popover" shouldFilter={!allowCustom}>
           <CommandInput
             placeholder={searchPlaceholder}

@@ -1,3 +1,4 @@
+import { opcionObra } from "@/lib/contabSelectorOptions";
 import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -492,7 +493,7 @@ export function GastosGeneralesTab() {
                   <SelectItem value="none">Sin asignar</SelectItem>
                   {activeObras.map((o) => (
                     <SelectItem key={o.id} value={o.id}>
-                      {o.nombre}
+                      {opcionObra(o).label}
                     </SelectItem>
                   ))}
                 </SelectContent>

@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   useContabEmpresa, useSaveContabEmpresa, useContabPlanCuentas, useSaveCuenta, useDeleteCuenta,
