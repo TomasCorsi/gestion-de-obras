@@ -32,6 +32,7 @@ interface ComboboxProps {
   className?: string;
   allowCustom?: boolean;
   customLabel?: string;
+  disabled?: boolean;
 }
 
 export function Combobox({
@@ -44,6 +45,7 @@ export function Combobox({
   className,
   allowCustom = false,
   customLabel = "Agregar",
+  disabled = false,
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -59,6 +61,8 @@ export function Combobox({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={disabled}
+          type="button"
           role="combobox"
           aria-expanded={open}
           className={cn(
