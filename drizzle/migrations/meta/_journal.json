@@ -253,6 +253,13 @@
       "when": 1794593556606,
       "tag": "0035_contab_pago_valores",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1794594327021,
+      "tag": "0036_cobranzas_campos_contad",
+      "breakpoints": true
     }
   ]
 }
