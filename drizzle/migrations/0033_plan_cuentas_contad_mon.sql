@@ -1,0 +1,2 @@
+ALTER TABLE public.contab_plan_cuentas ADD COLUMN IF NOT EXISTS contad_mon text;
+COMMENT ON COLUMN public.contab_plan_cuentas.contad_mon IS 'Valor original de la columna Mon. (S/N/X) del plan CONTAD; significado a confirmar por el contador';

@@ -1,3 +1,4 @@
+import { esCuentaDisponibilidad } from "@/lib/planCuentas";
 import { useMemo, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -117,7 +118,7 @@ function PagoDialog({ open, onClose, esCobro }: { open: boolean; onClose: () => 
     [comprobantes, tercero]
   );
 
-  const cuentasCaja = useMemo(() => cuentas.filter((c) => c.imputable && (c.codigo.startsWith("1.1.1"))), [cuentas]);
+  const cuentasCaja = useMemo(() => cuentas.filter((c) => c.imputable && c.activa && esCuentaDisponibilidad(c.codigo)), [cuentas]);
 
   const handleSave = async () => {
     if (!tercero || monto <= 0) return;

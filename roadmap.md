@@ -48,3 +48,4 @@
 - [ ] Advertencia "Modo paralelo" en Contabilidad y en exportaciones.
 - [ ] Datos fiscales de empresa y plan de cuentas validado. Bloqueo: datos del contador.
 - [ ] Fases futuras: cuentas corrientes, Libro Banco, retenciones/percepciones, circuito NC, cierre de ejercicio, apertura 01/08/2027, exportaciones legales.
+- [ ] Confirmar con el contador: significado de columna Mon. y cuentas automáticas compras (421190) y percepciones (114103)

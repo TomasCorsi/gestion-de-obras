@@ -1555,6 +1555,7 @@ export type Database = {
         Row: {
           activa: boolean
           codigo: string
+          contad_mon: string | null
           created_at: string
           descripcion: string | null
           id: string
@@ -1568,6 +1569,7 @@ export type Database = {
         Insert: {
           activa?: boolean
           codigo: string
+          contad_mon?: string | null
           created_at?: string
           descripcion?: string | null
           id?: string
@@ -1581,6 +1583,7 @@ export type Database = {
         Update: {
           activa?: boolean
           codigo?: string
+          contad_mon?: string | null
           created_at?: string
           descripcion?: string | null
           id?: string
