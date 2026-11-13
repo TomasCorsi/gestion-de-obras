@@ -115,7 +115,7 @@ function PagoDialog({ open, onClose, esCobro }: { open: boolean; onClose: () => 
   const [maq, setMaq] = useState("");
   const [cbteId, setCbteId] = useState("");
   const saveValores = useSaveCobroValores();
-  const [valores, setValores] = useState<ValorCobro[]>([]);
+  const [valores, setValores] = useState<ValorCobro[]>(esCobro ? [{ medio: "transferencia", moneda: "ARS", importe_moneda: 0, cotizacion: 1 }] : []);
   const nuevoValor = (): ValorCobro => ({ medio: valores.at(-1)?.medio ?? "cheque", moneda: "ARS", importe_moneda: 0, cotizacion: valores.at(-1)?.cotizacion ?? 1 });
   const multiple = esCobro && valores.length > 0;
   const totalMultiple = totalCobro(valores);
@@ -281,7 +281,7 @@ function ValoresEditor({ valores, setValor, onAgregar, onQuitar, cuentasCaja, to
   const dif = saldoCbte != null ? Math.round((saldoCbte - total) * 100) / 100 : null;
   return (
     <div className="col-span-2 space-y-2">
-      <Label>Valores recibidos</Label>
+      <Label>Valores recibidos <span className="font-normal text-muted-foreground">— sumá un renglón por cada cheque o por la parte en dólares</span></Label>
       {valores.map((v, i) => (
         <div key={i} className="rounded-md border p-2 grid grid-cols-2 md:grid-cols-4 gap-2 items-end">
           <div>
