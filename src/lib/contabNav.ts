@@ -11,7 +11,7 @@ export interface Destino {
   ivaTipo?: "ventas" | "compras";
   abrirAlta?: boolean;
   /** Estado inicial de una pantalla compartida (p. ej. Listado de Asientos = solo consulta). */
-  modo?: "listado" | "cierre";
+  modo?: "listado" | "cierre" | "cartera" | "buscar";
 }
 
 export interface NavHoja { id: string; nombre: string; descripcion?: string; icono?: string; destino?: Destino; permiso?: Permiso; }
@@ -19,7 +19,7 @@ export interface NavModulo { id: string; nombre: string; descripcion: string; ic
 
 export const PANTALLAS: Pantalla[] = ["compras", "ventas", "pagos", "asientos", "periodos", "libros", "reportes", "config", "ordenes", "gastos", "proveedores", "clientes"];
 export const SUBTABS: Partial<Record<Pantalla, string[]>> = {
-  pagos: ["cobros", "pagos"], libros: ["diario", "mayor", "balance"],
+  pagos: ["cobros", "pagos", "cheques"], libros: ["diario", "mayor", "balance"],
   reportes: ["iva", "obras", "maquinas"], config: ["empresa", "plan", "terceros", "centros", "subcentros"],
 };
 
@@ -40,7 +40,8 @@ export const NAV: NavModulo[] = [
   ] },
   { id: "ingresos", nombre: "Ingresos", icono: "ArrowDownLeft", descripcion: "Recibos y cobranzas efectuadas", hijos: [
     { id: "recibo", nombre: "Recibos de Cobranzas", descripcion: "Registrar una nueva cobranza", destino: { pantalla: "pagos", subtab: "cobros", abrirAlta: true } },
-    { id: "cobranzas", nombre: "Cobranzas Efectuadas", destino: { pantalla: "pagos", subtab: "cobros" } },
+    { id: "valores-cartera", nombre: "Valores en Cartera", descripcion: "Cheques y e-cheqs recibidos", destino: { pantalla: "pagos", subtab: "cheques", modo: "cartera" } },
+    { id: "buscar-valores", nombre: "Buscar Valores en Cartera", descripcion: "Ubicar un cheque y su origen", destino: { pantalla: "pagos", subtab: "cheques", modo: "buscar" } },
   ] },
   { id: "proveedores", nombre: "Proveedores", icono: "Truck", descripcion: "Códigos de proveedores, cuentas corrientes y deuda", hijos: [
     { id: "maestro", nombre: "Códigos de Proveedores", descripcion: "Datos de los proveedores", destino: { pantalla: "proveedores" }, permiso: "admin" },
@@ -109,7 +110,8 @@ export const ALIAS: Record<string, [string, string?]> = {
   "proveedores/ordenes-pago": ["egresos", "orden-pago"],
   "proveedores/comprobantes": ["compras", "comprobantes"],
   "proveedores/fichas": ["otras", "fichas"],
-  "clientes/cobranzas": ["ingresos", "cobranzas"],
+  "clientes/cobranzas": ["ingresos"],
+  "ingresos/cobranzas": ["ingresos"],
   "clientes/comprobantes": ["ventas"],
   "clientes/fichas": ["otras", "fichas"],
   "egresos/retenciones": ["impuestos", "ret-perc"],
@@ -198,7 +200,7 @@ export function recientesValidos(lista: unknown, p: Permisos): Reciente[] {
 
 const ICONOS_HOJA: Record<string, string> = {
   comprobantes: "FileText", ordenes: "ClipboardList", gastos: "Wallet", "orden-pago": "Send", pagos: "Banknote",
-  recibo: "ReceiptText", cobranzas: "HandCoins", maestro: "Contact", "cta-cte": "ScrollText", totales: "Sigma",
+  recibo: "ReceiptText", cobranzas: "HandCoins", "valores-cartera": "Wallet", "buscar-valores": "SearchCheck", maestro: "Contact", "cta-cte": "ScrollText", totales: "Sigma",
   "mov-conceptos": "ListTree", "totales-vto": "CalendarClock", "deuda-vencida": "AlertTriangle", "agenda-pagos": "CalendarDays",
   informe: "FileBarChart", pendientes: "Hourglass", asientos: "NotebookPen", mayor: "BookMarked", sumas: "Scale",
   plan: "ListTree", listado: "List", diario: "BookText", ejercicios: "Calendar", banco: "Landmark", "cierre-mes": "CalendarCheck",

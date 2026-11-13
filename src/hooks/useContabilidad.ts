@@ -593,14 +593,20 @@ export const useChequesRecibidos = () =>
   useQuery({
     queryKey: ["contab_cheques"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("contab_pago_valores")
-        .select("*, pago:contab_pagos!inner(fecha, es_cobro, tercero:contab_terceros(razon_social))")
-        .in("medio", ["cheque", "echeck"])
-        .eq("pago.es_cobro", true)
-        .order("cheque_fecha_pago", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
+      const out: any[] = [];
+      for (let desde = 0; ; desde += 1000) {
+        const { data, error } = await (supabase as any)
+          .from("contab_pago_valores")
+          .select("*, pago:contab_pagos!inner(fecha, es_cobro, recibo_numero, tercero_id, tercero:contab_terceros(razon_social, cuit, doc_numero, domicilio, localidad, provincia), asiento:contab_asientos!contab_pagos_asiento_id_fkey(numero))")
+          .in("medio", ["cheque", "echeck"])
+          .eq("pago.es_cobro", true)
+          .order("cheque_fecha_pago", { ascending: true })
+          .range(desde, desde + 999);
+        if (error) throw error;
+        out.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      return out;
     },
   });
 

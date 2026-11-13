@@ -151,7 +151,7 @@ describe("mapa CONTAD: una única ubicación principal por función", () => {
       ["banco", null, "contable", "banco"], ["centros", null, "otras", "centros"], ["config", null, "otras", undefined],
       ["config", "plan", "contable", "plan"], ["config", "empresa", "otras", "empresa"], ["config", "fichas", "otras", "fichas"],
       ["proveedores", "ordenes-pago", "egresos", "orden-pago"], ["proveedores", "fichas", "otras", "fichas"],
-      ["clientes", "cobranzas", "ingresos", "cobranzas"], ["clientes", "comprobantes", "ventas", undefined],
+      ["clientes", "cobranzas", "ingresos", undefined], ["clientes", "comprobantes", "ventas", undefined],
       ["egresos", "retenciones", "impuestos", "ret-perc"],
     ];
     for (const [m, s, m2, s2] of casos) {

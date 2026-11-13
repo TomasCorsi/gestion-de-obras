@@ -3,6 +3,7 @@ import { esCuentaDisponibilidad } from "@/lib/planCuentas";
 import { totalCobro, importeEnPesos, errorValores, type ValorCobro } from "@/lib/cobroValores";
 import { useMemo, useState } from "react";
 import { CobroDialog } from "./CobroDialog";
+import { ValoresCartera, BuscarValores } from "./ValoresCartera";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -28,7 +29,7 @@ const MEDIOS: PagoMedio[] = ["efectivo", "transferencia", "cheque", "tarjeta", "
 const fmt = (n: number) => new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS" }).format(Number(n || 0));
 const fmtDate = (s: string) => { const [y,m,d]=s.split("-"); return `${d}/${m}/${y}`; };
 
-export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos"; abrirAlta?: boolean } = {}) {
+export function PagosTab({ inicial, abrirAlta, modoValores = "cartera" }: { inicial?: "cobros" | "pagos" | "cheques"; abrirAlta?: boolean; modoValores?: "cartera" | "buscar" } = {}) {
   const [tab, setTab] = useState<"cobros" | "pagos" | "cheques">(inicial ?? "cobros");
   const esCobro = tab === "cobros";
   const { data = [] } = useContabPagos({ esCobro });
@@ -42,7 +43,7 @@ export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos";
           <TabsList>
             <TabsTrigger value="cobros">Cobranzas</TabsTrigger>
             <TabsTrigger value="pagos">Pagos</TabsTrigger>
-            <TabsTrigger value="cheques">Cheques recibidos</TabsTrigger>
+            <TabsTrigger value="cheques">Valores en cartera</TabsTrigger>
           </TabsList>
         </Tabs>
         {tab !== "cheques" && <Button onClick={() => setOpen(true)}>
@@ -51,7 +52,7 @@ export function PagosTab({ inicial, abrirAlta }: { inicial?: "cobros" | "pagos";
         </Button>}
       </div>
 
-      {tab === "cheques" ? <ChequesRecibidos /> : <Card>
+      {tab === "cheques" ? (modoValores === "buscar" ? <BuscarValores /> : <ValoresCartera />) : <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -350,51 +351,5 @@ function ValoresEditor({ valores, setValor, onAgregar, onQuitar, cuentasCaja, to
       </div>
       {error && <p className="text-xs text-destructive text-right">{error}</p>}
     </div>
-  );
-}
-
-function ChequesRecibidos() {
-  const { data = [] } = useChequesRecibidos();
-  const upd = useUpdateChequeEstado();
-  const hoy = new Date().toISOString().slice(0, 10);
-  const enCartera = data.filter((c) => c.cheque_estado === "en_cartera").reduce((s, c) => s + Number(c.importe), 0);
-  return (
-    <Card>
-      <CardContent className="p-0">
-        <div className="px-3 py-2 text-sm border-b">En cartera: <strong className="tabular-nums">{fmt(enCartera)}</strong></div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/50 text-left">
-              <tr>
-                <th className="px-3 py-2">Fecha de pago</th><th className="px-3 py-2">Cliente</th><th className="px-3 py-2">Nº</th><th className="px-3 py-2">CUIT</th>
-                <th className="px-3 py-2">Banco</th><th className="px-3 py-2">Librador</th><th className="px-3 py-2 text-right">Importe</th><th className="px-3 py-2">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.length === 0 && <tr><td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">Sin cheques recibidos</td></tr>}
-              {data.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <td className={`px-3 py-2 ${c.cheque_estado === "en_cartera" && c.cheque_fecha_pago && c.cheque_fecha_pago <= hoy ? "text-destructive font-medium" : ""}`}>
-                    {c.cheque_fecha_pago ? fmtDate(c.cheque_fecha_pago) : "—"}
-                  </td>
-                  <td className="px-3 py-2">{c.pago?.tercero?.razon_social ?? "—"}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{c.cheque_numero ?? "—"}</td>
-                  <td className="px-3 py-2 text-xs">{c.cheque_cuit ?? "—"}</td>
-                  <td className="px-3 py-2">{c.cheque_banco ?? "—"}</td>
-                  <td className="px-3 py-2">{c.cheque_librador ?? "—"}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{fmt(c.importe)}</td>
-                  <td className="px-3 py-2 min-w-[170px]">
-                    <Select value={c.cheque_estado} onValueChange={(e) => upd.mutate({ id: c.id, estado: e })}>
-                      <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>{Object.entries(ESTADOS_CHEQUE).map(([k, l]) => <SelectItem key={k} value={k}>{l}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
