@@ -17,8 +17,8 @@ import { GastosGeneralesTab } from "@/components/proveedores/GastosGeneralesTab"
 import { ProveedoresMaestro } from "@/pages/Proveedores";
 import Clientes from "@/pages/Clientes";
 import { LibrosTab } from "@/components/contabilidad/LibrosTab";
-import { ContabLauncher, Tile, NavIcon } from "@/components/contabilidad/ContabLauncher";
-import { agregarReciente, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
+import { ContabLauncher, Tile, NavIcon, ModuloTile } from "@/components/contabilidad/ContabLauncher";
+import { agregarReciente, iconoHoja, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
 import { Fragment } from "react";
 
 /** Permisos consultados en el servidor con las funciones contables existentes. */
@@ -127,14 +127,18 @@ export default function Contabilidad() {
           {res && res.destino && <Pantalla d={res.destino} proveedorId={params.get("proveedor_id") || undefined} terceroId={params.get("tercero_id") || undefined} />}
 
           {res && !res.destino && !res.hoja && res.modulo.hijos.length > 0 && (
-            <div>
-              <div className="mb-4 flex items-center gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary"><NavIcon name={res.modulo.icono} className="h-6 w-6" /></span>
-                <div><h2 className="text-xl font-semibold">{res.modulo.nombre}</h2><p className="text-sm text-muted-foreground">{res.modulo.descripcion}</p></div>
+            <div className="mx-auto max-w-6xl">
+              <div className="mb-8 flex flex-col items-center text-center">
+                <span className="flex h-16 w-16 items-center justify-center rounded-2xl"
+                  style={{ backgroundColor: `color-mix(in srgb, hsl(var(--mod-${res.modulo.id})) 15%, transparent)`, color: `hsl(var(--mod-${res.modulo.id}))` }}>
+                  <NavIcon name={res.modulo.icono} className="h-8 w-8" />
+                </span>
+                <h2 className="mt-3 text-2xl font-bold">{res.modulo.nombre}</h2>
+                <p className="text-sm text-muted-foreground">{res.modulo.descripcion}</p>
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5">
                 {res.modulo.hijos.map((h) => (
-                  <Tile key={h.id} titulo={h.nombre} descripcion={h.descripcion} proximamente={!h.destino} onClick={() => irValidado(res.modulo.id, h.id)} />
+                  <ModuloTile key={h.id} id={res.modulo.id} titulo={h.nombre} descripcion={h.descripcion} icono={iconoHoja(h, res.modulo)} proximamente={!h.destino} onClick={() => irValidado(res.modulo.id, h.id)} />
                 ))}
               </div>
             </div>
