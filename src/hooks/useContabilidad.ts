@@ -16,7 +16,7 @@ export type CbteEstado = "borrador" | "confirmado" | "anulado" | "pagado" | "par
 export type CondIva = "RI" | "MT" | "EX" | "CF" | "NR";
 export type CuentaTipo = "activo" | "pasivo" | "patrimonio" | "ingreso" | "egreso" | "resultado";
 export type TerceroTipo = "cliente" | "proveedor" | "ambos";
-export type PagoMedio = "efectivo" | "transferencia" | "cheque" | "tarjeta" | "deposito" | "otro";
+export type PagoMedio = "echeck" | "efectivo" | "transferencia" | "cheque" | "tarjeta" | "deposito" | "otro";
 
 export interface ContabEmpresa {
   id: string;
