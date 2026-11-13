@@ -1,30 +1,28 @@
-# Recibos de cobro con varios valores (monedas y cheques)
+# Cobros con varios cheques o con pesos y dólares
 
 ## Situación actual
-Hoy cada cobro admite un solo medio, un solo monto (sin moneda ni cotización) y un solo comprobante. Un cliente que paga con pesos + dólares, o con varios cheques, obliga a cargar varios cobros sueltos sin agrupar.
+Hoy cada cobro admite un solo medio, un solo monto en pesos y una sola factura. Si un cliente paga con varios cheques, hay que cargar varios cobros sueltos.
 
-## Propuesta: Recibo con renglones de valores
-Un cobro pasa a ser un **Recibo** (cabecera) con:
+## Propuesta
+El cobro se sigue cargando **una sola vez, en el momento**, como hasta ahora. No se agrega ningún paso nuevo de recibo separado. Lo único que cambia es el formulario:
 
-1. **Valores recibidos** (varios renglones):
-   - Medio: efectivo, transferencia, cheque, cheque electrónico (eCheq), tarjeta, depósito, retención sufrida.
-   - Moneda: ARS o US$; si es US$, cotización del día y equivalente en pesos.
-   - Para cheques: banco, número, fecha de emisión, fecha de pago (diferido), librador/CUIT, endosable sí/no.
-   - Cuenta destino (caja pesos, caja dólares, banco, valores a depositar).
-2. **Comprobantes que cancela** (varias facturas, con monto aplicado a cada una; permite pago parcial o a cuenta).
-3. **Totales**: total recibido en pesos debe igualar total aplicado + saldo a cuenta. No se confirma si no cuadra.
-4. **Asiento**: uno por recibo; un renglón al Debe por cada valor (en su cuenta, en pesos) y Haber a Deudores por ventas. Diferencia de cambio se informa si la cotización difiere de la de la factura.
-5. **Cartera de cheques**: listado de cheques recibidos con estado (en cartera, depositado, endosado a proveedor, rechazado) y vencimientos; al pagar a proveedores se podrán elegir cheques de cartera (paso posterior).
+1. **Caso normal (un solo medio)**: igual que hoy, se elige el medio y el monto.
+2. **Botón "Agregar otro valor"**: solo para los casos que lo necesitan. Permite sumar renglones dentro del mismo cobro:
+   - Varios cheques (caso habitual): por cada uno, banco, número, fecha de pago, librador y monto. Se pueden cargar rápido uno tras otro.
+   - Parte en pesos y parte en dólares (caso puntual): moneda US$ con cotización del día; se muestra el equivalente en pesos.
+3. **Total del cobro**: suma automática de todos los renglones en pesos, comparada con el saldo de la factura que cancela (pago total, parcial o a cuenta).
+4. **Asiento**: uno solo por cobro, con un renglón por cada valor en su cuenta (caja pesos, caja dólares, valores a depositar, banco) contra Deudores por ventas.
+5. **Listado de cheques recibidos**: vista simple con todos los cheques, fecha de pago y estado (en cartera, depositado, entregado a proveedor, rechazado), para controlar vencimientos.
 
-Los cobros ya cargados se conservan como recibos de un solo renglón. Lo mismo se aplicará luego a Pagos a proveedores (orden de pago con varios valores).
+Los cobros ya cargados siguen funcionando como cobros de un solo valor.
 
-## Decisiones a confirmar con el contador
-- Cuentas para caja US$, valores a depositar y diferencia de cambio.
-- Qué cotización usar (BNA vendedor/comprador, manual).
-- Si las retenciones sufridas entran en el recibo (recomendado).
+## A confirmar con el contador
+- Cuentas para caja en dólares y cheques a depositar.
+- Cotización a usar (BNA o manual).
 
 ## Detalles técnicos
-- Nuevas tablas `contab_recibos` (cabecera), `contab_recibo_valores`, `contab_recibo_aplicaciones`, `contab_cheques` (cartera); RLS por rol existente.
-- Guardado transaccional mediante función security-invoker (mismo patrón que remitos de máquinas).
-- Migrar cada `contab_pagos` de cobro a recibo + 1 valor + 1 aplicación; generación de asiento borrador reutiliza la lógica actual.
-- Formulario con selectores con buscador; pruebas de cuadre, conversión de moneda y asiento.
+- Nueva tabla de renglones de valores vinculada a `contab_pagos` (medio, moneda, cotización, importe en pesos, datos de cheque); el monto del cobro pasa a ser la suma.
+- Guardado transaccional en una función de base (mismo patrón que remitos de máquinas) para no dejar cobros a medias.
+- Backfill: cada cobro existente recibe un renglón con su medio y monto.
+- `contab_generar_asiento_pago` genera una línea al Debe por renglón.
+- RLS y permisos iguales a los de cobros; pruebas de total, conversión de moneda y asiento.
