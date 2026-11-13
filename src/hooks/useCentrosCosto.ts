@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { errorGuardarSubcentro } from "@/lib/subcentroCodigo";
 
 const sb = supabase as any;
 
@@ -78,7 +79,7 @@ export const useSaveSubcentro = () => {
                    : sb.from("contab_subcentros_costo").insert(payload);
       const { error } = await q; if (error) throw error;
     },
-    onSuccess: () => { inval(qc); toast.success("Subcentro guardado"); }, onError: err,
+    onSuccess: () => { inval(qc); toast.success("Subcentro guardado"); }, onError: (e) => toast.error(errorGuardarSubcentro(e)),
   });
 };
 
