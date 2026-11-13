@@ -164,12 +164,12 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
         </Bloque>
 
         <div className="rounded-md border overflow-x-auto">
-          <table className="w-full text-sm min-w-[1100px]">
+          <table className="w-full text-sm min-w-[1350px]">
             <thead className="bg-muted/50 text-left text-xs">
               <tr>
-                <th className="px-2 py-2 w-36">Medio</th><th className="px-2 py-2 w-48">Cuenta</th><th className="px-2 py-2">Cheq.Nº</th>
-                <th className="px-2 py-2">Bco.Emisor</th><th className="px-2 py-2 w-36">Vto.</th><th className="px-2 py-2">CUIT Cheq.</th>
-                <th className="px-2 py-2">Detalle</th><th className="px-2 py-2 w-24">Moneda</th><th className="px-2 py-2 w-28 text-right">Importe</th>
+                <th className="px-2 py-2 w-36">Medio</th><th className="px-2 py-2 w-48">Cuenta</th><th className="px-2 py-2 min-w-[110px]">Cheq.Nº</th>
+                <th className="px-2 py-2 min-w-[130px]">Bco.Emisor</th><th className="px-2 py-2 w-36">Vto.</th><th className="px-2 py-2 min-w-[130px]">CUIT Cheq.</th>
+                <th className="px-2 py-2 min-w-[160px]">Detalle</th><th className="px-2 py-2 w-20">Moneda</th><th className="px-2 py-2 w-28 text-right">Importe</th>
                 <th className="px-2 py-2 w-24 text-right">Cotiz.</th><th className="w-10"></th>
               </tr>
             </thead>
