@@ -1,7 +1,7 @@
 # Pantalla en blanco
 ## Revisión de avisos de monitoreo
 - [x] Fotos: almacenamiento privado existente y políticas de carga/lectura verificados; aviso descartado.
-- [ ] Subcentros sugeridos: evitar colisiones de código y revisar antes de guardar; verificar pruebas e interfaz sin persistencia productiva.
+- [x] Subcentros sugeridos: códigos sin colisiones y revisión antes de guardar; 37 pruebas aprobadas, compilación correcta e interfaz con sesión real verificada sin guardar datos de prueba.
 ## Remitos de máquinas
 - [x] Carga, edición y Excel de varias máquinas en un remito; guardado y edición de dos renglones verificados con sesión real, pruebas aprobadas.
 
