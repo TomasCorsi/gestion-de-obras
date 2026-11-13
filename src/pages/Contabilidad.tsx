@@ -136,9 +136,9 @@ export default function Contabilidad() {
                 <h2 className="mt-3 text-2xl font-bold">{res.modulo.nombre}</h2>
                 <p className="text-sm text-muted-foreground">{res.modulo.descripcion}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5">
+              <div className="flex flex-wrap justify-center gap-4">
                 {res.modulo.hijos.map((h) => (
-                  <ModuloTile key={h.id} id={res.modulo.id} titulo={h.nombre} descripcion={h.descripcion} icono={iconoHoja(h, res.modulo)} proximamente={!h.destino} onClick={() => irValidado(res.modulo.id, h.id)} />
+                  <div key={h.id} className="w-[calc(50%-0.5rem)] md:w-[calc(25%-0.75rem)] xl:w-[calc(20%-0.8rem)]"><ModuloTile id={res.modulo.id} titulo={h.nombre} descripcion={h.descripcion} icono={iconoHoja(h, res.modulo)} proximamente={!h.destino} onClick={() => irValidado(res.modulo.id, h.id)} /></div>
                 ))}
               </div>
             </div>
