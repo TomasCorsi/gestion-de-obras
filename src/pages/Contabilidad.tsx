@@ -48,7 +48,7 @@ function Pantalla({ d, proveedorId, terceroId }: { d: Destino; proveedorId?: str
   switch (d.pantalla) {
     case "compras": return <ComprobantesTab key={terceroId} esVenta={false} terceroId={terceroId} />;
     case "ventas": return <ComprobantesTab esVenta={true} />;
-    case "pagos": return <PagosTab key={k} inicial={d.subtab as any} abrirAlta={d.abrirAlta} />;
+    case "pagos": return <PagosTab key={k + (d.modo ?? "")} inicial={d.subtab as any} abrirAlta={d.abrirAlta} modoValores={d.modo === "buscar" ? "buscar" : "cartera"} />;
     case "asientos": return <AsientosTab key={k + (d.modo ?? "")} soloConsulta={d.modo === "listado"} />;
     case "periodos": return <PeriodosTab key={k + (d.modo ?? "")} enfoqueCierre={d.modo === "cierre"} />;
     case "libros": return <LibrosTab key={k} inicial={d.subtab as any} />;

@@ -593,14 +593,27 @@ export const useChequesRecibidos = () =>
   useQuery({
     queryKey: ["contab_cheques"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from("contab_pago_valores")
-        .select("*, pago:contab_pagos!inner(fecha, es_cobro, tercero:contab_terceros(razon_social))")
-        .in("medio", ["cheque", "echeck"])
-        .eq("pago.es_cobro", true)
-        .order("cheque_fecha_pago", { ascending: true });
-      if (error) throw error;
-      return (data ?? []) as any[];
+      const out: any[] = [];
+      for (let desde = 0; ; desde += 1000) {
+        const { data, error } = await (supabase as any)
+          .from("contab_pago_valores")
+          .select("*, pago:contab_pagos!inner(fecha, es_cobro, recibo_numero, tercero_id, tercero:contab_terceros(razon_social, cuit, doc_numero, domicilio, localidad, provincia), asiento_id)")
+          .in("medio", ["cheque", "echeck"])
+          .eq("pago.es_cobro", true)
+          .order("cheque_fecha_pago", { ascending: true })
+          .range(desde, desde + 999);
+        if (error) throw error;
+        out.push(...(data ?? []));
+        if (!data || data.length < 1000) break;
+      }
+      const ids = [...new Set(out.map((r) => r.pago?.asiento_id).filter(Boolean))];
+      const nums = new Map<string, number>();
+      for (let i = 0; i < ids.length; i += 200) {
+        const { data } = await (supabase as any).from("contab_asientos").select("id, numero").in("id", ids.slice(i, i + 200));
+        (data ?? []).forEach((a: any) => nums.set(a.id, a.numero));
+      }
+      out.forEach((r) => { if (r.pago) r.pago.asiento = { numero: nums.get(r.pago.asiento_id) ?? null }; });
+      return out;
     },
   });
 
