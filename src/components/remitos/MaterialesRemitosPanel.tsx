@@ -244,6 +244,7 @@ export function MaterialesRemitosPanel() {
   const [clienteF, setClienteF] = useUrlState<string>({ key: "mat_cli", defaultValue: "" });
   const [obraF, setObraF] = useUrlState<string>({ key: "mat_obra", defaultValue: "" });
   const [materialF, setMaterialF] = useUrlState<string>({ key: "mat_mat", defaultValue: "" });
+  const [sectorF, setSectorF] = useUrlState<string>({ key: "mat_sector", defaultValue: "" });
   const [provF, setProvF] = useUrlState<string>({ key: "mat_prov", defaultValue: "" });
   const [unidadF, setUnidadF] = useUrlState<string>({ key: "mat_uni", defaultValue: "" });
   const { clientes } = useClientes();
@@ -315,13 +316,14 @@ export function MaterialesRemitosPanel() {
       if (obraF && r.obra_destino_id !== obraF && r.obra_origen_id !== obraF) return false;
       if (clienteF && obraCliente[r.obra_destino_id] !== clienteF) return false;
       if (materialF && materialId !== materialF) return false;
+      if (sectorF && r.sector_obra !== sectorF) return false;
       if (provF && r.proveedor_id !== provF) return false;
       if (unidadF && unidad !== unidadF) return false;
       if (!q) return true;
       const txt = normalizarMaterial(Object.values(d).join(" "));
       return q.split(" ").every((t) => txt.includes(t));
     });
-  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, provF, unidadF, clienteName, obraCliente]);
+  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, sectorF, provF, unidadF, clienteName, obraCliente]);
 
   const filasControl = useMemo(() => filasBase.map((f) => ({ id: f.remito.id, cliente: String(f.d.Cliente || ""), obra: String(f.d["Obra destino"] || ""), importe: Number(f.d.Importe) || 0, liquidado: f.remito.liquidado })), [filasBase]);
   const filas = useMemo(() => { const ok = idsFiltrados(filasControl, estadoLiq as EstadoLiquidacion, alerta as AlertaRemito); return filasBase.filter((f) => ok.has(f.remito.id)); }, [filasBase, filasControl, estadoLiq, alerta]);
@@ -466,6 +468,7 @@ export function MaterialesRemitosPanel() {
         <div className="w-52"><Pick label="Cliente" value={clienteF} onChange={setClienteF} options={clienteOpts} /></div>
         <div className="w-52"><Pick label="Obra" value={obraF} onChange={setObraF} options={obraOpts} /></div>
         <div className="w-52"><Pick label="Material" value={materialF} onChange={setMaterialF} options={matOpts} /></div>
+        <div className="w-52"><Pick label="Sector de obra" value={sectorF} onChange={setSectorF} options={[...new Set(remitos.map((r) => r.sector_obra).filter(Boolean))].sort().map((v: string) => ({ value: v, label: v }))} /></div>
         <div className="w-52"><Pick label="Proveedor" value={provF} onChange={setProvF} options={provOpts} /></div>
         <div className="w-32"><Pick label="Unidad" value={unidadF} onChange={setUnidadF} options={uniOpts} /></div>
         {(search || desde || hasta || clienteF || obraF || materialF || provF || unidadF) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteF(""); setObraF(""); setMaterialF(""); setProvF(""); setUnidadF(""); }}>Limpiar filtros</Button>}
