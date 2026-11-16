@@ -257,6 +257,7 @@ export default function Remitos() {
         (r.remito_local?.toLowerCase() || "").includes(term) ||
         r.numero.toLowerCase().includes(term) ||
         (r.tipo_material?.toLowerCase() || "").includes(term) ||
+        (((r as any).sector_obra as string)?.toLowerCase() || "").includes(term) ||
         (r.tipo_transporte?.toLowerCase() || "").includes(term) ||
         (r.proveedor?.toLowerCase() || "").includes(term) ||
         (r.cliente?.toLowerCase() || "").includes(term) ||
@@ -378,6 +379,7 @@ export default function Remitos() {
       desde: r.desde || "",
       hasta: r.hasta || "",
       tipo_material: r.tipo_material || r.material || "",
+      sector_obra: (r as any).sector_obra || "",
       tipo_transporte: r.tipo_transporte || "",
       maquinaria_id: r.maquinaria_id || "",
       patente_tercero: r.patente_tercero || "",
@@ -515,6 +517,7 @@ export default function Remitos() {
       data.push({
         ...base,
         "Tipo Material": r.tipo_material || "",
+        "Sector de obra": (r as any).sector_obra || "",
         "Tipo Transporte": r.tipo_transporte || "",
         "Maquinaria": getMaquinariaLabel(r.maquinaria_id),
         "Pat. Tercero": r.patente_tercero || "",

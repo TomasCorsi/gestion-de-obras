@@ -70,6 +70,7 @@ export interface RemitoForm {
   hasta?: string;
   cantidad_viajes?: number;
   tipo_material?: string;
+  sector_obra?: string | null;
   precio_total?: number;
   tipo_transporte?: string;
   maquinaria_id?: string;
@@ -108,7 +109,7 @@ const fetchRemitosFromDB = async (
         cliente, cliente_destino, remito_tercero, remito_local, desde, hasta, cantidad_viajes,
         tipo_material, precio_total, tipo_transporte, maquinaria_id, patente_tercero,
         cantidad_uni, precio_unitario, precio_calc_mode, forma_pago, created_by, cliente_cantera,
-        obra_nombre, maquinaria_codigo, maquinaria_patente, liquidado, liquidado_at
+        obra_nombre, maquinaria_codigo, maquinaria_patente, liquidado, liquidado_at, sector_obra
       `)
       .order("fecha", { ascending: false })
       .order("created_at", { ascending: false })

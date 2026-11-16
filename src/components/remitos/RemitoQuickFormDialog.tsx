@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { SectorObraField } from "@/components/remitos/SectorObraField";
 import { RemitoFotoField } from "@/components/remitos/RemitoFoto";
 import { advertenciaGuardado } from "@/lib/remitosControl";
 import {
@@ -62,6 +63,7 @@ export interface RemitoEditData {
   desde: string;
   hasta: string;
   tipo_material: string;
+  sector_obra?: string;
   tipo_transporte: string;
   maquinaria_id: string;
   patente_tercero: string;
@@ -148,6 +150,7 @@ export function RemitoQuickFormDialog({
       desde: isFranco ? "Cantera San Vicente" : "",
       hasta: "",
       tipo_material: isFranco ? "Tosca" : "",
+      sector_obra: "",
       tipo_transporte: "",
       maquinaria_id: "",
       patente_tercero: "",
@@ -178,6 +181,7 @@ export function RemitoQuickFormDialog({
           desde: editingRemito.desde || "",
           hasta: editingRemito.hasta || "",
           tipo_material: editingRemito.tipo_material || "",
+          sector_obra: editingRemito.sector_obra || "",
           tipo_transporte: editingRemito.tipo_transporte || "",
           maquinaria_id: editingRemito.maquinaria_id || "",
           patente_tercero: editingRemito.patente_tercero || "",
@@ -360,6 +364,7 @@ export function RemitoQuickFormDialog({
         desde: form.desde || undefined,
         hasta: form.hasta || undefined,
         tipo_material: form.tipo_material || undefined,
+        sector_obra: form.sector_obra || null,
         tipo_transporte: form.tipo_transporte || undefined,
         maquinaria_id: form.maquinaria_id || undefined,
         patente_tercero: form.patente_tercero || undefined,
@@ -438,7 +443,7 @@ export function RemitoQuickFormDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Hasta (Obra)</Label>
-            <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => set("hasta", v)} placeholder="Obra destino..." />
+            <Combobox options={obraOptions} value={form.hasta} onValueChange={(v) => { if (v !== form.hasta) set("sector_obra", ""); set("hasta", v); }} placeholder="Obra destino..." />
           </div>
           {!isFranco && (
             <div className="space-y-1.5">
@@ -463,6 +468,11 @@ export function RemitoQuickFormDialog({
               customLabel="Agregar tipo"
             />
           </div>
+          <SectorObraField
+            obraId={obras.find((o) => o.nombre === form.hasta)?.id}
+            value={form.sector_obra}
+            onChange={(v) => set("sector_obra", v)}
+          />
           <div className="space-y-1.5">
             <Label className="text-xs truncate block">Tipo Transporte</Label>
             <Combobox
