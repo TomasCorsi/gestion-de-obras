@@ -260,6 +260,20 @@
       "when": 1794594327021,
       "tag": "0036_cobranzas_campos_contad",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794836451597,
+      "tag": "0037_remito_sectores_obra",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794836489399,
+      "tag": "0038_remitos_list_view_sector",
+      "breakpoints": true
     }
   ]
 }

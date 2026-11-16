@@ -63,6 +63,7 @@ const Row = memo(function Row({
     desde: r.desde || "-",
     hasta: r.hasta || "-",
     tipo: isItem ? `└ ${item!.concepto || "Ítem"}` : r.tipo_material || r.material || "-",
+    sector: isItem ? "" : (r as any).sector_obra || "-",
     transporte: isItem ? "" : r.tipo_transporte || "-",
     vehiculo: isItem ? "" : r.maquinaria_id ? maqMap[r.maquinaria_id] || "-" : "-",
     pat_tercero: isItem ? "" : r.patente_tercero || "-",
@@ -165,6 +166,7 @@ export function RemitosSimpleGrid({
     cols.push({ key: "desde", label: "Desde", width: 150 });
     cols.push({ key: "hasta", label: "Hasta", width: 150 });
     cols.push({ key: "tipo", label: "Tipo", width: 110 });
+    cols.push({ key: "sector", label: "Sector", width: 110 });
     cols.push({ key: "transporte", label: "Transporte", width: 110 });
     cols.push({ key: "vehiculo", label: "Vehículo", width: 140 });
     cols.push({ key: "pat_tercero", label: "Pat. Tercero", width: 100 });

@@ -23,6 +23,7 @@ import { ChevronsUpDown, Download, Loader2, Merge, Pencil, Plus, Search, Trash2,
 import { toast } from "sonner";
 import { formatDate } from "@/lib/utils";
 import { RemitosControlBar, LiquidadoBadge } from "@/components/remitos/RemitosControlBar";
+import { SectorObraField } from "@/components/remitos/SectorObraField";
 import { RemitoFotoField, FotoRemitoBoton } from "@/components/remitos/RemitoFoto";
 import { advertenciaGuardado, AlertaRemito, EstadoLiquidacion, idsFiltrados, sinObra, sinPrecio } from "@/lib/remitosControl";
 import { formatearNombreMaterial, normalizarMaterial, totalRemitoMateriales } from "@/lib/materiales";
@@ -48,7 +49,7 @@ const num = (v: any) => {
   return isNaN(n) ? 0 : n;
 };
 const money = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
-const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "", foto_url: "" });
+const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "", foto_url: "", sector_obra: "" });
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string; keywords?: string }[] }) {
@@ -243,6 +244,7 @@ export function MaterialesRemitosPanel() {
   const [clienteF, setClienteF] = useUrlState<string>({ key: "mat_cli", defaultValue: "" });
   const [obraF, setObraF] = useUrlState<string>({ key: "mat_obra", defaultValue: "" });
   const [materialF, setMaterialF] = useUrlState<string>({ key: "mat_mat", defaultValue: "" });
+  const [sectorF, setSectorF] = useUrlState<string>({ key: "mat_sector", defaultValue: "" });
   const [provF, setProvF] = useUrlState<string>({ key: "mat_prov", defaultValue: "" });
   const [unidadF, setUnidadF] = useUrlState<string>({ key: "mat_uni", defaultValue: "" });
   const { clientes } = useClientes();
@@ -295,6 +297,7 @@ export function MaterialesRemitosPanel() {
           Proveedor: provName[r.proveedor_id] || "",
           "Obra origen": obraName[r.obra_origen_id] || "",
           "Obra destino": obraName[r.obra_destino_id] || "",
+          "Sector de obra": r.sector_obra || "",
           Transporte: r.transporte === "propio" ? `Propio – ${maqName[r.camion_id] || "camión"}${r.cantidad_viajes ? ` (${r.cantidad_viajes} viaje${r.cantidad_viajes > 1 ? "s" : ""})` : ""}` : "Proveedor",
           Chofer: choferName[r.chofer_id] || "",
           Material: matName[i.material_id] || i._legacy || "",
@@ -313,19 +316,20 @@ export function MaterialesRemitosPanel() {
       if (obraF && r.obra_destino_id !== obraF && r.obra_origen_id !== obraF) return false;
       if (clienteF && obraCliente[r.obra_destino_id] !== clienteF) return false;
       if (materialF && materialId !== materialF) return false;
+      if (sectorF && r.sector_obra !== sectorF) return false;
       if (provF && r.proveedor_id !== provF) return false;
       if (unidadF && unidad !== unidadF) return false;
       if (!q) return true;
       const txt = normalizarMaterial(Object.values(d).join(" "));
       return q.split(" ").every((t) => txt.includes(t));
     });
-  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, provF, unidadF, clienteName, obraCliente]);
+  }, [remitos, items, matName, obraName, provName, maqName, choferName, search, desde, hasta, obraF, clienteF, materialF, sectorF, provF, unidadF, clienteName, obraCliente]);
 
   const filasControl = useMemo(() => filasBase.map((f) => ({ id: f.remito.id, cliente: String(f.d.Cliente || ""), obra: String(f.d["Obra destino"] || ""), importe: Number(f.d.Importe) || 0, liquidado: f.remito.liquidado })), [filasBase]);
   const filas = useMemo(() => { const ok = idsFiltrados(filasControl, estadoLiq as EstadoLiquidacion, alerta as AlertaRemito); return filasBase.filter((f) => ok.has(f.remito.id)); }, [filasBase, filasControl, estadoLiq, alerta]);
   const controlPorId = useMemo(() => { const m: Record<string, { importe: number; obra: string }> = {}; filasControl.forEach((f) => { m[f.id] ||= { importe: 0, obra: f.obra }; m[f.id].importe += f.importe; }); return m; }, [filasControl]);
   const total = filas.reduce((s, f) => s + Number(f.d.Importe), 0);
-  const cols = ["Fecha", "N° Remito", "Cliente", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
+  const cols = ["Fecha", "N° Remito", "Cliente", "Movimiento", "Proveedor", "Obra origen", "Obra destino", "Sector de obra", "Transporte", "Chofer", "Material", "Cantidad", "Unidad", "Precio unit.", "Importe", "Observaciones"];
   const setH = (k: string, v: any) => setHead((f) => ({ ...f, [k]: v }));
   const setR = (idx: number, patch: Partial<Renglon>) => setRenglones((rs) => rs.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
 
@@ -464,6 +468,7 @@ export function MaterialesRemitosPanel() {
         <div className="w-52"><Pick label="Cliente" value={clienteF} onChange={setClienteF} options={clienteOpts} /></div>
         <div className="w-52"><Pick label="Obra" value={obraF} onChange={setObraF} options={obraOpts} /></div>
         <div className="w-52"><Pick label="Material" value={materialF} onChange={setMaterialF} options={matOpts} /></div>
+        <div className="w-52"><Pick label="Sector de obra" value={sectorF} onChange={setSectorF} options={[...new Set(remitos.map((r) => r.sector_obra).filter(Boolean))].sort().map((v: string) => ({ value: v, label: v }))} /></div>
         <div className="w-52"><Pick label="Proveedor" value={provF} onChange={setProvF} options={provOpts} /></div>
         <div className="w-32"><Pick label="Unidad" value={unidadF} onChange={setUnidadF} options={uniOpts} /></div>
         {(search || desde || hasta || clienteF || obraF || materialF || provF || unidadF) && <Button variant="ghost" size="sm" className="h-9" onClick={() => { setSearch(""); setDesde(""); setHasta(""); setClienteF(""); setObraF(""); setMaterialF(""); setProvF(""); setUnidadF(""); }}>Limpiar filtros</Button>}
@@ -531,7 +536,8 @@ export function MaterialesRemitosPanel() {
             ) : (
               <Pick label="Obra origen" value={head.obra_origen_id} onChange={(v) => setH("obra_origen_id", v)} options={obraOpts} />
             )}
-            <Pick label="Obra destino" value={head.obra_destino_id} onChange={(v) => setH("obra_destino_id", v)} options={obraOpts} />
+            <Pick label="Obra destino" value={head.obra_destino_id} onChange={(v) => { if (v !== head.obra_destino_id) setH("sector_obra", ""); setH("obra_destino_id", v); }} options={obraOpts} />
+            <SectorObraField obraId={head.obra_destino_id} value={head.sector_obra} onChange={(v) => setH("sector_obra", v)} labelClassName="text-xs" />
             <Pick label="Transporte" value={head.transporte} onChange={(v) => setH("transporte", v || "proveedor")} options={[{ value: "proveedor", label: "Lo trae el proveedor" }, { value: "propio", label: "Camión propio" }]} />
             {head.transporte === "propio" && (
               <>

@@ -4158,6 +4158,38 @@ export type Database = {
           },
         ]
       }
+      remito_sectores_obra: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          nombre: string
+          obra_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre: string
+          obra_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          nombre?: string
+          obra_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remito_sectores_obra_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       remito_tipos_material: {
         Row: {
           created_at: string
@@ -4215,6 +4247,7 @@ export type Database = {
           remito_material_id: string | null
           remito_tercero: string | null
           row_color: string | null
+          sector_obra: string | null
           tipo_material: string | null
           tipo_transporte: string | null
           unidad: string
@@ -4256,6 +4289,7 @@ export type Database = {
           remito_material_id?: string | null
           remito_tercero?: string | null
           row_color?: string | null
+          sector_obra?: string | null
           tipo_material?: string | null
           tipo_transporte?: string | null
           unidad: string
@@ -4297,6 +4331,7 @@ export type Database = {
           remito_material_id?: string | null
           remito_tercero?: string | null
           row_color?: string | null
+          sector_obra?: string | null
           tipo_material?: string | null
           tipo_transporte?: string | null
           unidad?: string
@@ -4441,6 +4476,7 @@ export type Database = {
           observaciones: string | null
           precio_unitario: number
           proveedor_id: string | null
+          sector_obra: string | null
           transporte: string
           unidad: string
           updated_at: string
@@ -4466,6 +4502,7 @@ export type Database = {
           observaciones?: string | null
           precio_unitario?: number
           proveedor_id?: string | null
+          sector_obra?: string | null
           transporte?: string
           unidad?: string
           updated_at?: string
@@ -4491,6 +4528,7 @@ export type Database = {
           observaciones?: string | null
           precio_unitario?: number
           proveedor_id?: string | null
+          sector_obra?: string | null
           transporte?: string
           unidad?: string
           updated_at?: string
@@ -5428,6 +5466,7 @@ export type Database = {
           remito_local: string | null
           remito_tercero: string | null
           row_color: string | null
+          sector_obra: string | null
           tipo_material: string | null
           tipo_transporte: string | null
           unidad: string | null

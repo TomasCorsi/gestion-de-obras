@@ -47,7 +47,7 @@ export async function fetchRenglonesOtros(): Promise<RenglonRemito[]> {
         cliente: obra?.cliente_id ? C[obra.cliente_id]?.nombre || "" : "",
         obra: obraLbl(r.obra_destino_id), detalle: CAT[i.material_id]?.nombre || i._legacy || "",
         cantidad: cant, unidad: i.unidad || "", precioUnitario: pu, importe: cant * pu,
-        extra: { Movimiento: MOV[r.movimiento] || r.movimiento || "", Proveedor: P[r.proveedor_id]?.nombre || "", "Obra origen": obraLbl(r.obra_origen_id), Observaciones: r.observaciones || "" },
+        extra: { Movimiento: MOV[r.movimiento] || r.movimiento || "", Proveedor: P[r.proveedor_id]?.nombre || "", "Obra origen": obraLbl(r.obra_origen_id), "Sector de obra": r.sector_obra || "", Observaciones: r.observaciones || "" },
       });
     }
   }
@@ -77,7 +77,7 @@ export function renglonesViajes(remitos: RemitoWithRelations[], itemsMap: Record
       seccion: "Viajes" as const, remitoId: r.id, liquidado: !!r.liquidado, fecha: r.fecha, numero: r.remito_tercero || r.remito_local || r.numero || "",
       cliente: r.cliente || r.cliente_destino || "", obra: r.obra?.nombre || r.hasta || "",
     };
-    const extra = { Desde: r.desde || "", Hasta: r.hasta || "", Transporte: r.tipo_transporte || "", Patente: r.maquinaria?.patente || r.patente_tercero || "", "Cliente destino": r.cliente_destino || "", "Forma de pago": r.forma_pago || "" };
+    const extra = { Desde: r.desde || "", Hasta: r.hasta || "", "Sector de obra": (r as any).sector_obra || "", Transporte: r.tipo_transporte || "", Patente: r.maquinaria?.patente || r.patente_tercero || "", "Cliente destino": r.cliente_destino || "", "Forma de pago": r.forma_pago || "" };
     out.push({ ...base, detalle: r.tipo_material || r.material || "", cantidad: r.cantidad || 0, unidad: r.unidad || "", precioUnitario: r.precio_unitario || 0, importe: r.precio_total || 0, viajes: r.cantidad_viajes || 1, extra });
     for (const it of itemsMap[r.id] || []) {
       out.push({ ...base, detalle: it.concepto, cantidad: it.cantidad, unidad: it.unidad, precioUnitario: it.precio_unitario, importe: it.precio_total, viajes: 0, extra });

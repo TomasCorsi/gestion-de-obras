@@ -129,6 +129,7 @@ export default function Remitos() {
   const [editingRemito, setEditingRemito] = useState<RemitoEditData | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [tipoFilter, setTipoFilter] = useState<string[]>([]);
+  const [sectorFilter, setSectorFilter] = useState<string[]>([]);
   const [creadorFilter, setCreadorFilter] = useState<string[]>([]);
   const [proveedorFilter, setProveedorFilter] = useState<string[]>([]);
   const [transporteFilter, setTransporteFilter] = useState<string[]>([]);
@@ -143,6 +144,7 @@ export default function Remitos() {
 
   const hayFiltrosDeValor =
     tipoFilter.length > 0 ||
+    sectorFilter.length > 0 ||
     proveedorFilter.length > 0 ||
     transporteFilter.length > 0 ||
     desdeFilter.length > 0 ||
@@ -257,6 +259,7 @@ export default function Remitos() {
         (r.remito_local?.toLowerCase() || "").includes(term) ||
         r.numero.toLowerCase().includes(term) ||
         (r.tipo_material?.toLowerCase() || "").includes(term) ||
+        (((r as any).sector_obra as string)?.toLowerCase() || "").includes(term) ||
         (r.tipo_transporte?.toLowerCase() || "").includes(term) ||
         (r.proveedor?.toLowerCase() || "").includes(term) ||
         (r.cliente?.toLowerCase() || "").includes(term) ||
@@ -278,7 +281,7 @@ export default function Remitos() {
     });
   }, [remitos, filters, debouncedSearch, maquinariasById]);
 
-  type FiltroKey = "obra" | "maquinaria" | "tipo" | "proveedor" | "transporte" | "desde" | "hasta" | "creador";
+  type FiltroKey = "obra" | "maquinaria" | "tipo" | "sector" | "proveedor" | "transporte" | "desde" | "hasta" | "creador";
 
   // Predicados por filtro. La obra se compara contra desde/hasta, pero si el usuario
   // ya eligió Desde y/o Hasta explícitamente, la obra solo se aplica al lado libre
@@ -302,6 +305,7 @@ export default function Remitos() {
     }
     if (maqIds.length > 0) m.maquinaria = (r) => !!r.maquinaria_id && maqIds.includes(r.maquinaria_id);
     if (tipoFilter.length > 0) m.tipo = (r) => !!r.tipo_material && tipoFilter.includes(r.tipo_material);
+    if (sectorFilter.length > 0) m.sector = (r) => !!(r as any).sector_obra && sectorFilter.includes((r as any).sector_obra);
     if (proveedorFilter.length > 0) m.proveedor = (r) => !!r.proveedor && proveedorFilter.includes(r.proveedor);
     if (transporteFilter.length > 0) m.transporte = (r) => !!r.tipo_transporte && transporteFilter.includes(r.tipo_transporte);
     if (desdeFilter.length > 0) m.desde = (r) => !!r.desde && desdeFilter.includes(r.desde);
@@ -309,7 +313,7 @@ export default function Remitos() {
     if (creadorFilter.length > 0) m.creador = (r) => creadorFilter.includes((r as any).created_by);
 
     return m;
-  }, [filters, obras, tipoFilter, proveedorFilter, transporteFilter, desdeFilter, hastaFilter, creadorFilter]);
+  }, [filters, obras, tipoFilter, sectorFilter, proveedorFilter, transporteFilter, desdeFilter, hastaFilter, creadorFilter]);
 
   const applyMatchers = (rows: RemitoWithRelations[], excluir?: FiltroKey) =>
     rows.filter(r =>
@@ -353,6 +357,7 @@ export default function Remitos() {
     };
     return {
       tipo: contar("tipo", r => r.tipo_material),
+      sector: contar("sector", r => (r as any).sector_obra),
       proveedor: contar("proveedor", r => r.proveedor),
       transporte: contar("transporte", r => r.tipo_transporte),
       desde: contar("desde", r => r.desde),
@@ -378,6 +383,7 @@ export default function Remitos() {
       desde: r.desde || "",
       hasta: r.hasta || "",
       tipo_material: r.tipo_material || r.material || "",
+      sector_obra: (r as any).sector_obra || "",
       tipo_transporte: r.tipo_transporte || "",
       maquinaria_id: r.maquinaria_id || "",
       patente_tercero: r.patente_tercero || "",
@@ -515,6 +521,7 @@ export default function Remitos() {
       data.push({
         ...base,
         "Tipo Material": r.tipo_material || "",
+        "Sector de obra": (r as any).sector_obra || "",
         "Tipo Transporte": r.tipo_transporte || "",
         "Maquinaria": getMaquinariaLabel(r.maquinaria_id),
         "Pat. Tercero": r.patente_tercero || "",
@@ -701,6 +708,16 @@ export default function Remitos() {
         />
         <MultiSelectFilter
           className="w-[200px]"
+          allLabel="Todos los sectores"
+          itemsLabel="sectores"
+          placeholder="Buscar sector..."
+          counts={conteos.sector}
+          options={Object.keys(conteos.sector).sort().map(t => ({ value: t, label: t }))}
+          selected={sectorFilter}
+          onChange={setSectorFilter}
+        />
+        <MultiSelectFilter
+          className="w-[200px]"
           allLabel="Todos los proveedores"
           itemsLabel="proveedores"
           placeholder="Buscar proveedor..."
@@ -754,13 +771,14 @@ export default function Remitos() {
             onChange={setCreadorFilter}
           />
         )}
-        {(tipoFilter.length + proveedorFilter.length + transporteFilter.length + desdeFilter.length + hastaFilter.length + creadorFilter.length) > 0 && (
+        {(tipoFilter.length + sectorFilter.length + proveedorFilter.length + transporteFilter.length + desdeFilter.length + hastaFilter.length + creadorFilter.length) > 0 && (
           <Button
             variant="ghost"
             size="sm"
             className="h-9 text-muted-foreground"
             onClick={() => {
               setTipoFilter([]);
+              setSectorFilter([]);
               setProveedorFilter([]);
               setTransporteFilter([]);
               setDesdeFilter([]);
@@ -791,6 +809,7 @@ export default function Remitos() {
             })
           );
         push(tipoFilter, setTipoFilter, "Tipo");
+        push(sectorFilter, setSectorFilter, "Sector");
         push(proveedorFilter, setProveedorFilter, "Proveedor");
         push(transporteFilter, setTransporteFilter, "Transporte");
         push(desdeFilter, setDesdeFilter, "Desde");
