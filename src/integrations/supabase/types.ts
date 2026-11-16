@@ -5466,6 +5466,7 @@ export type Database = {
           remito_local: string | null
           remito_tercero: string | null
           row_color: string | null
+          sector_obra: string | null
           tipo_material: string | null
           tipo_transporte: string | null
           unidad: string | null
