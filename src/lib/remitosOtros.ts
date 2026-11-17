@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { RemitoWithRelations } from "@/hooks/useRemitos";
 import type { RemitoItem } from "@/hooks/useRemitoItems";
 import type { RenglonRemito } from "@/lib/remitosResumen";
+import { nombreTransporteMaterial } from "@/lib/remitoMaterialTransporte";
 
 const sb = supabase as any;
 type Row = Record<string, any>;
@@ -47,7 +48,7 @@ export async function fetchRenglonesOtros(): Promise<RenglonRemito[]> {
         cliente: obra?.cliente_id ? C[obra.cliente_id]?.nombre || "" : "",
         obra: obraLbl(r.obra_destino_id), detalle: CAT[i.material_id]?.nombre || i._legacy || "",
         cantidad: cant, unidad: i.unidad || "", precioUnitario: pu, importe: cant * pu,
-        extra: { Movimiento: MOV[r.movimiento] || r.movimiento || "", Proveedor: P[r.proveedor_id]?.nombre || "", "Obra origen": obraLbl(r.obra_origen_id), "Sector de obra": r.sector_obra || "", Observaciones: r.observaciones || "" },
+        extra: { Movimiento: MOV[r.movimiento] || r.movimiento || "", Proveedor: P[r.proveedor_id]?.nombre || "", "Obra origen": obraLbl(r.obra_origen_id), "Sector de obra": r.sector_obra || "", Transporte: nombreTransporteMaterial(r, M[r.camion_id] ? [M[r.camion_id].codigo, M[r.camion_id].nombre].filter(Boolean).join(" - ") : undefined), Observaciones: r.observaciones || "" },
       });
     }
   }

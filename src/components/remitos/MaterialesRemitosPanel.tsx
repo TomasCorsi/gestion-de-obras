@@ -27,6 +27,7 @@ import { SectorObraField } from "@/components/remitos/SectorObraField";
 import { RemitoFotoField, FotoRemitoBoton } from "@/components/remitos/RemitoFoto";
 import { advertenciaGuardado, AlertaRemito, EstadoLiquidacion, idsFiltrados, sinObra, sinPrecio } from "@/lib/remitosControl";
 import { formatearNombreMaterial, normalizarMaterial, totalRemitoMateriales } from "@/lib/materiales";
+import { datosTransporteMaterial, nombreTransporteMaterial } from "@/lib/remitoMaterialTransporte";
 
 type Row = Record<string, any>;
 interface Material { id: string; nombre: string; nombre_normalizado: string; unidad_default: string; activo: boolean }
@@ -49,7 +50,7 @@ const num = (v: any) => {
   return isNaN(n) ? 0 : n;
 };
 const money = (n: number) => `$${n.toLocaleString("es-AR", { maximumFractionDigits: 2 })}`;
-const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "", foto_url: "", sector_obra: "" });
+const emptyHead = () => ({ fecha: today(), numero_remito: "", movimiento: "ingreso_proveedor", proveedor_id: "", obra_origen_id: "", obra_destino_id: "", transporte: "proveedor", transporte_tercero: "", camion_id: "", chofer_id: "", cantidad_viajes: "", observaciones: "", foto_url: "", sector_obra: "" });
 const emptyRenglon = (): Renglon => ({ material_id: "", cantidad: "", unidad: "UN", precio_unitario: "" });
 
 function Pick({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string; keywords?: string }[] }) {
@@ -298,7 +299,7 @@ export function MaterialesRemitosPanel() {
           "Obra origen": obraName[r.obra_origen_id] || "",
           "Obra destino": obraName[r.obra_destino_id] || "",
           "Sector de obra": r.sector_obra || "",
-          Transporte: r.transporte === "propio" ? `Propio – ${maqName[r.camion_id] || "camión"}${r.cantidad_viajes ? ` (${r.cantidad_viajes} viaje${r.cantidad_viajes > 1 ? "s" : ""})` : ""}` : "Proveedor",
+          Transporte: nombreTransporteMaterial(r, maqName[r.camion_id]),
           Chofer: choferName[r.chofer_id] || "",
           Material: matName[i.material_id] || i._legacy || "",
           Cantidad: Number(i.cantidad),
@@ -366,7 +367,7 @@ export function MaterialesRemitosPanel() {
     const payload: Row = {};
     Object.entries(head).forEach(([k, v]) => (payload[k] = v === "" ? null : v));
     payload.movimiento = head.movimiento || "ingreso_proveedor";
-    payload.transporte = propio ? "propio" : "proveedor";
+    Object.assign(payload, datosTransporteMaterial(head.transporte, head.transporte_tercero || ""));
     payload.cantidad_viajes = propio ? Math.max(1, parseInt(head.cantidad_viajes) || 1) : null;
     if (!propio) { payload.camion_id = null; payload.chofer_id = null; }
     payload.material = parsed.map((r) => matName[r.material_id]).join("; ").slice(0, 500);
@@ -538,7 +539,13 @@ export function MaterialesRemitosPanel() {
             )}
             <Pick label="Obra destino" value={head.obra_destino_id} onChange={(v) => { if (v !== head.obra_destino_id) setH("sector_obra", ""); setH("obra_destino_id", v); }} options={obraOpts} />
             <SectorObraField obraId={head.obra_destino_id} value={head.sector_obra} onChange={(v) => setH("sector_obra", v)} labelClassName="text-xs" />
-            <Pick label="Transporte" value={head.transporte} onChange={(v) => setH("transporte", v || "proveedor")} options={[{ value: "proveedor", label: "Lo trae el proveedor" }, { value: "propio", label: "Camión propio" }]} />
+            <Pick label="Transporte" value={head.transporte} onChange={(v) => setH("transporte", v || "proveedor")} options={[{ value: "proveedor", label: "Lo trae el proveedor" }, { value: "propio", label: "Camión propio" }, { value: "tercero", label: "Tercero" }]} />
+            {head.transporte === "tercero" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="transporte-tercero" className="text-xs">Transporte tercero</Label>
+                <Input id="transporte-tercero" value={head.transporte_tercero || ""} onChange={(e) => setH("transporte_tercero", e.target.value)} placeholder="Nombre del transporte" className="h-9" />
+              </div>
+            )}
             {head.transporte === "propio" && (
               <>
                 <Pick label="Camión (interno)" value={head.camion_id} onChange={(v) => setH("camion_id", v)} options={camionOpts} />

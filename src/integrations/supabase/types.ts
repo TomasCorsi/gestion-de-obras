@@ -4478,6 +4478,7 @@ export type Database = {
           proveedor_id: string | null
           sector_obra: string | null
           transporte: string
+          transporte_tercero: string | null
           unidad: string
           updated_at: string
         }
@@ -4504,6 +4505,7 @@ export type Database = {
           proveedor_id?: string | null
           sector_obra?: string | null
           transporte?: string
+          transporte_tercero?: string | null
           unidad?: string
           updated_at?: string
         }
@@ -4530,6 +4532,7 @@ export type Database = {
           proveedor_id?: string | null
           sector_obra?: string | null
           transporte?: string
+          transporte_tercero?: string | null
           unidad?: string
           updated_at?: string
         }
