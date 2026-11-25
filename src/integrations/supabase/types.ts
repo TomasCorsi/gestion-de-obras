@@ -1501,6 +1501,7 @@ export type Database = {
           monto: number
           obra_id: string | null
           observaciones: string | null
+          recibo_letra: string
           recibo_numero: string | null
           recibo_provisorio: string | null
           referencia: string | null
@@ -1524,6 +1525,7 @@ export type Database = {
           monto?: number
           obra_id?: string | null
           observaciones?: string | null
+          recibo_letra?: string
           recibo_numero?: string | null
           recibo_provisorio?: string | null
           referencia?: string | null
@@ -1547,6 +1549,7 @@ export type Database = {
           monto?: number
           obra_id?: string | null
           observaciones?: string | null
+          recibo_letra?: string
           recibo_numero?: string | null
           recibo_provisorio?: string | null
           referencia?: string | null

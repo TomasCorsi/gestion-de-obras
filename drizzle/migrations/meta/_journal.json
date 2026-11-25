@@ -281,6 +281,13 @@
       "when": 1794937641786,
       "tag": "0039_remitos_materiales_transporte_tercero",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795631582082,
+      "tag": "0040_cobros_letra_recibo",
+      "breakpoints": true
     }
   ]
 }

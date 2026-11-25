@@ -38,6 +38,7 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
   const save = useSaveCobroValores();
 
   const [fecha, setFecha] = useState(new Date().toISOString().slice(0, 10));
+  const [letra, setLetra] = useState<"X" | "N">("X");
   const [numero, setNumero] = useState("");
   const [provisorio, setProvisorio] = useState("");
   const [tercero, setTercero] = useState("");
@@ -71,7 +72,7 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
     if (err) return;
     await save.mutateAsync({
       cabecera: {
-        es_cobro: true, fecha, tercero_id: tercero, recibo_numero: numero, recibo_provisorio: provisorio,
+        es_cobro: true, fecha, tercero_id: tercero, recibo_letra: letra, recibo_numero: numero, recibo_provisorio: provisorio,
         concepto, moneda_declarada: "ARS", importe_declarado: "", comprobante_id: cbteId, obra_id: obra, maquinaria_id: maq,
       },
       valores: valores.map((v) => ({ ...v, cotizacion: v.moneda === "ARS" ? 1 : v.cotizacion })),
@@ -87,7 +88,17 @@ export function CobroDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div className="grid gap-3 lg:grid-cols-[1fr_2fr_1.4fr_0.9fr]">
           <Bloque titulo="Recibo">
             <div><Label className="text-xs">Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
-            <div><Label className="text-xs">Número</Label><Input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="0001-00000001" /></div>
+            <div>
+              <Label className="text-xs">Letra</Label>
+              <Select value={letra} onValueChange={(v) => setLetra(v as "X" | "N")}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="X">X · Blanco (punto de venta 2)</SelectItem>
+                  <SelectItem value="N">N · Negro (punto de venta 1)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div><Label className="text-xs">Número</Label><Input value={numero} onChange={(e) => setNumero(e.target.value)} placeholder={letra === "X" ? "2-1640" : "1-1667"} /></div>
             <div><Label className="text-xs">Provisorio</Label><Input value={provisorio} onChange={(e) => setProvisorio(e.target.value)} /></div>
           </Bloque>
 

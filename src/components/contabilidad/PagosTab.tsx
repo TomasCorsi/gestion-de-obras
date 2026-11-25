@@ -79,7 +79,7 @@ export function PagosTab({ inicial, abrirAlta, modoValores = "cartera" }: { inic
                       {p.comprobante ? `${p.comprobante.tipo} ${String(p.comprobante.punto_venta).padStart(5,"0")}-${String(p.comprobante.numero).padStart(8,"0")}` : "—"}
                     </td>
                     <td className="px-3 py-2 capitalize">{p.medio === "otro" && esCobro ? "varios" : p.medio === "echeck" ? "e-check" : p.medio}</td>
-                    <td className="px-3 py-2 text-xs">{p.referencia ?? "—"}</td>
+                    <td className="px-3 py-2 text-xs">{p.es_cobro && (p as any).recibo_letra ? <span className="mr-1 rounded border px-1 font-semibold">{(p as any).recibo_letra === "N" ? "N · Negro" : "X · Blanco"}</span> : null}{(p as any).recibo_numero ?? p.referencia ?? "—"}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(p.monto)}</td>
                     <td className="px-3 py-2 text-right">
                       <Button size="icon" variant="ghost" onClick={() => del.mutate(p.id)}>
