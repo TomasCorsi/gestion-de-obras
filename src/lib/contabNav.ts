@@ -27,10 +27,9 @@ const prox = (id: string, nombre: string): NavHoja => ({ id, nombre });
 
 /** Mapa principal congelado: cada función tiene UNA ubicación principal (nomenclatura CONTAD). */
 export const NAV: NavModulo[] = [
-  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Registro de compras, órdenes de compra y gastos generales", hijos: [
-    { id: "comprobantes", nombre: "Registro de Compras", destino: { pantalla: "compras" } },
+  { id: "compras", nombre: "Compras", icono: "ShoppingCart", descripcion: "Registro de compras (con y sin factura) y órdenes de compra", hijos: [
+    { id: "comprobantes", nombre: "Registro de Compras", descripcion: "Facturas y gastos sin factura", destino: { pantalla: "compras" } },
     { id: "ordenes", nombre: "Órdenes de Compra", destino: { pantalla: "ordenes" }, permiso: "admin" },
-    { id: "gastos", nombre: "Gastos Generales", destino: { pantalla: "gastos" }, permiso: "admin" },
   ] },
   { id: "ventas", nombre: "Ventas", icono: "Receipt", descripcion: "Facturación y comprobantes a clientes",
     destino: { pantalla: "ventas" }, hijos: [] },
@@ -109,6 +108,7 @@ export const ALIAS: Record<string, [string, string?]> = {
   "config/fichas": ["otras", "fichas"],
   "proveedores/ordenes-pago": ["egresos", "orden-pago"],
   "proveedores/comprobantes": ["compras", "comprobantes"],
+  "compras/gastos": ["compras", "comprobantes"],
   "proveedores/fichas": ["otras", "fichas"],
   "clientes/cobranzas": ["ingresos"],
   "ingresos/cobranzas": ["ingresos"],
@@ -162,7 +162,7 @@ export function buscar(q: string, p: Permisos): ResultadoBusqueda[] {
     if (norm(`${m.nombre} ${m.descripcion}`).includes(t))
       out.push({ m: m.id, etiqueta: m.nombre, modulo: m.nombre, icono: m.icono, proximamente: esProximamente(m) });
     for (const h of m.hijos) {
-      if (norm(`${m.nombre} ${h.nombre}`).includes(t))
+      if (norm(`${m.nombre} ${h.nombre} ${h.descripcion ?? ""} ${h.id === "comprobantes" ? "gastos generales" : ""}`).includes(t))
         out.push({ m: m.id, s: h.id, etiqueta: `${m.nombre} > ${h.nombre}`, modulo: m.nombre, sub: h.nombre, icono: m.icono, proximamente: !h.destino });
     }
   }

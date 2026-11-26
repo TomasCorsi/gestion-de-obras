@@ -20,6 +20,26 @@ import { LibrosTab } from "@/components/contabilidad/LibrosTab";
 import { ContabLauncher, Tile, NavIcon, ModuloTile } from "@/components/contabilidad/ContabLauncher";
 import { agregarReciente, iconoHoja, migas, recientesValidos, resolver, RECIENTES_KEY, type Destino, type Permisos, type Reciente } from "@/lib/contabNav";
 import { Fragment } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+/** Registro de Compras: facturas + gastos sin factura (pantalla existente de gastos, solo admin). */
+function RegistroCompras({ terceroId, admin }: { terceroId?: string; admin: boolean }) {
+  const [params, setParams] = useSearchParams();
+  const tab = admin && params.get("t") === "sin-factura" ? "sin-factura" : "facturas";
+  const cambiar = (v: string) => { const n = new URLSearchParams(params); if (v === "sin-factura") n.set("t", v); else n.delete("t"); setParams(n, { replace: true }); };
+  const facturas = <ComprobantesTab key={terceroId} esVenta={false} terceroId={terceroId} />;
+  if (!admin) return facturas;
+  return (
+    <Tabs value={tab} onValueChange={cambiar}>
+      <TabsList><TabsTrigger value="facturas">Facturas de proveedores</TabsTrigger><TabsTrigger value="sin-factura">Gastos sin factura</TabsTrigger></TabsList>
+      <TabsContent value="facturas">{facturas}</TabsContent>
+      <TabsContent value="sin-factura">
+        <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">Si el gasto tiene factura a nombre de la empresa, cargalo en <b>Facturas de proveedores</b>.</div>
+        <GastosGeneralesTab />
+      </TabsContent>
+    </Tabs>
+  );
+}
 
 /** Permisos consultados en el servidor con las funciones contables existentes. */
 function usePermisosContab() {
@@ -43,10 +63,10 @@ function leerRecientes(): unknown {
 }
 
 /** Renderiza la pantalla existente; los accesos que comparten pantalla usan el mismo componente. */
-function Pantalla({ d, proveedorId, terceroId }: { d: Destino; proveedorId?: string; terceroId?: string }) {
+function Pantalla({ d, proveedorId, terceroId, admin = false }: { d: Destino; proveedorId?: string; terceroId?: string; admin?: boolean }) {
   const k = `${d.pantalla}/${d.subtab ?? ""}/${d.ivaTipo ?? ""}/${d.abrirAlta ? 1 : 0}`;
   switch (d.pantalla) {
-    case "compras": return <ComprobantesTab key={terceroId} esVenta={false} terceroId={terceroId} />;
+    case "compras": return <RegistroCompras terceroId={terceroId} admin={admin} />;
     case "ventas": return <ComprobantesTab esVenta={true} />;
     case "pagos": return <PagosTab key={k + (d.modo ?? "")} inicial={d.subtab as any} abrirAlta={d.abrirAlta} modoValores={d.modo === "buscar" ? "buscar" : "cartera"} />;
     case "asientos": return <AsientosTab key={k + (d.modo ?? "")} soloConsulta={d.modo === "listado"} />;
@@ -77,6 +97,12 @@ export default function Contabilidad() {
     if (sub) next.set("s", sub);
     setParams(next);
   };
+
+  // Enlace viejo Compras > Gastos Generales → pestaña "Gastos sin factura".
+  useEffect(() => {
+    if (m === "compras" && s === "gastos") setParams(new URLSearchParams({ m: "compras", s: "comprobantes", t: "sin-factura" }), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m, s]);
 
   // Enlaces inválidos o no autorizados vuelven al inicio.
   useEffect(() => {
@@ -124,7 +150,7 @@ export default function Contabilidad() {
 
           {!res && <ContabLauncher permisos={permisos} recientes={recientes} onIr={irValidado} />}
 
-          {res && res.destino && <Pantalla d={res.destino} proveedorId={params.get("proveedor_id") || undefined} terceroId={params.get("tercero_id") || undefined} />}
+          {res && res.destino && <Pantalla d={res.destino} proveedorId={params.get("proveedor_id") || undefined} terceroId={params.get("tercero_id") || undefined} admin={permisos.admin} />}
 
           {res && !res.destino && !res.hoja && res.modulo.hijos.length > 0 && (
             <div className="mx-auto max-w-6xl">

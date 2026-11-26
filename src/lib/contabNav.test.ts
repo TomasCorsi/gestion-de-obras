@@ -83,8 +83,11 @@ describe("breadcrumb", () => {
 });
 
 describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
-  it("Compras tiene Comprobantes, Órdenes de Compra y Gastos Generales", () => {
-    expect(NAV.find((m) => m.id === "compras")!.hijos.map((h) => h.nombre)).toEqual(["Registro de Compras", "Órdenes de Compra", "Gastos Generales"]);
+  it("Compras tiene Registro de Compras y Órdenes de Compra (gastos sin factura van dentro del registro)", () => {
+    expect(NAV.find((m) => m.id === "compras")!.hijos.map((h) => h.nombre)).toEqual(["Registro de Compras", "Órdenes de Compra"]);
+  });
+  it("el enlace viejo Compras > Gastos abre Registro de Compras", () => {
+    expect(resolver("compras", "gastos", todo)?.hoja?.id).toBe("comprobantes");
   });
   it("Proveedores tiene el maestro primero y sin órdenes de compra", () => {
     const h = NAV.find((m) => m.id === "proveedores")!.hijos;
@@ -96,18 +99,18 @@ describe("reubicación de Órdenes de Compra y Gastos Generales", () => {
   });
   it("un contador sin rol admin no entra a órdenes, gastos ni maestro", () => {
     expect(resolver("compras", "ordenes", contador)).toBeNull();
-    expect(resolver("compras", "gastos", contador)).toBeNull();
+    expect(resolver("compras", "gastos", contador)?.hoja?.id).toBe("comprobantes"); // la pestaña sin factura se oculta sin admin
     expect(resolver("proveedores", "maestro", contador)).toBeNull();
     expect(resolver("compras", "comprobantes", contador)).not.toBeNull();
   });
   it("Administrador conserva los tres accesos completos en el launcher", () => {
     expect(resolver("compras", "ordenes", todo)?.destino?.pantalla).toBe("ordenes");
-    expect(resolver("compras", "gastos", todo)?.destino?.pantalla).toBe("gastos");
+    expect(resolver("compras", "gastos", todo)?.destino?.pantalla).toBe("compras");
     expect(resolver("proveedores", "maestro", todo)?.destino?.pantalla).toBe("proveedores");
   });
   it("la búsqueda encuentra órdenes de compra y gastos dentro de Compras", () => {
     expect(buscar("ordenes de compra", todo).map((r) => r.etiqueta)).toContain("Compras > Órdenes de Compra");
-    expect(buscar("gastos", todo).map((r) => r.etiqueta)).toContain("Compras > Gastos Generales");
+    expect(buscar("gastos", todo).map((r) => r.etiqueta)).toContain("Compras > Registro de Compras");
   });
 });
 
