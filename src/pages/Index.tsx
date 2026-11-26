@@ -18,6 +18,7 @@ import {
   ContactRound,
   MessageCircle,
   Store,
+  BookOpen,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
@@ -182,6 +183,15 @@ const apps: AppItem[] = [
     bgColor: "bg-teal-600/15",
     description: "Avisos por WhatsApp",
     roles: ['admin', 'capataz']
+  },
+  {
+    icon: BookOpen,
+    label: "Contabilidad",
+    path: "/contabilidad",
+    iconColor: "text-primary",
+    bgColor: "bg-primary/15",
+    description: "Gestión contable",
+    roles: ['admin', 'contador']
   },
   { 
     icon: Settings, 
