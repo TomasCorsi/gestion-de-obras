@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { content, type, instrucciones } = await req.json(); // type: "text" | "image" | "pdf"
+    const { content, type, instrucciones, modo } = await req.json(); const esFactura = modo === "factura"; // type: "text" | "image" | "pdf"
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
@@ -55,6 +55,13 @@ Reglas:
 - percepcion_iibb: MONTO (no porcentaje) de la Percepción de Ingresos Brutos, en la moneda de la factura. Buscá "Percepción IIBB", "Perc. IIBB", "Percep. IIBB", "IIBB", "Ingresos Brutos", "ARBA", "AGIP", "Percepción IB". Si no aparece, devolvé 0.
 - Si en la factura figura el monto de IVA discriminado (ej: "IVA 21% $X"), poné incluir_iva=true y iva_porcentaje=21 (o la alícuota indicada: 10.5, 27).`;
 
+    const extraFactura = esFactura ? `
+MODO FACTURA DE COMPRA (para registro contable):
+- letra: letra del comprobante (A, B o C). tipo_comprobante: "factura", "nota_credito" o "nota_debito".
+- punto_venta y numero: números enteros (ej: 0003-00012345 => punto_venta 3, numero 12345).
+- fecha_vencimiento: YYYY-MM-DD si figura.
+- En cada ítem, alicuota_iva: 21, 10.5, 27 o 0 según corresponda; precio_unitario SIN IVA.` : `
+MODO COTIZACIÓN: el documento es un presupuesto/cotización para armar una orden de compra; todavía no hay factura. Si figura N° de presupuesto, ponelo en observaciones como "Cotización N° X". Devolvé percepciones en 0 y numero_factura vacío.`;
     const instruccionesPrefix = instrucciones ? `Instrucciones del usuario: ${instrucciones}\n\n` : "";
 
     const userContent: any[] = [];
@@ -77,7 +84,7 @@ Reglas:
     const body = {
       model: "google/gemini-2.5-flash",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: systemPrompt + extraFactura },
         { role: "user", content: userContent },
       ],
       tools: [
@@ -99,6 +106,11 @@ Reglas:
                 percepcion_iva: { type: "number", description: "Monto (no porcentaje) de Percepción de IVA, en la moneda de la factura. 0 si no aparece." },
                 percepcion_iibb: { type: "number", description: "Monto (no porcentaje) de Percepción de Ingresos Brutos, en la moneda de la factura. 0 si no aparece." },
                 condiciones_pago: { type: "string" },
+                letra: { type: "string", enum: ["A", "B", "C"] },
+                tipo_comprobante: { type: "string", enum: ["factura", "nota_credito", "nota_debito"] },
+                punto_venta: { type: "number" },
+                numero: { type: "number" },
+                fecha_vencimiento: { type: "string" },
                 observaciones: { type: "string" },
                 items: {
                   type: "array",
@@ -110,6 +122,7 @@ Reglas:
                       unidad: { type: "string", enum: ["un", "kg", "m", "m²", "m³", "tn", "hr", "lt", "gl", "ml"] },
                       cantidad: { type: "number" },
                       precio_unitario: { type: "number" },
+                      alicuota_iva: { type: "number" },
                     },
                     required: ["descripcion", "unidad", "cantidad", "precio_unitario"],
                   },

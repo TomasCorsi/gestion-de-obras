@@ -21,6 +21,11 @@ export interface ParsedOrdenCompra {
   percepcion_iva?: number;
   percepcion_iibb?: number;
   condiciones_pago?: string;
+  letra?: "A" | "B" | "C";
+  tipo_comprobante?: "factura" | "nota_credito" | "nota_debito";
+  punto_venta?: number;
+  numero?: number;
+  fecha_vencimiento?: string;
   observaciones?: string;
   items: {
     articulo?: string;
@@ -28,6 +33,7 @@ export interface ParsedOrdenCompra {
     unidad: string;
     cantidad: number;
     precio_unitario: number;
+    alicuota_iva?: number;
   }[];
 }
 
@@ -35,11 +41,18 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImport: (parsed: ParsedOrdenCompra) => void;
+  modo?: "cotizacion" | "factura";
 }
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
 
-export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: Props) {
+export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport, modo = "cotizacion" }: Props)
+  {
+  const doc = modo === "factura" ? "factura" : "cotización";
+  return <Inner open={open} onOpenChange={onOpenChange} onImport={onImport} modo={modo} doc={doc} />;
+}
+
+function Inner({ open, onOpenChange, onImport, modo, doc }: Props & { doc: string }) {
   const [tab, setTab] = useState("pdf");
   const [loading, setLoading] = useState(false);
   const [textContent, setTextContent] = useState("");
@@ -133,6 +146,7 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
           content: textContent,
           type: contentKind,
           instrucciones: instrucciones.trim() || undefined,
+          modo,
         },
       });
       if (error) throw error;
@@ -168,7 +182,7 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Importar cotización/factura con IA
+            Importar {doc} con IA
           </DialogTitle>
         </DialogHeader>
 
@@ -191,7 +205,7 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
               </TabsList>
 
               <TabsContent value="pdf" className="space-y-3">
-                <Label>Subir PDF de la cotización/factura</Label>
+                <Label>Subir PDF de la {doc}</Label>
                 <Input type="file" accept="application/pdf,.pdf" onChange={handlePdf} className="bg-muted" />
                 {contentKind === "pdf" && fileName && (
                   <p className="text-xs text-muted-foreground">📄 {fileName}</p>
@@ -199,7 +213,7 @@ export function ImportFacturaProveedorDialog({ open, onOpenChange, onImport }: P
               </TabsContent>
 
               <TabsContent value="imagen" className="space-y-3">
-                <Label>Subir foto de la cotización/factura</Label>
+                <Label>Subir foto de la {doc}</Label>
                 <Input type="file" accept="image/*" onChange={handleImage} className="bg-muted" />
                 {contentKind === "image" && textContent && (
                   <div className="flex justify-center">

@@ -245,7 +245,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
         {!editing && (
           <div className="flex justify-end">
             <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1">
-              <Sparkles className="w-4 h-4 text-primary" /> Importar con IA
+              <Sparkles className="w-4 h-4 text-primary" /> Importar cotización con IA
             </Button>
           </div>
         )}
@@ -290,14 +290,14 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
               />
             </div>
           )}
-          <div className={editing ? "" : "md:col-span-2"}>
-            <Label>N° Factura Proveedor (opcional)</Label>
+          {!!form.numero_factura && <div>
+            <Label>N° Factura Proveedor (dato anterior)</Label>
             <Input
               value={form.numero_factura || ""}
               onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
               placeholder="Ej: 0001-00012345"
             />
-          </div>
+          </div>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -451,6 +451,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
               />
             </div>
           </div>
+          {(Number(form.percepcion_iva) > 0 || Number(form.percepcion_iibb) > 0) && <>
           <div>
             <Label>Percepción IVA ({sym})</Label>
             <Input
@@ -469,6 +470,7 @@ export function OrdenCompraFormDialog({ open, onOpenChange, onSubmit, editing }:
               onChange={(e) => setForm({ ...form, percepcion_iibb: parseFloat(e.target.value) || 0 })}
             />
           </div>
+          </>}
         </div>
 
         {/* Totales */}

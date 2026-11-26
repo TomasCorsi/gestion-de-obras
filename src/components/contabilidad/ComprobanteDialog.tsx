@@ -3,7 +3,9 @@ import { Combobox } from "@/components/ui/combobox";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
 import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
 import { Fragment, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2, SplitSquareHorizontal } from "lucide-react";
+import { Plus, Trash2, SplitSquareHorizontal, Sparkles } from "lucide-react";
+import { ImportFacturaProveedorDialog, type ParsedOrdenCompra } from "@/components/proveedores/ImportFacturaProveedorDialog";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { RepartosItemPanel } from "./RepartosItemPanel";
 import { VinculosItemPanel } from "./VinculosItemPanel";
@@ -142,6 +144,30 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const [percIibb, setPercIibb] = useState(0);
   const [percOtras, setPercOtras] = useState(0);
   const [items, setItems] = useState<ItemDraft[]>([blankItem()]);
+  const [importOpen, setImportOpen] = useState(false);
+  const aplicarFactura = (p: ParsedOrdenCompra) => {
+    const t = p.tipo_comprobante === "nota_credito" ? "NC_CPA" : p.tipo_comprobante === "nota_debito" ? "ND_CPA"
+      : p.letra ? (`FA_CPA_${p.letra}` as CbteTipo) : null;
+    if (t) setTipo(t);
+    if (p.punto_venta) setPuntoVenta(Math.round(p.punto_venta));
+    if (p.numero) setNumero(Math.round(p.numero));
+    if (p.fecha) setFecha(p.fecha);
+    if (p.fecha_vencimiento) setFechaVto(p.fecha_vencimiento);
+    setPercIva(+(p.percepcion_iva || 0)); setPercIibb(+(p.percepcion_iibb || 0));
+    const cuit = (p.proveedor_cuit || "").replace(/\D/g, "");
+    const m = cuit.length === 11 ? delRol.find((x) => (x.cuit_maestro || "").replace(/\D/g, "") === cuit) : undefined;
+    if (m) elegirMaestro(m.maestro_id);
+    else toast.warning(`No se encontró un proveedor con CUIT ${p.proveedor_cuit || "—"}. Elegilo a mano.`);
+    const defAli = p.incluir_iva === false ? 0 : (p.iva_porcentaje ?? 21);
+    const nuevos = (p.items || []).map((i) => {
+      const cantidad = +i.cantidad || 1, pu = +i.precio_unitario || 0;
+      const ali = [0, 10.5, 21, 27].includes(+(i.alicuota_iva ?? NaN)) ? +i.alicuota_iva! : defAli;
+      const neto = +(cantidad * pu).toFixed(2);
+      return { ...blankItem(), descripcion: [i.articulo, i.descripcion].filter(Boolean).join(" - "), cantidad, precio_unit: pu, neto, alicuota_iva: ali, iva: +(neto * ali / 100).toFixed(2) };
+    });
+    if (nuevos.length) setItems(nuevos);
+    toast.success(`Factura importada: ${nuevos.length} renglones. Revisá cuentas e importes antes de guardar.`);
+  };
 
   useEffect(() => {
     if (existing) {
@@ -296,6 +322,14 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
             )}
           </DialogTitle>
         </DialogHeader>
+        {!esVenta && !existing && (
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={() => setImportOpen(true)} className="gap-1">
+              <Sparkles className="w-4 h-4 text-primary" /> Importar factura con IA
+            </Button>
+            <ImportFacturaProveedorDialog open={importOpen} onOpenChange={setImportOpen} onImport={aplicarFactura} modo="factura" />
+          </div>
+        )}
         {errorGuardado && <div role="alert" className="rounded border border-destructive bg-destructive/10 p-2 text-sm text-destructive">{errorGuardado}</div>}
         {etapa === "asiento_borrador" && <p className="text-xs text-muted-foreground">Con asiento en borrador los renglones quedan bloqueados; podés ajustar repartos y vínculos y regenerar el borrador.</p>}
         {(etapa === "contabilizado" || etapa === "anulado") && <p className="text-xs text-muted-foreground">Comprobante {etapa === "anulado" ? "anulado" : "contabilizado"}: todo en solo lectura.</p>}
