@@ -824,6 +824,7 @@ export type Database = {
           maquinaria_id: string | null
           neto: number
           obra_id: string | null
+          oc_linea_id: string | null
           orden: number
           precio_unit: number
           updated_at: string
@@ -841,6 +842,7 @@ export type Database = {
           maquinaria_id?: string | null
           neto?: number
           obra_id?: string | null
+          oc_linea_id?: string | null
           orden?: number
           precio_unit?: number
           updated_at?: string
@@ -858,6 +860,7 @@ export type Database = {
           maquinaria_id?: string | null
           neto?: number
           obra_id?: string | null
+          oc_linea_id?: string | null
           orden?: number
           precio_unit?: number
           updated_at?: string
@@ -930,6 +933,8 @@ export type Database = {
           numero: number
           obra_id: string | null
           observaciones: string | null
+          oc_snapshot: Json | null
+          orden_compra_id: string | null
           perc_iibb: number
           perc_iva: number
           perc_otras: number
@@ -975,6 +980,8 @@ export type Database = {
           numero: number
           obra_id?: string | null
           observaciones?: string | null
+          oc_snapshot?: Json | null
+          orden_compra_id?: string | null
           perc_iibb?: number
           perc_iva?: number
           perc_otras?: number
@@ -1020,6 +1027,8 @@ export type Database = {
           numero?: number
           obra_id?: string | null
           observaciones?: string | null
+          oc_snapshot?: Json | null
+          orden_compra_id?: string | null
           perc_iibb?: number
           perc_iva?: number
           perc_otras?: number
@@ -1049,6 +1058,13 @@ export type Database = {
             columns: ["obra_id"]
             isOneToOne: false
             referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_comprobantes_orden_compra_id_fkey"
+            columns: ["orden_compra_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_compra"
             referencedColumns: ["id"]
           },
           {
@@ -1401,6 +1417,54 @@ export type Database = {
             columns: ["subcentro_id"]
             isOneToOne: false
             referencedRelation: "contab_subcentros_costo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contab_oc_decisiones: {
+        Row: {
+          accion: string
+          comprobante_id: string | null
+          created_at: string
+          firma: Json | null
+          id: string
+          motivo: string
+          orden_compra_id: string
+          usuario_id: string
+        }
+        Insert: {
+          accion: string
+          comprobante_id?: string | null
+          created_at?: string
+          firma?: Json | null
+          id?: string
+          motivo: string
+          orden_compra_id: string
+          usuario_id: string
+        }
+        Update: {
+          accion?: string
+          comprobante_id?: string | null
+          created_at?: string
+          firma?: Json | null
+          id?: string
+          motivo?: string
+          orden_compra_id?: string
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contab_oc_decisiones_comprobante_id_fkey"
+            columns: ["comprobante_id"]
+            isOneToOne: false
+            referencedRelation: "contab_comprobantes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contab_oc_decisiones_orden_compra_id_fkey"
+            columns: ["orden_compra_id"]
+            isOneToOne: false
+            referencedRelation: "ordenes_compra"
             referencedColumns: ["id"]
           },
         ]
@@ -5583,9 +5647,22 @@ export type Database = {
         Args: { p_cabecera: Json; p_valores: Json }
         Returns: string
       }
+      contab_guardar_compra_oc: {
+        Args: { p_cabecera: Json; p_items: Json }
+        Returns: string
+      }
       contab_normalizar_repartos: {
         Args: { _item_id: string }
         Returns: undefined
+      }
+      contab_oc_decidir: {
+        Args: { _accion: string; _cbte_id: string; _motivo: string }
+        Returns: undefined
+      }
+      contab_oc_revision: { Args: { _cbte_id: string }; Returns: Json }
+      contab_oc_saldos: {
+        Args: { _excluir?: string; _oc_id: string }
+        Returns: Json
       }
       contab_puede: { Args: { _accion: string }; Returns: boolean }
       contab_puede_centros: { Args: never; Returns: boolean }

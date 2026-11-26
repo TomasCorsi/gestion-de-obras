@@ -1,4 +1,5 @@
 # Architecture rules
+- Purchase invoices link to a frozen OC snapshot and explicit per-line references; transactional saves preserve item IDs, server-side cumulative checks guard confirmation, and immutable decisions authorize discrepancies or close balances without altering the OC.
 - Material receipt transport uses a mode plus a nullable third-party name, with shared normalization and display helpers; third-party transport never creates an internal truck trip.
 - Accounting entry forms reuse Combobox via a simple Select-compatible adapter and shared resource option builders including number/code and name; search never changes the stored resource IDs or existing save rules.
 - Suggested subcenters use full-name codes checked against the selected center and open the existing edit form before saving; this avoids first-word collisions without duplicating forms or bypassing database constraints.

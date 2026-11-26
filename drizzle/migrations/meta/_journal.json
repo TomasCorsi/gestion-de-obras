@@ -288,6 +288,27 @@
       "when": 1795631582082,
       "tag": "0040_cobros_letra_recibo",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1795711784496,
+      "tag": "0041_compras_oc_conciliacion",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1795711823802,
+      "tag": "0042_compras_oc_saldos",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795712017146,
+      "tag": "0043_compras_oc_revision_firma",
+      "breakpoints": true
     }
   ]
 }

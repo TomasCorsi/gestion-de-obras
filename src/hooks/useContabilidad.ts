@@ -67,6 +67,7 @@ export interface ContabTercero {
 }
 
 export interface ContabCbteItem {
+  oc_linea_id?: string | null;
   id: string;
   comprobante_id: string;
   orden: number;
@@ -82,6 +83,8 @@ export interface ContabCbteItem {
 }
 
 export interface ContabComprobante {
+  orden_compra_id?: string | null;
+  oc_snapshot?: import('@/lib/compraOc').OcSnapshot | null;
   id: string;
   empresa_id: string | null;
   tipo: CbteTipo;
@@ -331,9 +334,14 @@ export const useSaveComprobante = () => {
     mutationFn: async (params: { cbte: Partial<ContabComprobante>; items: Partial<ContabCbteItem>[] }) => {
       const { cbte, items } = params;
       const payload: any = { ...cbte };
-      ["fecha_vto","tercero_id","obra_id","maquinaria_id","observaciones","empresa_id","letra"].forEach((k) => {
+      ["fecha_vto","tercero_id","obra_id","maquinaria_id","observaciones","empresa_id","letra","orden_compra_id"].forEach((k) => {
         if (payload[k] === "") payload[k] = null;
       });
+      if (!cbte.es_venta && Object.prototype.hasOwnProperty.call(cbte, 'orden_compra_id')) {
+        const { data, error } = await supabase.rpc('contab_guardar_compra_oc', { p_cabecera: payload, p_items: items as any });
+        if (error) throw new Error(traducirError(error.message));
+        return data;
+      }
       let id = payload.id;
       const limpiar = (it: Partial<ContabCbteItem>, idx: number) => {
         const r: any = { ...it, comprobante_id: id, orden: idx + 1 };
@@ -381,6 +389,8 @@ export const useSaveComprobante = () => {
       qc.invalidateQueries({ queryKey: ["contab_comprobantes"] });
       qc.invalidateQueries({ queryKey: ["contab_cbte_items"] });
       qc.invalidateQueries({ queryKey: ["contab_cbte_one"] });
+      qc.invalidateQueries({ queryKey: ['oc_saldos'] });
+      qc.invalidateQueries({ queryKey: ['oc_revision'] });
       toast.success("Comprobante guardado");
     },
     onError: (e: any) => toast.error(e.message),

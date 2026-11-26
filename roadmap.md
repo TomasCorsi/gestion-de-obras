@@ -1,4 +1,10 @@
 # Pantalla en blanco
+## Facturas y órdenes de compra
+- [x] Vincular OC por proveedor, copiar o asociar renglones y comparar cantidades/precios sin modificar la OC.
+- [x] Controlar cantidades acumuladas, aprobación de diferencias y cierre justificado de saldos pendientes; controles en servidor.
+- [x] 41 pruebas pasan; con sesión real se guardó factura parcial, aprobó precio, invalidó aprobación al editar y comprobó recuperación completa ante error. Datos temporales retirados.
+- [ ] Confirmación contable y cierre de saldo desde pantalla: requieren ejercicio contable autorizado; no crear ejercicio para la prueba.
+- [ ] Comparación automática con remito de recepción: falta un circuito de recepción de proveedores relacionado con la OC (los remitos actuales son operativos, no acreditan esa recepción).
 ## Buscadores de carga de Contabilidad
 - [x] Desplegables buscables en todos los formularios contables y pantallas compartidas; obras y máquinas por número o nombre.
 - [x] 123 pruebas aprobadas; búsqueda y selección de recursos verificadas con sesión real, además de comprobantes, pagos/cobros, asientos, cuentas, centros, órdenes, gastos y empresa. No se guardaron movimientos de prueba.

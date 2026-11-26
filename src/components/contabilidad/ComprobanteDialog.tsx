@@ -1,4 +1,7 @@
 import { opcionObra, opcionMaquina } from "@/lib/contabSelectorOptions";
+import { CompraOcPanel } from './CompraOcPanel';
+import { asociarOc, type OcSnapshot } from '@/lib/compraOc';
+import type { OrdenCompraWithRelations } from '@/hooks/useOrdenesCompra';
 import { Combobox } from "@/components/ui/combobox";
 import { FichaRapidaDialog } from "./FichaRapidaDialog";
 import { useTercerosEstado, type TerceroEstado } from "@/hooks/useTercerosFiscal";
@@ -61,6 +64,7 @@ const TIPOS_COMPRA: { v: CbteTipo; l: string }[] = [
 ];
 
 type ItemDraft = {
+  oc_linea_id?: string | null;
   id?: string;
   descripcion: string;
   cuenta_id: string | null;
@@ -130,6 +134,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const maestrosOpts = delRol.map((m) => ({ value: m.maestro_id, label: `${m.nombre}${m.cuit_maestro ? ` · ${m.cuit_maestro}` : ""}${m.tercero_id ? "" : " (sin ficha)"}` }));
   const [fichaPara, setFichaPara] = useState<TerceroEstado | null>(null);
   const elegirMaestro = (id: string) => {
+    if (id !== maestroSel) { setOcId(''); setOcSnapshot(null); setItems(a => a.map(i => ({...i,oc_linea_id:null}))); }
     setMaestroElegido(id);
     const m = delRol.find((x) => x.maestro_id === id);
     if (!m) { setTerceroId(""); return; }
@@ -144,6 +149,25 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
   const [percIibb, setPercIibb] = useState(0);
   const [percOtras, setPercOtras] = useState(0);
   const [items, setItems] = useState<ItemDraft[]>([blankItem()]);
+  const [ocId, setOcId] = useState('');
+  const [ocSnapshot, setOcSnapshot] = useState<OcSnapshot | null>(null);
+  const [moneda, setMoneda] = useState('ARS');
+  const [cotizacion, setCotizacion] = useState(1);
+  const proveedorActual = delRol.find(m => m.tercero_id === terceroId)?.maestro_id ?? '';
+  const elegirOc = (o: OrdenCompraWithRelations | null, copiar: boolean) => {
+    if (!o) { setOcId(''); setOcSnapshot(null); setItems(a => a.map(i => ({...i,oc_linea_id:null}))); return; }
+    if (!copiar) { setOcId(o.id); setOcSnapshot({numero:o.numero,moneda:o.moneda,items:o.items ?? []}); }
+    setMoneda(o.moneda);
+    if (copiar) {
+      if (!o.items?.length) { toast.warning('La OC no tiene cantidades pendientes.'); return; }
+      setObraId(o.obra_id ?? ''); setMaqId(o.maquinaria_id ?? '');
+      setItems(o.items.map(i => {
+        const cantidad = Number(i.cantidad), precio_unit = Number(i.precio_unitario);
+        const neto = +(cantidad * precio_unit).toFixed(2), alicuota_iva = o.incluir_iva ? Number(o.iva_porcentaje) : 0;
+        return {...blankItem(),oc_linea_id:i.id,descripcion:[i.articulo,i.descripcion].filter(Boolean).join(' - '),cantidad,precio_unit,neto,alicuota_iva,iva:+(neto*alicuota_iva/100).toFixed(2),obra_id:o.obra_id,maquinaria_id:o.maquinaria_id};
+      }));
+    } else setItems(a => { const referencias = asociarOc(o.items ?? [],a); return a.map((i,k) => ({...i,oc_linea_id:referencias[k]})); });
+  };
   const [importOpen, setImportOpen] = useState(false);
   const aplicarFactura = (p: ParsedOrdenCompra) => {
     const t = p.tipo_comprobante === "nota_credito" ? "NC_CPA" : p.tipo_comprobante === "nota_debito" ? "ND_CPA"
@@ -161,11 +185,14 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
     const defAli = p.incluir_iva === false ? 0 : (p.iva_porcentaje ?? 21);
     const nuevos = (p.items || []).map((i) => {
       const cantidad = +i.cantidad || 1, pu = +i.precio_unitario || 0;
-      const ali = [0, 10.5, 21, 27].includes(+(i.alicuota_iva ?? NaN)) ? +i.alicuota_iva! : defAli;
+      const ali = [0, 10.5, 21, 27].includes(+(i.alicuota_iva ?? NaN)) ? Number(i.alicuota_iva) : defAli;
       const neto = +(cantidad * pu).toFixed(2);
       return { ...blankItem(), descripcion: [i.articulo, i.descripcion].filter(Boolean).join(" - "), cantidad, precio_unit: pu, neto, alicuota_iva: ali, iva: +(neto * ali / 100).toFixed(2) };
     });
-    if (nuevos.length) setItems(nuevos);
+    if (nuevos.length) {
+      const referencias = asociarOc(ocSnapshot?.items ?? [], nuevos);
+      setItems(nuevos.map((i,k) => ({...i,oc_linea_id:referencias[k]})));
+    }
     toast.success(`Factura importada: ${nuevos.length} renglones. Revisá cuentas e importes antes de guardar.`);
   };
 
@@ -183,6 +210,8 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
       setPercIva(+existing.perc_iva);
       setPercIibb(+existing.perc_iibb);
       setPercOtras(+existing.perc_otras);
+      setOcId(existing.orden_compra_id ?? ''); setOcSnapshot(existing.oc_snapshot ?? null);
+      setMoneda(existing.moneda); setCotizacion(+existing.cotizacion);
     }
   }, [existing]);
 
@@ -190,6 +219,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
     if (existingItems.length > 0) {
       setItems(existingItems.map((i) => ({
         id: i.id,
+        oc_linea_id: i.oc_linea_id ?? null,
         descripcion: i.descripcion,
         cuenta_id: i.cuenta_id,
         cantidad: +i.cantidad,
@@ -245,7 +275,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
     { cab: { tipo, punto_venta: puntoVenta, numero, fecha, fecha_vto: fechaVto || null, tercero_id: terceroId || null, obra_id: obraId || null,
         maquinaria_id: maqId || null, observaciones, perc_iva: percIva, perc_iibb: percIibb, perc_otras: percOtras }, items },
   ), [existing, existingItems, tipo, puntoVenta, numero, fecha, fechaVto, terceroId, obraId, maqId, observaciones, percIva, percIibb, percOtras, items]);
-  const dirty = !!existing && pendientes.length > 0;
+  const dirty = !!existing && (pendientes.length > 0 || ocId !== (existing.orden_compra_id ?? '') || moneda !== existing.moneda || cotizacion !== +existing.cotizacion || items.some((i,k) => (i.oc_linea_id ?? null) !== (existingItems[k]?.oc_linea_id ?? null)));
   const permisos = permisosComprobante({ tipo: existing?.tipo ?? "", etapa, guardado: !!existing && !dirty, puedeCargar: true });
   const incompatibles = useMemo(() => existing ? problemasCompatibilidad({
     tipo: existing.tipo, items: existingItems.map((i) => ({ id: i.id, neto: +i.neto })), repartos, vinculos,
@@ -277,14 +307,16 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           perc_iibb: +percIibb || 0,
           perc_otras: +percOtras || 0,
           total: totales.total,
-          moneda: "ARS",
-          cotizacion: 1,
           obra_id: obraId || null,
           maquinaria_id: maqId || null,
           observaciones,
+          ...(!esVenta ? {orden_compra_id:ocId || null} : {}),
+          moneda,
+          cotizacion,
         } as any,
         items: items.map((i) => ({
           id: i.id,
+          oc_linea_id: i.oc_linea_id ?? null,
           descripcion: i.descripcion,
           cuenta_id: i.cuenta_id,
           cantidad: i.cantidad,
@@ -402,6 +434,11 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
           </div>
         </div>
 
+        {!esVenta && (tipo.startsWith('FA_CPA_') || !!ocId) && <>
+          <CompraOcPanel proveedorId={proveedorActual} ocId={ocId} snapshot={ocSnapshot} items={items} cbteId={comprobanteId} editable={!isReadOnly} dirty={dirty} contabilizado={etapa === 'contabilizado'} onElegir={elegirOc} />
+          {ocId && moneda === 'USD' && <div className="mt-3 max-w-xs"><Label>Cotización USD a ARS</Label><Input type="number" min="0.01" step="0.01" value={cotizacion} onChange={e => setCotizacion(+e.target.value)} disabled={isReadOnly} /></div>}
+        </>}
+
         {/* ITEMS */}
         <div className="mt-4">
           <div className="flex items-center justify-between mb-2">
@@ -413,10 +450,11 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
             )}
           </div>
           <div className="overflow-x-auto border rounded">
-            <table className="w-full text-xs">
+            <table className="w-full min-w-[1100px] text-xs">
               <thead className="bg-muted/50">
                 <tr>
-                  <th className="px-2 py-1 text-left">Descripción</th>
+                  <th className="px-2 py-1 text-left min-w-48">Descripción</th>
+                  {ocId && <th className="px-2 py-1 text-left">Renglón OC</th>}
                   <th className="px-2 py-1 text-left">Cuenta</th>
                   <th className="px-2 py-1 text-right w-20">Cant.</th>
                   <th className="px-2 py-1 text-right w-28">Precio</th>
@@ -435,6 +473,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                     <td className="px-1 py-1">
                       <Input value={it.descripcion} onChange={(e) => updateItem(idx, { descripcion: e.target.value })} disabled={!!isReadOnly} className="h-7" />
                     </td>
+                    {ocId && <td className="px-1 py-1 min-w-40"><Select value={it.oc_linea_id ?? '_'} onValueChange={v => updateItem(idx,{oc_linea_id:v === '_' ? null : v})} disabled={isReadOnly}><SelectTrigger className="h-7"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="_">No incluido en OC</SelectItem>{ocSnapshot?.items.map(l => <SelectItem key={l.id} value={l.id}>{l.descripcion} · {l.unidad}</SelectItem>)}</SelectContent></Select></td>}
                     <td className="px-1 py-1">
                       <Select value={it.cuenta_id ?? "_"} onValueChange={(v) => updateItem(idx, { cuenta_id: v === "_" ? null : v })} disabled={!!isReadOnly}>
                         <SelectTrigger className="h-7"><SelectValue placeholder="—" /></SelectTrigger>
@@ -487,7 +526,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                     </td>
                     <td className="px-1 py-1 whitespace-nowrap">
                       {it.id && existing && (
-                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAbierto(abierto === it.id ? null : it.id!)}
+                        <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => setAbierto(abierto === it.id ? null : it.id ?? null)}
                           aria-label={`Repartos y vínculos del renglón ${idx + 1}`}>
                           <SplitSquareHorizontal className="w-4 h-4 mr-1" />
                           {fmtM(+it.neto - (repartos.filter((r) => r.item_id === it.id).reduce((a, r) => a + Number(r.importe_efectivo), 0)))}
@@ -502,7 +541,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
                   </tr>
                   {abierto === it.id && it.id && existing && (
                     <tr className="bg-muted/20">
-                      <td colSpan={10} className="p-3 space-y-4">
+                      <td colSpan={ocId ? 11 : 10} className="p-3 space-y-4">
                         {dirty && <p role="alert" className="text-xs text-destructive">{MSG_CAMBIOS_PENDIENTES}</p>}
                         <RepartosItemPanel itemId={it.id} neto={+it.neto} repartos={repartos.filter((r) => r.item_id === it.id)}
                           editable={permisos.editarRepartos} fecha={existing.fecha} obras={obras as any} maquinas={maquinas as any} />
@@ -535,7 +574,7 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
               <div><Label className="text-xs">Perc. IIBB</Label><Input type="number" value={percIibb} onChange={(e) => setPercIibb(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
               <div><Label className="text-xs">Otras perc.</Label><Input type="number" value={percOtras} onChange={(e) => setPercOtras(+e.target.value)} disabled={!!isReadOnly} className="h-7" /></div>
             </div>
-            <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL</span><span className="tabular-nums">${totales.total.toFixed(2)}</span></div>
+            <div className="flex justify-between text-base font-bold border-t pt-2"><span>TOTAL {moneda}</span><span className="tabular-nums">{totales.total.toFixed(2)}</span></div>
           </div>
         </div>
 
@@ -554,12 +593,12 @@ export function ComprobanteDialog({ open, onClose, comprobanteId: idInicial, esV
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cerrar</Button>
           {permisosBase.generar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: false })} disabled={generar.isPending || !permisos.generar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
+            <Button variant="secondary" onClick={() => { if(existing) generar.mutate({ cbteId: existing.id, regenerar: false }); }} disabled={generar.isPending || !permisos.generar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Generar asiento borrador
             </Button>
           )}
           {permisosBase.regenerar && (
-            <Button variant="secondary" onClick={() => generar.mutate({ cbteId: existing!.id, regenerar: true })} disabled={generar.isPending || !permisos.regenerar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
+            <Button variant="secondary" onClick={() => { if(existing) generar.mutate({ cbteId: existing.id, regenerar: true }); }} disabled={generar.isPending || !permisos.regenerar || bloqueoAsiento} title={dirty ? MSG_CAMBIOS_PENDIENTES : undefined}>
               Regenerar borrador
             </Button>
           )}
