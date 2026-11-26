@@ -15,6 +15,10 @@ import {
 import { ComprobanteDialog } from "./ComprobanteDialog";
 import { useContabAsientos } from "@/hooks/useContabilidad";
 import { estadosComprobante, type EstadoContable } from "@/lib/contabEstados";
+import { FilterBar, type FilterState, filterByDateAndObra } from "@/components/shared/FilterBar";
+import { useObras } from "@/hooks/useObras";
+import { useMaquinarias } from "@/hooks/useMaquinarias";
+import { Search } from "lucide-react";
 import { etapaComprobante, ETAPA_LABEL } from "@/lib/contab1c";
 
 const TIPO_LABEL: Record<CbteTipo, string> = {
@@ -44,6 +48,9 @@ export function ComprobantesTab({ esVenta, terceroId }: { esVenta: boolean; terc
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [delId, setDelId] = useState<string | null>(null);
+  const [filters, setFilters] = useState<FilterState>({ fechaDesde: undefined, fechaHasta: undefined, mes: undefined, obraId: undefined });
+  const { obras } = useObras();
+  const { maquinarias } = useMaquinarias();
 
   const { data = [], isLoading, isError } = useContabComprobantes({ esVenta, terceroId });
   const del = useDeleteComprobante();
@@ -54,13 +61,19 @@ export function ComprobantesTab({ esVenta, terceroId }: { esVenta: boolean; terc
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    if (!s) return data;
-    return data.filter((c) =>
+    const base = filterByDateAndObra(data as any[], filters) as ContabComprobante[];
+    if (!s) return base;
+    return base.filter((c) =>
       [c.tercero?.razon_social, c.numero?.toString(), c.tercero?.cuit, TIPO_LABEL[c.tipo]]
         .filter(Boolean)
         .some((x) => String(x).toLowerCase().includes(s))
     );
-  }, [data, search]);
+  }, [data, search, filters]);
+  const totales = useMemo(() => filtered.reduce((t, c) => ({
+    neto: t.neto + +c.neto_21 + +c.neto_105 + +c.neto_27 + +c.neto_0 + +c.exento + +c.no_gravado,
+    iva: t.iva + +c.iva_21 + +c.iva_105 + +c.iva_27,
+    total: t.total + +c.total,
+  }), { neto: 0, iva: 0, total: 0 }), [filtered]);
 
   const handleEdit = (c: ContabComprobante) => {
     setEditId(c.id);
@@ -75,13 +88,17 @@ export function ComprobantesTab({ esVenta, terceroId }: { esVenta: boolean; terc
     <div className="space-y-4">
       {terceroId && <Badge variant="outline">Ficha fiscal seleccionada</Badge>}
       {isError && <p role="alert" className="text-sm text-destructive">No se pudieron cargar los comprobantes. Intentá nuevamente.</p>}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Input
-          placeholder="Buscar por tercero, número, CUIT…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
+      <FilterBar obras={obras as any} maquinarias={maquinarias as any} showMaquinariaFilter onFilterChange={setFilters} />
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por tercero, número, CUIT…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-card"
+          />
+        </div>
         <Button onClick={handleNew}>
           <Plus className="w-4 h-4 mr-2" />
           Nuevo {esVenta ? "comprobante de venta" : "comprobante de compra"}
@@ -164,6 +181,17 @@ export function ComprobantesTab({ esVenta, terceroId }: { esVenta: boolean; terc
                   );
                 })}
               </tbody>
+              {filtered.length > 0 && (
+                <tfoot>
+                  <tr className="border-t bg-muted/30 font-semibold">
+                    <td colSpan={6} className="px-3 py-2 text-right text-muted-foreground">Total ({filtered.length})</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmt(totales.neto)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmt(totales.iva)}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{fmt(totales.total)}</td>
+                    <td colSpan={3}></td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </CardContent>

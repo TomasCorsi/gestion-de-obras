@@ -27,8 +27,6 @@ import {
   Eye,
   Edit,
   Trash2,
-  DollarSign,
-  Receipt,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -248,23 +246,11 @@ export function GastosGeneralesTab() {
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-        <div>
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-primary" />
-            Gastos Generales
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Gastos informales sin OC (proveedor opcional, sin IVA)
-          </p>
-        </div>
-      </div>
-
       <div className="mb-4">
         <FilterBar obras={obras} onFilterChange={setFilters} />
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col md:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -291,34 +277,8 @@ export function GastosGeneralesTab() {
       </div>
 
 
-      {/* Stats by category */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-        {Object.entries(categoriasGasto).map(([key, config]) => {
-          const total = filtered
-            .filter((g) => g.categoria === key)
-            .reduce((sum, g) => sum + g.monto, 0);
-          return (
-            <div key={key} className="card-industrial p-3 text-center">
-              <p className="text-lg font-bold text-foreground">{formatCurrency(total)}</p>
-              <Badge className={cn("status-badge text-[10px] mt-1", config.color)}>
-                {config.label}
-              </Badge>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Total */}
-      <div className="card-industrial p-4 flex items-center justify-between mb-6">
-        <div>
-          <p className="text-2xl font-bold text-foreground">{formatCurrency(totalCosto)}</p>
-          <p className="text-sm text-muted-foreground">Total Gastos Generales</p>
-        </div>
-        <DollarSign className="w-8 h-8 text-warning" />
-      </div>
-
       {/* Table */}
-      <div className="card-industrial overflow-hidden">
+      <div className="rounded-lg border bg-card overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow className="border-border hover:bg-transparent">
@@ -424,6 +384,7 @@ export function GastosGeneralesTab() {
             )}
           </TableBody>
         </Table>
+        <div className="flex justify-end gap-2 border-t px-4 py-2 text-sm"><span className="text-muted-foreground">Total:</span><span className="font-mono font-semibold">{formatCurrency(totalCosto)}</span></div>
       </div>
 
       {filtered.length > PAGE_SIZE && (

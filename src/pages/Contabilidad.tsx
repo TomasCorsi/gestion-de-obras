@@ -34,7 +34,7 @@ function RegistroCompras({ terceroId, admin }: { terceroId?: string; admin: bool
       <TabsList><TabsTrigger value="facturas">Facturas de proveedores</TabsTrigger><TabsTrigger value="sin-factura">Gastos sin factura</TabsTrigger></TabsList>
       <TabsContent value="facturas">{facturas}</TabsContent>
       <TabsContent value="sin-factura">
-        <div className="mb-4 rounded-md border border-primary/30 bg-primary/5 p-3 text-sm">Si el gasto tiene factura a nombre de la empresa, cargalo en <b>Facturas de proveedores</b>.</div>
+        <p className="mb-3 text-xs text-muted-foreground">Si el gasto tiene factura a nombre de la empresa, cargalo en <b>Facturas de proveedores</b>.</p>
         <GastosGeneralesTab />
       </TabsContent>
     </Tabs>
